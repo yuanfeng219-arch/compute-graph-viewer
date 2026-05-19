@@ -373,7 +373,7 @@
       ],
       notes: [
         '910B baseline: 1 AIC + 1 AIV view',
-        'AIV path is SIMD/vector oriented',
+        'AIV path uses Vector compute fed by UB',
         'AIC/AIV data exchange is modeled through GM/L2',
         'No 950 SSBuf/C-V direct lane or SIMT island',
       ],
@@ -381,18 +381,14 @@
         {
           selector: '[data-aiv-node="buffer:UB"]',
           rows: [
-            ['驻留', 'AIV 本地'],
-            ['执行', 'SIMD'],
+            ['容量', '192KB'],
+            ['bank', '16组 x 3个/组'],
+            ['单bank', '4KB'],
             ['对齐', '32B'],
+            ['供数', 'Vector'],
             ['搬运', 'MTE2/MTE3'],
           ],
-        },
-        {
-          selector: '[data-aiv-node="exec:SIMD"]',
-          rows: [
-            ['调度', 'Vector Pipe'],
-            ['SIMT', '无'],
-          ],
+          bankGrid: { groups: 16, banksPerGroup: 3 },
         },
         {
           selector: '#mem950-aic [data-aic-node="buffer:L1"]',
@@ -449,7 +445,7 @@
     },
     'mem950:core:AIV': {
       title: 'AIV / Vector Core',
-      text: '910B 基线视图中的 AIV 核，主要按 SIMD/Vector 执行路径建模，不包含 950 的 SIMT island。',
+      text: '910B 基线视图中的 AIV 核，按官方 220x 口径展示 Scalar、UB、Vector 路径，不包含 950 的 SIMT island。',
     },
     'aiv:cache:DCache': {
       title: 'DCache',
@@ -473,11 +469,11 @@
     },
     'aiv:exec:SIMD': {
       title: 'SIMD',
-      text: '向量/SIMD 执行侧，面向传统 Ascend C 向量算子和 SIMD Register File。',
+      text: '向量/SIMD 执行侧；910B/220x 以 UB 向 Vector 计算单元供数，351x 细节层再展示 Register File。',
     },
     'aiv:vector:Vector': {
       title: 'Vector',
-      text: '向量计算执行单元，消费 UB、SIMD/SIMT 侧准备的数据。',
+      text: '向量计算执行单元；910B 视图中直接消费 UB 准备的数据，950 视图中可配合 SIMD/SIMT 侧路径。',
     },
     'aic:buffer:L1': {
       title: 'L1',

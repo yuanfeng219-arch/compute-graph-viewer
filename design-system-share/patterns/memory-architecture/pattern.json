@@ -20,7 +20,7 @@
   "useWhen": [
     "building full-chip memory hierarchy diagrams that sit above AIC/AIV detail views",
     "showing Global Memory and L2 Cache rails feeding AIV and AIC objects",
-    "illustrating 910B SIMD baseline and 950-specific direct CV lanes without copying business-page HTML"
+    "illustrating a 910B Vector baseline and 950-specific direct CV lanes without copying business-page HTML"
   ],
   "requiredApis": [
     "window.PtoMemoryArchitecturePattern.renderArchitecture(container, presetOrKey)",

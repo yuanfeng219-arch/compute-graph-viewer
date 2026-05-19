@@ -93,19 +93,19 @@
       }
     },
     aiv910bSimd: {
-      id: 'aiv910bSimd',
-      name: 'AIV Core Object 910B SIMD',
+      id: 'aiv910bVector',
+      name: 'AIV Core Object 910B Vector',
       title: 'AIV',
       routes: [
         { from: 'cache:DCache', to: 'buffer:UB', color: 'cache', style: 'elbow-h', fromSide: 'right', toSide: 'left', toBias: 0.60 },
-        { from: 'cache:ICache', to: 'exec:SIMD', color: 'cache', style: 'elbow-h', fromSide: 'right', toSide: 'top', fromBias: 0.62, toBias: 0.14, dashArray: '4 3', offset: -12 },
-        { from: 'scalar:Scalar', to: 'exec:SIMD', color: 'control', style: 'elbow-h', fromSide: 'right', toSide: 'top', fromBias: 0.5, toBias: 0.72 },
-        { from: 'buffer:UB', to: 'exec:SIMD', color: 'memory', style: 'elbow-h', fromSide: 'right', toSide: 'left', fromBias: 0.58, toBias: 0.72, offset: 6 },
-        { from: 'exec:SIMD', to: 'vector:Vector', color: 'compute', style: 'horizontal', fromSide: 'right', toSide: 'left', fromBias: 0.5 }
+        { from: 'cache:ICache', to: 'vector:Vector', color: 'cache', style: 'elbow-h', fromSide: 'right', toSide: 'top', fromBias: 0.62, toBias: 0.20, dashArray: '4 3', offset: -12 },
+        { from: 'scalar:Scalar', to: 'vector:Vector', color: 'control', style: 'elbow-h', fromSide: 'right', toSide: 'left', fromBias: 0.5, toBias: 0.36 },
+        { from: 'buffer:UB', to: 'vector:Vector', color: 'memory', style: 'elbow-h', fromSide: 'right', toSide: 'left', fromBias: 0.58, toBias: 0.72, offset: 6 }
       ],
       layout: {
         kind: 'group',
         className: 'pto-aiv-core__layout',
+        gap: 76,
         children: [
           {
             kind: 'group',
@@ -136,28 +136,15 @@
                 kind: 'buffer',
                 key: 'UB',
                 label: 'UB',
-                capacity: 'SIMD local',
+                capacity: '192KB',
                 grid: { rows: 8, cols: 19, cellSize: 12, gap: 1, band: { from: 8, to: 9 } }
-              }
-            ]
-          },
-          {
-            kind: 'group',
-            className: 'pto-aiv-core__exec-stack',
-            children: [
-              {
-                kind: 'exec',
-                label: 'SIMD',
-                chipLabel: 'Vector Pipe',
-                chipTone: 'compute',
-                grid: { rows: 4, cols: 13, cellSize: 12, gap: 1, band: { from: 5, to: 6 } }
               }
             ]
           },
           {
             kind: 'vector',
             label: 'Vector',
-            frame: { width: 114, height: 156 }
+            frame: { width: 160, height: 156 }
           }
         ]
       }
@@ -488,6 +475,7 @@
 
   function buildGroup(groupConfig) {
     const group = node('div', groupConfig.className || '');
+    if (Number.isFinite(groupConfig.gap)) group.style.gap = `${groupConfig.gap}px`;
     (groupConfig.children || []).forEach((child) => group.appendChild(buildColumn(child)));
     return group;
   }
