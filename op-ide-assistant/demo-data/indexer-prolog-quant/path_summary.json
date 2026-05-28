@@ -1,0 +1,30 @@
+{
+  "pathId": "PATH0_6",
+  "loopName": "IndexerPrologQuantQuantLoop",
+  "unrollMode": "Unroll1",
+  "branchMeaning": "A concrete compiled branch emitted from source loop_unroll and preserved as func magicname TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6.",
+  "linkedSemanticLabels": [
+    "Query-Linear",
+    "Query-Dequant",
+    "Query-Hadamard",
+    "Query-Quant",
+    "Key-Linear",
+    "Key-Hadamard",
+    "Key-Quant",
+    "Weight-Linear"
+  ],
+  "linkedSubgraphs": [
+    "302",
+    "301",
+    "294",
+    "293",
+    "165",
+    "164"
+  ],
+  "reasonToFocus": "This branch gives a compact but complete story: source loop_unroll, semantic labels, subgraph explosion after preprocessing, and runtime traces in merged_swimlane all line up on the same case slice.",
+  "evidenceRefs": [
+    "source:252-253",
+    "pass:After_025_PreGraphProcess",
+    "pass:After_031_OoOSchedule"
+  ]
+}

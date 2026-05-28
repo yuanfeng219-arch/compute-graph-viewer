@@ -8,12 +8,12 @@ Requires a local HTTP server (ES modules and SVG fetch won't work over `file://`
 
 ```bash
 # Python (built-in)
-cd /path/to/pto
-python3 -m http.server 8080
-# open http://localhost:8080/mem_viewer/
+cd /Users/yin/pto
+python3 -m http.server 8765
+# open http://127.0.0.1:8765/mem_viewer/
 
 # or Node
-npx serve .
+npx serve /Users/yin/pto
 ```
 
 ## Project Structure

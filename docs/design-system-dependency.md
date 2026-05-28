@@ -19,13 +19,10 @@ https://yinyucheng0601.github.io/pto-design-system/design-system-preview.html
 ```text
 pto/
 ├── vendor/pto-design-system/  # Git submodule; canonical source pinned by commit
-├── design-system-share/       # AI/shareable copy generated from the canonical source
-├── tokens/                    # Runtime mirror for legacy/static PTO pages
-├── css/                       # Runtime mirror for legacy/static PTO pages
-└── patterns/                  # Runtime mirror for legacy/static PTO pages
+└── scripts/sync-design-system.mjs
 ```
 
-Do not edit `design-system-share/`, `tokens/`, `css/`, or `patterns/` as the source of truth for design-system changes. Edit and push `pto-design-system`, then sync it into PTO.
+Do not edit generated mirrors as the source of truth for design-system changes. Edit and push `pto-design-system`. Runtime pages should reference `vendor/pto-design-system/...` directly unless a page has a specific compatibility reason to use a mirror.
 
 ## Initialize Or Update The Submodule
 
@@ -49,10 +46,16 @@ Preview what would be copied:
 node scripts/sync-design-system.mjs
 ```
 
-Write the canonical files into `design-system-share/` and overwrite matching runtime mirror files under `tokens/`, `css/`, `patterns/`, and `assets/`:
+Write the canonical files into `design-system-share/`:
 
 ```bash
 node scripts/sync-design-system.mjs --write
+```
+
+Overwrite matching legacy mirror files under `tokens/`, `css`, `patterns`, and `assets/` only when an old page still needs those paths:
+
+```bash
+node scripts/sync-design-system.mjs --write --legacy-mirrors
 ```
 
 Make `design-system-share/` a clean mirror of the canonical package:
@@ -66,7 +69,8 @@ Use `--clean-share` only after checking `git status`, because it removes files i
 ## Policy
 
 - `vendor/pto-design-system/` is the dependency source.
-- `design-system-share/` is a generated/shareable package for AI tools.
-- `tokens/`, `css/`, `patterns/`, and `assets/` are runtime mirrors kept for existing static PTO pages.
+- `design-system-share/` is an optional generated/shareable package for AI tools, not a required checked-in runtime dependency.
+- `tokens/`, `css/`, `patterns/`, and `assets/` legacy mirrors should be generated only when compatibility requires them.
+- Runtime pages should load CSS, tokens, and patterns from `vendor/pto-design-system/...`.
 - New PTO pages should prefer local repository paths, not GitHub Pages URLs, so local development remains offline-capable and version-pinned.
 - Avoid hand-copying design-system folders; use `scripts/sync-design-system.mjs` so drift is visible.

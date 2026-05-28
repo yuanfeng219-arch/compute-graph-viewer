@@ -11,6 +11,7 @@ const repoRoot = path.resolve(__dirname, '..');
 const args = new Set(process.argv.slice(2));
 const write = args.has('--write');
 const cleanShare = args.has('--clean-share');
+const legacyMirrors = args.has('--legacy-mirrors');
 const sourceRoot = path.resolve(
   process.env.PTO_DESIGN_SYSTEM_SOURCE || path.join(repoRoot, 'vendor/pto-design-system'),
 );
@@ -113,9 +114,14 @@ assertSource();
 console.log(`source: ${sourceRoot}`);
 console.log(write ? 'mode: write' : 'mode: dry-run');
 if (cleanShare) console.log('share mirror: clean enabled');
+if (legacyMirrors) console.log('legacy mirrors: enabled');
 
 syncShare();
-syncRuntimeMirrors();
+if (legacyMirrors) {
+  syncRuntimeMirrors();
+} else {
+  console.log('legacy mirrors: skipped. Add --legacy-mirrors to copy tokens/css/patterns/assets.');
+}
 
 if (!write) {
   console.log('No files changed. Re-run with --write to copy files.');

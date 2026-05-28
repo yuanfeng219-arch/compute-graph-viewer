@@ -1,0 +1,66 @@
+{
+  "file": "/Users/yin/gitcode/deepseekv3.2源码/lightning_indexer_prolog_quant.py",
+  "focusRange": {
+    "start": 252,
+    "end": 352
+  },
+  "code": "252:     for tIdx, unrollLength in pypto.loop_unroll(0, t, 1, name=\"IndexerPrologQuantQuantLoop\", idx_name=\"tIdx\",\n253:                                                 unroll_list=unroll_list, ):\n254:         def IndexerPrologQuantQuantLoopInner(params):\n261:             t_tile = unrollLength\n266:             q_norm = pypto.view(q_norm_in, [t_tile, q_lora_rank], [tIdx, 0], valid_shape=[t_tile, q_lora_rank])\n267:             q_norm_scale = pypto.view(q_norm_scale_in, [t_tile, 1], [tIdx, 0], valid_shape=[t_tile, 1])\n268:             pypto.set_semantic_label(\"Query-Linear\")\n272:             q_s32 = pypto.matmul(q_norm, w_qb, pypto.DT_INT32)\n274:             pypto.set_semantic_label(\"Query-Dequant\")\n276:             q_f32 = pypto.cast(q_s32, pypto.DT_FP32)\n278:             q_f32 = q_f32 * w_qb_scale\n281:             q_bf16 = pypto.reshape(q_cast, [t_tile, head_num, head_dim], valid_shape=[t_tile, head_num, head_dim])\n298:             pypto.set_semantic_label(\"Query-Hadamard\")\n301:             q_hadamard = pypto.matmul(q_concat, hadamard_q, x_dtype)\n303:             pypto.set_semantic_label(\"Query-Quant\")\n305:             q_res = prolog_quant(q_hadamard)\n313:             pypto.set_semantic_label(\"Key-Linear\")\n318:             k = pypto.matmul(x, wk, pypto.DT_FP32)\n321:             k_bf16 = pypto.cast(quant_layer_norm(k, gamma_2d, beta_2d, -1, attrs.eps), x_dtype)\n330:             pypto.set_semantic_label(\"Key-Hadamard\")\n332:             pypto.set_semantic_label(\"Key-Quant\")\n340:             k_int8_out.move(pypto.scatter_update(k_cache, SCATTER_DIM, index, k_cache_4D))\n341:             k_scale_out.move(pypto.scatter_update(k_cache_scale, SCATTER_DIM, index, k_scale_4D))\n343:             pypto.set_semantic_label(\"Weight-Linear\")\n349:             weights = pypto.cast(pypto.matmul(x, w_proj, x_dtype), pypto.DT_FP32)\n352:             pypto.assemble(weights_f16, [tIdx, 0], weights_out)",
+  "anchors": [
+    {
+      "id": "dynamic-inputs",
+      "semanticLabel": "Dynamic Inputs",
+      "lineStart": 210,
+      "lineEnd": 217,
+      "description": "The case marks x_in, q_norm_in, rope inputs and KV cache tensors as dynamic."
+    },
+    {
+      "id": "loop-unroll",
+      "semanticLabel": "IndexerPrologQuantQuantLoop",
+      "lineStart": 252,
+      "lineEnd": 253,
+      "description": "This is the source loop that later materializes into multiple PATH branches."
+    },
+    {
+      "id": "query-linear",
+      "semanticLabel": "Query-Linear",
+      "lineStart": 268,
+      "lineEnd": 272,
+      "description": "Cube matmul stage for query projection."
+    },
+    {
+      "id": "query-dequant",
+      "semanticLabel": "Query-Dequant",
+      "lineStart": 274,
+      "lineEnd": 279,
+      "description": "Vector-side dequant and scale restoration after INT32 query projection."
+    },
+    {
+      "id": "query-hadamard",
+      "semanticLabel": "Query-Hadamard",
+      "lineStart": 298,
+      "lineEnd": 301,
+      "description": "A second cube stage after rope and concat."
+    },
+    {
+      "id": "key-linear",
+      "semanticLabel": "Key-Linear",
+      "lineStart": 313,
+      "lineEnd": 318,
+      "description": "Key projection enters a separate semantic stage and later produces runtime-heavy tasks."
+    },
+    {
+      "id": "key-quant",
+      "semanticLabel": "Key-Quant",
+      "lineStart": 332,
+      "lineEnd": 341,
+      "description": "Key quant result is reshaped and written into KV cache via scatter_update."
+    },
+    {
+      "id": "weight-linear",
+      "semanticLabel": "Weight-Linear",
+      "lineStart": 343,
+      "lineEnd": 352,
+      "description": "Weight-side linear stage produces an additional execution branch in the same loop body."
+    }
+  ]
+}

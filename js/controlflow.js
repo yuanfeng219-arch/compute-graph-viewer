@@ -158,7 +158,7 @@
       var panel = document.getElementById('cfPanel');
       panel.classList.remove('cf-visible');
       var reopenBtn = document.getElementById('cfReopenBtn');
-      if (reopenBtn) reopenBtn.style.display = 'flex';
+      if (reopenBtn) reopenBtn.classList.remove('is-hidden');
     });
   }
 
@@ -168,7 +168,7 @@
     cfReopenBtn.addEventListener('click', function () {
       var panel = document.getElementById('cfPanel');
       panel.classList.add('cf-visible');
-      cfReopenBtn.style.display = 'none';
+      cfReopenBtn.classList.add('is-hidden');
       setTimeout(function () {
         if (window.cfHighlightPath) window.cfHighlightPath(null);
       }, 260);

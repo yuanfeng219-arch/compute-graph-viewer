@@ -1,0 +1,21 @@
+{
+  "id": "indexer-prolog-quant",
+  "title": "IndexerPrologQuantQuantLoop",
+  "subtitle": "Real gitcode-backed agent demo scenario",
+  "caseName": "lightning_indexer_prolog_quant.py",
+  "entryFunction": "IndexerPrologQuantQuantLoop",
+  "primaryPath": "PATH0_6",
+  "primaryFuncMagicName": "TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6",
+  "taskTemplates": [
+    "Explain This Operator",
+    "Trace This Path",
+    "Analyze Execution Bottleneck"
+  ],
+  "sourceRef": "/Users/yin/gitcode/deepseekv3.2源码/lightning_indexer_prolog_quant.py",
+  "passRefs": [
+    "/Users/yin/gitcode/output_deepseek/Pass_04_ExpandFunction/After_004_ExpandFunction_TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6.json",
+    "/Users/yin/gitcode/output_deepseek/Pass_25_PreGraphProcess/After_025_PreGraphProcess_TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6.json",
+    "/Users/yin/gitcode/output_deepseek/Pass_31_OoOSchedule/After_031_OoOSchedule_TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6.json"
+  ],
+  "swimlaneRef": "/Users/yin/gitcode/output_deepseek/merged_swimlane.json"
+}

@@ -1,0 +1,71 @@
+[
+  {
+    "taskId": "explain-operator",
+    "title": "Explain This Operator",
+    "conclusion": "IndexerPrologQuantQuantLoop is a source-level unrolled loop that interleaves query, key and weight semantic stages, while also carrying dynamic KV-cache updates.",
+    "evidence": [
+      "Source loop_unroll at lines 252-253",
+      "Dynamic marks at lines 210-217",
+      "Semantic labels from Query-Linear through Weight-Linear"
+    ],
+    "reasoning": [
+      "The loop body contains multiple semantic_label switches rather than one flat operator stage.",
+      "Key-Quant writes through scatter_update, so the case is not only compute-bound but also runtime-object aware.",
+      "This makes the case suitable for demonstrating unified explanation from source intent to runtime behavior."
+    ],
+    "suggestedActions": [
+      "Highlight semantic anchors in the source pane.",
+      "Jump from Query-Linear to its compiled pass snapshot.",
+      "Open the runtime summary after the semantic tour."
+    ],
+    "riskNotes": [
+      "This demo card is based on a curated source slice, not full-project live parsing."
+    ]
+  },
+  {
+    "taskId": "trace-path",
+    "title": "Trace This Path",
+    "conclusion": "PATH0_6 is the cleanest first branch for the demo because it preserves the source loop identity, survives into OoOSchedule, and already has matching runtime evidence.",
+    "evidence": [
+      "func_magicname TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6",
+      "PreGraphProcess stats: 6077 ops, 316 subgraphs",
+      "OoOSchedule keeps the same semantic distribution and subgraph scale"
+    ],
+    "reasoning": [
+      "ExpandFunction shows the branch before subgraph partitioning, with all ops still in subgraph -1.",
+      "PreGraphProcess is the structural turning point where 316 subgraphs appear.",
+      "OoOSchedule then becomes the right stage to explain execution intent without changing the branch identity."
+    ],
+    "suggestedActions": [
+      "Show ExpandFunction -> PreGraphProcess -> OoOSchedule as a three-step storyboard.",
+      "Annotate top subgraphs 302/301/294/293 as the visible compiled split.",
+      "Explain that path tracing is more important than raw field browsing."
+    ],
+    "riskNotes": [
+      "PATH0_6 is chosen for narrative clarity; other PATH branches are intentionally hidden in v0.1."
+    ]
+  },
+  {
+    "taskId": "analyze-bottleneck",
+    "title": "Analyze Execution Bottleneck",
+    "conclusion": "The runtime story is dominated by Query-Linear volume, while Key-Linear contributes longer sampled compute spans and Weight-Linear acts as a smaller side branch.",
+    "evidence": [
+      "merged_swimlane semantic top: Query-Linear 496, Prolog-Quant 419",
+      "Sampled Key-Linear event duration up to 18.64",
+      "Sampled Weight-Linear event duration around 9.04 on AIC and 2.64 on AIV"
+    ],
+    "reasoning": [
+      "Volume and criticality are not the same: Query-Linear is the most frequent explicit semantic stage, but Key-Linear has heavier sampled tasks.",
+      "This gives the demo a realistic Agent message: explain why the busy stage is not always the only optimization target.",
+      "Using summarized swimlane evidence keeps the demo fast and still grounded in a real trace."
+    ],
+    "suggestedActions": [
+      "Render a semantic-top chart instead of the full trace first.",
+      "Allow click-through from Query-Linear and Key-Linear summaries into example tasks.",
+      "Use the right panel to frame optimization as a hypothesis, not a certainty."
+    ],
+    "riskNotes": [
+      "The first demo only uses summarized runtime evidence, so it should avoid claiming exact root cause."
+    ]
+  }
+]

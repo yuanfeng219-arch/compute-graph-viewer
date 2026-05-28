@@ -1,0 +1,94 @@
+{
+  "version": "v0.1",
+  "scenario": {
+    "id": "string",
+    "title": "string",
+    "subtitle": "string",
+    "caseName": "string",
+    "entryFunction": "string",
+    "primaryPath": "string",
+    "taskTemplates": ["string"]
+  },
+  "source_excerpt": {
+    "file": "string",
+    "focusRange": { "start": "number", "end": "number" },
+    "code": "string",
+    "anchors": [
+      {
+        "id": "string",
+        "semanticLabel": "string",
+        "lineStart": "number",
+        "lineEnd": "number",
+        "description": "string"
+      }
+    ]
+  },
+  "semantic_steps": [
+    {
+      "semanticLabel": "string",
+      "kind": "cube|vector|memory|runtime",
+      "sourceSummary": "string",
+      "compiledSummary": "string",
+      "runtimeSummary": "string",
+      "evidenceRefs": ["string"]
+    }
+  ],
+  "pass_snapshots": [
+    {
+      "passName": "string",
+      "snapshotLabel": "string",
+      "funcMagicName": "string",
+      "stats": {
+        "operations": "number",
+        "tensors": "number",
+        "rawTensors": "number",
+        "subgraphs": "number"
+      },
+      "topSemanticLabels": [
+        { "label": "string", "count": "number" }
+      ],
+      "topSubgraphs": [
+        { "id": "string", "count": "number" }
+      ],
+      "evidenceRefs": ["string"]
+    }
+  ],
+  "path_summary": {
+    "pathId": "string",
+    "loopName": "string",
+    "unrollMode": "string",
+    "branchMeaning": "string",
+    "linkedSemanticLabels": ["string"],
+    "linkedSubgraphs": ["string"],
+    "reasonToFocus": "string",
+    "evidenceRefs": ["string"]
+  },
+  "swimlane_summary": {
+    "eventCount": "number",
+    "semanticTop": [
+      { "label": "string", "count": "number" }
+    ],
+    "exampleTasks": [
+      {
+        "semanticLabel": "string",
+        "lane": "string",
+        "ts": "number",
+        "dur": "number",
+        "name": "string"
+      }
+    ],
+    "insightSummary": ["string"],
+    "evidenceRefs": ["string"]
+  },
+  "agent_cards": [
+    {
+      "taskId": "string",
+      "title": "string",
+      "conclusion": "string",
+      "evidence": ["string"],
+      "reasoning": ["string"],
+      "suggestedActions": ["string"],
+      "riskNotes": ["string"]
+    }
+  ]
+}

@@ -535,7 +535,7 @@
       button.addEventListener('click', () => {
         state.filter = button.dataset.filter;
         refs.filterBar.querySelectorAll('[data-filter]').forEach(item => {
-          item.classList.toggle('active', item === button);
+          item.classList.toggle('is-selected', item === button);
         });
         renderGraph();
       });

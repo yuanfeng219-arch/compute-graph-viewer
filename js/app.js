@@ -763,6 +763,7 @@
       btn.classList.toggle('active', selected);
       btn.classList.toggle('is-selected', selected);
       btn.classList.toggle('action-row-selected', selected);
+      btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
     });
   }
 
@@ -772,6 +773,7 @@
       btn.classList.toggle('active', selected);
       btn.classList.toggle('is-selected', selected);
       btn.classList.toggle('action-row-selected', selected);
+      btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
     });
   }
 
@@ -846,7 +848,7 @@
     const shouldHide = hugeGraphMode && scale < HUGE_EDGE_HIDE_SCALE;
     if (shouldHide === edgesHiddenByScale) return false;
     edgesHiddenByScale = shouldHide;
-    edgesSvg.style.visibility = shouldHide ? 'hidden' : 'visible';
+    edgesSvg.classList.toggle('is-hidden', shouldHide);
     return true;
   }
 
@@ -1182,7 +1184,7 @@
       viewportRenderForce = false;
     }
     edgesHiddenByScale = false;
-    edgesSvg.style.visibility = 'visible';
+    edgesSvg.classList.remove('is-hidden');
     if (graphTitle && sourceGraph?.meta?.name) {
       const suffix = isLockedFlowMode()
         ? ' · locked flow'
@@ -1278,11 +1280,11 @@
 
     if (activeColorMode === 'none') {
       legendEl.innerHTML = `
-        <span class="legend-item"><span class="legend-dot" style="background:var(--incast-accent)"></span>Incast</span>
-        <span class="legend-item"><span class="legend-dot" style="background:var(--op-accent)"></span>Op</span>
-        <span class="legend-item"><span class="legend-dot" style="background:var(--tensor-accent)"></span>Tensor</span>
-        ${groupedView ? '<span class="legend-item"><span class="legend-dot" style="background:#5B73FF"></span>Group</span>' : ''}
-        <span class="legend-item"><span class="legend-dot" style="background:var(--outcast-accent)"></span>Outcast</span>`;
+        <span class="mode-panel-legend-item"><span class="mode-panel-legend-dot legend-dot-incast"></span><span class="mode-panel-legend-label">Incast</span></span>
+        <span class="mode-panel-legend-item"><span class="mode-panel-legend-dot legend-dot-op"></span><span class="mode-panel-legend-label">Op</span></span>
+        <span class="mode-panel-legend-item"><span class="mode-panel-legend-dot legend-dot-tensor"></span><span class="mode-panel-legend-label">Tensor</span></span>
+        ${groupedView ? '<span class="mode-panel-legend-item"><span class="mode-panel-legend-dot legend-dot-group"></span><span class="mode-panel-legend-label">Group</span></span>' : ''}
+        <span class="mode-panel-legend-item"><span class="mode-panel-legend-dot legend-dot-outcast"></span><span class="mode-panel-legend-label">Outcast</span></span>`;
       return;
     }
 
@@ -1296,9 +1298,9 @@
       const maxCy = latencies.length ? Math.max(...latencies) : 0;
       const fmtCy = v => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1) + 'K cy' : v + ' cy';
       legendEl.innerHTML = `
-        <span class="legend-item" style="flex-direction:column;align-items:stretch;gap:4px">
-          <span class="legend-gradient"></span>
-          <span style="display:flex;justify-content:space-between;font-size:10px;opacity:0.50">
+        <span class="mode-panel-legend-item" style="display:block;">
+          <span class="legend-gradient" style="display:block; max-width:none;"></span>
+          <span class="legend-scale" style="display:flex; justify-content:space-between; margin-top:4px; font-size:9px; color:var(--foreground-muted);">
             <span>${fmtCy(minCy)}</span><span>${fmtCy(maxCy)}</span>
           </span>
         </span>`;
@@ -1339,9 +1341,28 @@
     const shown = entries.slice(0, MAX);
     const extra = entries.length - shown.length;
 
-    legendEl.innerHTML = shown.map(({ key, color, count }) =>
-      `<span class="legend-item"><span class="legend-dot" style="background:${color}"></span><span class="legend-item-label">${legendLabel(key)}</span><span class="legend-item-count">(${count})</span></span>`
-    ).join('') + (extra > 0 ? `<span class="legend-item" style="opacity:0.45">+${extra}</span>` : '');
+    legendEl.innerHTML = '';
+    shown.forEach(({ key, color, count }) => {
+      const item = document.createElement('span');
+      item.className = 'mode-panel-legend-item';
+      const dot = document.createElement('span');
+      dot.className = 'mode-panel-legend-dot';
+      dot.style.background = color;
+      const label = document.createElement('span');
+      label.className = 'mode-panel-legend-label';
+      label.textContent = legendLabel(key);
+      const countEl = document.createElement('span');
+      countEl.className = 'mode-panel-legend-count';
+      countEl.textContent = `(${count})`;
+      item.append(dot, label, countEl);
+      legendEl.appendChild(item);
+    });
+    if (extra > 0) {
+      const extraEl = document.createElement('span');
+      extraEl.className = 'mode-panel-legend-item';
+      extraEl.textContent = `+${extra}`;
+      legendEl.appendChild(extraEl);
+    }
   }
 
   function updateModeAvailability() {
@@ -1567,7 +1588,7 @@
     if (cfPanel && !cfPanel.classList.contains('cf-visible')) {
       cfPanel.classList.add('cf-visible');
       const reopenBtn = document.getElementById('cfReopenBtn');
-      if (reopenBtn) reopenBtn.style.display = 'none';
+      if (reopenBtn) reopenBtn.classList.add('is-hidden');
       setTimeout(() => { if (window.drawMappingLines) window.drawMappingLines(null); }, 260);
     }
   }
@@ -2137,11 +2158,11 @@
 
   // ── Detail panel ───────────────────────────────────────────────
   const TYPE_STYLES = {
-    incast:  { bg: 'var(--incast-accent-dim)',  color: 'var(--incast-accent)' },
-    outcast: { bg: 'var(--outcast-accent-dim)', color: 'var(--outcast-accent)' },
-    op:      { bg: 'var(--op-accent-dim)',       color: 'var(--op-accent)' },
-    tensor:  { bg: 'var(--tensor-accent-dim)',   color: 'var(--tensor-accent)' },
-    group:   { bg: 'rgba(91,115,255,0.18)',      color: '#5B73FF' },
+    incast: 'incast',
+    outcast: 'outcast',
+    op: 'op',
+    tensor: 'tensor',
+    group: 'group',
   };
 
   function syncDetailPanelPosition(node = null) {
@@ -2187,8 +2208,7 @@
     const sourceIndex = sourceGraph ? (sourceGraphIndex || getGraphIndex(sourceGraph)) : null;
     const ts = TYPE_STYLES[node.type] || TYPE_STYLES.tensor;
     detailBadge.textContent = node.type.toUpperCase();
-    detailBadge.style.background = ts.bg;
-    detailBadge.style.color      = ts.color;
+    detailBadge.dataset.kind = ts;
     detailName.textContent = node.label;
     detailBody.innerHTML   = buildDetailContent(node, detailModel, detailIndex);
     detailSourceNodeId = resolveSourceNodeId(node, detailModel);

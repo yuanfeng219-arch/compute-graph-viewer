@@ -1,0 +1,51 @@
+{
+  "eventCount": 1579,
+  "semanticTop": [
+    { "label": "Query-Linear", "count": 496 },
+    { "label": "Prolog-Quant", "count": 419 },
+    { "label": "Query-Hadamard", "count": 160 },
+    { "label": "Query-Dequant", "count": 160 },
+    { "label": "Weight-Linear", "count": 93 },
+    { "label": "Key-Linear", "count": 62 },
+    { "label": "Key-Hadamard", "count": 62 }
+  ],
+  "exampleTasks": [
+    {
+      "semanticLabel": "Query-Linear",
+      "lane": "AIC_10",
+      "ts": 83549944207.98,
+      "dur": 12.919998168945312,
+      "name": "1-1-13-81-2(Query-Linear)"
+    },
+    {
+      "semanticLabel": "Key-Linear",
+      "lane": "AIC_5",
+      "ts": 83549944189.58,
+      "dur": 18.639999389648438,
+      "name": "1-1-18-81-4(Key-Linear)"
+    },
+    {
+      "semanticLabel": "Key-Hadamard",
+      "lane": "AIC_3",
+      "ts": 83549944215.88,
+      "dur": 1.94000244140625,
+      "name": "1-1-12-81-7(Key-Hadamard)"
+    },
+    {
+      "semanticLabel": "Weight-Linear",
+      "lane": "AIC_12",
+      "ts": 83549944206.64,
+      "dur": 9.039993286132812,
+      "name": "1-1-7-81-0(Weight-Linear)"
+    }
+  ],
+  "insightSummary": [
+    "Query-Linear is the dominant explicit runtime semantic family in the sampled trace.",
+    "Key-Linear sampled tasks have longer single-task durations than sampled Weight-Linear tasks.",
+    "The trace includes both AIC and AIV lanes, which helps demo cross-lane execution explanation without inventing fake runtime data.",
+    "merged_swimlane is better used as a summarized evidence source than as raw full-trace input for the first demo."
+  ],
+  "evidenceRefs": [
+    "/Users/yin/gitcode/output_deepseek/merged_swimlane.json"
+  ]
+}

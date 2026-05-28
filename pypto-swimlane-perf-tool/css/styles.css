@@ -18,9 +18,6 @@
   --metric-rating-min-width: 110px;
   --card-pattern-radius: 22px;
 
-  /* ---- surface-4 (not in shared tokens) ---- */
-  --surface-4: #313131;
-
   /* ---- pypto accent ---- */
   --accent-purple: #8b5cf6;
   --panel-bg: color-mix(in srgb, var(--surface-3) 72%, black);
@@ -41,13 +38,7 @@
   --bg-overlay: color-mix(in srgb, var(--background) 84%, black);
   --bg-code: color-mix(in srgb, var(--surface-3) 84%, black);
   --bg-code-elevated: color-mix(in srgb, var(--surface-3) 88%, black);
-  --tone-critical-bg: color-mix(in srgb, var(--danger) 14%, transparent);
-  --tone-warning-bg: color-mix(in srgb, var(--warning) 16%, transparent);
-  --tone-info-bg: color-mix(in srgb, var(--primary) 16%, transparent);
   --tone-purple-bg: color-mix(in srgb, var(--accent-purple) 16%, transparent);
-  --tone-blue-strong: color-mix(in srgb, var(--primary) 28%, transparent);
-  --tone-green-strong: color-mix(in srgb, var(--success) 22%, transparent);
-  --tone-warning-strong: color-mix(in srgb, var(--warning) 22%, transparent);
   --tone-purple-strong: color-mix(in srgb, var(--accent-purple) 26%, transparent);
   --radius: var(--radius-md);
   --shadow: var(--shadow-md);
@@ -437,20 +428,17 @@ html, body {
 .swimlane-viewport::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 .swimlane-viewport::-webkit-scrollbar-corner { background: var(--surface-2); }
 
-/* 内部布局: labels + canvas 并排 */
+/* 内部布局: canvas 列 */
 .swimlane-inner {
   display: flex;
-  position: relative;
   min-height: 100%;
 }
 
-/* 标签列: sticky left 不随横向滚动 */
+/* 标签列: 固定列，与 viewport 并列，不参与横向滚动 */
 .swimlane-labels {
   width: var(--label-width);
   flex-shrink: 0;
-  position: sticky;
-  left: 0;
-  z-index: 3;
+  overflow: hidden;
   background: var(--surface-2);
   border-right: 1px solid var(--border-default);
 }
@@ -598,7 +586,7 @@ html, body {
 .metric-card {
   --metric-accent: var(--primary);
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--card-border);
   border-radius: var(--card-pattern-radius);
   background: var(--card-bg);
   box-shadow:
@@ -611,11 +599,18 @@ html, body {
 }
 
 .insight-card:hover {
-  border-color: rgba(255, 255, 255, 0.09);
+  border-color: var(--card-hover-border);
+  background: color-mix(in srgb, var(--card-bg), var(--card-hover-bg));
   transform: translateY(-1px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 20px 40px rgba(0, 0, 0, 0.24);
+}
+
+.insight-card.selected,
+.insight-card[aria-selected="true"] {
+  border-color: var(--card-selected-border);
+  background: color-mix(in srgb, var(--card-bg), var(--card-selected-bg));
 }
 
 .metric-card {
@@ -772,15 +767,7 @@ html, body {
     0 16px 36px rgba(0, 0, 0, 0.22);
 }
 
-.bottleneck-item.severity-info {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--severity-info) 12%, rgba(255, 255, 255, 0.03)), color-mix(in srgb, var(--severity-info) 7%, rgba(255, 255, 255, 0.01))),
-    color-mix(in srgb, var(--surface-2) 90%, black);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--severity-info) 28%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 16px 36px rgba(0, 0, 0, 0.22);
-}
+/* severity-info: neutral card bg, color only on badge */
 
 .bottleneck-item.severity-critical:hover {
   background:
@@ -794,11 +781,6 @@ html, body {
     color-mix(in srgb, var(--surface-2) 88%, black);
 }
 
-.bottleneck-item.severity-info:hover {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--severity-info) 15%, rgba(255, 255, 255, 0.04)), color-mix(in srgb, var(--severity-info) 9%, rgba(255, 255, 255, 0.02))),
-    color-mix(in srgb, var(--surface-2) 88%, black);
-}
 
 .b-header {
   display: flex;
@@ -827,8 +809,8 @@ html, body {
 }
 
 .severity-badge-info {
-  background: var(--tone-info-bg);
-  color: var(--severity-info);
+  background: var(--primary);
+  color: #fff;
 }
 
 .b-title {

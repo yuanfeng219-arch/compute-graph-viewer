@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Graph + Execution Overlay 原型解读</title>
-  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body class="eo-page">
@@ -21,7 +21,7 @@
     <div class="toolbar-r">
       <div class="graph-stats" id="eoHeaderStats"></div>
       <div class="eo-filter-bar" id="eoFilterBar" role="tablist" aria-label="Pipeline Filter">
-        <button class="btn eo-filter-btn active" data-filter="all" type="button">全部</button>
+        <button class="btn eo-filter-btn is-selected" data-filter="all" type="button">全部</button>
         <button class="btn eo-filter-btn" data-filter="query" type="button">Query</button>
         <button class="btn eo-filter-btn" data-filter="key" type="button">Key</button>
         <button class="btn eo-filter-btn" data-filter="weight" type="button">Weight</button>
@@ -71,15 +71,15 @@
         <div class="eo-footer">
           <div class="eo-playback">
             <button class="btn btn-icon" id="eoResetBtn" type="button" aria-label="Reset Playback">⏮</button>
-            <button class="btn btn-primary" id="eoPlayBtn" type="button">播放</button>
+            <button class="btn btn-solid" id="eoPlayBtn" type="button">播放</button>
             <div class="eo-progress" id="eoProgress" role="slider" aria-label="Playback Timeline" tabindex="0">
               <div class="eo-progress-fill" id="eoProgressFill"></div>
             </div>
             <span class="eo-progress-label" id="eoProgressLabel">0.000 / 0.000 ms</span>
           </div>
-          <div class="eo-zoom">
+          <div class="eo-zoom zoom-control-group">
             <button class="btn btn-icon" id="eoZoomOutBtn" type="button" aria-label="Zoom Out">−</button>
-            <span class="stat-chip" id="eoZoomLabel">100%</span>
+            <span class="zoom-control-readout" id="eoZoomLabel">100%</span>
             <button class="btn btn-icon" id="eoZoomInBtn" type="button" aria-label="Zoom In">+</button>
             <button class="btn" id="eoFitBtn" type="button">适配</button>
           </div>

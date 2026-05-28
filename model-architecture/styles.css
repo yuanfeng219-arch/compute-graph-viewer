@@ -1,18 +1,23 @@
+@import "../vendor/pto-design-system/tokens/foundation.css";
+@import "../vendor/pto-design-system/tokens/semantic.css";
+@import "../vendor/pto-design-system/tokens/components.css";
+@import "../vendor/pto-design-system/css/style.css";
+
 :root {
   /* ── Inherited from project Design Tokens ── */
-  --canvas-bg: #1A1A1A;
+  --canvas-bg: var(--background);
 
   /* Align with css/style.css tokens */
-  --text-primary: rgba(255, 255, 255, 0.88);
-  --text-secondary: rgba(255, 255, 255, 0.45);
-  --text-label: rgba(255, 255, 255, 0.30);
+  --text-primary: var(--foreground);
+  --text-secondary: var(--foreground-secondary);
+  --text-label: var(--foreground-muted);
   --text-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
 
-  --tag-bg: rgba(255, 255, 255, 0.06);
-  --tag-border: rgba(255, 255, 255, 0.10);
+  --tag-bg: var(--state-hover);
+  --tag-border: var(--border-default);
 
-  --toolbar-bg: rgba(20, 20, 20, 0.96);
-  --toolbar-border: rgba(255, 255, 255, 0.07);
+  --toolbar-bg: var(--background-elevated);
+  --toolbar-border: var(--border-subtle);
   --toolbar-height: 44px;
 
   --sans: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", sans-serif;
@@ -63,24 +68,7 @@ body {
 }
 
 .home-link {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  border: 1px solid var(--tag-border);
-  background: var(--tag-bg);
-  color: var(--text-primary);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.home-link:hover {
-  background: rgba(255, 255, 255, 0.10);
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
+  flex: 0 0 auto;
 }
 
 .toolbar-logo {
@@ -143,40 +131,15 @@ body {
 }
 
 .view-picker {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: nowrap;
 }
 
 .view-btn,
 .model-btn {
-  padding: 5px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 6px;
   font-family: var(--sans);
-  font-size: 12px;
   font-weight: 700;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-secondary);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-
-.view-btn.active,
-.model-btn.active {
-  background: rgba(255, 255, 255, 0.88);
-  border-color: transparent;
-  color: #111111;
-}
-
-.view-btn:hover,
-.model-btn:hover {
-  border-color: rgba(255, 255, 255, 0.22);
-  color: var(--text-primary);
 }
 
 .view-panel {
@@ -185,11 +148,6 @@ body {
   right: 14px;
   width: 320px;
   padding: 14px 14px 12px;
-  border-radius: 14px;
-  background: rgba(20, 20, 20, 0.90);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
   pointer-events: none;
   z-index: 40;
 }
@@ -227,7 +185,7 @@ body {
   height: 10px;
   border-radius: 999px;
   margin-top: 4px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 1px var(--border-strong);
 }
 
 .view-copy {

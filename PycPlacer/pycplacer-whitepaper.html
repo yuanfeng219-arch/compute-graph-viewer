@@ -12,6 +12,7 @@
     <div class="navlinks">
       <a href="#cover">封面</a>
       <a href="#overview">概览</a>
+      <a href="#scope">总图定位</a>
       <a href="#positioning">定位</a>
       <a href="#bg">背景</a>
       <a href="#hierarchy">分层锚点</a>
@@ -74,6 +75,34 @@
       <div class="jm-cell">HPWL 最小化，无单元物理重叠</div>
       <div class="jm-cell hot">±5% HPWL 变化，50x 时间节省</div>
       <div class="jm-cell">完整基准数据与增量性能实测验证</div>
+    </div>
+  </section>
+
+  <section class="floor" id="scope">
+    <div class="kicker">Scope · 在 PTO 总地图中的位置</div>
+    <h2>H-Anchor 是算法原型层：验证分层锚点能否服务 placement</h2>
+    <p class="lead">本白皮书讨论的是一个 placement 研究原型，不是完整商业 EDA，也不是运行时算子工具。它在总体 scope 中承接 HNSW 的分层思想，落到“weighted graph / cells → 初步二维布局坐标”的算法验证。</p>
+
+    <div class="grid cols-3">
+      <div class="card">
+        <h3>解决什么问题</h3>
+        <p>传统 force-directed placement 在大规模图上容易受 O(N²) 计算、全量重排和确定性不足限制。H-Anchor 用分层 anchor、空间抑制和局部传播降低搜索空间。</p>
+        <div class="pill-row"><span class="pill">speed</span><span class="pill">determinism</span><span class="pill">incremental</span></div>
+      </div>
+      <div class="card">
+        <h3>输入 / 输出</h3>
+        <p><b>输入：</b>研究用 weighted graph、cell 列表、连接权重、初始参数。<br><b>输出：</b>二维坐标、anchor 层级、局部更新结果、HPWL 近似指标。</p>
+        <div class="pill-row"><span class="pill blue">weighted graph</span><span class="pill">placement prototype</span></div>
+      </div>
+      <div class="card">
+        <h3>难点边界</h3>
+        <p>它没有覆盖真实 PDK、DRC、CTS、routing signoff，也不能修改已量产芯片 netlist；它验证的是分层锚点策略能否成为早期布局探索或局部 ECO 的算法基础。</p>
+        <div class="pill-row"><span class="pill hot">prototype</span><span class="pill">not signoff</span></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <b>总体定位：</b>H-Anchor 位于“EDA 算法原型层”。上游需要 netlist / 约束建模给出可计算的图和权重；下游可以把布局结果交给更完整的 P&R / QoR 反馈。它与 PyPTO 的关系是启发 graph placement / scheduling，而不是运行时直接操作芯片物理 netlist。（来源：PycPlacer 原型 / VLSI placement 白皮书 / 推导）
     </div>
   </section>
 

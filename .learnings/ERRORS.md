@@ -27,6 +27,37 @@ Error: ENOENT: no such file or directory, open '/Users/yin/pto/deepseek_out_pass
 
 ---
 
+## [ERR-20260511-001] rg-default-regex-lookahead
+
+**Logged**: 2026-05-11T10:25:00+08:00  
+**Priority**: low  
+**Status**: pending  
+**Area**: tooling
+
+### Summary
+`rg` 默认正则引擎不支持 lookahead，设计系统检查命令使用 `(?!...)` 会直接失败。
+
+### Error
+```
+rg: regex parse error:
+    (?:#[0-9a-fA-F]{3,8}|rgba\(|style="(?!width:))
+                                       ^^^
+error: look-around, including look-ahead and look-behind, is not supported
+```
+
+### Context
+- Command attempted: `rg -n "#[0-9a-fA-F]{3,8}|rgba\(|style=\"(?!width:)" ...`
+- Task: check the Ascend 950 demo HTML for hard-coded colors and inline styles.
+
+### Suggested Fix
+Use separate simple `rg` searches, or pass `--pcre2` when lookaround is actually needed.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /Users/yin/pto/ascend-950-mode-select/index.html
+
+---
+
 ## [ERR-20260316-001] rg-quote-pattern
 
 **Logged**: 2026-03-16T03:42:32Z  
@@ -199,5 +230,45 @@ mv: rename /Users/yin/pto/index.html to /Users/yin/pto/pass-ir/index.html: No su
 ### Metadata
 - Reproducible: yes
 - Related Files: .learnings/ERRORS.md
+
+---
+## [ERR-20260402-503] subagent_service_unavailable
+
+**Logged**: 2026-04-02T00:00:00+08:00
+**Priority**: medium
+**Status**: pending
+**Area**: tooling
+
+### Summary
+Remote subagent worker creation/execution returned 503 Service Unavailable during preview generation.
+
+### Error
+
+
+### Context
+- Operation attempted: spawn/wait worker agents to generate existingUI_preview files
+- Affected runs: three worker agents in one batch
+- Environment: Codex collaboration agent service
+
+### Suggested Fix
+Fallback to local edits when collab worker service is unstable; reserve agents for analysis, not required-path writes.
+
+### Metadata
+- Reproducible: unknown
+- Related Files: /Users/yin/pto/.learnings/ERRORS.md
+
+---
+
+## [ERR-20260402-503] subagent_service_unavailable
+
+Logged: 2026-04-02T00:00:00+08:00
+Priority: medium
+Status: pending
+Area: tooling
+
+Summary: Remote subagent worker execution returned 503 Service Unavailable during preview generation.
+Error: unexpected status 503 Service Unavailable
+Context: spawn/wait worker agents to generate existingUI_preview files.
+Suggested Fix: fallback to local edits when collab worker service is unstable.
 
 ---

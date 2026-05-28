@@ -1,1 +1,0 @@
-For details, please see the demo and description.

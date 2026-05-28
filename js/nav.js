@@ -119,8 +119,8 @@
     }
 
     function showLegacyDetail() {
-      detailEmpty.style.display = 'none';
-      detailContent.style.display = 'flex';
+      detailEmpty.hidden = true;
+      detailContent.hidden = false;
       passIndexEl.textContent = String(activePass.pass_index).padStart(2, '0');
       passNameEl.textContent = activePass.pass_name;
       passDirEl.textContent = activePass.dir;
@@ -228,8 +228,8 @@
       if (f) window.open(`${PTO_PASS_IR_ENTRY}?file=` + encodeURIComponent(f), '_blank');
     });
 
-    detailContent.style.display = 'none';
-    detailEmpty.style.display = 'flex';
+    detailContent.hidden = true;
+    detailEmpty.hidden = false;
   }
 
   // Support both standalone navigator fallback and inline navigator in pass-ir/index.html.
@@ -239,7 +239,7 @@
   }
 
   // Always use 'after'; hide the side pill.
-  navSideWrap.style.display = 'none';
+  navSideWrap.hidden = true;
 
   // ── State ────────────────────────────────────────────────────────────────
   let navIndex = null;
@@ -418,9 +418,9 @@
         const r = dot.getBoundingClientRect();
         dotTooltip.style.left = (r.left + r.width / 2) + 'px';
         dotTooltip.style.top = r.top + 'px';
-        dotTooltip.style.display = 'block';
+        dotTooltip.classList.add('visible');
       });
-      dot.addEventListener('mouseleave', () => { dotTooltip.style.display = 'none'; });
+      dot.addEventListener('mouseleave', () => { dotTooltip.classList.remove('visible'); });
       groupDots.appendChild(dot);
     });
   }
@@ -444,10 +444,10 @@
 
   function rebuildUnrollMenu() {
     if (activeLoop === 'RESHAPE') {
-      navPathWrap.style.display = 'none';
+      navPathWrap.hidden = true;
       return;
     }
-    navPathWrap.style.display = '';
+    navPathWrap.hidden = false;
     navPathMenu.innerHTML = '';
 
     const unrolls = activeIdx !== null ? availableUnrolls(activeIdx) : UNROLL_ORDER;
@@ -472,7 +472,7 @@
       : null;
 
     if (!path) {
-      navSnapWrap.style.visibility = 'hidden';
+      navSnapWrap.classList.add('is-invisible');
       navSnapWrap.classList.remove('snap-main', 'snap-root', 'snap-leaf');
       return;
     }
@@ -485,14 +485,14 @@
 
     const hasExtras = keys.some(k => k !== 'main');
     if (!hasExtras) {
-      navSnapWrap.style.visibility = 'hidden';
+      navSnapWrap.classList.add('is-invisible');
       activeSnap = 'main';
       navSnapLabel.textContent = 'main';
       navSnapWrap.classList.remove('snap-main', 'snap-root', 'snap-leaf');
       return;
     }
 
-    navSnapWrap.style.visibility = 'visible';
+    navSnapWrap.classList.remove('is-invisible');
     navSnapMenu.innerHTML = '';
 
     const leafKeys = keys.filter(k => k.startsWith('LEAF_')).sort((a, b) => normalizeLeafKey(a) - normalizeLeafKey(b));

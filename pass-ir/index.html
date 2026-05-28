@@ -5,8 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Compute Graph Viewer</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121318'/%3E%3Ccircle cx='22' cy='32' r='8' fill='%237f55d4'/%3E%3Ccircle cx='42' cy='22' r='8' fill='%234f57c8'/%3E%3Ccircle cx='42' cy='42' r='8' fill='%235d7cc6'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+<link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+<link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
+<link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
 <style>
+body.pass-ir-page {
+  --pass-ir-minimap-surface: color-mix(in srgb, var(--surface-4) 80%, transparent);
+  --pass-ir-minimap-grid-line: color-mix(in srgb, var(--foreground) 4%, transparent);
+  --pass-ir-muted-strong: color-mix(in srgb, var(--foreground) 75%, transparent);
+  --pass-ir-icon-muted: 0.5;
+}
+
 body.layout-page {
   position: relative;
 }
@@ -20,174 +30,48 @@ body.layout-page #viewport.layout-page-canvas {
   left: auto;
 }
 
-body.layout-page #colorPanel {
-  width: 220px;
-}
-
-body.layout-page #colorPanel.visible {
+body.layout-page #colorPanel.mode-panel {
+  width: 230px;
   display: block;
-}
-
-body.layout-page #colorPanel.card-demo {
   box-shadow: var(--panel-shell-shadow);
-  position: absolute;
-}
-
-body.layout-page #colorPanel .card-demo-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 10px 8px;
 }
 
 body.layout-page #colorPanelToggle {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 2;
+  position: static;
+  flex: 0 0 auto;
 }
 
-body.layout-page #colorPanel .card-demo-title {
-  font-size: 13px;
-  padding-right: 28px;
-}
-
-body.layout-page #colorPanel > .card-demo-content {
-  gap: 10px;
-  padding: 10px;
-}
-
-.color-panel-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.color-panel-group-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.color-panel-group-label {
-  font: var(--text-label);
-  color: var(--foreground-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.color-panel-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-#colorPanel .cp-btn {
-  width: 100%;
-  min-height: 38px;
-  gap: 8px;
-  padding-top: 6px;
-  padding-bottom: 6px;
-  padding-left: 6px;
-  padding-right: 8px;
-}
-
-#colorPanel .cp-btn-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  background: color-mix(in srgb, var(--surface-1) 84%, transparent);
-  border: 1px solid var(--border-default);
-  color: var(--foreground-secondary);
-}
-
-#colorPanel .cp-btn-label {
-  font-size: 13px;
-  line-height: 1.1;
-}
-
-#colorPanel .cp-btn-sub {
-  font-size: 11px;
-  line-height: 1.05;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-#colorPanel .action-row-selected .cp-btn-icon {
-  background: color-mix(in srgb, var(--surface-2) 92%, transparent) !important;
-  border-color: var(--border-default) !important;
-  color: var(--foreground) !important;
-}
-
-body.layout-page #colorPanel .cp-btn.is-selected .cp-btn-sub,
-body.layout-page #colorPanel .cp-btn.active .cp-btn-sub,
-body.layout-page #colorPanel .cp-btn.action-row-selected .cp-btn-sub {
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.color-panel-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 2px;
-}
-
-.color-panel-legend .legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-  height: 24px;
-  border-radius: 999px;
-  border: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-1) 76%, transparent);
-  color: var(--foreground-secondary);
-  font: var(--text-label);
-}
-
-.color-panel-legend .legend-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  flex-shrink: 0;
-}
-
-body.layout-page #colorPanel.is-collapsed {
+body.layout-page #colorPanel.mode-panel.is-collapsed {
   width: 44px;
   min-width: 44px;
   padding: 6px;
 }
 
-body.layout-page #colorPanel.is-collapsed .card-demo-header {
-  justify-content: flex-start;
-  padding: 0;
-  min-height: 32px;
-}
-
-body.layout-page #colorPanel.is-collapsed .card-demo-title,
-body.layout-page #colorPanel.is-collapsed > .card-demo-content {
+body.layout-page #colorPanel.mode-panel.is-collapsed .panel-toggle-collapse {
   display: none;
 }
 
-body.layout-page #colorPanel.is-collapsed .panel-toggle-collapse {
-  display: none;
-}
-
-body.layout-page #colorPanel.is-collapsed .panel-toggle-expand {
+body.layout-page #colorPanel.mode-panel.is-collapsed .panel-toggle-expand {
   display: inline;
 }
 
 body.layout-page #minimap.layout-minimap {
+  width: 248px;
+  height: 188px;
+  border-radius: 16px;
+  background: rgba(22, 22, 22, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   right: 16px;
   bottom: 16px;
 }
 
 body.layout-page #minimap.visible {
   display: flex;
+}
+
+body.layout-page #minimap .mm-toggle-btn,
+body.layout-page #minimapViewport {
+  display: none;
 }
 
 body.layout-page .layout-minimap-view {
@@ -201,8 +85,8 @@ body.layout-page .layout-minimap-grid {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size: 24px 24px;
   opacity: 0.45;
 }
@@ -213,6 +97,51 @@ body.layout-page #minimapCanvas {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+body.layout-page #minimap .minimap-controls {
+  height: 48px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: stretch;
+  gap: 8px;
+  padding: 0 12px;
+  background: rgba(18, 18, 18, 0.98);
+  position: relative;
+  z-index: 1;
+}
+
+body.layout-page #minimap .layout-minimap-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: 28px;
+  min-height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.82);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 600;
+  padding: 0 10px;
+}
+
+body.layout-page #minimap .layout-minimap-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+body.layout-page #minimap .layout-minimap-btn:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+body.layout-page #minimap .layout-minimap-btn svg {
+  flex-shrink: 0;
 }
 
 body.layout-page #detailPanel.detail-panel.layout-sidepanel {
@@ -237,18 +166,71 @@ body.layout-page #detailPanel.detail-panel.layout-sidepanel.open {
   pointer-events: auto;
 }
 
-body.layout-page #detailPanel.card-demo {
+body.layout-page #detailPanel.detail-panel {
   box-shadow: var(--panel-shell-shadow);
 }
 
-body.layout-page #detailPanel .card-demo-header {
+body.layout-page #detailPanel .detail-header {
   padding: 14px 16px 12px;
 }
 
-body.layout-page #detailPanel .card-demo-content {
+body.layout-page #detailPanel .detail-body {
   gap: 14px;
   max-height: min(52vh, 440px);
   overflow-y: auto;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+.is-invisible {
+  visibility: hidden !important;
+}
+
+.icon-muted {
+  opacity: var(--pass-ir-icon-muted);
+}
+
+.legend-dot-incast {
+  background: var(--incast-accent);
+}
+
+.legend-dot-op {
+  background: var(--op-accent);
+}
+
+.legend-dot-tensor {
+  background: var(--tensor-accent);
+}
+
+.legend-dot-outcast {
+  background: var(--outcast-accent);
+}
+
+.legend-dot-group {
+  background: var(--primary);
+}
+
+.legend-item-stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+}
+
+.legend-scale {
+  display: flex;
+  justify-content: space-between;
+  font: var(--text-label);
+  opacity: 0.5;
+}
+
+.legend-item-faded {
+  opacity: 0.45;
+}
+
+.nav-dot-tooltip.visible {
+  display: block;
 }
 
 /* ── Preview 模式（iframe 嵌入，隐藏所有 UI chrome）── */
@@ -296,7 +278,7 @@ body.preview #viewport * {
       <span class="layout-header-dot"></span>
       Pass-IR
     </div>
-    <button class="cf-reopen-btn" id="cfReopenBtn" title="Show Control Flow" style="display:none;">
+    <button class="btn btn-ghost btn-icon cf-reopen-btn is-hidden" id="cfReopenBtn" type="button" title="Show Control Flow">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
         <rect x="1" y="2" width="4" height="10" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
         <path d="M7 5l3 2-3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -313,7 +295,7 @@ body.preview #viewport * {
       <span class="lock-exit-label" id="graphLockLabel">退出链路锁定</span>
     </button>
     <div class="graph-picker" id="graphPicker">
-      <button class="btn" id="loadBtn">
+      <button class="btn" id="loadBtn" type="button">
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
           <rect x="1" y="1" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.7"/>
           <rect x="8" y="1" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.7"/>
@@ -321,24 +303,24 @@ body.preview #viewport * {
           <rect x="8" y="8" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.7"/>
         </svg>
         Select Graph
-        <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style="opacity:0.5">
+        <svg class="icon-muted" width="9" height="9" viewBox="0 0 9 9" fill="none">
           <path d="M1.5 3l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
       <div class="graph-menu" id="graphMenu">
-        <button class="graph-menu-item" data-sample="samples/mini-attn.json" data-label="Mini Self-Attention">
+        <button class="btn btn-ghost graph-menu-item" data-sample="samples/mini-attn.json" data-label="Mini Self-Attention" type="button">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/><rect x="7" y="1" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/><rect x="1" y="7" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/><rect x="7" y="7" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/></svg>
           Mini Self-Attention
         </button>
         <div class="graph-menu-sep"></div>
-        <button class="graph-menu-item" id="graphMenuLocal">
+        <button class="btn btn-ghost graph-menu-item" id="graphMenuLocal" type="button">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M1 9.5V8l1.5-1.5H5L6 5h4.5a.5.5 0 01.5.5v4a.5.5 0 01-.5.5H1.5A.5.5 0 011 9.5z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
             <path d="M3.5 4V2.5A.5.5 0 014 2h4.5l1 1.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           Open Local File...
         </button>
-        <button class="graph-menu-item" id="graphMenuDir">
+        <button class="btn btn-ghost graph-menu-item" id="graphMenuDir" type="button">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M1.5 3.5h3L5.5 5H10a.5.5 0 01.5.5v4A.5.5 0 0110 10H2a.5.5 0 01-.5-.5V3.5z" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M3 6.2h5.6M3 7.8h3.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
@@ -355,21 +337,21 @@ body.preview #viewport * {
   <div class="nav-shell">
     <div class="nav-left">
       <div class="nav-pill-wrap" id="navPassWrap">
-        <button class="nav-pill nav-pill-pass" id="navPassPill">
+        <button class="btn btn-compact nav-pill nav-pill-pass" id="navPassPill" type="button">
           <span id="navPassLabel">loop</span>
           <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 2.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="nav-pill-menu" id="navPassMenu"></div>
       </div>
       <div class="nav-pill-wrap" id="navPathWrap">
-        <button class="nav-pill nav-pill-path" id="navPathPill">
+        <button class="btn btn-compact nav-pill nav-pill-path" id="navPathPill" type="button">
           <span id="navPathLabel">unroll</span>
           <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 2.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="nav-pill-menu" id="navPathMenu"></div>
       </div>
       <div class="nav-pill-wrap" id="navSideWrap">
-        <button class="nav-pill nav-pill-side" id="navSidePill">
+        <button class="btn btn-compact nav-pill nav-pill-side" id="navSidePill" type="button">
           <span id="navSideLabel">After</span>
           <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 2.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -385,7 +367,7 @@ body.preview #viewport * {
     <div class="nav-right">
       <span class="nav-source-tag" id="navSourceTag">output_deepseek</span>
       <div class="nav-pill-wrap" id="navSnapWrap">
-        <button class="nav-pill nav-pill-snap" id="navSnapPill">
+        <button class="btn btn-compact nav-pill nav-pill-snap" id="navSnapPill" type="button">
           <span id="navSnapLabel">main</span>
           <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 2.5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
@@ -398,7 +380,7 @@ body.preview #viewport * {
 <div class="cf-panel" id="cfPanel">
   <div class="cf-panel-header">
     <span class="cf-panel-title">Control Flow</span>
-    <button class="cf-toggle-btn" id="cfToggle" title="Collapse panel">
+    <button class="btn btn-ghost btn-icon cf-toggle-btn" id="cfToggle" type="button" title="Collapse panel">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <path d="M8 2L4 6L8 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
@@ -422,7 +404,7 @@ body.preview #viewport * {
     <svg class="edges-svg" id="edgesSvg" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <marker id="arrow-default" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L6,3 z" fill="rgba(255,255,255,0.15)"/>
+          <path d="M0,0 L0,6 L6,3 z" fill="var(--border-default)"/>
         </marker>
         <marker id="arrow-incast" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
           <path d="M0,0 L0,6 L6,3 z" fill="var(--incast-accent)"/>
@@ -447,22 +429,22 @@ body.preview #viewport * {
           <rect x="23" y="8"  width="18" height="14" rx="4" fill="var(--op-accent)"     fill-opacity="0.9"/>
           <rect x="23" y="32" width="18" height="14" rx="4" fill="var(--tensor-accent)" fill-opacity="0.9"/>
           <rect x="42" y="20" width="18" height="14" rx="4" fill="var(--outcast-accent)" fill-opacity="0.9"/>
-          <path d="M22 27h1M41 27h1M32 22v-1M32 32v1" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M22 27h1M41 27h1M32 22v-1M32 32v1" stroke="var(--foreground-secondary)" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
       </div>
       <h2 class="empty-title">Compute Graph Viewer</h2>
       <p class="empty-sub">Visualize Ascend NPU computation graphs</p>
       <div class="empty-actions">
-        <button class="btn btn-solid" id="emptyLoadBtn">
+        <button class="btn btn-solid" id="emptyLoadBtn" type="button">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M1.5 4h4.5l1 1.5H14a.5.5 0 01.5.5v7a.5.5 0 01-.5.5H2a.5.5 0 01-.5-.5V4z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           Open Pass Folder
         </button>
-        <button class="btn btn-ghost" id="emptyLoadFileBtn">Open single JSON file</button>
+        <button class="btn btn-ghost" id="emptyLoadFileBtn" type="button">Open single JSON file</button>
         <div class="recent-row" id="recentRow">
           <span class="recent-label">Recent</span>
-          <button class="recent-chip" id="recentChip">
+          <button class="btn recent-chip" id="recentChip" type="button">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/>
               <path d="M6 3.5V6l1.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
@@ -473,7 +455,7 @@ body.preview #viewport * {
       </div>
       <div class="sample-row">
         <span class="recent-label">Samples</span>
-        <button class="recent-chip sample-chip" data-sample="samples/mini-attn.json" data-label="Mini Self-Attention">
+        <button class="btn recent-chip sample-chip" data-sample="samples/mini-attn.json" data-label="Mini Self-Attention" type="button">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/><rect x="7" y="1" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/><rect x="1" y="7" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/><rect x="7" y="7" width="4" height="4" rx="1" fill="currentColor" fill-opacity="0.6"/></svg>
           Mini Self-Attention
         </button>
@@ -483,73 +465,77 @@ body.preview #viewport * {
   </div>
 
   <!-- Color panel (top-right of canvas) -->
-  <div class="color-panel card-demo layout-page-inline-card" id="colorPanel">
-    <div class="card-demo-header">
-      <div class="card-demo-title">View Mode</div>
-      <button class="panel-toggle-btn" id="colorPanelToggle" type="button" aria-label="Collapse color panel" title="Collapse">
-        <span class="panel-toggle-icon panel-toggle-collapse">−</span>
-        <span class="panel-toggle-icon panel-toggle-expand">+</span>
+  <div class="color-panel mode-panel layout-page-inline-card" id="colorPanel">
+    <div class="mode-panel-header">
+      <div class="mode-panel-title-wrap">
+        <div class="mode-panel-title">Color Mode</div>
+        <div class="mode-panel-description">Standard switcher pattern for graph view, color, and legend.</div>
+      </div>
+      <button class="btn btn-ghost btn-icon panel-toggle-btn" id="colorPanelToggle" type="button" aria-label="Collapse color panel" title="Collapse">
+          <span class="panel-toggle-icon panel-toggle-collapse">−</span>
+          <span class="panel-toggle-icon panel-toggle-expand">+</span>
       </button>
     </div>
-    <div class="card-demo-content">
-      <section class="color-panel-group">
-        <div class="color-panel-group-head">
-          <div class="color-panel-group-label">View</div>
-        </div>
-        <div class="card-demo-content" style="padding:0; gap:8px; border-top:none;">
-          <button class="cp-btn" data-view-mode="original" type="button" style="width:100%;">
-            <span class="cp-btn-icon icon-purple">O</span>
+    <div class="mode-panel-body">
+      <section class="mode-panel-section">
+        <div class="mode-panel-section-label">View</div>
+        <div class="mode-panel-options">
+          <button class="btn cp-btn mode-panel-item--singleline" data-view-mode="original" type="button">
+            <span class="cp-btn-icon" style="--cp-btn-icon-bg: color-mix(in srgb, var(--accent) 18%, transparent); --cp-btn-icon-fg: color-mix(in srgb, var(--accent) 86%, white 10%);">O</span>
             <span class="cp-btn-text">
               <span class="cp-btn-label">原始</span>
-              <span class="cp-btn-sub">完整 node graph</span>
+              <span class="cp-btn-sub">full node graph</span>
             </span>
           </button>
-          <button class="cp-btn action-row-selected" data-view-mode="grouped" type="button" style="width:100%;">
-            <span class="cp-btn-icon icon-blue">G</span>
+          <button class="btn cp-btn mode-panel-item--singleline action-row-selected is-selected" data-view-mode="grouped" type="button">
+            <span class="cp-btn-icon" style="--cp-btn-icon-bg: color-mix(in srgb, var(--primary) 18%, transparent); --cp-btn-icon-fg: color-mix(in srgb, var(--primary) 88%, white 8%);">G</span>
             <span class="cp-btn-text">
               <span class="cp-btn-label">聚合</span>
-              <span class="cp-btn-sub">grouped structure</span>
+              <span class="cp-btn-sub">current mode</span>
             </span>
           </button>
         </div>
       </section>
-      <section class="color-panel-group">
-        <div class="color-panel-group-head">
-          <div class="color-panel-group-label">Color Mode</div>
-        </div>
-        <div class="card-demo-content" style="padding:0; gap:8px; border-top:none;">
-          <button class="cp-btn" data-mode="semantic" type="button" style="width:100%;">
-            <span class="cp-btn-icon icon-purple">S</span>
+      <section class="mode-panel-section">
+        <div class="mode-panel-section-label">Color</div>
+        <div class="mode-panel-options">
+          <button class="btn cp-btn mode-panel-item--doubleline" data-mode="semantic" type="button">
+            <span class="cp-btn-icon" style="--cp-btn-icon-bg: color-mix(in srgb, var(--accent) 18%, transparent); --cp-btn-icon-fg: color-mix(in srgb, var(--accent) 86%, white 10%);">S</span>
             <span class="cp-btn-text">
               <span class="cp-btn-label">Semantic</span>
               <span class="cp-btn-sub">Highlight operator and tensor semantics.</span>
             </span>
           </button>
-          <button class="cp-btn action-row-selected" data-mode="latency" type="button" style="width:100%;">
-            <span class="cp-btn-icon icon-blue">L</span>
+          <button class="btn cp-btn mode-panel-item--doubleline action-row-selected is-selected" data-mode="latency" type="button">
+            <span class="cp-btn-icon" style="--cp-btn-icon-bg: color-mix(in srgb, var(--primary) 18%, transparent); --cp-btn-icon-fg: color-mix(in srgb, var(--primary) 88%, white 8%);">L</span>
             <span class="cp-btn-text">
               <span class="cp-btn-label">Latency</span>
-              <span class="cp-btn-sub">Reveal hotspots by execution latency.</span>
+              <span class="cp-btn-sub">Highlight execution cost and hot path concentration.</span>
             </span>
           </button>
-          <button class="cp-btn" data-mode="subgraph" type="button" style="width:100%;">
-            <span class="cp-btn-icon icon-green">C</span>
+          <button class="btn cp-btn mode-panel-item--doubleline" data-mode="subgraph" type="button">
+            <span class="cp-btn-icon" style="--cp-btn-icon-bg: color-mix(in srgb, var(--success) 18%, transparent); --cp-btn-icon-fg: color-mix(in srgb, var(--success) 84%, white 10%);">C</span>
             <span class="cp-btn-text">
               <span class="cp-btn-label">Compact</span>
-              <span class="cp-btn-sub">Show subgraph ownership in a denser view.</span>
+              <span class="cp-btn-sub">dense layout</span>
+            </span>
+          </button>
+          <button class="btn cp-btn mode-panel-item--singleline mode-panel-item--iconless" data-mode="none" type="button">
+            <span class="cp-btn-icon">N</span>
+            <span class="cp-btn-text">
+              <span class="cp-btn-label">None</span>
+              <span class="cp-btn-sub">neutral nodes</span>
             </span>
           </button>
         </div>
       </section>
-      <section class="color-panel-group">
-        <div class="color-panel-group-head">
-          <div class="color-panel-group-label">Legend</div>
-        </div>
-        <div class="color-panel-legend" id="legend">
-          <span class="legend-item"><span class="legend-dot" style="background:var(--incast-accent)"></span>Incast</span>
-          <span class="legend-item"><span class="legend-dot" style="background:var(--op-accent)"></span>Op</span>
-          <span class="legend-item"><span class="legend-dot" style="background:var(--tensor-accent)"></span>Tensor</span>
-          <span class="legend-item"><span class="legend-dot" style="background:var(--outcast-accent)"></span>Outcast</span>
+      <section class="mode-panel-section">
+        <div class="mode-panel-section-label">Legend</div>
+        <div class="mode-panel-legend" id="legend">
+          <span class="mode-panel-legend-item"><span class="mode-panel-legend-dot legend-dot-incast"></span><span class="mode-panel-legend-label">Incast</span></span>
+          <span class="mode-panel-legend-item"><span class="mode-panel-legend-dot legend-dot-op"></span><span class="mode-panel-legend-label">Op</span></span>
+          <span class="mode-panel-legend-item"><span class="mode-panel-legend-dot legend-dot-tensor"></span><span class="mode-panel-legend-label">Tensor</span></span>
+          <span class="mode-panel-legend-item"><span class="mode-panel-legend-dot legend-dot-outcast"></span><span class="mode-panel-legend-label">Outcast</span></span>
         </div>
       </section>
     </div>
@@ -557,7 +543,7 @@ body.preview #viewport * {
 
   <!-- Minimap with zoom controls -->
   <div class="minimap layout-minimap" id="minimap">
-    <button class="panel-toggle-btn mm-toggle-btn" id="minimapToggle" type="button" aria-label="Collapse minimap" title="Collapse">
+    <button class="btn btn-ghost btn-icon panel-toggle-btn mm-toggle-btn" id="minimapToggle" type="button" aria-label="Collapse minimap" title="Collapse">
       <span class="panel-toggle-icon panel-toggle-collapse">−</span>
       <span class="panel-toggle-icon panel-toggle-expand">+</span>
     </button>
@@ -567,34 +553,34 @@ body.preview #viewport * {
       <div class="minimap-viewport" id="minimapViewport"></div>
     </div>
     <div class="minimap-controls zoom-control-group">
-      <button class="mm-btn layout-minimap-btn" id="zoomOutBtn" title="Zoom Out">
+      <button class="btn btn-ghost btn-icon mm-btn layout-minimap-btn" id="zoomOutBtn" type="button" title="Zoom Out">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
-      <button class="mm-btn layout-minimap-btn" id="zoomInBtn" title="Zoom In">
+      <button class="btn btn-ghost btn-icon mm-btn layout-minimap-btn" id="zoomInBtn" type="button" title="Zoom In">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
-      <button class="mm-btn layout-minimap-btn mm-fit" id="fitBtn" title="Fit View">
+      <button class="btn btn-ghost btn-icon mm-btn layout-minimap-btn mm-fit" id="fitBtn" type="button" title="Fit View">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 5V2h3M10 2h3v3M13 9v3h-3M4 13H1v-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
   </div>
 </div>
 
-<aside class="detail-panel layout-sidepanel card-demo" id="detailPanel">
-  <div class="card-demo-header detail-header">
+<aside class="detail-panel layout-sidepanel" id="detailPanel">
+  <div class="detail-header">
     <div class="card-demo-header-row">
       <div>
         <div class="detail-type-badge" id="detailBadge"></div>
-        <div class="card-demo-title detail-name" id="detailName"></div>
+        <div class="detail-name" id="detailName"></div>
       </div>
       <div class="panel-shell-meta">
-        <button class="btn btn-icon detail-lock" id="detailLock" title="Lock compute flow">
+        <button class="btn btn-ghost btn-icon detail-lock" id="detailLock" type="button" title="Lock compute flow">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <circle cx="6" cy="6" r="2.5" stroke="currentColor" stroke-width="1.3"/>
             <path d="M6 1v2M6 9v2M1 6h2M9 6h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
           </svg>
         </button>
-        <button class="btn btn-icon detail-close" id="detailClose">
+        <button class="btn btn-ghost btn-icon detail-close" id="detailClose" type="button">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
@@ -602,7 +588,7 @@ body.preview #viewport * {
       </div>
     </div>
   </div>
-  <div class="detail-body card-demo-content" id="detailBody"></div>
+  <div class="detail-body" id="detailBody"></div>
 </aside>
 
 <!-- ── Locked Flow Panel ──────────────────────────────────────── -->
@@ -614,7 +600,7 @@ body.preview #viewport * {
     </svg>
     <span class="flow-title">Locked Flow</span>
     <span class="flow-stats" id="flowStats"></span>
-    <button class="btn btn-icon flow-unlock" id="flowUnlock" title="Unlock">
+    <button class="btn btn-ghost btn-icon flow-unlock" id="flowUnlock" type="button" title="Unlock">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
         <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>

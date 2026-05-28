@@ -61,6 +61,7 @@ const LANE_KIND_COLORS = {
   other: '#8b93a1',
 };
 const MIN_BAR_SEGMENT_COUNTS_PX = 84;
+const SWIMLANE_TASK_PATTERN = typeof window !== 'undefined' ? window.PtoSwimlaneTaskPattern : null;
 
 function stableHash(input) {
   let hash = 2166136261;
@@ -94,6 +95,9 @@ function colorForTask(task, mode = 'semantic') {
 }
 
 function buildTaskSegmentSpec(task, widthPx) {
+  if (SWIMLANE_TASK_PATTERN?.buildTaskSegmentSpec) {
+    return SWIMLANE_TASK_PATTERN.buildTaskSegmentSpec(task, widthPx);
+  }
   const semantic = String(task?.label || task?.displayName || task?.rawName || 'compute');
   const inputCount = Array.isArray(task?.inputRawMagic) ? task.inputRawMagic.length : 0;
   const outputCount = Array.isArray(task?.outputRawMagic) ? task.outputRawMagic.length : 0;
@@ -174,7 +178,7 @@ class SwimlaneRenderer {
 
   _getViewportW() {
     const vp = this._viewport();
-    return vp ? vp.clientWidth - SWIMLANE_CONFIG.LABEL_WIDTH - 2 : 800;
+    return vp ? vp.clientWidth : 800;
   }
 
   _getViewportH() {
@@ -206,11 +210,12 @@ class SwimlaneRenderer {
     this.tooltip.style.display = 'none';
     document.body.appendChild(this.tooltip);
 
-    // 监听视口滚动（包含水平 scrollLeft 变化）→ 重绘
+    // 监听视口滚动（包含水平 scrollLeft 变化）→ 重绘；同步标签列纵向位置
     const vp = this._viewport();
     if (vp) {
       vp.addEventListener('scroll', () => {
         this.yScrollTop = vp.scrollTop;
+        this.labelContainer.scrollTop = vp.scrollTop;
         this._scheduleRender();
       }, { passive: true });
     }
@@ -531,6 +536,7 @@ class SwimlaneRenderer {
     const rh      = SWIMLANE_CONFIG.ROW_HEIGHT;
     const padding = SWIMLANE_CONFIG.ROW_PADDING;
     const radius  = 2;
+    const patternFontFamily = getComputedStyle(document.documentElement).getPropertyValue('--font-sans').trim() || 'sans-serif';
 
     const isBottleneck = this.highlightBottlenecks && this.bottleneckCores.has(coreName);
     const isSelected   = coreName === this.selectedCore;
@@ -564,73 +570,89 @@ class SwimlaneRenderer {
       const barX = x;
       const barY = y + padding;
       const barH = rh - padding * 2;
-      const displayColor = isSelEvent ? this._lightenColor(color, 28) : (isRelated || isHovEvent ? this._lightenColor(color, 14) : color);
-      const borderColor = isSelEvent ? 'rgba(255,255,255,0.88)' : (isRelated ? 'rgba(255,255,255,0.46)' : 'rgba(255,255,255,0.16)');
+      if (SWIMLANE_TASK_PATTERN?.drawTaskBar) {
+        SWIMLANE_TASK_PATTERN.drawTaskBar(ctx, {
+          task: event,
+          x: barX,
+          y: barY,
+          width: w,
+          height: barH,
+          baseColor: color,
+          isSelected: isSelEvent,
+          isRelated,
+          isEmphasized: isHovEvent || isRelated,
+          radius,
+          fontFamily: patternFontFamily,
+        });
+      } else {
+        const displayColor = isSelEvent ? this._lightenColor(color, 28) : (isRelated || isHovEvent ? this._lightenColor(color, 14) : color);
+        const borderColor = isSelEvent ? 'rgba(255,255,255,0.88)' : (isRelated ? 'rgba(255,255,255,0.46)' : 'rgba(255,255,255,0.16)');
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(barX, barY, w, barH, radius + 1);
-      ctx.clip();
-
-      ctx.fillStyle = this._alphaColor(displayColor, 0.24);
-      ctx.fillRect(barX, barY, w, barH);
-
-      const inW = Math.max(10, Math.min(w * 0.2, 42));
-      const outW = Math.max(12, Math.min(w * 0.2, 48));
-      const computeW = Math.max(0, w - inW - outW);
-      const segs = [
-        { x: barX, w: inW, fill: this._mixColor(displayColor, '#ffffff', 0.16) },
-        { x: barX + inW, w: computeW, fill: displayColor },
-        { x: barX + inW + computeW, w: outW, fill: this._mixColor(displayColor, '#0b0f17', 0.2) },
-      ];
-      segs.forEach(seg => {
-        if (seg.w <= 0) return;
-        ctx.fillStyle = seg.fill;
-        ctx.fillRect(seg.x, barY, seg.w, barH);
-      });
-
-      ctx.fillStyle = 'rgba(255,255,255,0.08)';
-      ctx.fillRect(barX, barY, w, 1);
-      ctx.restore();
-
-      ctx.beginPath();
-      ctx.roundRect(barX + 0.5, barY + 0.5, Math.max(0, w - 1), Math.max(0, barH - 1), radius + 1);
-      ctx.strokeStyle = borderColor;
-      ctx.lineWidth = isSelEvent ? 1.4 : 1;
-      ctx.stroke();
-
-      if (w >= 28) {
-        const segments = buildTaskSegmentSpec(event, w);
-        const textColor = 'rgba(255,255,255,0.92)';
-        const font = w >= 72 ? '600 9px var(--font-sans, sans-serif)' : '600 8px var(--font-sans, sans-serif)';
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(barX + 1, barY + 1, Math.max(0, w - 2), Math.max(0, barH - 2), radius);
+        ctx.roundRect(barX, barY, w, barH, radius + 1);
         ctx.clip();
-        ctx.font = font;
-        ctx.textBaseline = 'middle';
 
-        const layout = [
-          { x: barX, w: inW, align: 'center', text: segments[0].text },
-          { x: barX + inW, w: computeW, align: 'left', text: segments[1].text },
-          { x: barX + inW + computeW, w: outW, align: 'center', text: segments[2].text },
+        ctx.fillStyle = this._alphaColor(displayColor, 0.24);
+        ctx.fillRect(barX, barY, w, barH);
+
+        const inW = Math.max(10, Math.min(w * 0.2, 42));
+        const outW = Math.max(12, Math.min(w * 0.2, 48));
+        const computeW = Math.max(0, w - inW - outW);
+        const segs = [
+          { x: barX, w: inW, fill: this._mixColor(displayColor, '#ffffff', 0.16) },
+          { x: barX + inW, w: computeW, fill: displayColor },
+          { x: barX + inW + computeW, w: outW, fill: this._mixColor(displayColor, '#0b0f17', 0.2) },
         ];
-
-        layout.forEach((segment, index) => {
-          if (segment.w < (index === 1 ? 20 : 14)) return;
-          ctx.fillStyle = textColor;
-          if (segment.align === 'left') {
-            ctx.textAlign = 'left';
-            const maxChars = Math.max(4, Math.floor((segment.w - 8) / 6));
-            const label = segment.text.length > maxChars ? `${segment.text.slice(0, Math.max(0, maxChars - 1))}…` : segment.text;
-            ctx.fillText(label, segment.x + 5, barY + barH / 2 + 0.5);
-          } else {
-            ctx.textAlign = 'center';
-            if (segment.w < segment.text.length * 5.2) return;
-            ctx.fillText(segment.text, segment.x + segment.w / 2, barY + barH / 2 + 0.5);
-          }
+        segs.forEach(seg => {
+          if (seg.w <= 0) return;
+          ctx.fillStyle = seg.fill;
+          ctx.fillRect(seg.x, barY, seg.w, barH);
         });
+
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(barX, barY, w, 1);
         ctx.restore();
+
+        ctx.beginPath();
+        ctx.roundRect(barX + 0.5, barY + 0.5, Math.max(0, w - 1), Math.max(0, barH - 1), radius + 1);
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = isSelEvent ? 1.4 : 1;
+        ctx.stroke();
+
+        if (w >= 28) {
+          const segments = buildTaskSegmentSpec(event, w);
+          const textColor = 'rgba(255,255,255,0.92)';
+          const font = w >= 72 ? '600 9px var(--font-sans, sans-serif)' : '600 8px var(--font-sans, sans-serif)';
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(barX + 1, barY + 1, Math.max(0, w - 2), Math.max(0, barH - 2), radius);
+          ctx.clip();
+          ctx.font = font;
+          ctx.textBaseline = 'middle';
+
+          const layout = [
+            { x: barX, w: inW, align: 'center', text: segments[0].text },
+            { x: barX + inW, w: computeW, align: 'left', text: segments[1].text },
+            { x: barX + inW + computeW, w: outW, align: 'center', text: segments[2].text },
+          ];
+
+          layout.forEach((segment, index) => {
+            if (segment.w < (index === 1 ? 20 : 14)) return;
+            ctx.fillStyle = textColor;
+            if (segment.align === 'left') {
+              ctx.textAlign = 'left';
+              const maxChars = Math.max(4, Math.floor((segment.w - 8) / 6));
+              const label = segment.text.length > maxChars ? `${segment.text.slice(0, Math.max(0, maxChars - 1))}…` : segment.text;
+              ctx.fillText(label, segment.x + 5, barY + barH / 2 + 0.5);
+            } else {
+              ctx.textAlign = 'center';
+              if (segment.w < segment.text.length * 5.2) return;
+              ctx.fillText(segment.text, segment.x + segment.w / 2, barY + barH / 2 + 0.5);
+            }
+          });
+          ctx.restore();
+        }
       }
     }
 

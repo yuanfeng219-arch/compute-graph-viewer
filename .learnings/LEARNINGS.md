@@ -21,6 +21,74 @@
 
 ---
 
+## [LRN-20260525-001] correction
+
+**Logged**: 2026-05-25T09:51:13+08:00  
+**Priority**: high  
+**Status**: pending  
+**Area**: infra
+
+### Summary
+When the user expects a GitHub push to `main`, do not push the current checked-out branch just because it has an upstream.
+
+### Details
+The `ai-cpu-aicore` folder lived inside the larger `/Users/yin/pto` repository. I committed the folder correctly, but pushed the current branch `yin/pto/cannvisual` before confirming the requested target branch. The correct repair was to create a temporary worktree at `origin/main`, copy only `ai-cpu-aicore/`, commit on top of `main`, and push `HEAD:main`. Since `main` and the current branch had diverged significantly, a direct `670b699:main` push would have pulled unrelated branch history into `main`.
+
+### Suggested Action
+For Git push requests in this workspace, treat GitHub as main-only unless the user explicitly says otherwise. Confirm the intended target branch from user context before pushing. If the target is `main` but the current branch is different, use a clean worktree or equivalent path-limited commit on top of `origin/main`, then push `HEAD:main`.
+
+### Metadata
+- Source: user_feedback
+- Related Files: ai-cpu-aicore/
+- Tags: correction, git, github, branch-target, main, main-only
+
+---
+## [LRN-20260519-001] correction
+
+**Logged**: 2026-05-19T15:05:20+08:00
+**Priority**: medium
+**Status**: pending
+**Area**: docs
+
+### Summary
+PTO 的旧 `button-preview.html` 已改名为 `design-system-preview.html`。
+
+### Details
+用户纠正说 `button-preview.html` 这个页面已经改名。后续 PTO 设计系统、pattern 抽取、模块 onboarding、memory architecture diagram 相关流程，不应再读取或更新 `/Users/yin/pto/button-preview.html`。当前正确入口是 `/Users/yin/pto/design-system-preview.html`；共享目录对应入口是 `/Users/yin/pto/design-system-share/design-system-preview.html`。
+
+### Suggested Action
+后续使用 PTO 相关技能时，把 `design-system-preview.html` 当作设计系统预览/目标状态参考；不要因为旧 skill 文档记忆再尝试打开或更新 `button-preview.html`。
+
+### Metadata
+- Source: user_feedback
+- Related Files: /Users/yin/.codex/skills/pto-pattern-extractor/SKILL.md, /Users/yin/.codex/skills/pto-module-onboarding-to-design-system/SKILL.md, /Users/yin/.codex/skills/pto-mem-architecture-diagram/SKILL.md
+- Tags: correction, pto, design-system, preview, renamed-file
+
+---
+
+## [LRN-20260519-002] correction
+
+**Logged**: 2026-05-19T15:34:48+08:00
+**Priority**: medium
+**Status**: pending
+**Area**: frontend
+
+### Summary
+PTO Graphviz colormap 应在颜色分配算法阶段统一输出亮度和饱和度，而不是在容器渲染层临时压暗。
+
+### Details
+用户指出 `Transformer Core` 背景过亮时，正确修复方向不是对容器背景单独做暗化/降饱和，而是让 colormap 本身输出同一 tone 的颜色。这样模块、算子、容器拿到的颜色来自同一套 hue 分配和统一 saturation/lightness 规则，避免出现某些颜色对白字对比不足、某些颜色异常抢眼的问题。
+
+### Suggested Action
+后续维护 PTO Graphviz/TorchVista 风格图时，把 hue 分配和 tone 归一化放在 `ptoBuildColorMap` / palette generation 这类算法入口；渲染层只消费颜色，不再为某个节点类型做局部补救。
+
+### Metadata
+- Source: user_feedback
+- Related Files: graphviz/generate_deepseek_v32_source_graph.py, graphviz/deepseek_v32_source_graph.html
+- Tags: correction, pto, graphviz, colormap, accessibility
+
+---
+
 ## [LRN-20260309-001] correction
 
 **Logged**: 2026-03-09T14:35:00+08:00  

@@ -13,16 +13,16 @@
         <div id="popup-content_8738e552-e764-4a57-839a-6321bc3ae7d3" class="popup-content_8738e552-e764-4a57-839a-6321bc3ae7d3">
             <div id="common-info_8738e552-e764-4a57-839a-6321bc3ae7d3">
                 <p id="attr-name-row_8738e552-e764-4a57-839a-6321bc3ae7d3" style="display:none;">
-                    <strong>Attribute name:</strong> <code id="attr-name-value_8738e552-e764-4a57-839a-6321bc3ae7d3" style="background:#f0f0f0; padding:2px 5px; border-radius:3px; font-family:monospace;"></code>
+                    <strong>Attribute name:</strong> <code id="attr-name-value_8738e552-e764-4a57-839a-6321bc3ae7d3"></code>
                 </p>
             </div>
             <div id="module-template_8738e552-e764-4a57-839a-6321bc3ae7d3" style="display:none;">
                 <details open id="module-parameters-details_8738e552-e764-4a57-839a-6321bc3ae7d3">
-                    <summary style="color: black"><strong>forward() Parameters</strong></summary>
+                    <summary style="color: inherit"><strong>forward() Parameters</strong></summary>
                     <div id="module-parameters_8738e552-e764-4a57-839a-6321bc3ae7d3" class="json-viewer_8738e552-e764-4a57-839a-6321bc3ae7d3"></div>
                 </details>
                 <details open id="module-attributes-details_8738e552-e764-4a57-839a-6321bc3ae7d3">
-                    <summary style="color: black"><strong>Attributes</strong></summary>
+                    <summary style="color: inherit"><strong>Attributes</strong></summary>
                     <div id="module-attributes_8738e552-e764-4a57-839a-6321bc3ae7d3" class="json-viewer_8738e552-e764-4a57-839a-6321bc3ae7d3"></div>
                 </details>
             </div>
@@ -35,13 +35,62 @@
     </div>
 
     <style>
+        @import url("../vendor/pto-design-system/tokens/foundation.css");
+        @import url("../vendor/pto-design-system/tokens/semantic.css");
+        @import url("../vendor/pto-design-system/tokens/components.css");
+
+        :root {
+            --graphviz-bg: var(--background);
+            --graphviz-surface: color-mix(in srgb, var(--panel-shell-bg) 94%, transparent);
+            --graphviz-surface-soft: color-mix(in srgb, var(--surface-2) 78%, transparent);
+            --graphviz-text: var(--foreground);
+            --graphviz-muted-text: var(--foreground-secondary);
+            --graphviz-dim-text: var(--foreground-muted);
+            --graphviz-line: var(--foreground);
+            --graphviz-line-soft: var(--border-strong);
+            --graphviz-node-radius: var(--radius-lg);
+            --graphviz-module-radius: var(--radius-pill);
+            --graphviz-parent-radius: var(--radius-xl);
+            --graphviz-toggle-size: 15px;
+            --graphviz-node-shadow: none;
+            --graphviz-parent-shadow: none;
+            --graphviz-panel-shadow: none;
+            --graphviz-code-bg: color-mix(in srgb, var(--background) 88%, black);
+            --graphviz-code-string: var(--highlight-copy-blue-300);
+            --graphviz-code-number: var(--highlight-l0a-violet-300);
+            --graphviz-highlight: var(--warning);
+            --graphviz-font-sans: var(--font-sans);
+            --graphviz-font-mono: var(--font-mono);
+            --graphviz-popup-radius: var(--panel-shell-radius);
+            --graphviz-popup-header-bg: color-mix(in srgb, var(--panel-shell-bg) 96%, transparent);
+            --graphviz-popup-body-bg: linear-gradient(180deg, color-mix(in srgb, var(--surface-2) 66%, transparent), color-mix(in srgb, var(--panel-shell-bg) 94%, transparent));
+            --graphviz-popup-section-bg: color-mix(in srgb, var(--surface-3) 48%, transparent);
+            --graphviz-hover-bg: var(--state-hover);
+            --graphviz-toggle-bg: var(--state-focus);
+            --graphviz-toggle-bg-hover: var(--state-press);
+            --graphviz-toggle-border: var(--border-strong);
+            --graphviz-toggle-icon: var(--foreground);
+            --graphviz-tensor-fill: color-mix(in srgb, var(--surface-4) 72%, var(--foreground));
+            --graphviz-tensor-stroke: var(--border-strong);
+            --graphviz-code-muted: var(--foreground-muted);
+            --graphviz-code-line: var(--state-muted);
+            --graphviz-code-selection: var(--state-selected);
+            --graphviz-code-punctuation: var(--foreground-secondary);
+            --graphviz-code-cursor: var(--foreground);
+            --graphviz-danger-bg: var(--danger);
+            --graphviz-button-bg: var(--button-solid-bg);
+            --graphviz-button-bg-hover: var(--button-solid-bg-hover);
+            --graphviz-button-fg: var(--button-solid-fg);
+            --graphviz-logo-opacity: 0.6;
+        }
         .node_8738e552-e764-4a57-839a-6321bc3ae7d3 rect {
-            stroke: none;
-            stroke-width: 0;
-            fill: #fff;
+            stroke: var(--graphviz-line-soft);
+            stroke-width: 0.6px;
+            fill: var(--graphviz-surface);
+            filter: var(--graphviz-node-shadow);
         }
         text.node-label_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: var(--graphviz-font-sans);
             cursor: default;
             user-select: none;
         }
@@ -49,33 +98,45 @@
             cursor: pointer;
         }
         text.type-indicator_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: var(--graphviz-font-sans);
             cursor: default;
             user-select: none;
         }
         text.collapse-icon_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 14px;
+            font-family: var(--graphviz-font-sans);
+            font-size: var(--font-size-body-md);
             cursor: default;
             user-select: none;
         }
         .edge_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            stroke: #797979;
+            stroke: var(--graphviz-line);
             fill: none;
         }
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 rect.input_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: #FF9AFF; }
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 rect.constant_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: rgb(235 235 235); }
+        .node_8738e552-e764-4a57-839a-6321bc3ae7d3.collapsed-module_8738e552-e764-4a57-839a-6321bc3ae7d3 rect {
+            stroke: var(--graphviz-toggle-border);
+            stroke-width: 0.8px;
+            filter: var(--graphviz-parent-shadow);
+        }
+        .node_8738e552-e764-4a57-839a-6321bc3ae7d3.collapsed-module_8738e552-e764-4a57-839a-6321bc3ae7d3 .node-label_8738e552-e764-4a57-839a-6321bc3ae7d3 {
+            fill: var(--graphviz-text);
+        }
+        .node_8738e552-e764-4a57-839a-6321bc3ae7d3.collapsed-module_8738e552-e764-4a57-839a-6321bc3ae7d3 .type-indicator_8738e552-e764-4a57-839a-6321bc3ae7d3 {
+            fill: var(--graphviz-muted-text);
+        }
 
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 rect.output_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: #74e071; }
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 rect.failed_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: rgb(224 15 15); }
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 rect.module_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: #8BDEDB; }
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 rect.operation_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: #FEBC5A; }
+        .node_8738e552-e764-4a57-839a-6321bc3ae7d3.tensor-node_8738e552-e764-4a57-839a-6321bc3ae7d3 rect {
+            stroke: var(--graphviz-tensor-stroke);
+            stroke-width: 0.8px;
+            filter: var(--graphviz-node-shadow);
+        }
 
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 ellipse.input_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: #FF9AFF; }
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 ellipse.constant_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: rgb(235 235 235); }
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 ellipse.output_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: #74e071; }
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 ellipse.parameter_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: #B9CCF3; }
-        .node_8738e552-e764-4a57-839a-6321bc3ae7d3 ellipse.failed_8738e552-e764-4a57-839a-6321bc3ae7d3 { fill: rgb(224 15 15); }
+        .node_8738e552-e764-4a57-839a-6321bc3ae7d3.tensor-node_8738e552-e764-4a57-839a-6321bc3ae7d3 .node-label_8738e552-e764-4a57-839a-6321bc3ae7d3 {
+            fill: var(--graphviz-text);
+        }
+
+        .node_8738e552-e764-4a57-839a-6321bc3ae7d3.op-node_8738e552-e764-4a57-839a-6321bc3ae7d3 rect {
+            filter: var(--graphviz-node-shadow);
+        }
 
         .node_8738e552-e764-4a57-839a-6321bc3ae7d3 ellipse {
             stroke: none;
@@ -85,7 +146,7 @@
             pointer-events: none;
         }
         #arrowhead_8738e552-e764-4a57-839a-6321bc3ae7d3 path {
-            fill: #333333;;
+            fill: var(--graphviz-line);
         }
         .node_8738e552-e764-4a57-839a-6321bc3ae7d3 rect,
         .node_8738e552-e764-4a57-839a-6321bc3ae7d3 ellipse {
@@ -93,8 +154,8 @@
         }
 
         .node_8738e552-e764-4a57-839a-6321bc3ae7d3 .type-indicator_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            font-size: 5px;
-            fill: rgba(0, 0, 0, 1.0);  /* Dark grey, semi-transparent */
+            font-size: calc(var(--font-size-label-xs) - 6px);
+            fill: var(--graphviz-muted-text);
             pointer-events: none;
         }
 
@@ -104,7 +165,7 @@
         }
 
         .boundary-box_8738e552-e764-4a57-839a-6321bc3ae7d3.error_8738e552-e764-4a57-839a-6321bc3ae7d3 > rect:first-of-type {
-            fill: red;
+            fill: var(--graphviz-danger-bg);
             fill-opacity: 0.2;
         }
 
@@ -115,6 +176,9 @@
             width: 100vw;
             min-width: 100vw;
             overflow: hidden;
+            background: var(--graphviz-bg);
+            color: var(--graphviz-text);
+            font-family: var(--graphviz-font-sans);
         }
 
         #graph_8738e552-e764-4a57-839a-6321bc3ae7d3 {
@@ -122,43 +186,52 @@
         }
         
         .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: var(--graphviz-font-sans);
             position: absolute;
-            background: white;
-            border: 1px solid #ccc;
-            width: 500px;
+            background: var(--graphviz-surface);
+            border: 0;
+            border-radius: var(--graphviz-popup-radius);
+            width: min(520px, calc(100vw - 32px));
+            min-width: min(360px, calc(100vw - 32px));
             resize: horizontal;
-            overflow: auto;
-            max-height: 70%;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            overflow: hidden;
+            max-height: min(72vh, 720px);
+            box-shadow: var(--graphviz-panel-shadow);
+            backdrop-filter: blur(18px);
             display: none;
             display: flex;
             flex-direction: column;
+            color: var(--graphviz-text);
         }
 
         .popup-header_8738e552-e764-4a57-839a-6321bc3ae7d3 {
             position: sticky;
             top: 0;
-            background: white;
-            padding: 5px 10px;
-            border-bottom: 1px solid #ccc;
+            background: var(--graphviz-popup-header-bg);
+            padding: var(--panel-shell-header-padding);
+            border-bottom: 0;
+            box-shadow: inset 0 -1px 0 var(--border-subtle);
             display: flex;
             justify-content: space-between;
             align-items: center;
             z-index: 1;
+            gap: var(--space-3);
         }
 
         .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 h3 {
             margin: 0;
-            font-size: 16px;
+            font-size: var(--font-size-body-md);
+            line-height: 1.25;
+            font-weight: var(--font-weight-semibold);
+            letter-spacing: 0;
         }
 
         .popup-content_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            padding: 10px;
-            padding-bottom: 10px;
+            padding: var(--panel-shell-body-padding);
             overflow-y: auto;
-            overflow-x: auto;
+            overflow-x: hidden;
             flex-grow: 1;
+            background: var(--graphviz-popup-body-bg);
         }
 
         .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 pre {
@@ -167,16 +240,52 @@
         }
 
         .popup-close_8738e552-e764-4a57-839a-6321bc3ae7d3 {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 28px;
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-md);
+            color: var(--graphviz-muted-text);
+            background: transparent;
             cursor: pointer;
-            font-size: 24px;
-            font-weight: bold;
+            font-size: calc(var(--font-size-body-md) + 1px);
+            font-weight: var(--font-weight-semibold);
             line-height: 1;
         }
 
+        .popup-close_8738e552-e764-4a57-839a-6321bc3ae7d3:hover {
+            color: var(--graphviz-text);
+            background: var(--graphviz-hover-bg);
+        }
+
         #popup-title_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            font-size: 16px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            color: black;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: var(--font-size-body-md);
+            font-family: var(--graphviz-font-sans);
+            color: var(--graphviz-text);
+        }
+
+        #common-info_8738e552-e764-4a57-839a-6321bc3ae7d3 {
+            font-size: var(--font-size-body-sm);
+            color: var(--graphviz-muted-text);
+        }
+
+        #attr-name-row_8738e552-e764-4a57-839a-6321bc3ae7d3 {
+            margin: 0 0 12px;
+        }
+
+        #attr-name-value_8738e552-e764-4a57-839a-6321bc3ae7d3 {
+            background: var(--state-muted) !important;
+            border: 1px solid var(--graphviz-line-soft);
+            border-radius: var(--radius-sm) !important;
+            padding: calc(var(--space-1) - 1px) var(--space-2) !important;
+            color: var(--graphviz-text);
+            font-size: var(--font-size-label-xs);
         }
 
         #graph-container_8738e552-e764-4a57-839a-6321bc3ae7d3 {
@@ -189,6 +298,7 @@
 
         .boundary-box_8738e552-e764-4a57-839a-6321bc3ae7d3 rect {
             pointer-events: none;
+            filter: var(--graphviz-parent-shadow);
         }
         .boundary-box_8738e552-e764-4a57-839a-6321bc3ae7d3 text {
             pointer-events: none;
@@ -201,32 +311,33 @@
         .boundary-box_8738e552-e764-4a57-839a-6321bc3ae7d3 text {
             pointer-events: none;
             user-select: none;
-            font-weight: bold;
+            font-weight: var(--font-weight-bold);
         }
         .edge-label_8738e552-e764-4a57-839a-6321bc3ae7d3 text {
             pointer-events: none;
             user-select: none;
-            font-size: 4px;
-            font-family: "'Roboto', sans-serif";
+            font-size: calc(var(--font-size-label-xs) - 7px);
+            font-family: var(--graphviz-font-sans);
         }
                     
         .collapse-button_8738e552-e764-4a57-839a-6321bc3ae7d3, .info-button_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            fill: #fff;
-            stroke: #333;
-            stroke-width: 1px;
+            fill: var(--graphviz-toggle-bg);
+            stroke: var(--graphviz-toggle-border);
+            stroke-width: 0.8px;
             cursor: pointer;
         }
 
         .collapse-button_8738e552-e764-4a57-839a-6321bc3ae7d3:hover, .info-button_8738e552-e764-4a57-839a-6321bc3ae7d3:hover {
-            fill: #eee;
+            fill: var(--graphviz-toggle-bg-hover);
             cursor: pointer;
         }
 
         .collapse-icon_8738e552-e764-4a57-839a-6321bc3ae7d3, .info-icon_8738e552-e764-4a57-839a-6321bc3ae7d3 {
             pointer-events: none;
             user-select: none;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            fill: rgb(51, 51, 51);
+            font-family: var(--graphviz-font-sans);
+            fill: var(--graphviz-toggle-icon);
+            font-weight: var(--font-weight-medium);
         }
 
         /* Edge hover styles */
@@ -240,19 +351,19 @@
 
         @keyframes containerHighlight {
             0% { 
-                filter: drop-shadow(0 0 0px rgba(255, 215, 0, 0));
+                filter: none;
             }
             25% { 
-                filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+                filter: none;
             }
             50% { 
-                filter: drop-shadow(0 0 0px rgba(255, 215, 0, 0));
+                filter: none;
             }
             75% { 
-                filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8));
+                filter: none;
             }
             100% { 
-                filter: drop-shadow(0 0 0px rgba(255, 215, 0, 0));
+                filter: none;
             }
         }
 
@@ -285,127 +396,240 @@
         }
 
         text.node-label_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 11px;
-            font-weight: 600;
-            fill: #111827;
+            font-family: var(--graphviz-font-sans);
+            font-size: var(--font-size-label-xs);
+            font-weight: var(--font-weight-semibold);
+            fill: var(--graphviz-text);
             cursor: default;
             user-select: none;
         }
 
         .node_8738e552-e764-4a57-839a-6321bc3ae7d3.constant_8738e552-e764-4a57-839a-6321bc3ae7d3 .node-label_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            font-size: 10px;
+            font-size: calc(var(--font-size-label-xs) - 1px);
         }
 
         .popup-content_8738e552-e764-4a57-839a-6321bc3ae7d3 summary {
             cursor: pointer;
-            margin: 5px;
+            margin: 0;
+            padding: calc(var(--space-3) - 2px) 0 var(--space-2);
+            color: var(--graphviz-text);
+            font-size: var(--font-size-body-sm);
+            font-weight: var(--font-weight-semibold);
+            line-height: 1.2;
             user-select: none;
+            list-style-position: inside;
+        }
+
+        .popup-content_8738e552-e764-4a57-839a-6321bc3ae7d3 details,
+        #tensor-op-template_8738e552-e764-4a57-839a-6321bc3ae7d3 {
+            margin: 0 0 12px;
+            padding: 0 var(--space-3) var(--space-3);
+            border: 0;
+            border-radius: var(--radius-lg);
+            background: var(--graphviz-popup-section-bg);
+        }
+
+        .popup-content_8738e552-e764-4a57-839a-6321bc3ae7d3 details:last-child,
+        #tensor-op-template_8738e552-e764-4a57-839a-6321bc3ae7d3:last-child {
+            margin-bottom: 0;
+        }
+
+        .json-viewer_8738e552-e764-4a57-839a-6321bc3ae7d3 {
+            min-height: 180px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 0;
+            background: var(--graphviz-code-bg);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .jsoneditor {
+            border: 0;
+            background: var(--graphviz-code-bg);
+            font-size: var(--font-size-body-sm);
+            line-height: 1.35;
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .jsoneditor-menu {
+            background: var(--graphviz-code-bg);
+            border-bottom: 0;
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .jsoneditor-tree,
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor.ace_editor,
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 textarea.jsoneditor-text {
+            background: var(--graphviz-code-bg);
+            color: var(--graphviz-text);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_gutter,
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_scroller {
+            background: var(--graphviz-code-bg);
+            color: var(--graphviz-code-muted);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_gutter {
+            box-shadow: inset -1px 0 0 var(--border-subtle);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_marker-layer .ace_active-line,
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_gutter-active-line {
+            background: var(--graphviz-code-line);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_marker-layer .ace_selection {
+            background: var(--graphviz-code-selection);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_cursor {
+            color: var(--graphviz-code-cursor);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_variable,
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_text {
+            color: var(--graphviz-text);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_string {
+            color: var(--graphviz-code-string);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_constant.ace_numeric,
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_constant.ace_language {
+            color: var(--graphviz-code-number);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_support.ace_type,
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor .ace_punctuation {
+            color: var(--graphviz-code-punctuation);
+        }
+
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .jsoneditor-field,
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .jsoneditor-value,
+        .popup_8738e552-e764-4a57-839a-6321bc3ae7d3 .ace-jsoneditor {
+            font-family: var(--graphviz-font-mono);
+            font-size: var(--font-size-body-sm);
+        }
+
+        #no-info_8738e552-e764-4a57-839a-6321bc3ae7d3 {
+            margin: 0;
+            padding: var(--space-3);
+            border: 0;
+            border-radius: var(--radius-lg);
+            background: var(--state-muted);
+            color: var(--graphviz-muted-text);
+            font-size: var(--font-size-body-sm);
         }
 
         .node_8738e552-e764-4a57-839a-6321bc3ae7d3.input_8738e552-e764-4a57-839a-6321bc3ae7d3 rect,
         .node_8738e552-e764-4a57-839a-6321bc3ae7d3.output_8738e552-e764-4a57-839a-6321bc3ae7d3 rect,
         .node_8738e552-e764-4a57-839a-6321bc3ae7d3.constant_8738e552-e764-4a57-839a-6321bc3ae7d3 rect {
             stroke-width: 0;
-            rx: 8px;
-            ry: 8px;
+            rx: var(--radius-md);
+            ry: var(--radius-md);
             stroke-dasharray: none;
         }
 
         #png-error-container_8738e552-e764-4a57-839a-6321bc3ae7d3 {
             text-align: center;
-            padding: 10px;
-            border-bottom: 1px solid #ccc;
-            font-size: 14px;
+            padding: var(--space-3);
+            border-bottom: 1px solid var(--graphviz-line-soft);
+            font-size: var(--font-size-body-md);
+            background: var(--graphviz-bg);
+            color: var(--graphviz-text);
         }
 
         #png-error-message_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            padding: 8px 16px;
-            background-color: #dc3545;
-            color: white;
-            border-radius: 4px;
+            padding: var(--space-2) var(--space-4);
+            background-color: var(--graphviz-danger-bg);
+            color: var(--primary-foreground);
+            border-radius: var(--radius-md);
             display: inline-block;
-            font-family: monospace;
+            font-family: var(--graphviz-font-mono);
             white-space: pre-wrap;
             text-align: left;
         }
 
         #png-link-container_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            padding: 10px;
-            border-bottom: 1px solid #ccc;
-            font-size: 18px;
+            padding: var(--space-3);
+            border-bottom: 1px solid var(--graphviz-line-soft);
+            font-size: var(--font-size-title-sm);
+            background: var(--graphviz-bg);
+            color: var(--graphviz-text);
         }
 
         #png-download-button_8738e552-e764-4a57-839a-6321bc3ae7d3 {
             display: inline-block;
-            padding: 8px 16px;
-            background-color: #007bff;
-            color: white;
+            padding: var(--space-2) var(--space-4);
+            background-color: var(--graphviz-button-bg);
+            color: var(--graphviz-button-fg);
             text-decoration: none;
-            border-radius: 4px;
-            margin-right: 8px;
+            border-radius: var(--button-radius);
+            margin-right: var(--space-2);
         }
 
         #png-download-button_8738e552-e764-4a57-839a-6321bc3ae7d3:hover {
-            background-color: #0056b3;
+            background-color: var(--graphviz-button-bg-hover);
         }
 
         #png-save-button_8738e552-e764-4a57-839a-6321bc3ae7d3 {
             display: inline-block;
-            padding: 8px 16px;
-            background-color: #007bff;
-            color: white;
+            padding: var(--space-2) var(--space-4);
+            background-color: var(--graphviz-button-bg);
+            color: var(--graphviz-button-fg);
             text-decoration: none;
-            border-radius: 4px;
+            border-radius: var(--button-radius);
         }
 
         #png-save-button_8738e552-e764-4a57-839a-6321bc3ae7d3:hover {
-            background-color: #0056b3;
+            background-color: var(--graphviz-button-bg-hover);
         }
 
         #svg-link-container_8738e552-e764-4a57-839a-6321bc3ae7d3 {
-            padding: 10px;
-            border-bottom: 1px solid #ccc;
-            font-size: 18px;
+            padding: var(--space-3);
+            border-bottom: 1px solid var(--graphviz-line-soft);
+            font-size: var(--font-size-title-sm);
+            background: var(--graphviz-bg);
+            color: var(--graphviz-text);
         }
 
 
         #svg-download-button_8738e552-e764-4a57-839a-6321bc3ae7d3 {
             display: inline-block;
-            padding: 8px 16px;
-            background-color: #007bff;
-            color: white;
+            padding: var(--space-2) var(--space-4);
+            background-color: var(--graphviz-button-bg);
+            color: var(--graphviz-button-fg);
             text-decoration: none;
-            border-radius: 4px;
-            margin-right: 8px;
+            border-radius: var(--button-radius);
+            margin-right: var(--space-2);
         }
 
         #svg-download-button_8738e552-e764-4a57-839a-6321bc3ae7d3:hover {
-            background-color: #0056b3;
+            background-color: var(--graphviz-button-bg-hover);
         }
 
         #svg-save-button_8738e552-e764-4a57-839a-6321bc3ae7d3 {
             display: inline-block;
-            padding: 8px 16px;
-            background-color: #007bff;
-            color: white;
+            padding: var(--space-2) var(--space-4);
+            background-color: var(--graphviz-button-bg);
+            color: var(--graphviz-button-fg);
             text-decoration: none;
-            border-radius: 4px;
+            border-radius: var(--button-radius);
         }
 
         #svg-save-button_8738e552-e764-4a57-839a-6321bc3ae7d3:hover {
-            background-color: #0056b3;
+            background-color: var(--graphviz-button-bg-hover);
         }
 
         .custom-tooltip_8738e552-e764-4a57-839a-6321bc3ae7d3 {
             position: absolute;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 6px 8px;
-            font-size: 15px;
+            background: var(--graphviz-surface);
+            border: 1px solid var(--graphviz-line-soft);
+            border-radius: var(--radius-md);
+            padding: calc(var(--space-2) - 2px) var(--space-2);
+            font-size: calc(var(--font-size-body-md) + 1px);
             font-family: inherit;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            box-shadow: none;
+            color: var(--graphviz-text);
             z-index: 1000;
             pointer-events: none;
             max-width: 350px;
@@ -415,13 +639,14 @@
 
         .custom-tooltip_smaller_8738e552-e764-4a57-839a-6321bc3ae7d3 {
             position: absolute;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 6px 8px;
-            font-size: 10px;
+            background: var(--graphviz-surface);
+            border: 1px solid var(--graphviz-line-soft);
+            border-radius: var(--radius-md);
+            padding: calc(var(--space-2) - 2px) var(--space-2);
+            font-size: calc(var(--font-size-label-xs) - 1px);
             font-family: inherit;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            box-shadow: none;
+            color: var(--graphviz-text);
             z-index: 1000;
             pointer-events: none;
             max-width: 300px;
@@ -435,13 +660,13 @@
 
         .logo_8738e552-e764-4a57-839a-6321bc3ae7d3 {
             position: absolute;
-            bottom: 8px; left: 8px;
-            padding: 4px 6px;
+            bottom: var(--space-2); left: var(--space-2);
+            padding: var(--space-1) calc(var(--space-2) - 2px);
         }
         .logo_8738e552-e764-4a57-839a-6321bc3ae7d3 a {
-            color: #a1a1a1;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            opacity: .6;
+            color: var(--graphviz-text);
+            font-family: var(--graphviz-font-sans);
+            opacity: var(--graphviz-logo-opacity);
         }
 
     </style>
@@ -706,14 +931,25 @@ function ptoSnapToValidHue(h) {
   return h;
 }
 
-function ptoExpandPalette(baseHexes, targetCount) {
-  if (targetCount <= baseHexes.length) return baseHexes.slice(0, targetCount);
+function ptoNormalizeColormapColor(hex) {
+  const hsl = ptoHexToHsl(hex);
+  return ptoHslToHex({
+    h: ptoSnapToValidHue(hsl.h),
+    s: PTO_COLORMAP_SATURATION,
+    l: PTO_COLORMAP_LIGHTNESS,
+  });
+}
 
-  const hues = baseHexes.map(c => ptoHexToHsl(c).h);
+const PTO_COLORMAP_SATURATION = 0.82;
+const PTO_COLORMAP_LIGHTNESS = 0.40;
+
+function ptoExpandPalette(baseHexes, targetCount) {
+  const hues = baseHexes.map(c => ptoSnapToValidHue(ptoHexToHsl(c).h));
   const coreHueSet = new Set(hues.map(h => Math.round(h * 1e6)));
+  const maxHuePositions = 100;
   const minGap = 1 / 360 * 2.5;
 
-  while (hues.length < 100) {
+  while (hues.length < maxHuePositions) {
     let maxGap = -1;
     let insertIdx = 0;
     for (let i = 0; i < hues.length; i++) {
@@ -739,28 +975,19 @@ function ptoExpandPalette(baseHexes, targetCount) {
     hues.splice(insertIdx + 1, 0, mid);
   }
 
-  const tiers = [
-    { s: 0.80, l: 0.44 },
-    { s: 0.65, l: 0.60 },
-    { s: 0.85, l: 0.33 },
-    { s: 0.55, l: 0.54 },
-  ];
-  const result = [...baseHexes];
+  const result = baseHexes.map(ptoNormalizeColormapColor);
   const extraHues = hues.filter(h => !coreHueSet.has(Math.round(h * 1e6)));
   for (const h of extraHues) {
     if (result.length >= targetCount) break;
-    result.push(ptoHslToHex({ h, ...tiers[0] }));
+    result.push(ptoHslToHex({ h, s: PTO_COLORMAP_SATURATION, l: PTO_COLORMAP_LIGHTNESS }));
   }
-  let tier = 1;
   while (result.length < targetCount) {
-    const tone = tiers[tier % tiers.length];
     for (const h of hues) {
       if (result.length >= targetCount) break;
-      result.push(ptoHslToHex({ h, ...tone }));
+      result.push(ptoHslToHex({ h, s: PTO_COLORMAP_SATURATION, l: PTO_COLORMAP_LIGHTNESS }));
     }
-    tier++;
   }
-  return result;
+  return result.slice(0, targetCount);
 }
 
 function ptoBuildColorMap(keys) {
@@ -788,9 +1015,28 @@ function ptoBuildColorMap(keys) {
     const ancestor_map = {"blk_hc_pre": "g_moe_stack", "blk_rms_1": "g_moe_stack", "blk_csa_hca": "g_moe_stack", "blk_hc_post_1": "g_moe_stack", "blk_rms_2": "g_moe_stack", "blk_moe": "g_moe_stack", "blk_hc_post_2": "g_moe_stack", "hash_hc_pre": "g_hash_stack", "hash_rms": "g_hash_stack", "hash_hash": "g_hash_stack", "hash_hc_post": "g_hash_stack", "mlp_up": "g_mlp", "mlp_gate": "g_mlp", "mlp_silu": "g_mlp", "mlp_clamp": "g_mlp", "mlp_mul": "g_mlp", "mlp_down": "g_mlp", "moe_router": "g_moe", "moe_exp_1": "g_moe", "moe_exp_n": "g_moe", "moe_shared": "g_moe", "moe_merge": "g_moe", "router_linear": "g_router", "router_softplus": "g_router", "router_sqrt": "g_router", "router_gather": "g_router", "router_sum": "g_router", "router_hash": "g_router", "router_topk": "g_router", "hca_kv_down": "g_hca", "hca_rms": "g_hca", "hca_rope": "g_hca", "hca_quant": "g_hca", "hca_cache_window": "g_hca", "hca_cache_compress": "g_hca", "hca_attention": "g_hca", "hca_o_down": "g_hca", "hca_o_up": "g_hca", "hca_q_down": "g_hca", "hca_q_rms": "g_hca", "hca_q_up": "g_hca", "hca_q_norm": "g_hca", "hca_q_rope": "g_hca", "c128_kv_proj": "g_compressor_c128a", "c128_gate_proj": "g_compressor_c128a", "c128_kv_state": "g_compressor_c128a", "c128_softmax": "g_compressor_c128a", "c128_score": "g_compressor_c128a", "idx_weights": "g_indexer", "idx_scale": "g_indexer", "idx_q_up": "g_indexer", "idx_rope": "g_indexer", "idx_rotate": "g_indexer", "idx_quant": "g_indexer", "idx_matmul": "g_indexer", "idx_relu": "g_indexer", "idx_sum": "g_indexer", "idx_topk": "g_indexer", "idx_c4a": "g_indexer", "csa_kv_down": "g_csa", "csa_rms": "g_csa", "csa_rope": "g_csa", "csa_quant": "g_csa", "csa_window_cache": "g_csa", "csa_compress_cache": "g_csa", "csa_select": "g_csa", "csa_attention": "g_csa", "csa_o_down": "g_csa", "csa_o_up": "g_csa", "csa_q_down": "g_csa", "csa_q_rms": "g_csa", "csa_q_up": "g_csa", "csa_q_norm": "g_csa", "csa_q_rope": "g_csa", "csa_sink": "g_csa", "csa_indexer_ref": "g_csa", "c4_kv_proj": "g_compressor_c4a", "c4_gate_proj": "g_compressor_c4a", "c4_kv_state": "g_compressor_c4a", "c4_ape": "g_compressor_c4a", "c4_sum": "g_compressor_c4a", "c4_score": "g_compressor_c4a", "c4_softmax": "g_compressor_c4a", "c4_rms": "g_compressor_c4a", "c4_rope": "g_compressor_c4a", "c4_kv_value": "g_compressor_c4a", "c4_cache_compress": "g_compressor_c4a", "state_pre": "kv_state_score_state", "state_cur": "kv_state_score_state", "state_cat": "kv_state_score_state", "state_update": "kv_state_score_state"};
     const repeat_containers = new Set([]);
     const REPEAT_CONTAINER_COLOR = "#FA8334";
-    const collapse_modules_after_depth = 0;
+    const url_params = new URLSearchParams(window.location.search);
+    const requested_collapse_depth = url_params.has("collapseDepth") ? Number(url_params.get("collapseDepth")) : NaN;
+    const collapse_modules_after_depth = Number.isFinite(requested_collapse_depth) ? requested_collapse_depth : 2;
     const show_module_attr_names = true;
     const node_to_module_path = {"blk_hc_pre": "g_moe_stack", "blk_rms_1": "g_moe_stack", "blk_csa_hca": "g_moe_stack", "blk_hc_post_1": "g_moe_stack", "blk_rms_2": "g_moe_stack", "blk_moe": "g_moe_stack", "blk_hc_post_2": "g_moe_stack", "hash_hc_pre": "g_hash_stack", "hash_rms": "g_hash_stack", "hash_hash": "g_hash_stack", "hash_hc_post": "g_hash_stack", "mlp_up": "g_mlp", "mlp_gate": "g_mlp", "mlp_silu": "g_mlp", "mlp_clamp": "g_mlp", "mlp_mul": "g_mlp", "mlp_down": "g_mlp", "moe_router": "g_moe", "moe_exp_1": "g_moe", "moe_exp_n": "g_moe", "moe_shared": "g_moe", "moe_merge": "g_moe", "router_linear": "g_router", "router_softplus": "g_router", "router_sqrt": "g_router", "router_gather": "g_router", "router_sum": "g_router", "router_hash": "g_router", "router_topk": "g_router", "hca_kv_down": "g_hca", "hca_rms": "g_hca", "hca_rope": "g_hca", "hca_quant": "g_hca", "hca_cache_window": "g_hca", "hca_cache_compress": "g_hca", "hca_attention": "g_hca", "hca_o_down": "g_hca", "hca_o_up": "g_hca", "hca_q_down": "g_hca", "hca_q_rms": "g_hca", "hca_q_up": "g_hca", "hca_q_norm": "g_hca", "hca_q_rope": "g_hca", "c128_kv_proj": "g_compressor_c128a", "c128_gate_proj": "g_compressor_c128a", "c128_kv_state": "g_compressor_c128a", "c128_softmax": "g_compressor_c128a", "c128_score": "g_compressor_c128a", "idx_weights": "g_indexer", "idx_scale": "g_indexer", "idx_q_up": "g_indexer", "idx_rope": "g_indexer", "idx_rotate": "g_indexer", "idx_quant": "g_indexer", "idx_matmul": "g_indexer", "idx_relu": "g_indexer", "idx_sum": "g_indexer", "idx_topk": "g_indexer", "idx_c4a": "g_indexer", "csa_kv_down": "g_csa", "csa_rms": "g_csa", "csa_rope": "g_csa", "csa_quant": "g_csa", "csa_window_cache": "g_csa", "csa_compress_cache": "g_csa", "csa_select": "g_csa", "csa_attention": "g_csa", "csa_o_down": "g_csa", "csa_o_up": "g_csa", "csa_q_down": "g_csa", "csa_q_rms": "g_csa", "csa_q_up": "g_csa", "csa_q_norm": "g_csa", "csa_q_rope": "g_csa", "csa_sink": "g_csa", "csa_indexer_ref": "g_csa", "c4_kv_proj": "g_compressor_c4a", "c4_gate_proj": "g_compressor_c4a", "c4_kv_state": "g_compressor_c4a", "c4_ape": "g_compressor_c4a", "c4_sum": "g_compressor_c4a", "c4_score": "g_compressor_c4a", "c4_softmax": "g_compressor_c4a", "c4_rms": "g_compressor_c4a", "c4_rope": "g_compressor_c4a", "c4_kv_value": "g_compressor_c4a", "c4_cache_compress": "g_compressor_c4a", "state_pre": "kv_state_score_state", "state_cur": "kv_state_score_state", "state_cat": "kv_state_score_state", "state_update": "kv_state_score_state"};
+    const semantic_module_parent_overrides = {
+        "g_hash_stack": "g_moe_stack",
+        "g_mlp": "g_moe_stack",
+        "g_moe": "g_moe_stack",
+        "g_hca": "g_moe_stack",
+        "g_csa": "g_moe_stack",
+        "g_router": "g_moe",
+        "g_compressor_c128a": "g_hca",
+        "g_indexer": "g_csa",
+        "g_compressor_c4a": "g_csa",
+        "kv_state_score_state": "g_compressor_c4a"
+    };
+    for (const [moduleNode, semanticParent] of Object.entries(semantic_module_parent_overrides)) {
+        if (adj_list[moduleNode] && adj_list[semanticParent] && !ancestor_map[moduleNode]) {
+            ancestor_map[moduleNode] = semanticParent;
+        }
+    }
     const generateImage = false;
     const generateSvg = false;
     const show_modular_view = true;
@@ -802,6 +1048,7 @@ function ptoBuildColorMap(keys) {
     let containerNodeCounts = {};
     let torchVistaColorMap = new Map();
     let retainedZoomTransform = null;
+    let retainedAnchorScreen = null;
 
     const EXPAND_TARGET_COVERAGE = 0.8;
     const COLLAPSE_TARGET_COVERAGE = 0.2;
@@ -809,13 +1056,68 @@ function ptoBuildColorMap(keys) {
     let lastOperation = null; // Track whether it was 'expand' or 'collapse'
 
     const graphContainerElement = document.getElementById("graph-container_8738e552-e764-4a57-839a-6321bc3ae7d3");
+    function resolveGraphvizTokenColor(cssValue) {
+        const probe = document.createElement("span");
+        probe.style.position = "absolute";
+        probe.style.visibility = "hidden";
+        probe.style.pointerEvents = "none";
+        probe.style.color = cssValue;
+        (graphContainerElement || document.body || document.documentElement).appendChild(probe);
+        const resolved = getComputedStyle(probe).color;
+        probe.remove();
+        return resolved;
+    }
+
+    function resolveGraphvizTokenColorAsHex(cssValue) {
+        const resolved = resolveGraphvizTokenColor(cssValue);
+        const match = resolved.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)/);
+        if (!match) return resolved;
+        const toHex = value => Math.max(0, Math.min(255, Math.round(Number(value))))
+            .toString(16)
+            .padStart(2, "0");
+        return `#${toHex(match[1])}${toHex(match[2])}${toHex(match[3])}`;
+    }
+
+    function resolveGraphvizTokenLength(cssValue) {
+        const probe = document.createElement("span");
+        probe.style.position = "absolute";
+        probe.style.visibility = "hidden";
+        probe.style.pointerEvents = "none";
+        probe.style.width = cssValue;
+        (graphContainerElement || document.body || document.documentElement).appendChild(probe);
+        const resolved = getComputedStyle(probe).width;
+        probe.remove();
+        const numeric = parseFloat(resolved);
+        return Number.isFinite(numeric) ? numeric : 12;
+    }
+
+    const NODE_HORIZONTAL_PADDING = 16;
+    const GRAPHVIZ_DEFAULT_NODE_MARGIN_X = 0.11;
+    const GRAPHVIZ_NODE_MARGIN_X = (GRAPHVIZ_DEFAULT_NODE_MARGIN_X + NODE_HORIZONTAL_PADDING / 72).toFixed(3);
+    const EXPAND_BUTTON_RADIUS = 7.5;
+    const EXPAND_BUTTON_EDGE_GAP = 10;
+    const GRAPHVIZ_DARK_BG = resolveGraphvizTokenColorAsHex("var(--graphviz-bg)");
+    const GRAPHVIZ_DOT_TEXT_COLOR = resolveGraphvizTokenColorAsHex("var(--graphviz-text)");
+    const GRAPHVIZ_DOT_LINE_COLOR = resolveGraphvizTokenColorAsHex("var(--graphviz-line)");
+    const GRAPHVIZ_TEXT_COLOR = resolveGraphvizTokenColor("var(--graphviz-text)");
+    const GRAPHVIZ_LINE_COLOR = resolveGraphvizTokenColor("var(--graphviz-line)");
+    const GRAPHVIZ_LINE_SOFT_COLOR = resolveGraphvizTokenColor("var(--graphviz-line-soft)");
+    const GRAPHVIZ_EDGE_LABEL_BG = resolveGraphvizTokenColor("var(--graphviz-surface)");
+    const GRAPHVIZ_TENSOR_FILL = resolveGraphvizTokenColor("var(--graphviz-tensor-fill)");
+    const GRAPHVIZ_TENSOR_FILL_HEX = resolveGraphvizTokenColorAsHex("var(--graphviz-tensor-fill)");
+    const GRAPHVIZ_TENSOR_STROKE = resolveGraphvizTokenColor("var(--graphviz-tensor-stroke)");
+    const GRAPHVIZ_TENSOR_RADIUS = resolveGraphvizTokenLength("var(--radius-lg)");
+    const GRAPHVIZ_TENSOR_NODE_TYPES = new Set(["Input", "Output", "Constant", "Parameter", "Tensor"]);
+
     if (graphContainerElement && graphContainerElement.parentElement === document.body) {
         document.documentElement.style.margin = "0";
         document.documentElement.style.width = "100%";
         document.documentElement.style.height = "100%";
+        document.documentElement.style.background = GRAPHVIZ_DARK_BG;
         document.body.style.margin = "0";
         document.body.style.width = "100%";
         document.body.style.height = "100%";
+        document.body.style.background = GRAPHVIZ_DARK_BG;
         graphContainerElement.style.width = "100vw";
         graphContainerElement.style.height = "100vh";
     }
@@ -881,11 +1183,10 @@ function ptoBuildColorMap(keys) {
         if (nodeData.node_type === "Parameter") return "io:parameter";
         if (repeat_containers.has(nodeName)) return "container:repeat";
 
-        const parent = getTopColorParent(nodeName);
-        if (parent) return "parent:" + parent;
-
         if (nodeData.node_type === "Operation") return inferTorchVistaSemantic(nodeName);
         if (nodeData.node_type === "Module") return "module:" + (graph_node_name_to_without_suffix[nodeName] || nodeName);
+        const parent = ancestor_map[nodeName];
+        if (parent) return "parent:" + (graph_node_name_to_without_suffix[parent] || parent);
         return "type:" + nodeData.node_type;
     }
 
@@ -902,10 +1203,10 @@ function ptoBuildColorMap(keys) {
         const semanticKeys = keys.filter(key => !key.startsWith("io:")).sort();
         const palette = ptoBuildColorMap(semanticKeys);
         const map = new Map();
-        map.set("io:input", "#A855F7");
-        map.set("io:output", "#34D399");
-        map.set("io:constant", "#64748B");
-        map.set("io:parameter", "#3B82F6");
+        map.set("io:input", ptoNormalizeColormapColor("#A855F7"));
+        map.set("io:output", ptoNormalizeColormapColor("#34D399"));
+        map.set("io:constant", ptoNormalizeColormapColor("#64748B"));
+        map.set("io:parameter", ptoNormalizeColormapColor("#3B82F6"));
         map.set("container:repeat", REPEAT_CONTAINER_COLOR);
         for (const [key, color] of palette.entries()) {
             if (!map.has(key)) map.set(key, color);
@@ -918,19 +1219,41 @@ function ptoBuildColorMap(keys) {
         return torchVistaColorMap.get(key) || fallbackColor;
     }
 
-    function safeNodeColor(nodeName) {
-        try {
-            return getNodeColor(nodeName);
-        } catch (error) {
-            console.warn("TorchVista color fallback for", nodeName, error);
-            const nodeData = adj_list_collapsed_nodes[nodeName] || adj_list[nodeName];
-            if (nodeData?.node_type === "Input") return "#A855F7";
-            if (nodeData?.node_type === "Output") return "#34D399";
-            if (nodeData?.node_type === "Constant") return "#64748B";
-            if (nodeData?.node_type === "Parameter") return "#3B82F6";
-            if (nodeData?.node_type === "Module" || collapsedContainers.has(nodeName)) return "#14B8A6";
-            return "#0EA5E9";
+    function getNodeVisualType(nodeName) {
+        const nodeData = adj_list_collapsed_nodes[nodeName] || adj_list[nodeName];
+        if (collapsedContainers.has(nodeName)) return "Module";
+        return nodeData?.node_type || "";
+    }
+
+    function isTensorVisualNode(nodeName) {
+        return GRAPHVIZ_TENSOR_NODE_TYPES.has(getNodeVisualType(nodeName));
+    }
+
+    function isOperationVisualNode(nodeName) {
+        return getNodeVisualType(nodeName) === "Operation";
+    }
+
+    function isModuleVisualNode(nodeName) {
+        return getNodeVisualType(nodeName) === "Module";
+    }
+
+    function getNodeCornerRadius(nodeName, nodeData) {
+        if (isTensorVisualNode(nodeName)) {
+            return Math.min(GRAPHVIZ_TENSOR_RADIUS, Math.max(2, nodeData.height * 0.32));
         }
+        return nodeData.height / 2;
+    }
+
+    function safeNodeColor(nodeName) {
+        const nodeData = adj_list_collapsed_nodes[nodeName] || adj_list[nodeName];
+        if (isTensorVisualNode(nodeName)) return GRAPHVIZ_TENSOR_FILL;
+        if (nodeData?.node_type === "Input") return getTorchVistaColor(nodeName, "#A855F7");
+        if (nodeData?.node_type === "Output") return getTorchVistaColor(nodeName, "#34D399");
+        if (nodeData?.node_type === "Constant") return getTorchVistaColor(nodeName, "#64748B");
+        if (nodeData?.node_type === "Parameter") return getTorchVistaColor(nodeName, "#3B82F6");
+        if (repeat_containers.has(nodeName)) return getTorchVistaColor(nodeName, REPEAT_CONTAINER_COLOR);
+        if (nodeData?.node_type === "Module" || collapsedContainers.has(nodeName)) return getTorchVistaColor(nodeName, "#14B8A6");
+        return getTorchVistaColor(nodeName, "#0EA5E9");
     }
 
     let currentTooltip = null;
@@ -1171,8 +1494,9 @@ function ptoBuildColorMap(keys) {
                 }
             }
             
-            // If node is not inside a collapsed container, add it to the processed list
-            if (!nodeIsInsideCollapsed) {
+            // If node is not inside a collapsed container, add it to the processed list.
+            // Expanded containers are rendered as clusters, not duplicate standalone nodes.
+            if (!nodeIsInsideCollapsed && (!containerNodes.has(node) || collapsedContainers.has(node))) {
                 adj_list_collapsed_nodes[node] = {
                     node_type: data.node_type,
                     edges: []
@@ -1265,10 +1589,7 @@ function ptoBuildColorMap(keys) {
         function getNodeColor(nodeName) {
             if (adj_list_collapsed_nodes[nodeName]) {
                 const nodeData = adj_list_collapsed_nodes[nodeName];
-                if (nodeData.node_type === "Input") return getTorchVistaColor(nodeName, "#A855F7");
-                if (nodeData.node_type === "Constant") return getTorchVistaColor(nodeName, "#64748B");
-                if (nodeData.node_type === "Output") return getTorchVistaColor(nodeName, "#34D399");
-                if (nodeData.node_type === "Parameter") return getTorchVistaColor(nodeName, "#3B82F6");
+                if (GRAPHVIZ_TENSOR_NODE_TYPES.has(nodeData.node_type)) return GRAPHVIZ_TENSOR_FILL_HEX;
                 if (repeat_containers.has(nodeName)) return getTorchVistaColor(nodeName, REPEAT_CONTAINER_COLOR);
                 if (nodeData.node_type === "Module") return getTorchVistaColor(nodeName, "#14B8A6");
                 if (nodeData.node_type === "Operation") return getTorchVistaColor(nodeName, "#0EA5E9");
@@ -1289,12 +1610,12 @@ function ptoBuildColorMap(keys) {
         } else {
             dotSource += '  rankdir=BT;\n';
         }
-        dotSource += '  node [shape=box, style=filled];\n';
+        dotSource += `  node [shape=box, style=filled, margin="${GRAPHVIZ_NODE_MARGIN_X},0.055", fontcolor="${GRAPHVIZ_DOT_TEXT_COLOR}"];\n`;
         dotSource += '  compound=true;\n';
-        dotSource += '  bgcolor="#f3f3eb";\n';
+        dotSource += `  bgcolor="${GRAPHVIZ_DARK_BG}";\n`;
         dotSource += '  ranksep=0.5;\n';
-        dotSource += '  edge [arrowhead=vee, arrowsize=0.6];\n';
-        dotSource += '  nodesep=0.4;\n';
+        dotSource += `  edge [arrowhead=vee, arrowsize=0.6, color="${GRAPHVIZ_DOT_LINE_COLOR}", fontcolor="${GRAPHVIZ_DOT_TEXT_COLOR}"];\n`;
+        dotSource += '  nodesep=0.55;\n';
 
 
         // Find top containers
@@ -1399,11 +1720,11 @@ function ptoBuildColorMap(keys) {
             dotSource += `${indent}  style="${isRepeat ? 'rounded,dashed' : 'rounded'}";\n`;
             if (isRepeat) {
                 dotSource += `${indent}  color="${REPEAT_CONTAINER_COLOR}";\n`;
-                dotSource += `${indent}  fontcolor="#333";\n`;
+                dotSource += `${indent}  fontcolor="${GRAPHVIZ_DOT_TEXT_COLOR}";\n`;
             } else {
                 // Prevent Graphviz from inheriting repeat container colors into children
-                dotSource += `${indent}  color="black";\n`;
-                dotSource += `${indent}  fontcolor="#333";\n`;
+                dotSource += `${indent}  color="${GRAPHVIZ_DOT_LINE_COLOR}";\n`;
+                dotSource += `${indent}  fontcolor="${GRAPHVIZ_DOT_TEXT_COLOR}";\n`;
             }
             dotSource += `${indent}  labelloc=t;\n`;
             dotSource += `${indent}  labeljust=l;\n`;
@@ -1426,11 +1747,12 @@ function ptoBuildColorMap(keys) {
                         const errorColor = getErrorColor(child);
                         const fillColor = errorColor || getNodeColor(child);
                         const childDisplayName = graph_node_display_names[child] || graph_node_name_to_without_suffix[child] || child;
-                        dotSource += `${indent}  "${child}" [label="${childDisplayName}", shape=ellipse, width=0.6, height=0.25, style="filled", fillcolor="${fillColor}"];\n`;
+                        dotSource += `${indent}  "${child}" [label="${childDisplayName}", shape=box, width=0.7, height=0.32, style="filled", fillcolor="${fillColor}"];\n`;
                     } else if (nodeData.node_type === "Input" || nodeData.node_type === "Output") {
                         const errorColor = getErrorColor(child);
                         const fillColor = errorColor || getNodeColor(child);
-                        dotSource += `${indent}  "${child}" [shape=ellipse, width=1.2, height=0.5, style="filled", fillcolor="${fillColor}"];\n`;
+                        const childDisplayName = graph_node_display_names[child] || graph_node_name_to_without_suffix[child] || child;
+                        dotSource += `${indent}  "${child}" [label="${childDisplayName}", shape=box, width=1.2, height=0.5, style="filled", fillcolor="${fillColor}"];\n`;
                     } else {
                         const errorColor = getErrorColor(child);
                         const fillColor = errorColor || getNodeColor(child);
@@ -1455,12 +1777,12 @@ function ptoBuildColorMap(keys) {
                     const errorColor = getErrorColor(node);
                     const fillColor = errorColor || getNodeColor(node);
                     const nodeDisplayName = graph_node_display_names[node] || graph_node_name_to_without_suffix[node] || node;
-                    dotSource += `  "${node}" [shape=ellipse, width=0.6, height=0.25, fillcolor="${fillColor}", label="${nodeDisplayName}", style="filled"];\n`;
+                    dotSource += `  "${node}" [shape=box, width=0.7, height=0.32, fillcolor="${fillColor}", label="${nodeDisplayName}", style="filled"];\n`;
                 } else if (data.node_type === "Input" || data.node_type === "Output") {
                     const errorColor = getErrorColor(node);
                     const fillColor = errorColor || getNodeColor(node);
                     const nodeDisplayName = graph_node_display_names[node] || graph_node_name_to_without_suffix[node] || node;
-                    dotSource += `  "${node}" [shape=ellipse, width=1.2, height=0.5, fillcolor="${fillColor}", label="${nodeDisplayName}", style="filled"];\n`;
+                    dotSource += `  "${node}" [shape=box, width=1.2, height=0.5, fillcolor="${fillColor}", label="${nodeDisplayName}", style="filled"];\n`;
                 } else {
                     const errorColor = getErrorColor(node);
                     const fillColor = errorColor || getNodeColor(node);
@@ -1484,8 +1806,8 @@ function ptoBuildColorMap(keys) {
                     repSource = findRepresentativeNode(lca, node);
                     repTarget = findRepresentativeNode(lca, edge.target);
 
-                    // Consolidate identical tensor edges between representative modules
-                    const key = `${repSource}->${repTarget}->${edge.edge_data_id}`;
+                    // Fold multiple tensor-level edges into one representative module-to-module edge.
+                    const key = `${repSource}->${repTarget}`;
                     if (emittedEdges.has(key)) continue;
                     emittedEdges.add(key);
                 }
@@ -1540,6 +1862,45 @@ function ptoBuildColorMap(keys) {
             }
         });
         return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }
+
+    function getClusterCenter(clusterData) {
+        const [x1, y1, x2, y2] = clusterData.bb.split(",").map(Number);
+        return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+    }
+
+    function getClusterHeaderAnchor(clusterData) {
+        const [x1, y1, x2, y2] = clusterData.bb.split(",").map(Number);
+        const clusterHeight = y2 - y1;
+        return {
+            x: (x1 + x2) / 2,
+            y: y1 + Math.min(28, Math.max(16, clusterHeight * 0.08))
+        };
+    }
+
+    function getClusterToggleAnchor(clusterData) {
+        const [x1, y1, x2, y2] = clusterData.bb.split(",").map(Number);
+        return { x: x2 - 13, y: (y1 + y2) / 2 };
+    }
+
+    function getClusterExpandAnchor(clusterData) {
+        const toggleAnchor = getClusterToggleAnchor(clusterData);
+        const centerAnchor = getClusterCenter(clusterData);
+        return { x: toggleAnchor.x, y: centerAnchor.y };
+    }
+
+    function getNodeExpandAnchor(nodeData) {
+        return {
+            x: nodeData.position.x + nodeData.width / 2 - EXPAND_BUTTON_RADIUS - EXPAND_BUTTON_EDGE_GAP,
+            y: nodeData.position.y
+        };
+    }
+
+    function projectGraphPoint(transform, point) {
+        return [
+            point.x * transform.k + transform.x,
+            point.y * transform.k + transform.y
+        ];
     }
 
     function initContainerNodes() {
@@ -1676,7 +2037,7 @@ function ptoBuildColorMap(keys) {
             canvas.width = img.naturalWidth + (padding * 2);
             canvas.height = img.naturalHeight + (padding * 2);
 
-            ctx.fillStyle = '#f3f3eb';
+            ctx.fillStyle = GRAPHVIZ_DARK_BG;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, padding, padding);
             
@@ -1745,7 +2106,7 @@ function ptoBuildColorMap(keys) {
         .append("svg")
         .attr("width", "100%")
         .attr("height", "100%")
-        .style("background-color", "#f3f3eb")
+        .style("background-color", GRAPHVIZ_DARK_BG)
         .style("height", "100%");
 
         const inner = svg.append("g");
@@ -1770,7 +2131,7 @@ function ptoBuildColorMap(keys) {
         .attr("orient", "auto")
         .append("path")
         .attr("d", "M0,-5L10,0L0,5")
-        .attr("fill", "#333");
+        .attr("fill", GRAPHVIZ_LINE_COLOR);
 
         // Draw clusters (container boxes) first so they're behind nodes
         const clusters = inner.selectAll(".boundary-box_8738e552-e764-4a57-839a-6321bc3ae7d3")
@@ -1796,23 +2157,26 @@ function ptoBuildColorMap(keys) {
 
             // Parse bounding box coordinates
             const [x1, y1, x2, y2] = clusterData.bb.split(",").map(Number);
+            const clusterWidth = x2 - x1;
+            const clusterHeight = y2 - y1;
+            const clusterRadius = Math.min(24, Math.max(12, Math.min(clusterWidth, clusterHeight) * 0.08));
             
             // Create boundary box
             const rect = group.append("rect")
             .attr("x", x1)
             .attr("y", y1)
-            .attr("width", x2 - x1)
-            .attr("height", y2 - y1)
-            .attr("fill-opacity", 0.12)
-            .attr("fill", clusterColor)
-            .attr("stroke", isRepeat ? REPEAT_CONTAINER_COLOR : clusterColor)
+            .attr("width", clusterWidth)
+            .attr("height", clusterHeight)
+            .attr("fill-opacity", isRepeat ? 0.12 : 0.10)
+            .attr("fill", isRepeat ? clusterColor : "#FFFFFF")
+            .attr("stroke", isRepeat ? GRAPHVIZ_LINE_COLOR : GRAPHVIZ_LINE_SOFT_COLOR)
             .attr("stroke-dasharray", isRepeat ? "3 2" : null)
-            .attr("stroke-width", isRepeat ? 1.2 : 1.4)
-            .attr("rx", 5)
-            .attr("ry", 5);
+            .attr("stroke-width", isRepeat ? 1.2 : 1.6)
+            .attr("rx", clusterRadius)
+            .attr("ry", clusterRadius);
 
             if (isRepeat) {
-                rect.style("filter", `drop-shadow(0 0 2px ${REPEAT_CONTAINER_COLOR})`);
+                rect.style("filter", "none");
             }
                 
             // Create label for the cluster
@@ -1825,27 +2189,29 @@ function ptoBuildColorMap(keys) {
             .attr("dominant-baseline", "hanging")
             .attr("dy", "-6")
             .attr("font-size", 7)
-            .attr("fill", "#333")
-            .attr("stroke", "#f3f3eb")
+            .attr("fill", GRAPHVIZ_TEXT_COLOR)
+            .attr("stroke", GRAPHVIZ_DARK_BG)
             .attr("stroke-width", "8px")
             .attr("paint-order", "stroke")
             .attr("stroke-linejoin", "round");
                         
             if (!isRepeatNode(clusterName)) {
+                const clusterToggleY = (y1 + y2) / 2;
+
                 // Add collapse/expand button
                 const collapseButton = group.append("circle")
                 .attr("class", "collapse-button_8738e552-e764-4a57-839a-6321bc3ae7d3")
-                .attr("cx", x1 + 10)
-                .attr("cy", y1 + 10)
-                .attr("r", 5.5);
+                .attr("cx", x2 - 13)
+                .attr("cy", clusterToggleY)
+                .attr("r", 7.5);
 
                 group.append("text")
                 .attr("class", "collapse-icon_8738e552-e764-4a57-839a-6321bc3ae7d3")
-                .attr("x", x1 + 10)
-                .attr("y", y1 + 10)
+                .attr("x", x2 - 13)
+                .attr("y", clusterToggleY)
                 .attr("text-anchor", "middle")
                 .attr("dominant-baseline", "middle")
-                .attr("font-size", "10px")
+                .attr("font-size", "13px")
                 .text("-");
 
                 // Add custom tooltip events
@@ -1863,6 +2229,8 @@ function ptoBuildColorMap(keys) {
             removeTooltip();
             if (isRepeatNode(clusterName)) return;
             retainedZoomTransform = d3.zoomTransform(svg.node());
+            retainedAnchorScreen = d3.pointer(event, svg.node());
+            retainedAnchorScreen[1] = projectGraphPoint(retainedZoomTransform, getClusterCenter(clusterData))[1];
             // Collapse the container
             collapsedContainers.add(clusterName);
             
@@ -1949,7 +2317,8 @@ function ptoBuildColorMap(keys) {
             .style("font-size", "6pt")
             .text(edgeData.dims)
             // .attr("transform", `rotate(${angle})`)
-            .attr("stroke", "#f3f3eb")
+            .attr("fill", GRAPHVIZ_TEXT_COLOR)
+            .attr("stroke", GRAPHVIZ_DARK_BG)
             .attr("stroke-width", "3pt")
             .attr("paint-order", "stroke")
             .attr("stroke-linejoin", "round");
@@ -1963,8 +2332,8 @@ function ptoBuildColorMap(keys) {
             .attr("ry", 4)
             .attr("width", bbox.width + 4)
             .attr("height", bbox.height + 4)
-            .attr("fill", "rgb(243, 243, 235) ")
-            .attr("stroke", "#79797933")
+            .attr("fill", GRAPHVIZ_EDGE_LABEL_BG)
+            .attr("stroke", GRAPHVIZ_LINE_SOFT_COLOR)
             .attr("stroke-width", "0.5px")
             .attr("fill-opacity", 1.0);
             // .attr("transform", `rotate(${angle})`);
@@ -2052,12 +2421,18 @@ function ptoBuildColorMap(keys) {
             // In the createGraph function, when you're creating nodes, modify the class assignment:
             .attr("class", function([nodeName, nodeData]) {
                 let classes = "node_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                const visualType = getNodeVisualType(nodeName);
                 if ((adj_list[nodeName] && adj_list[nodeName].failed) || containersWithFailedNodes.has(nodeName)) classes += " error_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                if ((adj_list[nodeName] && adj_list[nodeName].node_type === "Input")) classes += " input_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                else if ((adj_list[nodeName] && adj_list[nodeName].node_type === "Module") || (collapsedContainers.has(nodeName))) classes += " module_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                else if ((adj_list[nodeName] && adj_list[nodeName].node_type === "Output")) classes += " output_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                else if ((adj_list[nodeName] && adj_list[nodeName].node_type === "Operation")) classes += " operation_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                else if ((adj_list[nodeName] && adj_list[nodeName].node_type === "Constant")) classes += " constant_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                if (collapsedContainers.has(nodeName)) classes += " collapsed-module_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                if (isTensorVisualNode(nodeName)) classes += " tensor-node_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                else if (isModuleVisualNode(nodeName)) classes += " module-node_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                else if (isOperationVisualNode(nodeName)) classes += " op-node_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                if (visualType === "Input") classes += " input_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                else if (visualType === "Module") classes += " module_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                else if (visualType === "Output") classes += " output_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                else if (visualType === "Operation") classes += " operation_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                else if (visualType === "Constant") classes += " constant_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                else if (visualType === "Parameter") classes += " parameter_8738e552-e764-4a57-839a-6321bc3ae7d3";
                 return classes;
             })
             .attr("transform", function([nodeName, nodeData]) {
@@ -2065,54 +2440,30 @@ function ptoBuildColorMap(keys) {
             });
         
         
-        // Add shapes for nodes (ellipses for some, rectangles for others)
+        // Add shapes for nodes. Tensor nodes use rounded rectangles; modules and ops keep full-pill geometry.
         nodes.each(function([nodeName, nodeData]) {
             const nodeGroup = d3.select(this);
             const fillColor = safeNodeColor(nodeName);
-            
-            // Check if this should be an ellipse
-            const isEllipseNode = (adj_list[nodeName] && (
-                adj_list[nodeName].node_type === "Input" ||
-                adj_list[nodeName].node_type === "Output" ||
-                adj_list[nodeName].node_type === "Constant" ||
-                adj_list[nodeName].node_type === "Parameter"
-            ));
-            
-            if (isEllipseNode) {
-                // Create ellipse
-                nodeGroup.append("ellipse")
-                .attr("cx", 0)
-                .attr("cy", 0)
-                .attr("rx", nodeData.width / 2)
-                .attr("ry", nodeData.height / 2)
-                .attr("class", function() {
-                    if (adj_list[nodeName] && adj_list[nodeName].node_type === "Input") return "input_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                    if (adj_list[nodeName] && adj_list[nodeName].node_type === "Output") return "output_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                    if (adj_list[nodeName] && adj_list[nodeName].node_type === "Constant") return "constant_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                    if (adj_list[nodeName] && adj_list[nodeName].node_type === "Parameter") return "parameter_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                    if ((adj_list[nodeName] && adj_list[nodeName].failed) || containersWithFailedNodes.has(nodeName)) return "failed_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                    return "operation_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                })
-                .attr("fill", fillColor)
-                .attr("stroke", "none")
-                .attr("stroke-width", 0)
-                .style("fill", fillColor);
-            } else {
-                // Create rectangle
-                nodeGroup.append("rect")
-                .attr("width", nodeData.width)
-                .attr("height", nodeData.height)
-                .attr("x", -nodeData.width / 2)
-                .attr("y", -nodeData.height / 2)
-                .attr("class", function() { 
-                    if ((adj_list[nodeName] && adj_list[nodeName].failed) || containersWithFailedNodes.has(nodeName)) return "failed_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                    return ((adj_list[nodeName] && adj_list[nodeName].node_type === "Module") || (collapsedContainers.has(nodeName))) ? "module_8738e552-e764-4a57-839a-6321bc3ae7d3" : "operation_8738e552-e764-4a57-839a-6321bc3ae7d3";
-                })
-                .attr("fill", fillColor)
-                .attr("stroke", "none")
-                .attr("stroke-width", 0)
-                .style("fill", fillColor);
-            }
+            const visualWidth = nodeData.width;
+            const isTensor = isTensorVisualNode(nodeName);
+            const cornerRadius = getNodeCornerRadius(nodeName, nodeData);
+
+            nodeGroup.append("rect")
+            .attr("width", visualWidth)
+            .attr("height", nodeData.height)
+            .attr("x", -visualWidth / 2)
+            .attr("y", -nodeData.height / 2)
+            .attr("rx", cornerRadius)
+            .attr("ry", cornerRadius)
+            .attr("class", function() {
+                if ((adj_list[nodeName] && adj_list[nodeName].failed) || containersWithFailedNodes.has(nodeName)) return "failed_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                if (isTensor) return "tensor_8738e552-e764-4a57-839a-6321bc3ae7d3";
+                return isModuleVisualNode(nodeName) ? "module_8738e552-e764-4a57-839a-6321bc3ae7d3" : "operation_8738e552-e764-4a57-839a-6321bc3ae7d3";
+            })
+            .attr("fill", fillColor)
+            .attr("stroke", isTensor ? GRAPHVIZ_TENSOR_STROKE : "none")
+            .attr("stroke-width", isTensor ? 0.8 : 0)
+            .style("fill", fillColor);
         });
         
         // Add labels for nodes
@@ -2124,29 +2475,29 @@ function ptoBuildColorMap(keys) {
         
         // Add type indicators
         nodes.filter(function([nodeName]) {
-            return !(((adj_list[nodeName] && adj_list[nodeName].node_type === "Output")) || ((adj_list[nodeName] && adj_list[nodeName].node_type === "Input")) || ((adj_list[nodeName] && adj_list[nodeName].node_type === "Constant")) || ((adj_list[nodeName] && adj_list[nodeName].node_type === "Parameter")));
+            return !isTensorVisualNode(nodeName);
         }).append("text")
         .attr("class", "type-indicator_8738e552-e764-4a57-839a-6321bc3ae7d3")
-        .attr("text-anchor", "start")
-        .attr("dominant-baseline", "text-bottom")
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "central")
         .attr("transform", function([nodeName, nodeData]) {
-            return `translate(${-nodeData.width / 2 + 3}, ${nodeData.height / 2 - 3})`;
+            return `translate(0, ${nodeData.height / 2 - 5})`;
         })
         .text(function([nodeName]) {
-            if ((adj_list[nodeName] && adj_list[nodeName].node_type === "Module") || (collapsedContainers.has(nodeName))) {
+            if (isModuleVisualNode(nodeName)) {
                 if (!show_module_attr_names) {
                     return "Module";
                 }
                 const moduleType = graph_node_name_to_without_suffix[nodeName] || "Module";
                 return formatModuleTypeLabel(moduleType);
             }
-            return "Tensor Op";
+            return "Op";
         });
 
         // Use the node label itself as the info trigger.
         inner.selectAll(".node_8738e552-e764-4a57-839a-6321bc3ae7d3")
         .filter(function([nodeName]) {
-            return !(((adj_list[nodeName] && adj_list[nodeName].node_type === "Output")) || ((adj_list[nodeName] && adj_list[nodeName].node_type === "Input")) || ((adj_list[nodeName] && adj_list[nodeName].node_type === "Constant")) || ((adj_list[nodeName] && adj_list[nodeName].node_type === "Parameter")))
+            return !isTensorVisualNode(nodeName);
         })
         .each(function([nodeName]) {
             const nodeGroup = d3.select(this);
@@ -2172,24 +2523,25 @@ function ptoBuildColorMap(keys) {
             const nodeGroup = d3.select(this);
             const width = nodeData.width;
             const height = nodeData.height;
+            const expandButtonX = width / 2 - EXPAND_BUTTON_RADIUS - EXPAND_BUTTON_EDGE_GAP;
 
             // Add expand button circle
             const expandButton = nodeGroup.append("circle")
             .attr("class", "collapse-button_8738e552-e764-4a57-839a-6321bc3ae7d3")
-            .attr("cx", -width / 2 + 7)
-            .attr("cy", -height / 2 + 7)
-            .attr("r", 5.5)
+            .attr("cx", expandButtonX)
+            .attr("cy", 0)
+            .attr("r", EXPAND_BUTTON_RADIUS)
             .attr("stroke-width", 1);
 
 
             // Add expand button icon
             nodeGroup.append("text")
             .attr("class", "collapse-icon_8738e552-e764-4a57-839a-6321bc3ae7d3")
-            .attr("x", -width / 2 + 7)
-            .attr("y", -height / 2 + 7)
+            .attr("x", expandButtonX)
+            .attr("y", 0)
             .attr("text-anchor", "middle")
             .attr("dominant-baseline", "middle")
-            .attr("font-size", "10px")
+            .attr("font-size", "13px")
             .text("+");
 
             // Add custom tooltip
@@ -2203,6 +2555,11 @@ function ptoBuildColorMap(keys) {
                 event.stopPropagation();
                 removeTooltip();
                 retainedZoomTransform = d3.zoomTransform(svg.node());
+                retainedAnchorScreen = d3.pointer(event, svg.node());
+                retainedAnchorScreen[1] = projectGraphPoint(retainedZoomTransform, {
+                    x: nodeData.position.x,
+                    y: nodeData.position.y
+                })[1];
                 
                 // Expand the module
                 collapsedContainers.delete(nodeName);
@@ -2339,9 +2696,15 @@ function ptoBuildColorMap(keys) {
                 y = boundingBox.top + boundingBox.height / 2 - containerRect.top;
             }
             
-            popup.style("left", `${x}px`)
-            .style("top", `${y}px`)
-            .style("display", "flex");
+            popup.style("display", "flex");
+            const popupRect = popup.node().getBoundingClientRect();
+            const popupGap = 12;
+            const maxLeft = Math.max(popupGap, containerRect.width - popupRect.width - popupGap);
+            const maxTop = Math.max(popupGap, containerRect.height - popupRect.height - popupGap);
+            const left = Math.min(Math.max(popupGap, x + popupGap), maxLeft);
+            const top = Math.min(Math.max(popupGap, y + popupGap), maxTop);
+            popup.style("left", `${left}px`)
+            .style("top", `${top}px`);
             d3.select("#popup-content_8738e552-e764-4a57-839a-6321bc3ae7d3").node().scrollTop = 0;
         }
 
@@ -2381,8 +2744,29 @@ function ptoBuildColorMap(keys) {
         const height = svgNode.clientHeight || 600; // Fallback if clientHeight is 0
         
         if (retainedZoomTransform) {
-            svg.call(zoom.transform, retainedZoomTransform);
+            const targetNode = lastModifiedContainer ? graphvizData.nodes[lastModifiedContainer] : null;
+            const targetCluster = lastModifiedContainer ? graphvizData.clusters[lastModifiedContainer] : null;
+            const targetPoint = targetNode
+                ? lastOperation === "collapse"
+                    ? getNodeExpandAnchor(targetNode)
+                    : { x: targetNode.position.x, y: targetNode.position.y }
+                : targetCluster
+                    ? lastOperation === "expand"
+                        ? getClusterExpandAnchor(targetCluster)
+                        : getClusterCenter(targetCluster)
+                    : null;
+            const nextTransform = targetPoint && retainedAnchorScreen
+                ? d3.zoomIdentity
+                    .translate(
+                        retainedAnchorScreen[0] - targetPoint.x * retainedZoomTransform.k,
+                        retainedAnchorScreen[1] - targetPoint.y * retainedZoomTransform.k
+                    )
+                    .scale(retainedZoomTransform.k)
+                : retainedZoomTransform;
+
+            svg.call(zoom.transform, nextTransform);
             retainedZoomTransform = null;
+            retainedAnchorScreen = null;
             
             if (lastModifiedContainer && Object.keys(graphvizData.nodes).includes(lastModifiedContainer)) {
                 const targetElement = inner.selectAll(".node_8738e552-e764-4a57-839a-6321bc3ae7d3")

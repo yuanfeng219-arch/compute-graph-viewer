@@ -177,6 +177,17 @@
     return Object.values(samples).filter((sample) => sample && sample.data);
   }
 
+  function shouldPreferBuiltinSample(file) {
+    const normalized = normalizeBuiltinSampleKey(file);
+    if (!normalized) return true;
+    if (normalized.startsWith('builtin-')) return true;
+    if (location.protocol !== 'file:') return false;
+    return normalized === 'samples/stitched_before.json'
+      || normalized === 'samples/stitched_after.json'
+      || normalized.endsWith('/samples/stitched_before.json')
+      || normalized.endsWith('/samples/stitched_after.json');
+  }
+
   function getBuiltinSample(file) {
     const samples = listBuiltinSamples();
     if (!samples.length) return null;
@@ -2197,6 +2208,7 @@
   }
 
   async function maybeLoadBuiltin(file, targetKey) {
+    if (!shouldPreferBuiltinSample(file)) return false;
     const sample = getBuiltinSample(file);
     if (!sample) return false;
     await loadFromObject(sample.data, sample.name || 'builtin-swimlane.json', targetKey);

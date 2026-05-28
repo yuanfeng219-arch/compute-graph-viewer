@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swimlane Preview</title>
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    body {
+      min-height: 100vh;
+      overflow: auto;
+      background: var(--background);
+    }
+
+    .preview-layout {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px 24px 80px;
+    }
+
+    .preview-toc {
+      position: sticky;
+      top: 20px;
+      width: 220px;
+      flex: 0 0 220px;
+      border: 1px solid var(--border-default);
+      background: color-mix(in srgb, var(--background-elevated) 90%, transparent);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .preview-toc-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--foreground-secondary);
+    }
+
+    .preview-toc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .preview-toc-link {
+      display: block;
+      padding: 9px 10px;
+      border-radius: 10px;
+      color: var(--foreground-secondary);
+      text-decoration: none;
+      font-size: 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+    }
+
+    .preview-toc-link:hover {
+      background: var(--surface-1);
+      border-color: var(--border-subtle);
+      color: var(--foreground);
+    }
+
+    .preview-shell {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 0 64px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .preview-head {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .preview-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--foreground);
+    }
+
+    .preview-sub {
+      max-width: 920px;
+      color: var(--foreground-secondary);
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    .preview-section {
+      border: 1px solid var(--border-default);
+      background: color-mix(in srgb, var(--background-elevated) 88%, transparent);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-margin-top: 20px;
+    }
+
+    .preview-section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .preview-section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--foreground);
+    }
+
+    .preview-statline {
+      font-size: 11px;
+      color: var(--foreground-muted);
+      font-family: var(--font-mono);
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+    }
+
+    .preview-card {
+      border: 1px solid var(--border-subtle);
+      background: var(--surface-1);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .preview-card-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .preview-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--foreground);
+    }
+
+    .preview-card-class {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--foreground-muted);
+    }
+
+    .preview-stage {
+      min-height: 74px;
+      border-radius: 12px;
+      border: 1px dashed var(--border-default);
+      background: color-mix(in srgb, var(--background) 86%, transparent);
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .preview-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .token-badge,
+    .state-badge,
+    .mapping-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border-default);
+      background: var(--surface-disabled);
+      color: var(--foreground-secondary);
+      font-size: 10px;
+      font-family: var(--font-mono);
+    }
+
+    .state-badge,
+    .mapping-badge {
+      font-family: var(--font-sans);
+    }
+
+    .mapping-badge.aligned {
+      background: color-mix(in srgb, var(--success) 18%, transparent);
+      border-color: color-mix(in srgb, var(--success) 36%, transparent);
+      color: var(--success);
+    }
+
+    .mapping-badge.converge {
+      background: color-mix(in srgb, var(--warning) 18%, transparent);
+      border-color: color-mix(in srgb, var(--warning) 36%, transparent);
+      color: var(--warning);
+    }
+
+    .mapping-badge.exempt {
+      background: color-mix(in srgb, var(--accent) 18%, transparent);
+      border-color: color-mix(in srgb, var(--accent) 36%, transparent);
+      color: var(--accent);
+    }
+
+    .preview-note {
+      color: var(--foreground-muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .preview-icon-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--foreground) 8%, transparent);
+      color: inherit;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    .preview-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .preview-inline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .preview-flow {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .preview-label-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .preview-panel-demo {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      min-height: 120px;
+    }
+
+    .preview-panel-fill {
+      width: 100%;
+      min-height: 92px;
+    }
+
+    .preview-viz-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .preview-swatches {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+      gap: 8px;
+      width: 100%;
+    }
+
+    .preview-swatch {
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      min-height: 52px;
+      padding: 8px;
+      display: flex;
+      align-items: flex-end;
+      font-size: 10px;
+      color: white;
+      font-family: var(--font-mono);
+    }
+
+    .preview-svg {
+      width: 100%;
+      height: 92px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--background) 90%, transparent);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .preview-hover.btn:not(.btn-solid):not(.btn-ghost) {
+      background: var(--button-secondary-bg-hover) !important;
+      border-color: var(--border-default) !important;
+      transform: translateY(-1px);
+    }
+
+    .preview-active.btn:not(.btn-solid):not(.btn-ghost) {
+      background: var(--button-secondary-bg-press) !important;
+      border-color: var(--border-default) !important;
+      transform: none;
+    }
+
+    .preview-hover.sw-search-icon-btn {
+      background: var(--state-press) !important;
+      color: var(--foreground) !important;
+    }
+
+    .preview-active.sw-search-icon-btn,
+    .preview-active.sw-journey-close,
+    .preview-active.sw-task-popup-close {
+      background: var(--state-press) !important;
+      color: var(--foreground) !important;
+      transform: translateY(0);
+    }
+
+    .preview-hover.sw-detail-btn,
+    .preview-hover.sw-popup-action-btn,
+    .preview-hover.sw-journey-btn {
+      background: var(--button-secondary-bg-hover) !important;
+      border-color: var(--border-default) !important;
+      color: var(--button-ghost-fg-hover) !important;
+    }
+
+    .preview-active.sw-detail-btn,
+    .preview-active.sw-popup-action-btn,
+    .preview-active.sw-journey-btn {
+      background: var(--button-secondary-bg-press) !important;
+      border-color: var(--border-default) !important;
+    }
+
+    .preview-hover.sw-journey-toggle {
+      background: var(--state-press) !important;
+      border-color: var(--border-strong) !important;
+      color: var(--foreground) !important;
+    }
+
+    .preview-active.sw-journey-toggle {
+      background: var(--state-hover) !important;
+      border-color: var(--border-strong) !important;
+      color: var(--foreground) !important;
+    }
+
+    .preview-hover.sw-toggle-btn,
+    .preview-hover.sw-chip-btn,
+    .preview-hover.sw-view-mode-btn {
+      background: var(--button-secondary-bg-hover) !important;
+      border-color: var(--border-default) !important;
+      color: var(--button-ghost-fg-hover) !important;
+    }
+
+    .preview-active.sw-toggle-btn,
+    .preview-active.sw-chip-btn,
+    .preview-active.sw-view-mode-btn,
+    .sw-chart-controls .preview-active.sw-view-mode-btn {
+      background: var(--foreground) !important;
+      border-color: transparent !important;
+      color: var(--background) !important;
+    }
+
+    .preview-stage .sw-search-group,
+    .preview-stage .sw-more-menu-wrap {
+      position: static;
+    }
+
+    .preview-stage .sw-more-menu {
+      position: static;
+      min-width: 100%;
+    }
+
+    .preview-stage .sw-resource-panel,
+    .preview-stage .sw-journey-panel,
+    .preview-stage .sw-task-popup,
+    .preview-stage .sw-split-container,
+    .preview-stage .sw-journey-toggle {
+      position: static;
+      inset: auto;
+      width: 100%;
+      min-width: 0;
+      max-height: none;
+    }
+
+    .preview-stage .sw-split-container {
+      top: auto;
+    }
+
+    .preview-stage .sw-task-popup {
+      width: 100%;
+    }
+
+    .preview-stage .sw-journey-toggle {
+      width: 36px;
+    }
+
+    .preview-stage .sw-chart-controls {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .preview-stage .sw-grid {
+      min-height: 100px;
+      grid-template-columns: 120px minmax(0, 1fr);
+      grid-template-rows: 40px 60px;
+    }
+
+    @media (max-width: 1080px) {
+      .preview-layout {
+        flex-direction: column;
+      }
+
+      .preview-toc {
+        position: static;
+        width: 100%;
+        flex-basis: auto;
+      }
+
+      .preview-toc-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-layout">
+    <nav class="preview-toc" aria-label="Swimlane Preview Sections">
+      <div class="preview-toc-title">Swimlane / Step 1 + 2</div>
+      <div class="preview-toc-list">
+        <a class="preview-toc-link" href="#buttons">Buttons</a>
+        <a class="preview-toc-link" href="#toggle-chip">Toggle &amp; Chip</a>
+        <a class="preview-toc-link" href="#labels-badges">Labels &amp; Badges</a>
+        <a class="preview-toc-link" href="#panels-containers">Panels &amp; Containers</a>
+        <a class="preview-toc-link" href="#viz-colors">Data Viz Colors</a>
+      </div>
+    </nav>
+
+    <main class="preview-shell">
+      <header class="preview-head">
+        <h1 class="preview-title">Swimlane Component Preview</h1>
+        <p class="preview-sub">Step 1 Scan + Step 2 Preview。页面按组件类别渲染 <code>swimlane/styles.css</code> 里有独立视觉定义的类，并在卡片底部标出 token 引用与 Step 3 Map 归宿。这里只做预览，不修改任何源样式。</p>
+      </header>
+
+      <section class="preview-section" id="buttons">
+        <div class="preview-section-head">
+          <div class="preview-section-title">Buttons</div>
+          <div class="preview-statline">8 个组件 / 4 个已对齐 / 4 个需收敛</div>
+        </div>
+        <div class="preview-grid">
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Search Icon</div>
+              <div class="preview-card-class">.sw-search-icon-btn</div>
+            </div>
+            <div class="preview-stage">
+              <button class="sw-search-icon-btn" type="button" aria-label="search">⌕</button>
+              <button class="sw-search-icon-btn preview-hover" type="button" aria-label="search hover">⌕</button>
+              <button class="sw-search-icon-btn preview-active" type="button" aria-label="search active">⌕</button>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">bg: transparent</span>
+              <span class="token-badge">fg: --foreground-secondary</span>
+              <span class="token-badge">hover: --state-press</span>
+            </div>
+            <div class="preview-note">视觉上是 ghost icon button，但仍是模块内单独定义，后续可并入共享 icon-only button。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Search Nav</div>
+              <div class="preview-card-class">.sw-search-nav</div>
+            </div>
+            <div class="preview-stage">
+              <button class="btn btn-icon sw-search-nav" type="button" aria-label="prev">↑</button>
+              <button class="btn btn-icon sw-search-nav preview-hover" type="button" aria-label="prev hover">↑</button>
+              <button class="btn btn-icon sw-search-nav preview-active" type="button" aria-label="prev active">↑</button>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge aligned">✅ 已对齐</span>
+              <span class="token-badge">base: .btn .btn-icon</span>
+              <span class="token-badge">size: 26px</span>
+              <span class="token-badge">bg: --button-secondary-bg</span>
+            </div>
+            <div class="preview-note">已建立在共享按钮之上，只保留局部尺寸覆盖。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Resource CTA</div>
+              <div class="preview-card-class">.sw-resource-cta</div>
+            </div>
+            <div class="preview-stage">
+              <button class="btn sw-resource-cta" type="button">加载本地资源</button>
+              <button class="btn sw-resource-cta preview-hover" type="button">Hover</button>
+              <button class="btn sw-resource-cta preview-active" type="button">Pressed</button>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge aligned">✅ 已对齐</span>
+              <span class="token-badge">--button-height-sm</span>
+              <span class="token-badge">--button-padding-x-md</span>
+              <span class="token-badge">hover: --button-secondary-bg-hover</span>
+            </div>
+            <div class="preview-note">复用共享 soft button，只做尺寸和间距微调。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Detail Action</div>
+              <div class="preview-card-class">.sw-detail-btn</div>
+            </div>
+            <div class="preview-stage">
+              <button class="sw-detail-btn" type="button">Open Pass IR</button>
+              <button class="sw-detail-btn preview-hover" type="button">Hover</button>
+              <button class="sw-detail-btn preview-active" type="button">Pressed</button>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">bg: --surface-disabled</span>
+              <span class="token-badge">border: --border-default</span>
+              <span class="token-badge">fg: --foreground</span>
+            </div>
+            <div class="preview-note">语义上接近共享 soft button，但仍保留独立圆角和 padding 体系。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Journey CTA</div>
+              <div class="preview-card-class">.sw-journey-btn</div>
+            </div>
+            <div class="preview-stage">
+              <button class="sw-journey-btn" type="button">打开流程</button>
+              <button class="sw-journey-btn preview-hover" type="button">Hover</button>
+              <button class="sw-journey-btn preview-active" type="button">Pressed</button>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge aligned">✅ 已对齐</span>
+              <span class="token-badge">--button-secondary-bg</span>
+              <span class="token-badge">--button-secondary-border</span>
+              <span class="token-badge">--button-ghost-fg</span>
+            </div>
+            <div class="preview-note">已经使用共享按钮 token，后续主要是 class 收口，不是颜色重做。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Journey Close</div>
+              <div class="preview-card-class">.sw-journey-close</div>
+            </div>
+            <div class="preview-stage">
+              <button class="sw-journey-close" type="button">×</button>
+              <button class="sw-journey-close preview-hover" type="button">×</button>
+              <button class="sw-journey-close preview-active" type="button">×</button>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">bg: --state-hover</span>
+              <span class="token-badge">hover: --state-press</span>
+              <span class="token-badge">fg: --foreground-secondary</span>
+            </div>
+            <div class="preview-note">本质也是 icon ghost button，后续可并入共享 close/icon variant。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Journey Toggle</div>
+              <div class="preview-card-class">.sw-journey-toggle</div>
+            </div>
+            <div class="preview-stage">
+              <button class="sw-journey-toggle" type="button">⊞</button>
+              <button class="sw-journey-toggle preview-hover" type="button">⊞</button>
+              <button class="sw-journey-toggle preview-active" type="button">⊞</button>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">bg: --sw-panel-bg</span>
+              <span class="token-badge">border: --border-default</span>
+              <span class="token-badge">shadow: --shadow-md</span>
+            </div>
+            <div class="preview-note">工具入口按钮，有 panel 语义混入；适合收敛到统一 floating utility button。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Popup Action</div>
+              <div class="preview-card-class">.sw-popup-action-btn</div>
+            </div>
+            <div class="preview-stage">
+              <button class="sw-popup-action-btn" type="button">Open Pass IR</button>
+              <button class="sw-popup-action-btn preview-hover" type="button">Hover</button>
+              <button class="sw-popup-action-btn preview-active" type="button">Pressed</button>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge aligned">✅ 已对齐</span>
+              <span class="token-badge">--button-height-md</span>
+              <span class="token-badge">--button-radius</span>
+              <span class="token-badge">--button-secondary-bg</span>
+            </div>
+            <div class="preview-note">已经接入共享按钮 token，差异主要是 popup 内排版和左对齐文本。</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="preview-section" id="toggle-chip">
+        <div class="preview-section-head">
+          <div class="preview-section-title">Toggle &amp; Chip</div>
+          <div class="preview-statline">4 个组件 / 3 个已对齐 / 1 个需收敛</div>
+        </div>
+        <div class="preview-grid">
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Sample Toggle</div>
+              <div class="preview-card-class">.sw-toggle-btn + .sw-toggle-active</div>
+            </div>
+            <div class="preview-stage">
+              <div class="sw-toggle-group">
+                <button class="btn sw-toggle-btn" type="button">Before</button>
+                <button class="btn sw-toggle-btn preview-hover" type="button">Hover</button>
+                <button class="btn sw-toggle-btn sw-toggle-active" type="button">Active</button>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge aligned">✅ 已对齐</span>
+              <span class="token-badge">rest: --button-secondary-bg</span>
+              <span class="token-badge">active: --foreground</span>
+              <span class="token-badge">fg: --button-ghost-fg</span>
+            </div>
+            <div class="preview-note">分段 toggle 已建立在共享 button token 上，后续更像 class 收口问题。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">View Mode</div>
+              <div class="preview-card-class">.sw-view-mode-btn + .is-active</div>
+            </div>
+            <div class="preview-stage">
+              <div class="sw-chart-controls">
+                <div class="sw-view-mode-group">
+                  <button class="btn sw-view-mode-btn" type="button">单视图</button>
+                  <button class="btn sw-view-mode-btn preview-hover" type="button">Hover</button>
+                  <button class="btn sw-view-mode-btn is-active preview-active" type="button">Diff</button>
+                </div>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge aligned">✅ 已对齐</span>
+              <span class="token-badge">ctx: .sw-chart-controls</span>
+              <span class="token-badge">rest: --button-secondary-bg</span>
+              <span class="token-badge">active: --foreground</span>
+            </div>
+            <div class="preview-note">选中态依赖 chart-controls 上下文，后续迁移时建议脱离上下文选择器。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Filter Chip</div>
+              <div class="preview-card-class">.sw-chip-btn + .is-active</div>
+            </div>
+            <div class="preview-stage">
+              <button class="sw-chip-btn" type="button"><span class="sw-chip-btn-dot" style="background: var(--sw-stitch-1);"></span>AIC</button>
+              <button class="sw-chip-btn preview-hover" type="button"><span class="sw-chip-btn-dot" style="background: var(--sw-stitch-2);"></span>Hover</button>
+              <button class="sw-chip-btn is-active preview-active" type="button"><span class="sw-chip-btn-dot" style="background: var(--sw-stitch-3);"></span>Active</button>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge aligned">✅ 已对齐</span>
+              <span class="token-badge">rest: --button-secondary-bg</span>
+              <span class="token-badge">hover: --button-secondary-bg-hover</span>
+              <span class="token-badge">active: --foreground</span>
+            </div>
+            <div class="preview-note">chip 本体已对齐；色点来自数据上下文，属于模块专属内容层。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Select</div>
+              <div class="preview-card-class">.sw-select</div>
+            </div>
+            <div class="preview-stage">
+              <label class="sw-select-label">
+                <span class="sw-filter-label">Sort</span>
+                <select class="sw-select">
+                  <option>gap desc</option>
+                  <option>name asc</option>
+                </select>
+              </label>
+              <label class="sw-select-label">
+                <span class="sw-filter-label">Focus</span>
+                <select class="sw-select" style="border-color: var(--sw-bound-border);">
+                  <option>focus state</option>
+                </select>
+              </label>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">bg: --surface-disabled</span>
+              <span class="token-badge">border: --border-default</span>
+              <span class="token-badge">focus: --sw-bound-border</span>
+            </div>
+            <div class="preview-note">表单件仍有模块局部视觉定义，后续需要并到共享 input/select 体系。</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="preview-section" id="labels-badges">
+        <div class="preview-section-head">
+          <div class="preview-section-title">Labels &amp; Badges</div>
+          <div class="preview-statline">7 个组件 / 2 个已对齐 / 1 个需收敛</div>
+        </div>
+        <div class="preview-grid">
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Filter Label</div>
+              <div class="preview-card-class">.sw-filter-label / .sw-split-top-label</div>
+            </div>
+            <div class="preview-stage">
+              <div class="preview-label-stack">
+                <span class="sw-filter-label">Lane</span>
+                <span class="sw-split-top-label">Pass IR</span>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge aligned">✅ 已对齐</span>
+              <span class="token-badge">fg: --sw-text-soft</span>
+              <span class="token-badge">fg: --foreground-secondary</span>
+              <span class="token-badge">uppercase label</span>
+            </div>
+            <div class="preview-note">属于通用辅助标签样式，已经建立在共享前景色 token 上。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Status Pill</div>
+              <div class="preview-card-class">.sw-status-pill</div>
+            </div>
+            <div class="preview-stage">
+              <div class="sw-status-pill is-bound">
+                <span class="sw-status-pill-label">Program</span>
+                <span class="sw-status-pill-value">bound</span>
+              </div>
+              <div class="sw-status-pill is-compare">
+                <span class="sw-status-pill-label">Compare</span>
+                <span class="sw-status-pill-value">ready</span>
+              </div>
+              <div class="sw-status-pill is-source">
+                <span class="sw-status-pill-label">Source</span>
+                <span class="sw-status-pill-value">loaded</span>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">base: --surface-1</span>
+              <span class="token-badge">bound: --sw-bound-bg</span>
+              <span class="token-badge">source: --sw-source-bg</span>
+            </div>
+            <div class="preview-note">状态胶囊混合了共享 surface 与模块语义色，后续可抽成更统一的 badge/status 组件。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Resource Status Row</div>
+              <div class="preview-card-class">.sw-resource-status-row</div>
+            </div>
+            <div class="preview-stage">
+              <div class="preview-flow">
+                <div class="sw-resource-status-row is-bound">
+                  <span class="sw-resource-status-label">Program</span>
+                  <span class="sw-resource-status-value">/tmp/app</span>
+                </div>
+                <div class="sw-resource-status-row is-muted">
+                  <span class="sw-resource-status-label">Compare</span>
+                  <span class="sw-resource-status-value">未绑定</span>
+                </div>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge exempt">✕ 模块专属</span>
+              <span class="token-badge">base: --surface-1</span>
+              <span class="token-badge">tone: --sw-bound-bg</span>
+              <span class="token-badge">text: --sw-text-dim</span>
+            </div>
+            <div class="preview-note">资源绑定状态是 swimlane 独有内容模块，可保留为模块专属状态条。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Task Popup Badge</div>
+              <div class="preview-card-class">.sw-task-popup-badge</div>
+            </div>
+            <div class="preview-stage">
+              <span class="sw-task-popup-badge">AIC</span>
+              <span class="sw-task-popup-badge">AIV</span>
+              <span class="sw-task-popup-badge">CPU</span>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge exempt">✕ 模块专属</span>
+              <span class="token-badge">bg: --sw-source-bg</span>
+              <span class="token-badge">fg: --accent</span>
+              <span class="token-badge">radius: 4px</span>
+            </div>
+            <div class="preview-note">任务种类 badge 带明显 domain 语义，属于专属内容色，可豁免。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Journey Program Bound</div>
+              <div class="preview-card-class">.sw-journey-program-bound</div>
+            </div>
+            <div class="preview-stage">
+              <div class="sw-journey-program-bound">
+                <span class="sw-journey-bound-check">✓</span>
+                Program linked
+              </div>
+              <div class="sw-journey-program-bound is-folder">
+                <span class="sw-journey-bound-check">✓</span>
+                Folder bound
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge exempt">✕ 模块专属</span>
+              <span class="token-badge">program: --sw-program-bg</span>
+              <span class="token-badge">folder: --sw-bound-bg</span>
+              <span class="token-badge">fg: --success / --primary</span>
+            </div>
+            <div class="preview-note">旅程面板里的 program/folder 绑定态是场景专属，不强制收敛到共享 badge。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Journey Step Num</div>
+              <div class="preview-card-class">.sw-journey-step-num</div>
+            </div>
+            <div class="preview-stage">
+              <div class="preview-inline">
+                <span class="sw-journey-step-num">1</span>
+                <span class="sw-journey-step-num">2</span>
+                <span class="sw-journey-step-num">3</span>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge exempt">✕ 模块专属</span>
+              <span class="token-badge">bg: --state-press</span>
+              <span class="token-badge">border: --border-strong</span>
+              <span class="token-badge">fg: --foreground-secondary</span>
+            </div>
+            <div class="preview-note">步骤编号是旅程组件内部件，属于结构化内容标识，可保留。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Status Text Pair</div>
+              <div class="preview-card-class">.sw-status-pill-label / .sw-status-pill-value</div>
+            </div>
+            <div class="preview-stage">
+              <div class="preview-label-stack">
+                <span class="sw-status-pill-label">Program</span>
+                <span class="sw-status-pill-value">loaded</span>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge aligned">✅ 已对齐</span>
+              <span class="token-badge">label: --sw-text-dim</span>
+              <span class="token-badge">value: --foreground</span>
+            </div>
+            <div class="preview-note">文字层已经干净地指向共享前景 token，本身无需独立迁移。</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="preview-section" id="panels-containers">
+        <div class="preview-section-head">
+          <div class="preview-section-title">Panels &amp; Containers</div>
+          <div class="preview-statline">8 个组件 / 1 个已对齐 / 5 个需收敛</div>
+        </div>
+        <div class="preview-grid">
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Search Group</div>
+              <div class="preview-card-class">.sw-search-group.is-open</div>
+            </div>
+            <div class="preview-stage">
+              <div class="sw-search-group is-open">
+                <button class="sw-search-icon-btn" type="button">⌕</button>
+                <input class="sw-search-input" type="search" value="attention" aria-label="search input">
+                <button class="btn btn-icon sw-search-nav" type="button">↑</button>
+                <button class="btn btn-icon sw-search-nav" type="button">↓</button>
+                <span class="sw-search-count">1 / 4</span>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">surface: --surface-1</span>
+              <span class="token-badge">divider: --border-subtle</span>
+              <span class="token-badge">text: --foreground-secondary</span>
+            </div>
+            <div class="preview-note">搜索胶囊把按钮、输入、计数拼成一个模块容器，后续适合收敛到共享 toolbar-search pattern。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Swimlane Card</div>
+              <div class="preview-card-class">.sw-card / .sw-card--insight</div>
+            </div>
+            <div class="preview-stage">
+              <div class="preview-panel-demo">
+                <div class="sw-card preview-panel-fill">
+                  <div class="sw-card-title">Default Card</div>
+                </div>
+                <div class="sw-card sw-card--insight preview-panel-fill">
+                  <div class="sw-card-title">Insight Card</div>
+                </div>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">bg: --sw-card-bg</span>
+              <span class="token-badge">border: --sw-card-border</span>
+              <span class="token-badge">shadow: --shadow-lg</span>
+            </div>
+            <div class="preview-note">和共享 panel 已接近，但仍有自己的一层 card alias，可决定保留 alias 或直接并向共享 panel/card。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Resource Panel</div>
+              <div class="preview-card-class">.sw-resource-panel</div>
+            </div>
+            <div class="preview-stage">
+              <section class="sw-resource-panel">
+                <div class="sw-resource-panel-head">
+                  <div>
+                    <div class="sw-resource-panel-title">资源管理</div>
+                    <div class="sw-resource-panel-sub">优先绑定整个模块目录。</div>
+                  </div>
+                  <button class="btn btn-icon" type="button">×</button>
+                </div>
+                <div class="sw-resource-panel-body">
+                  <div class="sw-resource-section">
+                    <div class="sw-resource-section-title">模块目录</div>
+                  </div>
+                </div>
+              </section>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">bg: --sw-panel-bg</span>
+              <span class="token-badge">border: --border-default</span>
+              <span class="token-badge">shadow: --shadow-lg</span>
+            </div>
+            <div class="preview-note">属于高级面板容器，背景与模糊层次已经接近系统，但面板 token 仍是模块 alias。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Resource Section</div>
+              <div class="preview-card-class">.sw-resource-section</div>
+            </div>
+            <div class="preview-stage">
+              <div class="sw-resource-section preview-panel-fill">
+                <div class="sw-resource-section-head">
+                  <span class="sw-resource-section-title">手动覆盖</span>
+                  <span class="sw-resource-section-note">可选</span>
+                </div>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge aligned">✅ 已对齐</span>
+              <span class="token-badge">bg: --surface-1</span>
+              <span class="token-badge">border: --border-subtle</span>
+              <span class="token-badge">radius: 14px</span>
+            </div>
+            <div class="preview-note">已经是标准次级 panel surface，可视作共享 panel 的模块包装层。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">More Menu</div>
+              <div class="preview-card-class">.sw-more-menu</div>
+            </div>
+            <div class="preview-stage">
+              <div class="sw-more-menu-wrap">
+                <div class="sw-more-menu">
+                  <div class="sw-more-menu-title">显示</div>
+                  <div class="sw-chart-controls-row">
+                    <span class="sw-filter-label">Color</span>
+                    <select class="sw-select">
+                      <option>kind</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">bg: --sw-panel-bg</span>
+              <span class="token-badge">border: --border-default</span>
+              <span class="token-badge">title: --sw-text-soft</span>
+            </div>
+            <div class="preview-note">是 dropdown/popup panel 的变体，适合收敛到共享浮层/菜单容器。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Journey Panel</div>
+              <div class="preview-card-class">.sw-journey-panel</div>
+            </div>
+            <div class="preview-stage">
+              <aside class="sw-journey-panel">
+                <div class="sw-journey-header">
+                  <span class="sw-journey-title">分析旅程</span>
+                  <button class="sw-journey-close" type="button">×</button>
+                </div>
+                <div class="sw-journey-cards">
+                  <div class="sw-journey-card">
+                    <div class="sw-journey-card-title"><span class="sw-journey-step-num">1</span>全局认知</div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge exempt">✕ 模块专属</span>
+              <span class="token-badge">bg: --sw-panel-bg</span>
+              <span class="token-badge">shadow: --shadow-lg</span>
+              <span class="token-badge">card: --surface-disabled</span>
+            </div>
+            <div class="preview-note">旅程侧栏是复合型专属模块，不建议硬并到通用面板组件。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Task Popup</div>
+              <div class="preview-card-class">.sw-task-popup</div>
+            </div>
+            <div class="preview-stage">
+              <div class="sw-task-popup">
+                <div class="sw-task-popup-header">
+                  <span class="sw-task-popup-badge">AIC</span>
+                  <span class="sw-task-popup-name">attention.mm</span>
+                  <button class="sw-task-popup-close" type="button">×</button>
+                </div>
+                <div class="sw-task-popup-body">
+                  <div class="sw-popup-section-title">Task</div>
+                  <div class="sw-popup-row">
+                    <span class="sw-popup-row-key">span</span>
+                    <span class="sw-popup-row-val">42.1ms</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge exempt">✕ 模块专属</span>
+              <span class="token-badge">bg: --sw-panel-bg</span>
+              <span class="token-badge">border: --border-strong</span>
+              <span class="token-badge">shadow: --shadow-lg</span>
+            </div>
+            <div class="preview-note">这是数据交互浮层，结构和内容耦合强，适合保留为模块专属弹层。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Split Top Bar</div>
+              <div class="preview-card-class">.sw-split-top-bar / .sw-split-divider</div>
+            </div>
+            <div class="preview-stage">
+              <div class="sw-split-container">
+                <div class="sw-split-top">
+                  <div class="sw-split-top-bar">
+                    <span class="sw-split-top-label">Pass IR</span>
+                    <button class="btn sw-split-close-btn" type="button">关闭分屏 ×</button>
+                  </div>
+                </div>
+                <div class="sw-split-divider"></div>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge converge">△ 需收敛</span>
+              <span class="token-badge">bar: --surface-disabled</span>
+              <span class="token-badge">divider: --state-hover</span>
+              <span class="token-badge">hover: --sw-bound-border</span>
+            </div>
+            <div class="preview-note">分屏顶栏与拖拽条是容器辅助件，后续可考虑抽为共享 split-shell pattern。</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="preview-section" id="viz-colors">
+        <div class="preview-section-head">
+          <div class="preview-section-title">Data Viz Colors</div>
+          <div class="preview-statline">11 个组件 / 0 个已对齐 / 0 个需收敛</div>
+        </div>
+        <div class="preview-grid">
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Stitch Palette</div>
+              <div class="preview-card-class">--sw-stitch-0 ~ 4</div>
+            </div>
+            <div class="preview-stage">
+              <div class="preview-viz-stack">
+                <div class="preview-swatches">
+                  <div class="preview-swatch" style="background: var(--sw-stitch-0);">--sw-stitch-0</div>
+                  <div class="preview-swatch" style="background: var(--sw-stitch-1);">--sw-stitch-1</div>
+                  <div class="preview-swatch" style="background: var(--sw-stitch-2);">--sw-stitch-2</div>
+                  <div class="preview-swatch" style="background: var(--sw-stitch-3);">--sw-stitch-3</div>
+                  <div class="preview-swatch" style="background: var(--sw-stitch-4);">--sw-stitch-4</div>
+                </div>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge exempt">✕ 模块专属</span>
+              <span class="token-badge">#7b57bf</span>
+              <span class="token-badge">#4d79d4</span>
+              <span class="token-badge">#4da56d</span>
+              <span class="token-badge">#d98f55</span>
+              <span class="token-badge">#45b5c4</span>
+            </div>
+            <div class="preview-note">泳道颜色属于数据可视化语义，不参与设计系统收敛。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Dependency Lines</div>
+              <div class="preview-card-class">.sw-dep-line-* / .sw-dep-dot-*</div>
+            </div>
+            <div class="preview-stage">
+              <svg class="preview-svg" viewBox="0 0 300 92" role="img" aria-label="dependency lines preview">
+                <path class="sw-dep-line-in" d="M24 64 C88 24, 144 24, 212 44"></path>
+                <path class="sw-dep-line-out" d="M24 28 C92 66, 156 70, 236 40"></path>
+                <circle class="sw-dep-dot sw-dep-dot-in" cx="24" cy="64" r="5"></circle>
+                <circle class="sw-dep-dot sw-dep-dot-out" cx="236" cy="40" r="5"></circle>
+              </svg>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge exempt">✕ 模块专属</span>
+              <span class="token-badge">line-in: rgba(77,121,212,0.85)</span>
+              <span class="token-badge">line-out: rgba(217,143,85,0.85)</span>
+              <span class="token-badge">dot: rgba(...,0.9)</span>
+            </div>
+            <div class="preview-note">依赖线和端点颜色是数据语义色，不属于通用 UI token。</div>
+          </article>
+
+          <article class="preview-card">
+            <div class="preview-card-head">
+              <div class="preview-card-title">Gap &amp; Bar Exemptions</div>
+              <div class="preview-card-class">.sw-gap / .sw-bar / .sw-range-fill</div>
+            </div>
+            <div class="preview-stage">
+              <div class="preview-viz-stack">
+                <div class="preview-inline">
+                  <div class="sw-gap" style="width: 76px;"></div>
+                  <div class="sw-gap is-strong" style="width: 110px;"></div>
+                </div>
+                <div class="preview-inline">
+                  <div class="sw-bar" style="width: 180px; background: linear-gradient(90deg, var(--sw-stitch-1), var(--sw-stitch-2));"></div>
+                  <div class="sw-range-fill" style="position: static; width: 120px; height: 20px; border-radius: 8px;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="preview-meta">
+              <span class="mapping-badge exempt">✕ 模块专属</span>
+              <span class="token-badge">bar state: --sw-highlight</span>
+              <span class="token-badge">range: --sw-bound-bg</span>
+              <span class="token-badge">gap: raw rgba</span>
+            </div>
+            <div class="preview-note">这些都属于时间轴本体的可视化编码层，不参与共享组件收敛。</div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

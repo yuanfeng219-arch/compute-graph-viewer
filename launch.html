@@ -40,16 +40,49 @@ body {
 
 .page {
   min-height: 100vh;
-  padding: 24px 20px;
+  padding: 28px 20px 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 22px;
 }
 
-.card-grid {
+.launcher-groups {
   width: min(1600px, 100%);
+  display: grid;
+  gap: 28px;
+}
+
+.card-group {
+  display: grid;
+  gap: 12px;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 2px;
+}
+
+.group-title {
+  margin: 0;
+  color: rgba(245, 246, 248, 0.72);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+}
+
+.group-rule {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.card-grid {
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   justify-content: center;
@@ -380,65 +413,132 @@ body {
   letter-spacing: 0.04em;
 }
 
-.competitive-preview {
+.taxonomy-preview {
   height: 100%;
   padding: 18px;
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 14px;
   background:
-    linear-gradient(135deg, rgba(88, 166, 255, 0.22), rgba(127, 85, 212, 0.18)),
-    #f3f6fb;
-  color: #111827;
+    radial-gradient(120% 100% at 20% 0%, rgba(255, 170, 59, 0.22), transparent 60%),
+    radial-gradient(100% 100% at 100% 100%, rgba(74, 217, 231, 0.20), transparent 60%),
+    #10141b;
+  color: rgba(245, 246, 248, 0.92);
 }
 
-.competitive-preview-title {
+.taxonomy-preview-title {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.taxonomy-preview-title .from {
+  color: rgba(245, 246, 248, 0.55);
+}
+
+.taxonomy-preview-title .arrow {
+  color: rgba(245, 246, 248, 0.30);
+  font-weight: 400;
   font-size: 18px;
-  font-weight: 760;
-  line-height: 1.15;
 }
 
-.competitive-preview-grid {
+.taxonomy-preview-title .to {
+  color: #ffaa3b;
+}
+
+.taxonomy-preview-title .sub {
+  font-family: 'PingFang SC', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: rgba(245, 246, 248, 0.45);
+  margin-left: auto;
+}
+
+.taxonomy-preview-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.competitive-preview-card {
-  padding: 10px 8px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(17, 24, 39, 0.08);
+.taxonomy-preview-card {
+  padding: 14px 8px 12px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.taxonomy-preview-card span {
+  font-family: 'PingFang SC', sans-serif;
   font-size: 11px;
-  font-weight: 700;
-  line-height: 1.25;
+  font-weight: 600;
+  color: rgba(245, 246, 248, 0.62);
+  letter-spacing: 0.02em;
+  line-height: 1.35;
 }
 
-.competitive-preview-card span {
-  display: block;
-  margin-top: 6px;
-  color: #64748b;
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
+.taxonomy-preview-card.cls-a {
+  background: rgba(4, 215, 147, 0.10);
+  border-color: rgba(4, 215, 147, 0.32);
+  color: #04d793;
 }
 
-.competitive-preview-footer {
+.taxonomy-preview-card.cls-b {
+  background: rgba(74, 217, 231, 0.10);
+  border-color: rgba(74, 217, 231, 0.32);
+  color: #4ad9e7;
+}
+
+.taxonomy-preview-card.cls-c {
+  background: rgba(255, 75, 123, 0.10);
+  border-color: rgba(255, 75, 123, 0.32);
+  color: #ff4b7b;
+}
+
+.taxonomy-preview-footer {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-.competitive-preview-pill {
+.taxonomy-preview-pill {
   height: 28px;
   border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #111827;
-  color: #f8fafc;
-  font-size: 10px;
-  font-weight: 760;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(245, 246, 248, 0.78);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.taxonomy-preview-pill::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 170, 59, 0.65);
+}
+
+.taxonomy-preview-pill:last-child::before {
+  background: rgba(74, 217, 231, 0.65);
 }
 
 @media (max-width: 1200px) {
@@ -455,6 +555,10 @@ body {
 @media (max-width: 760px) {
   .page {
     padding: 28px 14px;
+  }
+
+  .launcher-groups {
+    gap: 24px;
   }
 
   .card-grid {
@@ -474,27 +578,75 @@ body {
 <body>
 <main class="page">
   <div class="present-entry">
-    <a class="present-btn present-btn--primary" href="low-fi/ppt-web.html">Present</a>
     <a class="present-btn present-btn--secondary" href="design-system-preview.html">Design System</a>
   </div>
-  <section class="card-grid" aria-label="项目入口导航">
+  <section class="launcher-groups" aria-label="项目入口导航">
+    <section class="card-group" aria-labelledby="group-a5">
+      <div class="group-header">
+        <h2 class="group-title" id="group-a5">A5 硬件与迁移</h2>
+        <div class="group-rule" aria-hidden="true"></div>
+      </div>
+      <div class="card-grid">
+
+    <article class="card card--frame" onclick="location.href='ai-cpu-aicore/index.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='ai-cpu-aicore/index.html'">
+      <div class="card-frame-header">
+        <h3 class="card-title">Kernel 指令可视化工作台</h3>
+        <div class="card-tags">
+          <span class="tag tag--hifi">hi-fi</span>
+          <span class="tag tag--module">Instruction</span>
+          <span class="tag tag--module">AICPU</span>
+          <span class="tag tag--module">Kernel</span>
+        </div>
+      </div>
+      <div class="card-frame-body">
+        <img class="card-poster--contain" src="assets/instruction-visualizer-demo.png" alt="Kernel 指令可视化工作台静态预览" loading="lazy" decoding="async">
+      </div>
+    </article>
 
     <article class="card card--frame" onclick="location.href='ascend-950-workbench-demo/index.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='ascend-950-workbench-demo/index.html'">
       <div class="card-frame-header">
-        <h2 class="card-title">950B 硬件路径工作台</h2>
+        <h3 class="card-title">Ascend 950 路径迁移工作台</h3>
         <div class="card-tags">
           <span class="tag tag--hifi">hi-fi</span>
+          <span class="tag tag--module">Hardware</span>
+          <span class="tag tag--module">Migration</span>
           <span class="tag tag--module">Operator</span>
         </div>
       </div>
       <div class="card-frame-body">
-        <img class="card-poster--contain" src="ascend-950-workbench-demo/950workbench.png" alt="Ascend 950B 硬件路径工作台静态预览" loading="lazy" decoding="async">
+        <img class="card-poster--contain" src="assets/950b硬件工作台.png" alt="Ascend 950 路径迁移工作台静态预览" loading="lazy" decoding="async">
+      </div>
+    </article>
+
+    <article class="card card--frame" onclick="location.href='ascend-950-workbench-demo/feature_taxonomy.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='ascend-950-workbench-demo/feature_taxonomy.html'">
+      <div class="card-frame-header">
+        <h3 class="card-title">A3 / A5 差异解读</h3>
+        <div class="card-tags">
+          <span class="tag tag--hifi">hi-fi</span>
+          <span class="tag tag--module">Migration</span>
+        </div>
+      </div>
+      <div class="card-frame-body">
+        <img class="card-poster--contain" src="assets/A3:A5差异解读.png" alt="A3 / A5 差异解读静态预览" loading="lazy" decoding="async">
+      </div>
+    </article>
+
+    <article class="card card--frame" onclick="location.href='ascend-hardware-map/ascend-hardware-map-v3.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='ascend-hardware-map/ascend-hardware-map-v3.html'">
+      <div class="card-frame-header">
+        <h3 class="card-title">A5 数据搬运 Flow Map</h3>
+        <div class="card-tags">
+          <span class="tag tag--hifi">hi-fi</span>
+          <span class="tag tag--module">Memory Flow</span>
+        </div>
+      </div>
+      <div class="card-frame-body">
+        <img class="card-poster--contain" src="assets/Ascend950-flow-map.png" alt="A5 数据搬运 Flow Map 静态预览" loading="lazy" decoding="async">
       </div>
     </article>
 
     <article class="card card--frame" onclick="location.href='pmu/06-a5-pmu-visualization-group2-loop.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='pmu/06-a5-pmu-visualization-group2-loop.html'">
       <div class="card-frame-header">
-        <h2 class="card-title">A5 PMU 诊断工作台</h2>
+        <h3 class="card-title">A5 PMU 诊断工作台</h3>
         <div class="card-tags">
           <span class="tag tag--hifi">hi-fi</span>
           <span class="tag tag--module">PMU</span>
@@ -502,37 +654,22 @@ body {
         </div>
       </div>
       <div class="card-frame-body">
-        <iframe src="pmu/06-a5-pmu-visualization-group2-loop.html?preview=1" scrolling="no" tabindex="-1" title="A5 PMU 诊断工作台预览"></iframe>
+        <img class="card-poster--contain" src="assets/A5-pmu-诊断工作台.png" alt="A5 PMU 诊断工作台静态预览" loading="lazy" decoding="async">
       </div>
     </article>
+      </div>
+    </section>
 
-    <article class="card card--frame" onclick="location.href='competitived-chip-operator/index.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='competitived-chip-operator/index.html'">
-      <div class="card-frame-header">
-        <h2 class="card-title">Competitive Analysis</h2>
-        <div class="card-tags">
-          <span class="tag tag--hifi">hi-fi</span>
-          <span class="tag tag--module">Report</span>
-        </div>
+    <section class="card-group" aria-labelledby="group-graph">
+      <div class="group-header">
+        <h2 class="group-title" id="group-graph">模型图与 IR</h2>
+        <div class="group-rule" aria-hidden="true"></div>
       </div>
-      <div class="card-frame-body">
-        <div class="competitive-preview">
-          <div class="competitive-preview-title">CUDA / ROCm / Triton</div>
-          <div class="competitive-preview-grid">
-            <div class="competitive-preview-card">CUDA<span>mature stack</span></div>
-            <div class="competitive-preview-card">ROCm<span>open path</span></div>
-            <div class="competitive-preview-card">Triton<span>operator DSL</span></div>
-          </div>
-          <div class="competitive-preview-footer">
-            <div class="competitive-preview-pill">7 Touchpoints</div>
-            <div class="competitive-preview-pill">UX Evidence</div>
-          </div>
-        </div>
-      </div>
-    </article>
+      <div class="card-grid">
 
     <article class="card card--frame card--split" tabindex="0">
       <div class="card-frame-header">
-        <h2 class="card-title">模型算子层级架构图</h2>
+        <h3 class="card-title">模型算子层级架构图</h3>
         <div class="card-tags">
           <span class="tag tag--hifi">hi-fi</span>
           <span class="tag tag--module">Graph</span>
@@ -542,14 +679,32 @@ body {
         <img class="card-poster--contain card-poster--scaled-half" src="assets/card1_deepseekv3.svg" alt="模型算子层级架构图静态预览" loading="lazy" decoding="async">
         <div class="card-split-overlay">
           <a class="card-split-btn" href="model-architecture/index.html">模型架构主视图</a>
-          <a class="card-split-btn card-split-btn--alt" href="graphviz/torchvista_graphviz_deepseek_v4.html">dpsk v4</a>
+          <a class="card-split-btn card-split-btn--alt" href="graphviz/torchvista_graphviz_deepseek_v4.html">DeepSeek V4 图视图</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="card card--frame card--split" tabindex="0">
+      <div class="card-frame-header">
+        <h3 class="card-title">DeepSeek V3.2 报告叠加图</h3>
+        <div class="card-tags">
+          <span class="tag tag--hifi">hi-fi</span>
+          <span class="tag tag--module">Graph</span>
+          <span class="tag tag--module">Report</span>
+        </div>
+      </div>
+      <div class="card-frame-body">
+        <iframe src="graphviz/deepseek_v32_report_overlay_demo.html?preview=1" scrolling="no" tabindex="-1" title="DeepSeek V3.2 报告叠加图预览"></iframe>
+        <div class="card-split-overlay">
+          <a class="card-split-btn" href="graphviz/deepseek_v32_report_overlay_demo.html">v1 · 报告叠加图</a>
+          <a class="card-split-btn card-split-btn--alt" href="graphviz/deepseek_v32_report_overlay_demo_v2.html">v2 · Profiling 三栏版</a>
         </div>
       </div>
     </article>
 
     <article class="card card--frame" onclick="location.href='pass-ir/index.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='pass-ir/index.html'">
       <div class="card-frame-header">
-        <h2 class="card-title">Pass IR 计算图</h2>
+        <h3 class="card-title">Pass IR 计算图</h3>
         <div class="card-tags">
           <span class="tag tag--hifi">hi-fi</span>
           <span class="tag tag--module">Graph</span>
@@ -560,22 +715,62 @@ body {
       </div>
     </article>
 
-    <article class="card card--frame" onclick="location.href='mem_viewer/index.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='mem_viewer/index.html'">
+    <article class="card card--frame" onclick="location.href='indexer-exec/index.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='indexer-exec/index.html'">
       <div class="card-frame-header">
-        <h2 class="card-title">Memory Viewer</h2>
+        <h3 class="card-title">图执行叠加视图</h3>
         <div class="card-tags">
           <span class="tag tag--hifi">hi-fi</span>
-          <span class="tag tag--module">Memory View</span>
+          <span class="tag tag--module">Graph</span>
+        </div>
+      </div>
+      <div class="card-frame-body">
+        <img class="card-poster--contain" src="assets/card4.png" alt="图执行叠加视图静态预览" loading="lazy" decoding="async">
+      </div>
+    </article>
+      </div>
+    </section>
+
+    <section class="card-group" aria-labelledby="group-execution">
+      <div class="group-header">
+        <h2 class="group-title" id="group-execution">执行与性能分析</h2>
+        <div class="group-rule" aria-hidden="true"></div>
+      </div>
+      <div class="card-grid">
+
+    <article class="card card--frame" onclick="location.href='https://wangnaiyu.github.io/PyPTOUX/05-prototypes/02-swimlane-profiler/experiments/html/mix-sync-swimlane.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='https://wangnaiyu.github.io/PyPTOUX/05-prototypes/02-swimlane-profiler/experiments/html/mix-sync-swimlane.html'">
+      <div class="card-frame-header">
+        <h3 class="card-title">PyPTOUX Swimlane Profiler</h3>
+        <div class="card-tags">
+          <span class="tag tag--hifi">hi-fi</span>
+          <span class="tag tag--module">Swimlane</span>
+          <span class="tag tag--module">author: wangnaiyu</span>
+        </div>
+      </div>
+      <div class="card-frame-body">
+        <img class="card-poster--contain" src="assets/pyptoux-swimlane-profiler.png" alt="PyPTOUX Swimlane Profiler 静态预览" loading="lazy" decoding="async">
+      </div>
+    </article>
+
+    <article class="card card--frame card--split" tabindex="0">
+      <div class="card-frame-header">
+        <h3 class="card-title">Memory Viewer</h3>
+        <div class="card-tags">
+          <span class="tag tag--hifi">hi-fi</span>
+          <span class="tag tag--module">Memory</span>
         </div>
       </div>
       <div class="card-frame-body">
         <img class="card-poster--contain" src="mem_viewer/pic.png" alt="Memory Viewer 静态预览" loading="lazy" decoding="async">
+        <div class="card-split-overlay">
+          <a class="card-split-btn" href="mem_viewer/index.html">v1</a>
+          <a class="card-split-btn card-split-btn--alt" href="mem_viewer/index-v2.html">v2</a>
+        </div>
       </div>
     </article>
 
     <article class="card card--frame" onclick="location.href='swimlane/index.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='swimlane/index.html'">
       <div class="card-frame-header">
-        <h2 class="card-title">Swimlane 执行视图</h2>
+        <h3 class="card-title">Swimlane 执行视图</h3>
         <div class="card-tags">
           <span class="tag tag--hifi">hi-fi</span>
           <span class="tag tag--module">Swimlane</span>
@@ -586,62 +781,46 @@ body {
       </div>
     </article>
 
-    <article class="card card--frame" onclick="location.href='indexer-exec/index.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='indexer-exec/index.html'">
-      <div class="card-frame-header">
-        <h2 class="card-title">图执行叠加原型</h2>
-        <div class="card-tags">
-          <span class="tag tag--hifi">hi-fi</span>
-          <span class="tag tag--module">Graph</span>
-        </div>
-      </div>
-      <div class="card-frame-body">
-        <img class="card-poster--contain" src="assets/card4.png" alt="图执行叠加原型静态预览" loading="lazy" decoding="async">
-      </div>
-    </article>
-
-    <article class="card card--frame card--split" tabindex="0">
-      <div class="card-frame-header">
-        <h2 class="card-title">Op IDE Assistant</h2>
-        <div class="card-tags">
-          <span class="tag tag--lofi">lo-fi</span>
-          <span class="tag tag--module">IDE</span>
-        </div>
-      </div>
-      <div class="card-frame-body">
-        <img class="card-poster--contain" src="assets/card7.png" alt="Op IDE Assistant 静态预览" loading="lazy" decoding="async">
-        <div class="card-split-overlay">
-          <a class="card-split-btn" href="op-ide-assistant/index.html">v1 · 原版</a>
-          <a class="card-split-btn card-split-btn--alt" href="op-ide-assistant-v2/index.html">v2 · Cohere</a>
-        </div>
-      </div>
-    </article>
-
     <article class="card card--frame" onclick="location.href='pypto-swimlane-perf-tool/index.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='pypto-swimlane-perf-tool/index.html'">
       <div class="card-frame-header">
-        <h2 class="card-title">Swimlane Perf Tool</h2>
+        <h3 class="card-title">Swimlane 性能分析工具</h3>
         <div class="card-tags">
           <span class="tag tag--lofi">lo-fi</span>
           <span class="tag tag--module">Swimlane</span>
         </div>
       </div>
       <div class="card-frame-body">
-        <img class="card-poster--contain" src="assets/card8.png" alt="Swimlane Perf Tool 静态预览" loading="lazy" decoding="async">
+        <img class="card-poster--contain" src="assets/card8.png" alt="Swimlane 性能分析工具静态预览" loading="lazy" decoding="async">
       </div>
     </article>
+      </div>
+    </section>
 
-    <article class="card card--frame" hidden onclick="location.href='CANNVisual/950-wireframe.html'" role="link" tabindex="0" onkeydown="if(event.key==='Enter')location.href='CANNVisual/950-wireframe.html'">
+    <section class="card-group" aria-labelledby="group-ide">
+      <div class="group-header">
+        <h2 class="group-title" id="group-ide">算子开发工具</h2>
+        <div class="group-rule" aria-hidden="true"></div>
+      </div>
+      <div class="card-grid">
+
+    <article class="card card--frame card--split" tabindex="0">
       <div class="card-frame-header">
-        <h2 class="card-title">Ascend 950 架构</h2>
+        <h3 class="card-title">算子 IDE Assistant</h3>
         <div class="card-tags">
           <span class="tag tag--lofi">lo-fi</span>
-          <span class="tag tag--module">CANN</span>
+          <span class="tag tag--module">IDE</span>
         </div>
       </div>
       <div class="card-frame-body">
-        <div class="card-placeholder-body">A5 · 950 Package Wireframe</div>
+        <img class="card-poster--contain" src="assets/card7.png" alt="算子 IDE Assistant 静态预览" loading="lazy" decoding="async">
+        <div class="card-split-overlay">
+          <a class="card-split-btn" href="op-ide-assistant/index.html">v1 · 原版</a>
+          <a class="card-split-btn card-split-btn--alt" href="op-ide-assistant-v2/index.html">v2 · Cohere</a>
+        </div>
       </div>
     </article>
-
+      </div>
+    </section>
   </section>
 </main>
 </body>

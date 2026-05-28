@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Swimlane Viewer</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121318'/%3E%3Crect x='12' y='18' width='40' height='8' rx='4' fill='%237b57bf'/%3E%3Crect x='12' y='30' width='28' height='8' rx='4' fill='%234d79d4'/%3E%3Crect x='12' y='42' width='34' height='8' rx='4' fill='%234da56d'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="../tokens/foundation.css">
-  <link rel="stylesheet" href="../tokens/semantic.css">
-  <link rel="stylesheet" href="../css/style.css?v=2">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css?v=2">
   <link rel="stylesheet" href="./styles.css?v=2">
 <style>
 html.preview .toolbar,
@@ -277,7 +277,7 @@ html.preview * { pointer-events: none !important; cursor: default !important; }
         <span class="sw-split-top-label" id="swSplitLabel">Pass IR</span>
         <button id="swSplitClose" class="sw-split-close-btn btn" type="button">关闭分屏 ×</button>
       </div>
-      <iframe id="swGraphIframe" class="sw-split-iframe" src="" allow="same-origin" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+      <iframe id="swGraphIframe" class="sw-split-iframe" src="" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
     </div>
     <div class="sw-split-divider" id="swSplitDivider" title="拖动调整分屏比例"></div>
     <div class="sw-split-bottom" id="swSplitBottom">

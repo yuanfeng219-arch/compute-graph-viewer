@@ -1,3 +1,210 @@
+---
+version: alpha
+name: PTO
+description: Dark-first developer workstation design system for PTO modules, graph surfaces, operator workbenches, and review previews.
+colors:
+  primary: "#4369EF"
+  primary-hover: "#5A92E6"
+  accent: "#7C8DB8"
+  success: "#04D793"
+  warning: "#FFAA3B"
+  danger: "#FF4B7B"
+  background: "#101010"
+  background-elevated: "#141414"
+  surface-1: "#161616"
+  surface-2: "#1C1C1C"
+  surface-3: "#262626"
+  surface-4: "#313131"
+  foreground: "#E6E6E6"
+  foreground-secondary: "#999999"
+  foreground-muted: "#666666"
+  border-subtle: "#202020"
+  border-default: "#292929"
+  border-strong: "#3A3A3A"
+  primary-foreground: "#F5F9FF"
+typography:
+  display:
+    fontFamily: "Inter, Source Han Sans SC, PingFang SC, Noto Sans SC, sans-serif"
+    fontSize: 28px
+    fontWeight: 700
+    lineHeight: 1.25
+    letterSpacing: 0
+  title-1:
+    fontFamily: "Inter, Source Han Sans SC, PingFang SC, Noto Sans SC, sans-serif"
+    fontSize: 20px
+    fontWeight: 600
+    lineHeight: 1.3
+    letterSpacing: 0
+  title-2:
+    fontFamily: "Inter, Source Han Sans SC, PingFang SC, Noto Sans SC, sans-serif"
+    fontSize: 16px
+    fontWeight: 600
+    lineHeight: 1.3
+    letterSpacing: 0
+  body:
+    fontFamily: "Inter, Source Han Sans SC, PingFang SC, Noto Sans SC, sans-serif"
+    fontSize: 14px
+    fontWeight: 400
+    lineHeight: 1.5
+    letterSpacing: 0
+  body-sm:
+    fontFamily: "Inter, Source Han Sans SC, PingFang SC, Noto Sans SC, sans-serif"
+    fontSize: 12px
+    fontWeight: 400
+    lineHeight: 1.5
+    letterSpacing: 0
+  label:
+    fontFamily: "Inter, Source Han Sans SC, PingFang SC, Noto Sans SC, sans-serif"
+    fontSize: 11px
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: 0.5px
+  mono:
+    fontFamily: "JetBrains Mono, Fira Code, Consolas, monospace"
+    fontSize: 12px
+    fontWeight: 500
+    lineHeight: 1.4
+    letterSpacing: 0
+spacing:
+  1: 4px
+  2: 8px
+  3: 12px
+  4: 16px
+  5: 20px
+  6: 24px
+rounded:
+  sm: 6px
+  md: 8px
+  lg: 12px
+  xl: 16px
+  pill: 999px
+components:
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "#000000"
+    typography: "{typography.label}"
+    rounded: "{rounded.lg}"
+    height: 36px
+    padding: 12px
+  button-primary-hover:
+    backgroundColor: "{colors.primary-hover}"
+    textColor: "#000000"
+    typography: "{typography.label}"
+    rounded: "{rounded.lg}"
+    height: 36px
+    padding: 12px
+  primary-foreground-swatch:
+    backgroundColor: "{colors.primary-foreground}"
+    textColor: "{colors.background}"
+    typography: "{typography.label}"
+    rounded: "{rounded.sm}"
+    padding: 8px
+  button-solid:
+    backgroundColor: "{colors.foreground}"
+    textColor: "{colors.background}"
+    typography: "{typography.label}"
+    rounded: "{rounded.lg}"
+    height: 36px
+    padding: 12px
+  button-secondary:
+    backgroundColor: "{colors.surface-2}"
+    textColor: "{colors.foreground}"
+    typography: "{typography.label}"
+    rounded: "{rounded.lg}"
+    height: 36px
+    padding: 12px
+  button-ghost:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.foreground-secondary}"
+    typography: "{typography.label}"
+    rounded: "{rounded.lg}"
+    height: 36px
+    padding: 12px
+  input:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.foreground}"
+    typography: "{typography.body}"
+    rounded: "{rounded.md}"
+    height: 34px
+    padding: 12px
+  panel:
+    backgroundColor: "{colors.surface-2}"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.lg}"
+    padding: 16px
+  panel-shell:
+    backgroundColor: "{colors.background-elevated}"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.xl}"
+    padding: 16px
+  card:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.lg}"
+    padding: 16px
+  card-selected:
+    backgroundColor: "{colors.surface-4}"
+    textColor: "{colors.foreground}"
+    rounded: "{rounded.lg}"
+    padding: 16px
+  tag:
+    backgroundColor: "{colors.surface-3}"
+    textColor: "{colors.foreground-secondary}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    height: 20px
+    padding: 8px
+  metadata:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.foreground-secondary}"
+    typography: "{typography.body-sm}"
+    rounded: "{rounded.sm}"
+    padding: 8px
+  muted-rule:
+    backgroundColor: "{colors.foreground-muted}"
+    height: 1px
+  tag-accent:
+    backgroundColor: "{colors.surface-3}"
+    textColor: "{colors.accent}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    height: 20px
+    padding: 8px
+  status-success:
+    backgroundColor: "{colors.surface-3}"
+    textColor: "{colors.success}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    height: 20px
+    padding: 8px
+  status-warning:
+    backgroundColor: "{colors.surface-3}"
+    textColor: "{colors.warning}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    height: 20px
+    padding: 8px
+  status-danger:
+    backgroundColor: "{colors.surface-3}"
+    textColor: "{colors.danger}"
+    typography: "{typography.label}"
+    rounded: "{rounded.pill}"
+    height: 20px
+    padding: 8px
+  divider-subtle:
+    backgroundColor: "{colors.border-subtle}"
+    textColor: "{colors.foreground}"
+    height: 1px
+  divider-default:
+    backgroundColor: "{colors.border-default}"
+    textColor: "{colors.foreground}"
+    height: 1px
+  divider-strong:
+    backgroundColor: "{colors.border-strong}"
+    textColor: "{colors.foreground}"
+    height: 1px
+---
+
 # PTO DESIGN.md
 
 ## 1. Visual Theme & Atmosphere
@@ -61,7 +268,7 @@ Characteristics:
 
 Used by:
 
-- `button-preview.html`
+- `design-system-preview.html`
 - component previews
 - design system review pages
 
@@ -71,7 +278,87 @@ Characteristics:
 - token demonstrations
 - side-by-side comparisons
 
-## 3. Color Palette & Roles
+## 3. Pattern Sources
+
+PTO has reusable graph, timeline, and hardware visualization primitives that are more specific than base components. These are pattern sources, not decorative examples.
+
+The shared pattern registry is:
+
+- `patterns/patterns.json`
+
+Current pattern sources:
+
+- `patterns/swimlane-task/pattern.json`
+- `patterns/swimlane-task/pattern.html`
+- `patterns/swimlane-task/pattern.css`
+- `patterns/swimlane-task/pattern.js`
+- `patterns/memory-architecture/pattern.json`
+- `patterns/memory-architecture/pattern.html`
+- `patterns/memory-architecture/pattern.css`
+- `patterns/memory-architecture/pattern.js`
+- `patterns/aic-core-object/pattern.json`
+- `patterns/aic-core-object/pattern.html`
+- `patterns/aic-core-object/pattern.css`
+- `patterns/aic-core-object/pattern.js`
+- `patterns/aiv-core-object/pattern.json`
+- `patterns/aiv-core-object/pattern.html`
+- `patterns/aiv-core-object/pattern.css`
+- `patterns/aiv-core-object/pattern.js`
+- `patterns/pass-ir-graph-node/pattern.json`
+- `patterns/pass-ir-graph-node/pattern.html`
+- `patterns/pass-ir-graph-node/pattern.css`
+- `patterns/pass-ir-graph-node/pattern.js`
+- `patterns/model-graphviz/pattern.json`
+- `patterns/model-graphviz/pattern.html`
+- `patterns/model-graphviz/pattern.css`
+- `patterns/model-graphviz/pattern.js`
+- `patterns/workbench-shell/pattern.json`
+- `patterns/workbench-shell/pattern.html`
+- `patterns/workbench-shell/pattern.css`
+- `patterns/workbench-shell/pattern.js`
+- `patterns/floating-playback-control/pattern.json`
+- `patterns/floating-playback-control/pattern.html`
+- `patterns/floating-playback-control/pattern.css`
+- `patterns/floating-playback-control/pattern.js`
+
+Rules:
+
+- preview pages may wrap a pattern for layout, but must not redefine the pattern's internal classes
+- agents must read the pattern JSON before reusing a graph or timeline primitive
+- every pattern must expose a stable consumer entry: CSS class names for static visual primitives, and a `window.Pto*Pattern` or `window.Pto*` helper for DOM/SVG/canvas generation, drag behavior, zoom, routing, persistence, or synchronized state
+- allowed overrides must be explicit CSS variables or geometry fields documented by the pattern
+- forbidden overrides include internal radius, segment typography, divider shadows, and state rules unless the pattern source itself is updated
+
+For swimlane task bars, reuse pattern id `swimlane-task-bar`. The canonical source is the canvas renderer in `patterns/swimlane-task/pattern.js`, aligned to `pypto-swimlane-perf-tool/js/swimlane.js`. Do not rebuild it with DOM/CSS or rewrite segment math, color mixing, border alpha, or label truncation locally.
+
+For memory hierarchy diagrams, reuse pattern id `memory-architecture-layout`. The canonical source is the hybrid renderer in `patterns/memory-architecture/pattern.js`, extracted from `mem_viewer` DOM, BPG grid logic, and MTE overlay behavior. New hardware pages such as 950B should extend the preset/config surface there instead of copying `mem_viewer/index.html` or redrawing route geometry in page-local code.
+
+For AIC internal object shells, reuse pattern id `aic-core-object`. The canonical source is `patterns/aic-core-object/pattern.js`, driven by preset data rather than handwritten page DOM. Extend the preset to add or resize intermediate buffers for 950B; do not restyle the object chrome or clone the generated markup in local pages.
+
+For AIV internal object shells, reuse pattern id `aiv-core-object`. The canonical source is `patterns/aiv-core-object/pattern.js`, driven by preset data for DCache, ICache or ND-DNA Cache, UB, Scalar, SIMT, SIMD, Aux Scalar, and Vector. Keep AIC and AIV spacing, buffer grid math, and route treatment visually consistent when widening or rescaling architecture diagrams.
+
+For Pass-IR graph nodes, reuse pattern id `pass-ir-graph-node`. The canonical source is `patterns/pass-ir-graph-node/pattern.js`, extracted from the real Pass-IR `css/style.css` and `js/renderer.js` contract. It covers op, tensor, incast, outcast, selected, compact, and group cards. Compact group cards keep the Group Node shell, title, count, and thumbnail stack while dropping detailed rows. Do not use the old static graph-node examples in `design-system-preview.html` or `pass-ir/node-preview.html` as source of truth.
+
+For TorchVista / model Graphviz views, reuse pattern id `model-graphviz`. The canonical visual contract is `patterns/model-graphviz/pattern.js`, extracted from `graphviz/torchvista_graphviz_deepseek_v4.html` and synchronized with `graphviz/deepseek_v32_source_graph.html`; `patterns/model-graphviz/pattern.html` iframes those two real pages for parity preview instead of redrawing a simplified sample. The contract covers DeepSeek V3.2/V4 default depth-2 folding, dark graph stage, white edges and arrowheads, full-pill module/op nodes with `height / 2` radius, rounded-rect tensor nodes for Input/Output/MTP/Constant/Parameter/Tensor, strict semantic module hierarchy, right-center fold controls on expanded clusters, right-inset expand controls on collapsed modules, centered type labels, pass-ir safe colormap generation normalized to `s=0.82` and `l=0.40`, 10% white expanded-container fill, parent-to-child fill inheritance for op/module nodes, folded representative edge dedupe, stable expand/collapse viewport anchoring, no graph shadows, and no-border clicked-operator preview cards with dark code surfaces. Node fill colors are the only data-viz exception; all non-node UI colors, typography, spacing, radii, borders, and code surfaces must remain token-derived. Do not render tensor nodes as ellipses or full pills, place expand icons outside node bounds, drift fold icons away from the cluster right-center anchor, add graph drop-shadows, add border strokes to operator preview cards, use light code panels, hard-code non-node UI styles outside tokens, draw detail modules as same-level peers of their collapsed semantic parent, draw multiple parallel representative edges between the same folded modules, recenter/refit the whole graph after expand/collapse, or create duplicate standalone parent nodes next to expanded clusters.
+
+For model Graphviz report overlays, keep the overlay in the same `model-graphviz` pattern. Source pages should preserve Graphviz graph `margin=0.22`, `pad=0.38`, and expanded cluster `margin=36` so title pills and left-side priority tags have breathing room. Container report titles use a filled, same-priority pill centered against the container bbox, with the P0/P1/P2 tag inside the pill on the left and SVG geometric vertical centering. P0/P1/P2 report colors are red/orange/yellow; do not use blue for P2. Priority should be expressed through fill color, not border-only styling. If a centered title crosses an edge, lift it into a root overlay layer above edge strokes instead of adding a visible outline. Right-side report inspectors should reuse `panel-shell`; graph-side Mapped Nodes lists should focus the original graph, not just update inspector text.
+
+For PTO workbench page shells, reuse pattern id `workbench-shell`. The canonical contract is `patterns/workbench-shell/pattern.css` plus the split-pane helpers in `patterns/workbench-shell/pattern.js`. New workbench pages should use `.workbench-shell-page`, `.workbench-frame`, `.workbench-frame-split` or `.workbench-frame-grid`, `.workbench-pane`, and `.panel-shell.panel-shell-quiet`, then call `window.PtoWorkbenchShell.initResizablePanes` or `initWorkbenchShell` for draggable split panes. If a page already owns custom split math, use `window.PtoWorkbenchShell.createSplitGutter` for the gutter element. Do not redefine page chrome, panel shells, split gutters, pointer drag behavior, size persistence, or gutter focus/hover states locally.
+
+For floating playback controls, reuse pattern id `floating-playback-control`. The canonical contract is `patterns/floating-playback-control/pattern.css` plus state helpers in `pattern.js`, extracted from the `mem_viewer` bottom toolbar. Pages own step data, timers, and renderer updates, but use `.pto-floating-playback*`, `window.PtoFloatingPlaybackControl.init`, and `initScrubberHover` for chrome, collapse state, collapsed play/pause icon, and scrubber hover behavior. Do not redefine floating-shell styling, range thumb, tooltip, or collapse synchronization locally.
+
+Current extraction progress:
+
+- `swimlane-task-bar`: shared canvas renderer registered and previewed
+- `memory-architecture-layout`: shared full-stage 950B renderer registered and previewed
+- `aic-core-object`: shared config-driven object renderer registered and previewed
+- `aiv-core-object`: shared config-driven object renderer registered and previewed
+- `pass-ir-graph-node`: shared hybrid renderer registered and previewed; original Pass-IR business page still uses its local renderer until a separate integration pass is approved
+- `model-graphviz`: shared SVG visual renderer registered and previewed; original TorchVista Graphviz page still owns DOT generation, D3 zoom, popup behavior, and graph reloads until a separate integration pass is approved
+- `workbench-shell`: shared hybrid DOM/CSS page frame registered, previewed, and adopted by `ascend-950-workbench-demo` workbench pages
+- `floating-playback-control`: shared DOM/CSS playback toolbar registered, previewed, and adopted by Memory Viewer v1/v2
+
+## 4. Color Palette & Roles
 
 ### Core UI Palette
 
@@ -109,7 +396,7 @@ These colors may be vivid, but only inside charts, graphs, chips, legends, and t
 
 Do not reuse visualization colors as generic panel backgrounds.
 
-## 4. Typography Rules
+## 5. Typography Rules
 
 ### Type Families
 
@@ -130,7 +417,7 @@ Do not reuse visualization colors as generic panel backgrounds.
 - Section label: quiet, uppercase or mono where appropriate
 - Metadata: muted, never low-contrast to the point of illegibility
 
-## 5. Component Stylings
+## 6. Component Stylings
 
 ### Buttons
 
@@ -175,7 +462,7 @@ They should read as editor surfaces:
 - predictable top chrome
 - quiet syntax colors
 
-## 6. Layout Principles
+## 7. Layout Principles
 
 ### Pane Logic
 
@@ -207,7 +494,7 @@ Repeated structures must align to visible grids:
 
 Misalignment is one of the fastest ways PTO looks inconsistent.
 
-## 7. Depth & Elevation
+## 8. Depth & Elevation
 
 Dark PTO should rely on:
 
@@ -224,7 +511,7 @@ Do not stack multiple styling tricks at once:
 
 Pick one emphasis mechanism, not four.
 
-## 8. Do’s and Don’ts
+## 9. Do’s and Don’ts
 
 ### Do
 
@@ -242,7 +529,7 @@ Pick one emphasis mechanism, not four.
 - use visualization colors as generic UI decoration
 - treat tokens as optional suggestions
 
-## 9. Responsive Behavior
+## 10. Responsive Behavior
 
 Desktop first, but responsive.
 
@@ -255,7 +542,7 @@ Rules:
 
 Do not solve narrow layouts by shrinking text until unreadable.
 
-## 10. Design System Governance
+## 11. Design System Governance
 
 ### Source of Truth
 
@@ -288,7 +575,7 @@ A module is not considered “design-system integrated” until:
 - it avoids unapproved hardcoded UI colors
 - its core UI patterns appear in preview or review material
 
-## 11. Prompt Guide For Agents
+## 12. Prompt Guide For Agents
 
 When asking an AI agent to build PTO UI, use directions like:
 

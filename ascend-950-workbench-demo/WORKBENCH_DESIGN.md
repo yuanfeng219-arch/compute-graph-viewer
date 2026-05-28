@@ -151,15 +151,19 @@ Inspector 规则：
 
 ## 设计系统复用
 
-来源：`/Users/yin/pto/design-system-share`。
+来源：`/Users/yin/pto/vendor/pto-design-system`。
 
 复用的系统组件：
 
-- `design-system-share/css/style.css`
+- `vendor/pto-design-system/css/style.css`
+- `vendor/pto-design-system/patterns/workbench-shell`
 - `tokens/foundation.css`
 - `tokens/semantic.css`
 - `tokens/components.css`
 - `.layout-header`
+- `.workbench-shell-page`
+- `.workbench-frame` / `.workbench-frame-split` / `.workbench-frame-grid`
+- `.workbench-pane`
 - `.tab-control` / `.tab-control-item`
 - `.segmented-control.segmented-control-muted`
 - `.toolbar-control` / `.toolbar-readout`
@@ -177,14 +181,14 @@ Demo 本地样式只处理布局、选中态、证据区组织和硬件图高亮
 
 ## 缺失组件的补充来源
 
-`design-system-share` 是项目内的视觉语言基线，所有按钮 / tab / card / panel 必须优先复用。
+`vendor/pto-design-system` 是项目内的视觉语言基线，所有按钮 / tab / card / panel 必须优先复用。
 
 如果某次需求里确实出现现有设计系统**不存在**的组件（例如 slider、switch、tooltip、command palette、scrollbar、popover 等），可以去 [shadcn-ui/ui](https://github.com/shadcn-ui/ui) 取参考实现：
 
 - 只取**视觉样式和交互行为**，不引入它的 React/Tailwind 依赖。
 - 颜色、间距、圆角、字体等 token 必须翻译到本项目的 CSS 变量（`var(--primary)` / `var(--radius-md)` / `var(--space-3)` 等），不要直接写 zinc-900、slate-500 这类 Tailwind 色阶。
 - 落地后在本节追加一行说明：哪个组件、来自 shadcn 哪个 primitive、做了哪些适配。
-- 如果是高频需求，记得反馈给 `design-system-share` 维护者，沉淀回设计系统，而不是长期分散在 demo 本地。
+- 如果是高频需求，记得反馈给 `pto-design-system` 维护者，沉淀回设计系统，而不是长期分散在 demo 本地。
 
 已落地的补充：
 

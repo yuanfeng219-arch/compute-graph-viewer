@@ -1,7 +1,7 @@
-@import "../tokens/foundation.css";
-@import "../tokens/semantic.css";
-@import "../tokens/components.css";
-@import "../css/style.css";
+@import "../vendor/pto-design-system/tokens/foundation.css";
+@import "../vendor/pto-design-system/tokens/semantic.css";
+@import "../vendor/pto-design-system/tokens/components.css";
+@import "../vendor/pto-design-system/css/style.css";
 
 :root {
   /* Surfaces */

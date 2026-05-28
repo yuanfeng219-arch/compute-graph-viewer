@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTO Operator Studio Demo</title>
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="css/ide.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/demo.css">
+</head>
+<body class="demo-page">
+  <header class="toolbar">
+    <div class="toolbar-l">
+      <a href="../launch.html" class="home-link" title="Back to Launcher">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M1 7L7 1.5L13 7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 5.5V12.5H11V5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+      <div class="toolbar-sep"></div>
+      <span class="app-title">PTO Operator Studio Demo</span>
+      <span class="chip chip--blue">Real Case</span>
+      <span class="chip chip--green" id="demoPrimaryPath">PATH0_6</span>
+    </div>
+    <div class="toolbar-tabs" id="demoViewTabs">
+      <button class="tb-tab active" data-view="source" type="button">Source</button>
+      <button class="tb-tab" data-view="pass" type="button">Pass</button>
+      <button class="tb-tab" data-view="path" type="button">Path</button>
+      <button class="tb-tab" data-view="execution" type="button">Execution</button>
+    </div>
+    <div class="toolbar-r">
+      <span class="status-dot"></span>
+      <span class="status-text">Evidence-backed Demo</span>
+      <button class="tb-btn" id="demoResetBtn" type="button">Reset</button>
+    </div>
+  </header>
+
+  <main class="demo-layout">
+    <aside class="demo-sidebar panel">
+      <div class="panel-header">
+        <span class="ph-title">Case Launcher</span>
+        <span class="ph-badge">Gitcode</span>
+      </div>
+      <div class="panel-body scroll demo-stack">
+        <section class="demo-block">
+          <div class="form-label">Current Case</div>
+          <div class="demo-case-card">
+            <div class="demo-case-title" id="demoCaseTitle">Loading...</div>
+            <div class="demo-case-sub" id="demoCaseSubtitle"></div>
+            <div class="demo-case-meta">
+              <span id="demoEntryFunction"></span>
+              <span id="demoCasePath"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="demo-block">
+          <div class="form-label">Tasks</div>
+          <div class="radio-group" id="demoTaskList"></div>
+        </section>
+
+        <section class="demo-block">
+          <div class="form-label">Semantic Stages</div>
+          <div class="demo-stage-list" id="demoStageList"></div>
+        </section>
+
+        <section class="demo-block">
+          <div class="form-label">Why This Case</div>
+          <div class="demo-note-card">
+            <p>真实源码、真实 Pass、真实 PATH、真实 swimlane 摘要，目标是展示 Agent 如何围绕同一个对象串起解释链。</p>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <section class="demo-main panel">
+      <div class="panel-header">
+        <span class="ph-title" id="demoPanelTitle">Source</span>
+        <div class="ph-actions">
+          <span class="demo-inline-meta" id="demoPanelMeta"></span>
+        </div>
+      </div>
+      <div class="panel-body scroll">
+        <div class="demo-view active" data-view="source" id="demoSourceView">
+          <section class="demo-card">
+            <div class="demo-card-head">
+              <div class="demo-card-title">Source Excerpt</div>
+              <div class="demo-card-meta" id="demoSourceMeta"></div>
+            </div>
+            <pre class="demo-code-block" id="demoSourceCode"></pre>
+          </section>
+          <section class="demo-card">
+            <div class="demo-card-head">
+              <div class="demo-card-title">Semantic Anchors</div>
+            </div>
+            <div class="demo-anchor-list" id="demoAnchorList"></div>
+          </section>
+        </div>
+
+        <div class="demo-view" data-view="pass" id="demoPassView">
+          <div class="demo-card-grid" id="demoPassCards"></div>
+        </div>
+
+        <div class="demo-view" data-view="path" id="demoPathView">
+          <section class="demo-card">
+            <div class="demo-card-head">
+              <div class="demo-card-title">Path Summary</div>
+            </div>
+            <div class="demo-kv-list" id="demoPathSummary"></div>
+          </section>
+          <section class="demo-card">
+            <div class="demo-card-head">
+              <div class="demo-card-title">Linked Semantic Labels</div>
+            </div>
+            <div class="demo-chip-list" id="demoPathLabels"></div>
+          </section>
+          <section class="demo-card">
+            <div class="demo-card-head">
+              <div class="demo-card-title">Linked Subgraphs</div>
+            </div>
+            <div class="demo-chip-list" id="demoPathSubgraphs"></div>
+          </section>
+        </div>
+
+        <div class="demo-view" data-view="execution" id="demoExecutionView">
+          <section class="demo-card">
+            <div class="demo-card-head">
+              <div class="demo-card-title">Runtime Semantic Top</div>
+              <div class="demo-card-meta" id="demoExecutionMeta"></div>
+            </div>
+            <div class="demo-bar-list" id="demoSemanticTop"></div>
+          </section>
+          <section class="demo-card">
+            <div class="demo-card-head">
+              <div class="demo-card-title">Example Tasks</div>
+            </div>
+            <div class="demo-task-table" id="demoTaskTable"></div>
+          </section>
+          <section class="demo-card">
+            <div class="demo-card-head">
+              <div class="demo-card-title">Insights</div>
+            </div>
+            <div class="demo-bullet-list" id="demoExecutionInsights"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <aside class="demo-explain panel">
+      <div class="panel-header">
+        <span class="ph-title">Explain Panel</span>
+        <span class="ph-badge" id="demoCardBadge">Task</span>
+      </div>
+      <div class="panel-body scroll demo-stack">
+        <section class="demo-card">
+          <div class="demo-card-head">
+            <div class="demo-card-title" id="demoExplainTitle">Loading...</div>
+          </div>
+          <p class="demo-conclusion" id="demoConclusion"></p>
+        </section>
+        <section class="demo-card">
+          <div class="demo-card-head">
+            <div class="demo-card-title">Evidence</div>
+          </div>
+          <div class="demo-bullet-list" id="demoEvidence"></div>
+        </section>
+        <section class="demo-card">
+          <div class="demo-card-head">
+            <div class="demo-card-title">Reasoning</div>
+          </div>
+          <div class="demo-bullet-list" id="demoReasoning"></div>
+        </section>
+        <section class="demo-card">
+          <div class="demo-card-head">
+            <div class="demo-card-title">Suggested Actions</div>
+          </div>
+          <div class="demo-bullet-list" id="demoActions"></div>
+        </section>
+        <section class="demo-card">
+          <div class="demo-card-head">
+            <div class="demo-card-title">Risk Notes</div>
+          </div>
+          <div class="demo-bullet-list" id="demoRisks"></div>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <script src="js/demo-app.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Execution Overlay Existing UI Preview</title>
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    body { margin: 0; background: var(--eo-bg-0); color: var(--foreground); }
+    .layout { max-width: 1440px; margin: 0 auto; padding: 24px; display: flex; gap: 24px; align-items: flex-start; }
+    .toc { position: sticky; top: 20px; width: 220px; flex: 0 0 220px; border: 1px solid var(--eo-line); border-radius: 18px; padding: 16px; background: rgba(18,18,18,.72); box-shadow: var(--shadow-md); }
+    .toc-title { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--eo-text-subtle); margin-bottom: 10px; }
+    .toc a { display:block; padding:9px 10px; border-radius:10px; color:var(--eo-text-subtle); text-decoration:none; font-size:12px; }
+    .toc a:hover { background: rgba(255,255,255,.05); color: #fff; }
+    .shell { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+    .head { display:flex; flex-direction:column; gap:8px; }
+    .title { font-size: 26px; font-weight: 700; color: #fff; }
+    .sub { max-width: 900px; font-size: 13px; color: var(--eo-text-subtle); line-height: 1.6; }
+    .section { border:1px solid var(--eo-line); border-radius:18px; padding:18px; background: rgba(18,18,18,.72); display:flex; flex-direction:column; gap:14px; }
+    .section-head { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+    .section-title { font-size:15px; font-weight:700; color:#fff; }
+    .section-stat { font:11px var(--text-mono); color:var(--eo-text-subtle); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
+    .card { border:1px solid var(--eo-line); background:rgba(255,255,255,.03); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:12px; }
+    .card-head { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .card-title { font-size:13px; font-weight:700; color:#fff; }
+    .card-class { font:11px var(--text-mono); color:var(--eo-text-subtle); }
+    .stage { min-height:76px; border:1px dashed var(--eo-line); border-radius:12px; padding:12px; background:rgba(255,255,255,.02); display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .meta { display:flex; gap:6px; flex-wrap:wrap; }
+    .badge { display:inline-flex; align-items:center; min-height:20px; padding:0 7px; border-radius:6px; background:rgba(0,0,0,.82); color:rgba(255,255,255,.88); font:10px var(--text-mono); }
+    .map { display:inline-flex; align-items:center; min-height:20px; padding:0 8px; border-radius:999px; font-size:10px; border:1px solid transparent; }
+    .ok { color:#4ade80; background:rgba(74,222,128,.14); border-color:rgba(74,222,128,.28); }
+    .mid { color:#fbbf24; background:rgba(251,191,36,.14); border-color:rgba(251,191,36,.28); }
+    .no { color:#38bdf8; background:rgba(56,189,248,.14); border-color:rgba(56,189,248,.28); }
+    .note { font-size:11px; color:var(--eo-text-subtle); line-height:1.5; }
+    .stack { display:flex; flex-direction:column; gap:8px; width:100%; }
+    .inline { display:flex; gap:10px; flex-wrap:wrap; align-items:center; width:100%; }
+    @media (max-width:1080px){ .layout{flex-direction:column;} .toc{position:static;width:auto;} }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc"><div class="toc-title">Execution Overlay</div><a href="#buttons">Buttons</a><a href="#toggle-chip">Toggle &amp; Chip</a><a href="#labels">Labels &amp; Badges</a><a href="#panels">Panels &amp; Containers</a><a href="#viz">Data Viz Exempt</a></nav>
+    <main class="shell">
+      <header class="head"><div class="title">Execution Overlay Existing UI Preview</div><div class="sub">现状页。这个模块把共享 `.btn` 和本地 `--eo-*` 视觉层叠在一起，重点看哪些交互按钮已经能并进目标 button system，哪些仍是图内专用 chip / graph tag。</div></header>
+      <section class="section" id="buttons"><div class="section-head"><div class="section-title">Buttons</div><div class="section-stat">5 个组件 / 4 个已对齐 / 1 个需收敛</div></div><div class="grid">
+        <article class="card"><div class="card-head"><div class="card-title">Playback / Zoom</div><div class="card-class">.btn / .btn-icon / #eoFitBtn</div></div><div class="stage"><button class="btn btn-icon" type="button">⏮</button><button class="btn" type="button">适配</button><button class="btn btn-icon" type="button">+</button><button class="btn btn-icon" type="button">−</button></div><div class="meta"><span class="map ok">✅ 已对齐</span><span class="badge">base: ../vendor/pto-design-system/css/style.css</span><span class="badge">soft + icon button</span></div><div class="note">重置、缩放、适配都已经建立在共享按钮基础之上。</div></article>
+        <article class="card"><div class="card-head"><div class="card-title">Play CTA</div><div class="card-class">#eoPlayBtn.btn-solid</div></div><div class="stage"><button class="btn btn-solid" type="button">播放</button></div><div class="meta"><span class="map ok">✅ 已对齐</span><span class="badge">migrated: .btn.btn-solid</span><span class="badge">shared primary action</span></div><div class="note">播放 CTA 已经切到定稿的 solid 语义。</div></article>
+        <article class="card"><div class="card-head"><div class="card-title">Filter Buttons</div><div class="card-class">.btn.eo-filter-btn.is-selected</div></div><div class="stage"><div class="eo-filter-bar"><button class="btn eo-filter-btn is-selected" type="button">全部</button><button class="btn eo-filter-btn" type="button">Query</button><button class="btn eo-filter-btn" type="button">Key</button></div></div><div class="meta"><span class="map ok">✅ 已对齐</span><span class="badge">base: .btn</span><span class="badge">selected state wrapper</span></div><div class="note">筛选条已经是“共享按钮 + 共享选择态命名”的模式。</div></article>
+        <article class="card"><div class="card-head"><div class="card-title">Detail Close</div><div class="card-class">.btn.detail-close</div></div><div class="stage"><button class="btn detail-close" type="button">✕</button></div><div class="meta"><span class="map ok">✅ 已对齐</span><span class="badge">ghost/icon close</span></div><div class="note">详情抽屉的关闭按钮可以直接映射到 ghost icon button。</div></article>
+        <article class="card"><div class="card-head"><div class="card-title">Conn Jump Pill</div><div class="card-class">.eo-conn-btn</div></div><div class="stage"><button class="eo-conn-btn" type="button">jump → q_proj</button></div><div class="meta"><span class="map no">✕ 模块专属</span><span class="badge">dense mono pill</span><span class="badge">graph-context action</span></div><div class="note">图内跳转 pill 与普通按钮密度差异很大，保留模块专属更合理。</div></article>
+      </div></section>
+      <section class="section" id="toggle-chip"><div class="section-head"><div class="section-title">Toggle &amp; Chip</div><div class="section-stat">2 个组件 / 0 个已对齐 / 1 个需收敛</div></div><div class="grid">
+        <article class="card"><div class="card-head"><div class="card-title">Pipeline Filter Strip</div><div class="card-class">.eo-filter-bar / .eo-filter-btn.is-selected</div></div><div class="stage"><div class="eo-filter-bar"><button class="btn eo-filter-btn is-selected" type="button">全部</button><button class="btn eo-filter-btn" type="button">Weight</button></div></div><div class="meta"><span class="map ok">✅ 已对齐</span><span class="badge">active -> .is-selected</span><span class="badge">shared selection naming</span></div><div class="note">筛选条行为和状态类现在都已对齐共享 button system。</div></article>
+        <article class="card"><div class="card-head"><div class="card-title">Legend Chips</div><div class="card-class">.eo-legend-chip.query|key|weight|shared</div></div><div class="stage"><span class="eo-legend-chip query">Query</span><span class="eo-legend-chip key">Key</span><span class="eo-legend-chip weight">Weight</span></div><div class="meta"><span class="map no">✕ 模块专属</span><span class="badge">pipeline semantic chips</span></div><div class="note">图例 chip 带 pipeline 语义色，不属于共享按钮/筛选件。</div></article>
+      </div></section>
+      <section class="section" id="labels"><div class="section-head"><div class="section-title">Labels &amp; Badges</div><div class="section-stat">4 个组件 / 1 个已对齐 / 0 个需收敛</div></div><div class="grid">
+        <article class="card"><div class="card-head"><div class="card-title">Summary Chips</div><div class="card-class">.stat-chip / .detail-type-badge</div></div><div class="stage"><span class="stat-chip">58 nodes</span><span class="detail-type-badge">Q</span></div><div class="meta"><span class="map ok">✅ 已对齐</span><span class="badge">shared info badge</span></div><div class="note">摘要统计和详情 badge 基本继承了共享体系。</div></article>
+        <article class="card"><div class="card-head"><div class="card-title">Node Micro Badges</div><div class="card-class">.eo-node-tag / .eo-node-core</div></div><div class="stage"><span class="eo-node-tag">DMA</span><span class="eo-node-core">AIC</span></div><div class="meta"><span class="map no">✕ 模块专属</span><span class="badge">graph node metadata</span></div><div class="note">节点内微徽标是图节点皮肤的一部分，保留模块专属。</div></article>
+      </div></section>
+      <section class="section" id="panels"><div class="section-head"><div class="section-title">Panels &amp; Containers</div><div class="section-stat">5 个组件 / 1 个已对齐 / 1 个需收敛</div></div><div class="grid">
+        <article class="card"><div class="card-head"><div class="card-title">Toolbar + Summary</div><div class="card-class">.toolbar / .graph-stats / .eo-summary</div></div><div class="stage"><div class="toolbar" style="width:100%;"><div class="toolbar-l"><a class="home-link" href="#" onclick="return false;">⌂</a><span class="toolbar-logo">Execution Overlay</span></div><div class="toolbar-r"><span class="stat-chip">active</span></div></div></div><div class="meta"><span class="map ok">✅ 已对齐</span><span class="badge">shared shell</span><span class="badge">eo-* summary below</span></div><div class="note">顶部壳层是统一工具页风格。</div></article>
+        <article class="card"><div class="card-head"><div class="card-title">Viewport + Footer</div><div class="card-class">.viewport.eo-viewport / .eo-footer</div></div><div class="stage"><div class="viewport eo-viewport" style="width:100%; min-height:120px; position:static;"><div class="eo-legend"><span class="eo-legend-label">Pipeline</span></div><div class="eo-footer"><div class="eo-progress" style="width:120px;"><div class="eo-progress-fill" style="width:42%;"></div></div></div></div></div><div class="meta"><span class="map mid">△ 需收敛</span><span class="badge">panel chrome</span><span class="badge">local --eo-* surfaces</span></div><div class="note">视口容器沿用了共享壳层思路，但视觉层完全是本地 `--eo-*` token。</div></article>
+        <article class="card"><div class="card-head"><div class="card-title">Sidebar / Detail Drawer</div><div class="card-class">.eo-panel / .detail-panel</div></div><div class="stage"><div class="stack"><section class="eo-panel"><div class="detail-section-title">原型信号层</div><ul class="eo-list"><li>拓扑 + 执行 + 诊断</li></ul></section><aside class="detail-panel" style="position:static; width:100%;"><div class="detail-header"><span class="detail-type-badge">NODE</span><div class="detail-name">q_proj</div><button class="btn detail-close" type="button">✕</button></div></aside></div></div><div class="meta"><span class="map no">✕ 模块专属</span><span class="badge">analysis sidebar</span><span class="badge">graph detail drawer</span></div><div class="note">容器结构依赖这个模块自己的解释布局。</div></article>
+      </div></section>
+      <section class="section" id="viz"><div class="section-head"><div class="section-title">Data Viz Exempt</div><div class="section-stat">5 个组件 / 0 个已对齐 / 0 个需收敛</div></div><div class="grid">
+        <article class="card"><div class="card-head"><div class="card-title">Pipeline Regions</div><div class="card-class">.eo-region.query|key|weight</div></div><div class="stage"><div class="inline"><div class="eo-region query" style="position:static; width:88px; height:52px;"></div><div class="eo-region key" style="position:static; width:88px; height:52px;"></div><div class="eo-region weight" style="position:static; width:88px; height:52px;"></div></div></div><div class="meta"><span class="map no">✕ 模块专属</span><span class="badge">pipeline semantic colors</span></div><div class="note">pipeline 区域色块全部保留模块专属。</div></article>
+        <article class="card"><div class="card-head"><div class="card-title">Node / Edge Skin</div><div class="card-class">.eo-node / .eo-edge / .eo-progress-fill</div></div><div class="stage"><div class="stack"><div class="eo-node query" style="position:static; width:180px;"><div class="eo-node-title">q_proj</div><div class="eo-node-foot"><div class="eo-node-progress"></div></div></div><svg width="180" height="20"><path class="eo-edge active" d="M4 10 L172 10"></path></svg></div></div><div class="meta"><span class="map no">✕ 模块专属</span><span class="badge">graph rendering surface</span></div><div class="note">图节点、边、进度条都属于 execution-overlay 的核心可视化编码。</div></article>
+      </div></section>
+    </main>
+  </div>
+</body>
+</html>

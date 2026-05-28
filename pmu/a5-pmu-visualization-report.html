@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>A5 PMU 数据可视化设计报告</title>
+    <style>
+      :root {
+        --bg: #f5f7f9;
+        --panel: #ffffff;
+        --ink: #17202a;
+        --muted: #657282;
+        --line: #d9e0e7;
+        --blue: #0b6bcb;
+        --green: #008b7c;
+        --amber: #b26a00;
+        --red: #b42318;
+        --violet: #6652b8;
+        --shadow: 0 16px 40px rgba(16, 31, 48, 0.10);
+        --radius: 8px;
+        --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        line-height: 1.65;
+      }
+      .page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 20px 56px;
+      }
+      header {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 28px;
+        margin-bottom: 16px;
+      }
+      .kicker {
+        color: var(--blue);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0;
+      }
+      h1, h2, h3, p { margin: 0; }
+      h1 {
+        font-size: 30px;
+        line-height: 1.18;
+        margin-top: 8px;
+      }
+      header p {
+        color: var(--muted);
+        max-width: 860px;
+        margin-top: 12px;
+      }
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 22px;
+        margin-top: 14px;
+      }
+      h2 {
+        font-size: 20px;
+        line-height: 1.25;
+        margin-bottom: 12px;
+      }
+      h3 {
+        font-size: 15px;
+        margin: 16px 0 8px;
+      }
+      p, li { color: #2f3b48; }
+      .muted { color: var(--muted); }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbfcfd;
+        padding: 14px;
+      }
+      .card strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 0 8px;
+        border: 1px solid #cce3fb;
+        border-radius: 99px;
+        background: #eef6ff;
+        color: #064f9e;
+        font-size: 12px;
+        margin: 4px 4px 0 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 14px;
+      }
+      th, td {
+        border: 1px solid var(--line);
+        padding: 10px;
+        vertical-align: top;
+        text-align: left;
+      }
+      th {
+        background: #f3f6f9;
+        font-weight: 700;
+      }
+      code {
+        font-family: var(--mono);
+        font-size: 0.92em;
+        background: #f1f4f7;
+        border: 1px solid #e1e7ee;
+        border-radius: 4px;
+        padding: 1px 4px;
+      }
+      pre {
+        margin: 12px 0 0;
+        padding: 14px;
+        border-radius: 8px;
+        background: #111827;
+        color: #f8fafc;
+        overflow: auto;
+        font: 13px/1.55 var(--mono);
+      }
+      .note {
+        border-left: 4px solid var(--blue);
+        background: #f2f8ff;
+        padding: 12px 14px;
+        border-radius: 6px;
+        color: #24435f;
+      }
+      .warn { border-left-color: var(--amber); background: #fff8ec; }
+      .danger { border-left-color: var(--red); background: #fff3f1; }
+      .good { border-left-color: var(--green); background: #effaf7; }
+      .flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .flow span {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        padding: 7px 9px;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .tag-red { color: var(--red); }
+      .tag-green { color: var(--green); }
+      .tag-violet { color: var(--violet); }
+      a { color: var(--blue); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      @media (max-width: 860px) {
+        .grid, .grid-3 { grid-template-columns: 1fr; }
+        h1 { font-size: 24px; }
+        section, header { padding: 18px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header>
+        <span class="kicker">Design Report · A5 PMU Visualization</span>
+        <h1>A5 PMU 数据可视化设计分析与洞察</h1>
+        <p>本文整理当前围绕 A5 / <code>dav_3510</code> PMU 数据可视化形成的产品判断、指标口径、诊断工作台设计与交互框架。核心结论：PMU group 不应被当作“字段集合”，而应被设计成不同的性能诊断镜头。</p>
+        <div>
+          <span class="pill">目标用户：算子开发者</span>
+          <span class="pill">目标用户：性能优化专家</span>
+          <span class="pill">首要场景：嵌入泳道图</span>
+          <span class="pill">当前聚焦：A5 / dav_3510</span>
+        </div>
+      </header>
+
+      <section>
+        <h2>1. 核心产品判断</h2>
+        <div class="note">
+          A5 PMU 可视化的目标不是把 counter 列出来，而是帮助用户判断：当前 group 能否解释 <code>total_cycle</code>，异常集中在哪条 lane / 哪个 Wrap / 哪个 task，dominant counter 对应哪条硬件路径，以及下一次应该采哪个 group。
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <strong>从表格转向诊断</strong>
+            <p>单 task counter 表只能回答“有什么值”；诊断工作台要回答“先看哪里、为什么看、下一步去哪”。</p>
+          </div>
+          <div class="card">
+            <strong>从 task 转向 Wrap</strong>
+            <p>A5 Mix 场景下，同一个 Wrap 内的 AIC / AIV0 / AIV1 关系比单个 task 更关键。</p>
+          </div>
+          <div class="card">
+            <strong>从 counter 转向硬件路径</strong>
+            <p>异常 counter 需要映射到 Cube、MTE、UB、L0、L2、FixPipe、issue / conflict 等硬件结构。</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>2. 关键指标口径</h2>
+        <h3><code>total_cycle</code>、<code>clc_cycle</code> 与 gap</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>指标</th>
+              <th>含义</th>
+              <th>使用方式</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>total_cycle</code></td>
+              <td>task 在泳道图时间轴上的真实跨度，近似 wall-clock duration。</td>
+              <td>作为所有 PMU 解释的外框和基准。</td>
+            </tr>
+            <tr>
+              <td><code>clc_cycle</code></td>
+              <td>对 cycle-like counter 聚合后的微观 pipeline 观察值。</td>
+              <td>只适合用于包含 cycle-like counter 的 group，例如 group 2；不应混入 event-count counter。</td>
+            </tr>
+            <tr>
+              <td><code>gap = clc_cycle - total_cycle</code></td>
+              <td>微观 PMU 聚合与真实时间跨度之间的差异。</td>
+              <td>作为 evidence，而不是直接作为好坏判断。</td>
+            </tr>
+            <tr>
+              <td><code>gap_ratio</code></td>
+              <td><code>gap / total_cycle</code>。</td>
+              <td>用于跨 task 排序和 badge 展示。</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="grid-3">
+          <div class="card">
+            <strong class="tag-red"><code>clc_cycle &lt; total_cycle</code></strong>
+            <p>可能表示 group counter 未覆盖完整 task 生命周期，疑似等待、空转、同步、未统计 stall 或非 pipeline 时间。</p>
+          </div>
+          <div class="card">
+            <strong class="tag-green"><code>clc_cycle ≈ total_cycle</code></strong>
+            <p>PMU pipeline 覆盖接近 wall-clock，可继续查看 dominant counter 是否集中。</p>
+          </div>
+          <div class="card">
+            <strong class="tag-violet"><code>clc_cycle &gt; total_cycle</code></strong>
+            <p>可能表示 pipeline 重叠，也可能是非互斥 counter 求和带来的 double-count 风险，不能直接判断为更好。</p>
+          </div>
+        </div>
+        <p class="note warn">重要边界：像 <code>icache_req</code>、<code>icache_miss</code> 更像事件计数，不应进入 <code>clc_cycle</code> 求和。</p>
+      </section>
+
+      <section>
+        <h2>3. PMU Group 是诊断镜头</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>默认工作台</th>
+              <th>首要回答</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Cube Arithmetic View</td>
+              <td>AIC / Cube 算术指令是否是真瓶颈？</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Pipeline Balance View</td>
+              <td>AIC / AIV0 / AIV1 谁占流水，谁拖尾？</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Memory Access Flow View</td>
+              <td>数据是否在 main / UB / L1 间产生过大访问压力？</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>Cube L0 Path View</td>
+              <td>AIC 核内 L0 / L0C / FixPipe 路径是否异常？</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>Conflict / Issue View</td>
+              <td>长 task 是否由冲突、issue 或 VF pressure 解释？</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>Local Buffer Pressure View</td>
+              <td>AIV / UB / ACC / MTE 本地访问是否拖慢？</td>
+            </tr>
+            <tr>
+              <td>8</td>
+              <td>L2 Efficiency View</td>
+              <td>L2 hit / miss / victim 是否说明复用失败或离散访问问题？</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>4. 各 Group 的用户目标与默认视图</h2>
+        <h3>Group 1 · Cube Arithmetic Instruction Pressure</h3>
+        <p>主要关注 <code>cube_fp_instr_busy</code> 与 <code>cube_int_instr_busy</code>。它不适合做完整 C/V balance，更适合判断 AIC / Cube 算术是否拖尾。</p>
+        <ul>
+          <li>找出 Cube FP / INT 指令 busy 最高的 AIC task。</li>
+          <li>识别 <code>long AIC task + high cube busy</code>，作为 C 侧计算瓶颈。</li>
+          <li>识别 <code>long AIC task + low cube busy</code>，提示转看 group 2 / 4 / 5 / 6。</li>
+        </ul>
+
+        <h3>Group 2 · Pipeline Balance / Utilization</h3>
+        <p>最适合做 A5 Mix pipeline balance。task 外框展示 <code>total_cycle</code>，内部展示 cycle-like counter composition；<code>icache_req / icache_miss</code> 独立展示。</p>
+        <ul>
+          <li>一眼比较 AIC / AIV0 / AIV1 的 pipeline 占比。</li>
+          <li>识别 uncovered / accounted / overlap。</li>
+          <li>标出 critical Wrap 和 critical lane。</li>
+          <li>从 dominant counter 追溯到硬件 pipe 和 peer task。</li>
+        </ul>
+
+        <h3>Group 4 · Main Memory + AIV/UB/L1 Access Flow</h3>
+        <p>更像数据流访问视角，尤其对 AIV / UB / L1 和 main memory 访问敏感。</p>
+        <ul>
+          <li>找出主存读写压力最高的 task。</li>
+          <li>找出 AIV UB read / write 最高的 task。</li>
+          <li>判断 C/V 之间是否存在过多中间数据交换。</li>
+        </ul>
+
+        <h3>Group 5 · Cube L0 / L0C / FixPipe-adjacent Path</h3>
+        <p>AIC / Cube 核内路径深钻，重点是 L0A / L0B / L0C 和 FixPipe 读 L0C。</p>
+        <ul>
+          <li>判断 L0A / L0B 输入是否均衡。</li>
+          <li>判断 L0C read / write 是否异常高。</li>
+          <li>追溯 <code>fixp_rd_l0c_instr</code> 到 FixPipe / output path。</li>
+        </ul>
+
+        <h3>Group 6 · UB Conflict / Issue / VF Pressure</h3>
+        <p>不是常规利用率视角，而是冲突、issue 和 VF pressure 视角。</p>
+        <ul>
+          <li>识别 UB write-control conflict 高的 task。</li>
+          <li>识别 load / IB / UB conflict 高的 task。</li>
+          <li>区分 pipeline 没忙起来是等待、冲突，还是 issue 限制。</li>
+        </ul>
+
+        <h3>Group 7 · ACC / UB / MTE Local Access Pressure</h3>
+        <p>重点是 ACC / UB 本地访问，以及 MTE 与 Vector / FixPipe 在本地 buffer 上的读写压力。</p>
+        <ul>
+          <li>找出 UB / ACC 读写最重的 AIV task。</li>
+          <li>区分 Vector compute-heavy 和 UB/MTE access-heavy。</li>
+          <li>追溯到 <code>UB -> Vector -> UB</code> 或 <code>ACC/UB -> MTE -> GM/L2</code> 路径。</li>
+        </ul>
+
+        <h3>Group 8 · L2 Hit / Miss / Victim Efficiency</h3>
+        <p>用于 L2 efficiency，区分读侧 AR 与写侧 AW 的 hit / miss / victim。</p>
+        <ul>
+          <li>计算 read hit rate、write hit rate。</li>
+          <li>找出 read miss / write miss / victim 最高的 task。</li>
+          <li>识别高 victim，提示 cache churn / 复用失败。</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. 统一交互框架</h2>
+        <div class="flow">
+          <span>选择 PMU group</span>
+          <span>切换诊断工作台</span>
+          <span>查看 lane / Wrap / task 热点</span>
+          <span>点击异常 task</span>
+          <span>查看 dominant counter</span>
+          <span>追溯硬件 pipe / peer task</span>
+          <span>获得下一次采集建议</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>区域</th>
+              <th>设计职责</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>顶部 group selector</td>
+              <td>切换诊断镜头，不只是切 counter 字段。</td>
+            </tr>
+            <tr>
+              <td>Immediate attention</td>
+              <td>给出当前 group 下最该先看的 lane / Wrap / task。</td>
+            </tr>
+            <tr>
+              <td>Lane summary</td>
+              <td>按 group 语义聚合 lane pressure、coverage、severity 或 efficiency。</td>
+            </tr>
+            <tr>
+              <td>Wrap-grouped swimlane</td>
+              <td>保留真实 <code>total_cycle</code> 时间跨度，同时在 task 内部展示当前 group 的 counter composition。</td>
+            </tr>
+            <tr>
+              <td>Wrap diagnosis</td>
+              <td>判断 C / V 谁拖尾、哪个 Wrap 破坏 balance、哪个 Wrap 复用效率差。</td>
+            </tr>
+            <tr>
+              <td>Detail panel</td>
+              <td>展示 task 解释、counter breakdown、硬件 pipe、peer task、源码锚点和下一次采集建议。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>6. 高价值诊断目标补充</h2>
+        <div class="grid">
+          <div class="card">
+            <strong>Pipeline saturation vs starvation</strong>
+            <p>高 counter + 长 task 可能是 saturation；长 task + counter 不高更像 starvation / wait / uncovered。</p>
+          </div>
+          <div class="card">
+            <strong>Critical path 不等于最大 counter</strong>
+            <p>Wrap 中最晚结束的 task 才决定用户感知的瓶颈，counter 最大的 task 不一定在关键路径上。</p>
+          </div>
+          <div class="card">
+            <strong>Group 无法解释也是结论</strong>
+            <p>如果当前 group 的 dominant counter 不能解释 long task，应明确建议下一次采集哪个 group。</p>
+          </div>
+          <div class="card">
+            <strong>Peer task 是追溯入口</strong>
+            <p>A5 Mix 里异常 task 往往要回看同 Wrap 内 C / V peer 的 start/end、wait 和 dominant counter。</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>7. 后续建议</h2>
+        <p>后续应优先补齐数据契约与诊断解释链路，让工作台从可视化展示进一步变成可执行的定位工具。</p>
+        <div class="note good">
+          下一步建议：用真实或更接近真实的 <code>tilefwk_prof_pmu.csv</code> + <code>merged_swimlane.json</code> 设计数据 join schema，明确 <code>task identity</code>、<code>wrapId</code>、<code>event-hint.rootHash</code>、<code>callOpMagic</code>、<code>leafHash</code> 的联动字段。
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

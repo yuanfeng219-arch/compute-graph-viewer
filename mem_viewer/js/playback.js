@@ -44,14 +44,29 @@ const detTiers   = document.getElementById('det-tiers');
 scrubber.max = totalSteps - 1;
 siTotal.textContent = totalSteps;
 
+const floatingPlayback = window.PtoFloatingPlaybackControl?.init({
+  shell: floatingShell,
+  toggle: floatingToggle,
+  collapsedButton: floatingCollapsedBtn,
+  collapsedIcon: floatingCollapsedIcon,
+  isPlaying: () => playing,
+  onExpandedCollapsedButtonClick: () => {
+    if (playing) playBtn.click();
+  },
+});
+
+window.PtoFloatingPlaybackControl?.initScrubberHover({
+  scrubber,
+  scrubberHover,
+  totalSteps,
+  getLabelForStep: (step) => {
+    const op = opByMagic.get(SCHEDULE[step]);
+    return `Step ${step} · ${op ? `${op.n} #${op.m}` : '—'}`;
+  },
+});
+
 function syncFloatingToolbarState() {
-  if (!floatingShell || !floatingToggle || !floatingCollapsedIcon) return;
-  const expanded = !floatingShell.classList.contains('is-collapsed');
-  floatingShell.classList.toggle('is-expanded', expanded);
-  floatingShell.classList.toggle('is-collapsed', !expanded);
-  floatingToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-  floatingToggle.setAttribute('aria-label', expanded ? 'Collapse playback toolbar' : 'Expand playback toolbar');
-  floatingCollapsedIcon.innerHTML = playing ? '&#10074;&#10074;' : '&#9654;';
+  floatingPlayback?.sync({ playing });
 }
 
 function clamp(value, min, max) {
@@ -86,13 +101,6 @@ function initPanelResizer() {
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', stopDragging);
   });
-}
-
-function setFloatingToolbarExpanded(expanded) {
-  if (!floatingShell) return;
-  floatingShell.classList.toggle('is-collapsed', !expanded);
-  floatingShell.classList.toggle('is-expanded', expanded);
-  syncFloatingToolbarState();
 }
 
 function renderRuntimeStatus(step) {
@@ -220,47 +228,6 @@ scrubber.addEventListener('input', () => {
 replayBtn?.addEventListener('click', () => {
   stopPlay();
   goToStep(0);
-});
-
-floatingToggle?.addEventListener('click', () => {
-  const expanded = floatingShell?.classList.contains('is-expanded');
-  setFloatingToolbarExpanded(!expanded);
-});
-
-function updateScrubberHover(clientX) {
-  if (!scrubber || !scrubberHover) return;
-  const rect = scrubber.getBoundingClientRect();
-  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(rect.width, 1)));
-  const step = Math.round(ratio * (totalSteps - 1));
-  const op = opByMagic.get(SCHEDULE[step]);
-  scrubberHover.textContent = `Step ${step} · ${op ? `${op.n} #${op.m}` : '—'}`;
-  scrubberHover.style.left = `${ratio * rect.width}px`;
-}
-
-scrubber?.addEventListener('pointermove', (e) => {
-  updateScrubberHover(e.clientX);
-  scrubberHover?.classList.add('visible');
-});
-
-scrubber?.addEventListener('pointerdown', () => {
-  scrubberHover?.classList.add('visible');
-});
-
-scrubber?.addEventListener('pointerleave', () => {
-  scrubberHover?.classList.remove('visible');
-});
-
-scrubber?.addEventListener('change', () => {
-  scrubberHover?.classList.remove('visible');
-});
-
-floatingCollapsedBtn?.addEventListener('click', () => {
-  const expanded = floatingShell?.classList.contains('is-expanded');
-  if (expanded) {
-    if (playing) playBtn.click();
-    return;
-  }
-  setFloatingToolbarExpanded(true);
 });
 
 // Keyboard shortcuts

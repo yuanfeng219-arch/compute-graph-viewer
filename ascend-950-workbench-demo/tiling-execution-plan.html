@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tiling Execution Plan Preview</title>
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/workbench-shell/pattern.css">
+  <style>
+    body {
+      min-width: 1440px;
+      min-height: 100vh;
+      height: auto;
+      overflow: auto;
+      display: block;
+      background: var(--background);
+      color: var(--foreground);
+    }
+
+    * {
+      scrollbar-color: color-mix(in srgb, var(--surface-4) 82%, transparent) color-mix(in srgb, var(--surface-1) 72%, transparent);
+      scrollbar-width: thin;
+    }
+
+    *::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: color-mix(in srgb, var(--surface-1) 72%, transparent);
+      border-radius: var(--radius-pill);
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: color-mix(in srgb, var(--surface-4) 82%, transparent);
+      border: 2px solid color-mix(in srgb, var(--surface-1) 72%, transparent);
+      border-radius: var(--radius-pill);
+    }
+
+    .tep-page {
+      min-height: 100vh;
+      height: auto;
+      display: grid;
+      grid-template-rows: 58px auto;
+      overflow: visible;
+    }
+
+    .layout-header-right {
+      justify-content: flex-end;
+    }
+
+    .tep-brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .tep-title {
+      color: var(--foreground);
+      font: var(--text-title-2);
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .tep-subtitle {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .tep-chip,
+    .tep-chip-strong {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: var(--tag-height);
+      padding: 0 var(--space-2);
+      border-radius: var(--tag-radius);
+      border: 1px solid var(--comp-tag-border);
+      background: var(--comp-tag-bg);
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .tep-chip-strong {
+      color: var(--foreground);
+      border-color: color-mix(in srgb, var(--primary) 24%, transparent);
+      background: color-mix(in srgb, var(--primary) 10%, transparent);
+    }
+
+    .tep-main {
+      display: grid;
+      gap: var(--space-4);
+      padding: var(--space-4);
+    }
+
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+
+    .summary-item {
+      min-width: 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      background: color-mix(in srgb, var(--surface-2) 82%, transparent);
+      padding: var(--space-3);
+      display: grid;
+      gap: 4px;
+    }
+
+    .summary-item span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      letter-spacing: 0;
+    }
+
+    .summary-item strong {
+      color: var(--foreground);
+      font: var(--text-mono);
+      overflow-wrap: anywhere;
+    }
+
+    .summary-item small {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+      line-height: 1.35;
+    }
+
+    .tep-workbench {
+      min-height: 680px;
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr) 340px;
+      gap: var(--space-4);
+      align-items: stretch;
+      padding: 0;
+    }
+
+    .source-body,
+    .inspector-body {
+      display: grid;
+      gap: var(--space-4);
+    }
+
+    .section-label {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .source-group {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .anchor-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .anchor-row {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-1) 78%, transparent);
+      color: var(--foreground-secondary);
+      padding: var(--space-2);
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: var(--space-2);
+      align-items: center;
+      cursor: pointer;
+      text-align: left;
+      font: var(--text-body-sm);
+    }
+
+    .anchor-row:hover,
+    .anchor-row:focus-visible {
+      outline: none;
+      border-color: var(--border-default);
+      background: color-mix(in srgb, var(--surface-3) 58%, transparent);
+    }
+
+    .anchor-row.is-active {
+      border-color: color-mix(in srgb, var(--primary) 56%, transparent);
+      background: var(--state-selected);
+      color: var(--foreground);
+    }
+
+    .anchor-line {
+      color: var(--foreground-muted);
+      font: var(--text-mono);
+    }
+
+    .anchor-code {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .anchor-code strong {
+      color: inherit;
+      font: var(--text-mono);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .anchor-code span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      letter-spacing: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .field-detail {
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-1) 84%, transparent);
+      padding: var(--space-3);
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .field-detail-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .field-detail-title {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .field-detail-body {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+      line-height: 1.45;
+    }
+
+    .plan-body {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      gap: var(--space-4);
+      overflow: hidden;
+    }
+
+    .flow-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: var(--space-3);
+      align-items: stretch;
+    }
+
+    .flow-step {
+      position: relative;
+      min-width: 0;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+      border: 1px solid var(--border-subtle);
+      padding: var(--space-3);
+      display: grid;
+      gap: 6px;
+    }
+
+    .flow-step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: calc(-1 * var(--space-3));
+      width: var(--space-3);
+      height: 1px;
+      background: color-mix(in srgb, var(--primary) 46%, var(--border-default));
+    }
+
+    .flow-step.is-active {
+      border-color: color-mix(in srgb, var(--primary) 58%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent);
+    }
+
+    .flow-step span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      letter-spacing: 0;
+    }
+
+    .flow-step strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .plan-grid {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 250px;
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: var(--space-4);
+    }
+
+    .plan-card {
+      min-width: 0;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-1) 78%, transparent);
+      padding: var(--space-3);
+      display: grid;
+      gap: var(--space-3);
+    }
+
+    .mapping-card {
+      min-width: 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      background: color-mix(in srgb, var(--surface-1) 78%, transparent);
+      padding: var(--space-3);
+      display: grid;
+      gap: var(--space-3);
+    }
+
+    .mapping-copy {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+      line-height: 1.45;
+    }
+
+    .tile-buffer-map {
+      display: grid;
+      grid-template-columns: minmax(150px, 0.8fr) 34px minmax(0, 1.2fr);
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .logical-tile,
+    .buffer-stack {
+      min-width: 0;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-2) 84%, transparent);
+      border: 1px solid var(--border-subtle);
+      padding: var(--space-3);
+    }
+
+    .logical-tile {
+      display: grid;
+      gap: 5px;
+      border-color: color-mix(in srgb, var(--primary) 36%, transparent);
+    }
+
+    .logical-tile strong,
+    .buffer-stack strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .logical-tile span,
+    .buffer-stack span {
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+      letter-spacing: 0;
+      line-height: 1.35;
+    }
+
+    .map-arrow {
+      color: var(--foreground-muted);
+      font: var(--text-mono);
+      text-align: center;
+    }
+
+    .buffer-stack {
+      display: grid;
+      gap: 7px;
+    }
+
+    .buffer-line {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: var(--space-2);
+      align-items: center;
+    }
+
+    .buffer-line-label {
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+      letter-spacing: 0;
+    }
+
+    .buffer-line-bar {
+      height: 18px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--surface-4) 46%, transparent);
+      border: 1px solid color-mix(in srgb, var(--border-default) 60%, transparent);
+    }
+
+    .buffer-line-bar.is-double {
+      background:
+        linear-gradient(90deg, color-mix(in srgb, var(--primary) 52%, var(--surface-4)) 0 48%, transparent 48% 52%, color-mix(in srgb, var(--primary) 52%, var(--surface-4)) 52% 100%);
+    }
+
+    .buffer-line-bar.is-temp {
+      background: color-mix(in srgb, var(--warning) 42%, var(--surface-4));
+    }
+
+    .plan-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .plan-card-title {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .core-strip {
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      gap: 5px;
+    }
+
+    .core-cell {
+      min-height: 28px;
+      border-radius: 5px;
+      background: color-mix(in srgb, var(--surface-4) 52%, transparent);
+      border: 1px solid color-mix(in srgb, var(--border-default) 62%, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .core-cell.is-active {
+      color: var(--foreground);
+      background: color-mix(in srgb, var(--primary) 66%, var(--success));
+      border-color: transparent;
+    }
+
+    .core-cell.is-tail {
+      color: var(--background);
+      background: var(--warning);
+      border-color: transparent;
+    }
+
+    .tile-wrap {
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 8px var(--space-3);
+      align-items: center;
+    }
+
+    .tile-axis-top,
+    .tile-axis-foot,
+    .tile-axis-left {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      letter-spacing: 0;
+    }
+
+    .tile-axis-top,
+    .tile-axis-foot {
+      grid-column: 2;
+    }
+
+    .tile-axis-left {
+      grid-column: 1;
+      grid-row: 2;
+      text-align: right;
+      display: grid;
+      gap: 3px;
+    }
+
+    .tile-grid {
+      grid-column: 2;
+      grid-row: 2;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-rows: repeat(4, 46px);
+      gap: 5px;
+      padding: var(--space-2);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+    }
+
+    .tile-cell {
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--surface-4) 46%, transparent);
+      border: 1px solid color-mix(in srgb, var(--border-default) 62%, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .tile-cell.is-row,
+    .tile-cell.is-col {
+      background: color-mix(in srgb, var(--primary) 20%, var(--surface-4));
+      border-color: color-mix(in srgb, var(--primary) 42%, transparent);
+    }
+
+    .tile-cell.is-active {
+      color: var(--foreground);
+      background: color-mix(in srgb, var(--primary) 72%, var(--success));
+      border-color: transparent;
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .tile-cell.is-tail {
+      color: var(--background);
+      background: var(--warning);
+      border-color: transparent;
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .branch-list {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .branch-item {
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      background: color-mix(in srgb, var(--surface-2) 76%, transparent);
+      padding: var(--space-2);
+      display: grid;
+      gap: 3px;
+    }
+
+    .branch-item.is-active {
+      border-color: color-mix(in srgb, var(--success) 48%, transparent);
+      background: color-mix(in srgb, var(--success) 9%, var(--surface-2));
+    }
+
+    .branch-key {
+      color: var(--foreground);
+      font: var(--text-mono);
+    }
+
+    .branch-label {
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+      line-height: 1.35;
+    }
+
+    .memory-bars,
+    .recommendation-list,
+    .evidence-list {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .memory-row {
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr) 70px;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+    }
+
+    .memory-track {
+      height: 8px;
+      border-radius: var(--radius-pill);
+      background: color-mix(in srgb, var(--surface-1) 86%, transparent);
+      overflow: hidden;
+    }
+
+    .memory-fill {
+      display: block;
+      height: 100%;
+      width: var(--pct);
+      border-radius: inherit;
+      background: color-mix(in srgb, var(--primary) 66%, var(--success));
+    }
+
+    .memory-row.is-warning .memory-fill {
+      background: var(--warning);
+    }
+
+    .inspector-card {
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+      padding: var(--space-3);
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .inspector-card-title {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .kv-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px var(--space-3);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .kv-grid strong {
+      color: var(--foreground);
+      font: var(--text-mono);
+      text-align: right;
+    }
+
+    .recommendation-item,
+    .evidence-item {
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+      padding: var(--space-2);
+      display: grid;
+      gap: 4px;
+    }
+
+    .recommendation-item strong,
+    .evidence-item strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .recommendation-item span,
+    .evidence-item span {
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+      line-height: 1.35;
+    }
+
+    .pipeline-panel {
+      display: grid;
+      gap: var(--space-3);
+    }
+
+    .pipeline-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .pipeline-chart {
+      display: grid;
+      gap: 7px;
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-1) 78%, transparent);
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr);
+      gap: var(--space-3);
+      align-items: center;
+    }
+
+    .lane-label {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      text-align: right;
+    }
+
+    .lane-track {
+      position: relative;
+      height: 24px;
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--surface-2) 82%, transparent);
+      overflow: hidden;
+    }
+
+    .lane-segment {
+      position: absolute;
+      top: 4px;
+      height: 16px;
+      left: var(--x);
+      width: var(--w);
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--primary) 68%, var(--success));
+    }
+
+    .lane-segment.is-mte {
+      background: color-mix(in srgb, var(--warning) 72%, var(--primary));
+    }
+
+    .lane-segment.is-vector {
+      background: color-mix(in srgb, var(--success) 70%, var(--primary));
+    }
+
+    .lane-segment.is-bubble {
+      background:
+        repeating-linear-gradient(
+          135deg,
+          color-mix(in srgb, var(--danger) 34%, transparent) 0 4px,
+          transparent 4px 8px
+        );
+      outline: 1px solid color-mix(in srgb, var(--danger) 50%, transparent);
+    }
+
+    .pipeline-note {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1100px) {
+      body {
+        min-width: 0;
+      }
+
+      .summary-strip,
+      .tep-workbench,
+      .plan-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-step:not(:last-child)::after {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="workbench-shell-page tep-page">
+    <header class="layout-header layout-header-filled workbench-shell-header">
+      <div class="layout-header-left">
+        <div class="tep-brand">
+          <div class="tep-title">Tiling Execution Plan Preview</div>
+          <div class="tep-subtitle">Host tiling -> TilingData -> Kernel branch -> pipeline</div>
+        </div>
+        <span class="tep-chip-strong">swiglu_group_quant</span>
+        <span class="tep-chip">Ascend 950</span>
+        <span class="tep-chip">T2 Compiled</span>
+      </div>
+      <div class="layout-header-right">
+        <a class="btn btn-sm btn-ghost" href="./index.html">Workbench</a>
+        <a class="btn btn-sm" href="./operator_tiling_intro.md">Open Markdown</a>
+      </div>
+    </header>
+
+    <main class="tep-main">
+      <section class="summary-strip" aria-label="Plan summary">
+        <div class="summary-item">
+          <span>BlockDim</span>
+          <strong>40 AIV cores</strong>
+          <small>Host side SetBlockDim uses all available vector cores for this shape.</small>
+        </div>
+        <div class="summary-item">
+          <span>Tile Shape</span>
+          <strong>rowFactor 2 × dFactor 128</strong>
+          <small>Two row slices per UB residency, D axis split by 128 elements.</small>
+        </div>
+        <div class="summary-item">
+          <span>TilingKey</span>
+          <strong>31 FP8_QUANT</strong>
+          <small>Selected when quantMode is FP8 and outputOrigin is false.</small>
+        </div>
+        <div class="summary-item">
+          <span>Buffer Budget</span>
+          <strong>UB 62% · workspace 32B</strong>
+          <small>No capacity overflow. Tail D is unaligned and should be checked.</small>
+        </div>
+      </section>
+
+      <section class="workbench-frame workbench-frame-grid tep-workbench" aria-label="Tiling execution plan preview">
+        <aside class="panel-shell panel-shell-quiet workbench-pane" aria-label="Source anchors">
+          <header class="panel-shell-header">
+            <h2 class="panel-shell-title">Source &amp; Anchors</h2>
+            <div class="panel-shell-meta">clickable fields</div>
+          </header>
+          <div class="panel-shell-body source-body">
+            <section class="source-group">
+              <div class="section-label">Host tiling</div>
+              <div class="anchor-list">
+                <button class="anchor-row is-active" data-focus="rowFactor">
+                  <span class="anchor-line">L478</span>
+                  <span class="anchor-code"><strong>set_rowFactor(rowFactor_)</strong><span>tile row size</span></span>
+                </button>
+                <button class="anchor-row" data-focus="dFactor">
+                  <span class="anchor-line">L482</span>
+                  <span class="anchor-code"><strong>set_dFactor(dFactor_)</strong><span>D axis tile length</span></span>
+                </button>
+                <button class="anchor-row" data-focus="tail">
+                  <span class="anchor-line">L483</span>
+                  <span class="anchor-code"><strong>set_tailDFactor(tailDFactor_)</strong><span>last D tile</span></span>
+                </button>
+                <button class="anchor-row" data-focus="key">
+                  <span class="anchor-line">L537</span>
+                  <span class="anchor-code"><strong>SetTilingKey(31)</strong><span>Kernel branch selector</span></span>
+                </button>
+                <button class="anchor-row" data-focus="block">
+                  <span class="anchor-line">L566</span>
+                  <span class="anchor-code"><strong>SetBlockDim(usedCoreNums_)</strong><span>core split</span></span>
+                </button>
+                <button class="anchor-row" data-focus="save">
+                  <span class="anchor-line">L567</span>
+                  <span class="anchor-code"><strong>SaveToBuffer(...)</strong><span>serialize plan</span></span>
+                </button>
+              </div>
+            </section>
+
+            <section class="source-group">
+              <div class="section-label">Kernel consumer</div>
+              <div class="anchor-list">
+                <button class="anchor-row" data-focus="consume">
+                  <span class="anchor-line">K34</span>
+                  <span class="anchor-code"><strong>GET_TILING_DATA</strong><span>parse TilingData</span></span>
+                </button>
+                <button class="anchor-row" data-focus="branch">
+                  <span class="anchor-line">K38</span>
+                  <span class="anchor-code"><strong>TILING_KEY_IS(31)</strong><span>FP8 branch</span></span>
+                </button>
+              </div>
+            </section>
+
+            <section class="field-detail" aria-live="polite">
+              <div class="field-detail-head">
+                <span class="field-detail-title" id="fieldTitle">rowFactor</span>
+                <span class="tep-chip" id="fieldRole">tile-row-size</span>
+              </div>
+              <p class="field-detail-body" id="fieldDescription">
+                Controls how many B/S rows are resident in UB per inner loop. It changes tile height, UB pressure, and row loop count.
+              </p>
+            </section>
+          </div>
+        </aside>
+
+        <section class="panel-shell panel-shell-quiet workbench-pane" aria-label="Tiling execution plan">
+          <header class="panel-shell-header">
+            <h2 class="panel-shell-title">Tiling Execution Plan</h2>
+            <div class="panel-shell-meta">execution plan object</div>
+          </header>
+          <div class="panel-shell-body plan-body">
+            <section class="flow-strip" aria-label="Tiling flow">
+              <div class="flow-step is-active" data-flow="context"><span>1</span><strong>Context</strong><span>shape / attr / platform</span></div>
+              <div class="flow-step" data-flow="shape"><span>2</span><strong>CalcOpTiling</strong><span>row, D, UB budget</span></div>
+              <div class="flow-step" data-flow="fields"><span>3</span><strong>TilingData</strong><span>fields and tail</span></div>
+              <div class="flow-step" data-flow="save"><span>4</span><strong>SaveToBuffer</strong><span>serialized payload</span></div>
+              <div class="flow-step" data-flow="kernel"><span>5</span><strong>Kernel</strong><span>GET_TILING_DATA</span></div>
+            </section>
+
+            <section class="plan-grid">
+              <div class="plan-card">
+                <div class="plan-card-head">
+                  <span class="plan-card-title">Core Split</span>
+                  <span class="tep-chip">usedCoreNums 40</span>
+                </div>
+                <div class="core-strip" id="coreStrip" aria-label="Core split map"></div>
+              </div>
+
+              <div class="plan-card" style="grid-row: span 2;">
+                <div class="plan-card-head">
+                  <span class="plan-card-title">TilingKey Branch</span>
+                  <span class="tep-chip">active 31</span>
+                </div>
+                <div class="branch-list">
+                  <div class="branch-item"><span class="branch-key">1 GROUP_QUANT</span><span class="branch-label">quantMode == STATIC_QUANT</span></div>
+                  <div class="branch-item"><span class="branch-key">2 MX_QUANT</span><span class="branch-label">quantMode == MX_QUANT</span></div>
+                  <div class="branch-item is-active"><span class="branch-key">31 FP8_QUANT</span><span class="branch-label">quantMode == FP8 &amp;&amp; !outputOrigin</span></div>
+                  <div class="branch-item"><span class="branch-key">32 FP8_YORIGIN</span><span class="branch-label">quantMode == FP8 &amp;&amp; outputOrigin</span></div>
+                </div>
+              </div>
+
+              <div class="plan-card">
+                <div class="plan-card-head">
+                  <span class="plan-card-title">Logical Tile Map</span>
+                  <span class="tep-chip" id="tileActiveChip">active rowFactor</span>
+                </div>
+                <div class="tile-wrap">
+                  <div class="tile-axis-top">D axis: dLoop 3 · dFactor 128 · tail 64 -></div>
+                  <div class="tile-axis-left"><span>B/S rows</span><strong>rowFactor 2</strong><span>down</span></div>
+                  <div class="tile-grid" id="tileGrid" aria-label="Tile grid"></div>
+                  <div class="tile-axis-foot">These cells are work tiles, not buffer blocks. Tail tiles are shown in warning color.</div>
+                </div>
+              </div>
+            </section>
+
+            <section class="mapping-card" aria-label="Tile to buffer mapping">
+              <div class="plan-card-head">
+                <span class="plan-card-title">One Logical Tile -> Multiple Buffer Regions</span>
+                <span class="tep-chip">not 1:1 cells</span>
+              </div>
+              <div class="tile-buffer-map">
+                <div class="logical-tile">
+                  <strong>Logical work tile</strong>
+                  <span>rowFactor 2 × dFactor 128</span>
+                  <span>Controls loop count and GM offset.</span>
+                </div>
+                <div class="map-arrow">-&gt;</div>
+                <div class="buffer-stack">
+                  <strong>UB residency for this tile</strong>
+                  <div class="buffer-line"><span class="buffer-line-label">x0 queue</span><span class="buffer-line-bar is-double"></span></div>
+                  <div class="buffer-line"><span class="buffer-line-label">x1 queue</span><span class="buffer-line-bar is-double"></span></div>
+                  <div class="buffer-line"><span class="buffer-line-label">y queue</span><span class="buffer-line-bar is-double"></span></div>
+                  <div class="buffer-line"><span class="buffer-line-label">scale/temp</span><span class="buffer-line-bar is-temp"></span></div>
+                </div>
+              </div>
+              <p class="mapping-copy">Tiling grid answers "how the workload is split". Buffer budget answers "how much UB/L1/L0 memory one active tile needs". A single logical tile can allocate several aligned queues and temporary buffers, and double buffer often duplicates queue storage.</p>
+            </section>
+          </div>
+        </section>
+
+        <aside class="panel-shell panel-shell-quiet workbench-pane" aria-label="Inspector">
+          <header class="panel-shell-header">
+            <h2 class="panel-shell-title">Inspector</h2>
+            <div class="panel-shell-meta">plan health</div>
+          </header>
+          <div class="panel-shell-body inspector-body">
+            <section class="inspector-card">
+              <span class="inspector-card-title">Summary</span>
+              <div class="kv-grid">
+                <span>Kernel branch</span><strong>FP8_QUANT</strong>
+                <span>Loop shape</span><strong>row × D</strong>
+                <span>Double buffer</span><strong>enabled</strong>
+                <span>Workspace</span><strong>32B</strong>
+              </div>
+            </section>
+
+            <section class="inspector-card">
+              <span class="inspector-card-title">On-chip Buffer Budget</span>
+              <div class="memory-bars">
+                <div class="memory-row"><span>UB</span><div class="memory-track"><span class="memory-fill" style="--pct:62%"></span></div><strong>62%</strong></div>
+                <div class="memory-row"><span>L1</span><div class="memory-track"><span class="memory-fill" style="--pct:42%"></span></div><strong>42%</strong></div>
+                <div class="memory-row"><span>L0A</span><div class="memory-track"><span class="memory-fill" style="--pct:0%"></span></div><strong>n/a</strong></div>
+                <div class="memory-row is-warning"><span>Tail</span><div class="memory-track"><span class="memory-fill" style="--pct:50%"></span></div><strong>64</strong></div>
+              </div>
+            </section>
+
+            <section class="inspector-card">
+              <span class="inspector-card-title">Recommendations</span>
+              <div class="recommendation-list">
+                <div class="recommendation-item"><strong>Check D tail alignment</strong><span>tailDFactor is 64. Verify vector width and copy alignment before committing.</span></div>
+                <div class="recommendation-item"><strong>Keep double buffer enabled</strong><span>Current UB budget still leaves enough space for input and output queues.</span></div>
+                <div class="recommendation-item"><strong>Compare 910B fallback</strong><span>Use the same plan object to show whether 910B needs smaller dFactor or extra staging.</span></div>
+              </div>
+            </section>
+
+            <section class="inspector-card">
+              <span class="inspector-card-title">Evidence</span>
+              <div class="evidence-list">
+                <div class="evidence-item"><strong>Host source</strong><span>op_host/swiglu_group_quant_tiling.cpp:470-568</span></div>
+                <div class="evidence-item"><strong>Kernel source</strong><span>op_kernel/swiglu_group_quant.cpp:34-52</span></div>
+              </div>
+            </section>
+          </div>
+        </aside>
+      </section>
+
+      <section class="panel-shell panel-shell-quiet" aria-label="Pipeline preview">
+        <header class="panel-shell-header">
+          <div>
+            <h2 class="panel-shell-title">Pipeline Preview</h2>
+          </div>
+          <div class="panel-shell-meta">
+            <span class="tep-chip">Overlap MTE × Vector 58%</span>
+            <span class="tep-chip">critical path MTE2 -> Vector</span>
+          </div>
+        </header>
+        <div class="panel-shell-body pipeline-panel">
+          <div class="pipeline-head">
+            <span class="section-label">cycle timeline</span>
+            <span class="tep-chip">T2 estimate, T3 profile should override this later</span>
+          </div>
+          <div class="pipeline-chart">
+            <div class="lane"><span class="lane-label">MTE2</span><div class="lane-track"><span class="lane-segment is-mte" style="--x:0%;--w:18%"></span><span class="lane-segment is-mte" style="--x:26%;--w:18%"></span><span class="lane-segment is-mte" style="--x:52%;--w:16%"></span></div></div>
+            <div class="lane"><span class="lane-label">MTE1</span><div class="lane-track"><span class="lane-segment is-mte" style="--x:12%;--w:16%"></span><span class="lane-segment is-mte" style="--x:38%;--w:16%"></span><span class="lane-segment is-mte" style="--x:64%;--w:14%"></span></div></div>
+            <div class="lane"><span class="lane-label">Vector</span><div class="lane-track"><span class="lane-segment is-vector" style="--x:28%;--w:30%"></span><span class="lane-segment is-bubble" style="--x:58%;--w:8%"></span><span class="lane-segment is-vector" style="--x:66%;--w:24%"></span></div></div>
+            <div class="lane"><span class="lane-label">MTE3</span><div class="lane-track"><span class="lane-segment is-mte" style="--x:72%;--w:12%"></span><span class="lane-segment is-mte" style="--x:88%;--w:10%"></span></div></div>
+          </div>
+          <p class="pipeline-note">Bubble around 58% of the timeline maps back to the selected tile plan. In the full workbench this should link to the `dFactor` and `tailDFactor` fields and generate a concrete alignment recommendation.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const details = {
+      rowFactor: {
+        title: 'rowFactor',
+        role: 'tile-row-size',
+        description: 'Controls how many B/S rows are resident in UB per inner loop. It changes tile height, UB pressure, and row loop count.',
+        chip: 'active rowFactor',
+        flow: 'fields',
+        tileMode: 'row'
+      },
+      dFactor: {
+        title: 'dFactor',
+        role: 'tile-col-size',
+        description: 'Controls D-axis tile length. Larger values reduce dLoop but increase UB queue and temporary buffer pressure.',
+        chip: 'active dFactor',
+        flow: 'shape',
+        tileMode: 'col'
+      },
+      tail: {
+        title: 'tailDFactor',
+        role: 'tail',
+        description: 'Controls the last D-axis tile. Warning color marks the unaligned tail path that can trigger extra copy or predication work.',
+        chip: 'active tailDFactor',
+        flow: 'fields',
+        tileMode: 'tail'
+      },
+      key: {
+        title: 'tilingKey',
+        role: 'branch-selector',
+        description: 'Selects the Kernel branch. Key 31 maps to FP8_QUANT when outputOrigin is false.',
+        chip: 'active tilingKey',
+        flow: 'kernel',
+        tileMode: 'active'
+      },
+      block: {
+        title: 'SetBlockDim',
+        role: 'core-split',
+        description: 'Sets the number of AICore/AIV tasks launched by runtime. This drives GetBlockIdx and the GM offset formula.',
+        chip: 'active blockDim',
+        flow: 'context',
+        tileMode: 'active'
+      },
+      save: {
+        title: 'SaveToBuffer',
+        role: 'serialization',
+        description: 'Serializes the Host-side execution plan into the raw tiling buffer consumed by GET_TILING_DATA.',
+        chip: 'active buffer',
+        flow: 'save',
+        tileMode: 'active'
+      },
+      consume: {
+        title: 'GET_TILING_DATA',
+        role: 'kernel-consumer',
+        description: 'Parses the serialized tiling payload inside the Kernel entry and exposes fields to the execution classes.',
+        chip: 'active consumer',
+        flow: 'kernel',
+        tileMode: 'active'
+      },
+      branch: {
+        title: 'TILING_KEY_IS(31)',
+        role: 'kernel-branch',
+        description: 'Guards the FP8 quant implementation. In a full implementation this click should also highlight the selected Kernel class.',
+        chip: 'active branch',
+        flow: 'kernel',
+        tileMode: 'active'
+      }
+    };
+
+    function renderCores() {
+      const host = document.querySelector('#coreStrip');
+      const cells = Array.from({ length: 40 }, (_, index) => {
+        const label = index < 9 ? `C${index}` : index === 39 ? 'tail' : '';
+        const cls = index === 7 ? ' is-active' : index === 39 ? ' is-tail' : '';
+        return `<span class="core-cell${cls}">${label}</span>`;
+      });
+      host.innerHTML = cells.join('');
+    }
+
+    function renderTiles(mode = 'row') {
+      const host = document.querySelector('#tileGrid');
+      const cells = Array.from({ length: 24 }, (_, index) => {
+        const row = Math.floor(index / 6);
+        const col = index % 6;
+        const isTail = col === 5;
+        let cls = 'tile-cell';
+        if (mode === 'row' && row === 1) cls += ' is-row';
+        if (mode === 'col' && col === 2) cls += ' is-col';
+        if (mode === 'tail' && isTail) cls += ' is-tail';
+        if (mode === 'active' && index === 8) cls += ' is-active';
+        if (mode !== 'tail' && isTail) cls += ' is-tail';
+        const label = index === 8 ? 'tile' : isTail ? 'tail' : '';
+        return `<span class="${cls}">${label}</span>`;
+      });
+      host.innerHTML = cells.join('');
+    }
+
+    function setFocus(key) {
+      const item = details[key] || details.rowFactor;
+      document.querySelectorAll('.anchor-row').forEach((row) => {
+        row.classList.toggle('is-active', row.dataset.focus === key);
+      });
+      document.querySelectorAll('.flow-step').forEach((step) => {
+        step.classList.toggle('is-active', step.dataset.flow === item.flow);
+      });
+      document.querySelector('#fieldTitle').textContent = item.title;
+      document.querySelector('#fieldRole').textContent = item.role;
+      document.querySelector('#fieldDescription').textContent = item.description;
+      document.querySelector('#tileActiveChip').textContent = item.chip;
+      renderTiles(item.tileMode);
+    }
+
+    document.querySelectorAll('.anchor-row').forEach((row) => {
+      row.addEventListener('click', () => setFocus(row.dataset.focus));
+    });
+
+    renderCores();
+    renderTiles('row');
+  </script>
+</body>
+</html>

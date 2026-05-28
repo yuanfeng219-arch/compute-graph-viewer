@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Memory Viewer — Ascend 910B</title>
-<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+<link rel="stylesheet" href="../vendor/pto-design-system/patterns/floating-playback-control/pattern.css">
 <link rel="stylesheet" href="./styles/main.css">
 </head>
 <body class="mem-viewer-page">
@@ -251,31 +252,31 @@
 <!-- ============================================================
      Floating playback toolbar — liquid glass, centered
      ============================================================ -->
-<div id="floating-bar">
-  <div id="floating-shell" class="is-expanded">
-    <button id="floating-toggle" type="button" aria-label="Collapse playback toolbar" aria-expanded="true">
-      <span class="floating-toggle-icon">⌄</span>
+<div id="floating-bar" class="pto-floating-playback">
+  <div id="floating-shell" class="pto-floating-playback__shell is-expanded">
+    <button id="floating-toggle" class="pto-floating-playback__toggle" type="button" aria-label="Collapse playback toolbar" aria-expanded="true">
+      <span class="pto-floating-playback__toggle-icon floating-toggle-icon">&#8964;</span>
     </button>
-    <button id="floating-collapsed-btn" type="button" aria-label="Expand playback toolbar">
-      <span id="floating-collapsed-icon">&#9654;</span>
+    <button id="floating-collapsed-btn" class="pto-floating-playback__collapsed-button" type="button" aria-label="Expand playback toolbar">
+      <span id="floating-collapsed-icon" class="pto-floating-playback__collapsed-icon">&#9654;</span>
     </button>
-    <div id="controls-row">
-      <div class="controls-group controls-group-playback">
-        <button class="mv-btn" id="step-back-btn" title="Previous step">&#9664;</button>
-        <button class="mv-btn mv-btn-primary" id="play-btn">&#9654; Play</button>
-        <button class="mv-btn" id="step-fwd-btn" title="Next step">&#9654;</button>
-        <button class="mv-btn" id="replay-btn" title="Replay from step 0">↺ Replay</button>
+    <div id="controls-row" class="pto-floating-playback__controls">
+      <div class="pto-floating-playback__group pto-floating-playback__group--playback">
+        <button class="pto-floating-playback__button" id="step-back-btn" type="button" title="Previous step">&#9664;</button>
+        <button class="pto-floating-playback__button pto-floating-playback__button--primary" id="play-btn" type="button">&#9654; Play</button>
+        <button class="pto-floating-playback__button" id="step-fwd-btn" type="button" title="Next step">&#9654;</button>
+        <button class="pto-floating-playback__button" id="replay-btn" type="button" title="Replay from step 0">&#8634; Replay</button>
       </div>
-      <div class="mv-sep"></div>
-      <div class="controls-group controls-group-timeline">
-        <div class="timeline-meta">
-          <label class="scrubber-label">Timeline</label>
-          <label id="scrubber-label">0 / 127</label>
-          <span id="scrubber-opname">—</span>
+      <div class="pto-floating-playback__sep" aria-hidden="true"></div>
+      <div class="pto-floating-playback__group pto-floating-playback__group--timeline">
+        <div class="pto-floating-playback__meta">
+          <label class="pto-floating-playback__label" for="scrubber">Timeline</label>
+          <label id="scrubber-label" class="pto-floating-playback__counter" for="scrubber">0 / 127</label>
+          <span id="scrubber-opname" class="pto-floating-playback__opname">—</span>
         </div>
-        <div class="scrubber-wrap">
-          <input type="range" id="scrubber" min="0" max="127" value="0" step="1">
-          <div id="scrubber-hover" aria-hidden="true"></div>
+        <div class="pto-floating-playback__scrubber-wrap">
+          <input class="pto-floating-playback__scrubber" type="range" id="scrubber" min="0" max="127" value="0" step="1">
+          <div id="scrubber-hover" class="pto-floating-playback__hover" aria-hidden="true"></div>
         </div>
       </div>
     </div>
@@ -288,6 +289,7 @@
 <script src="../js/parser.js"></script>
 <script src="../js/layout.js"></script>
 <script src="../js/renderer.js"></script>
+<script src="../vendor/pto-design-system/patterns/floating-playback-control/pattern.js"></script>
 
 <script type="module" src="./js/playback.js"></script>
 </body>

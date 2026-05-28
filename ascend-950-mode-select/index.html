@@ -1,0 +1,1556 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ascend 950 ModeSelect Workbench</title>
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/aic-core-object/pattern.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/aiv-core-object/pattern.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/memory-architecture/pattern.css">
+  <style>
+    body {
+      min-height: 100vh;
+      overflow: hidden;
+      background: var(--background);
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: var(--toolbar-height) minmax(0, 1fr);
+      height: 100vh;
+      min-width: 0;
+    }
+
+    .top-tabs {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--segmented-control-gap);
+      padding: var(--segmented-control-padding);
+      border: 1px solid var(--segmented-control-border);
+      border-radius: var(--segmented-control-radius);
+      background: var(--segmented-control-bg);
+    }
+
+    .stage {
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      padding: var(--space-3);
+      background: var(--background);
+    }
+
+    .view {
+      display: none;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .view.is-active {
+      display: grid;
+    }
+
+    .workbench-grid {
+      grid-template-columns: 300px minmax(520px, 1fr) 360px;
+      gap: var(--space-3);
+    }
+
+    .two-col-grid {
+      grid-template-columns: minmax(360px, 0.82fr) minmax(520px, 1.18fr);
+      gap: var(--space-3);
+    }
+
+    .single-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .rail,
+    .workspace,
+    .inspector,
+    .stack {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stack {
+      gap: var(--space-3);
+    }
+
+    .scroll-body {
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .panel-fill {
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section-title {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      letter-spacing: var(--letter-spacing-label);
+      text-transform: uppercase;
+    }
+
+    .field {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .field label,
+    .mini-label {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    textarea,
+    select,
+    input[type="text"],
+    input[type="range"] {
+      width: 100%;
+    }
+
+    textarea,
+    select,
+    input[type="text"] {
+      color: var(--foreground);
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: var(--input-radius);
+      font: var(--text-body-sm);
+    }
+
+    textarea {
+      min-height: 124px;
+      resize: vertical;
+      padding: var(--space-3);
+      line-height: 1.55;
+    }
+
+    select,
+    input[type="text"] {
+      height: var(--input-height-md);
+      padding: 0 var(--space-3);
+    }
+
+    .grid-2,
+    .grid-3,
+    .metric-grid,
+    .timeline {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .timeline { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+    .metric,
+    .soft-card,
+    .finding,
+    .phase-card {
+      min-width: 0;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      background: var(--surface-1);
+      padding: var(--space-3);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      text-transform: uppercase;
+      letter-spacing: var(--letter-spacing-label);
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: var(--space-2);
+      color: var(--foreground);
+      font: 700 20px / 1.1 var(--font-mono);
+    }
+
+    .tag,
+    .hw-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: var(--tag-height);
+      padding: 0 var(--tag-padding-x);
+      border: 1px solid var(--comp-tag-border);
+      border-radius: var(--tag-radius);
+      background: var(--comp-tag-bg);
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+      white-space: nowrap;
+    }
+
+    .tag.simd { color: var(--primary); }
+    .tag.simt { color: var(--danger); }
+    .tag.hybrid { color: var(--warning); }
+    .tag.ok { color: var(--success); }
+
+    .preset-list,
+    .analysis-list,
+    .reason-list,
+    .lint-events {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .preset,
+    .phase-step,
+    .lint-step {
+      display: grid;
+      gap: 6px;
+      padding: var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      background: var(--surface-disabled);
+      color: var(--foreground-secondary);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .preset:hover,
+    .preset.is-active,
+    .phase-step.is-active,
+    .lint-step.is-active {
+      color: var(--foreground);
+      background: var(--state-hover);
+      border-color: var(--border-default);
+    }
+
+    .preset strong,
+    .phase-card strong,
+    .finding strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+    }
+
+    .preset span,
+    .phase-card span,
+    .finding p,
+    .soft-card p {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+      line-height: 1.5;
+    }
+
+    .phase-step {
+      grid-template-columns: 28px minmax(0, 1fr);
+      align-items: center;
+    }
+
+    .phase-index {
+      display: inline-flex;
+      width: 24px;
+      height: 24px;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-default);
+      font: var(--text-mono);
+    }
+
+    .code-panel {
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .code-toolbar,
+    .hw-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--surface-1);
+    }
+
+    .hw-toolbar {
+      flex-wrap: wrap;
+      background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+    }
+
+    .hw-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .code {
+      height: 100%;
+      min-height: 0;
+      overflow: auto;
+      padding: var(--space-4);
+      background: color-mix(in srgb, var(--surface-1) 86%, black);
+      font: 500 12px / 1.75 var(--font-mono);
+      tab-size: 2;
+    }
+
+    .code-line {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) minmax(160px, auto);
+      gap: var(--space-3);
+      align-items: center;
+      min-width: 840px;
+      border-left: 3px solid transparent;
+      padding: 1px 0 1px var(--space-2);
+      cursor: pointer;
+      white-space: pre;
+    }
+
+    .code-line:hover,
+    .code-line.is-selected {
+      background: var(--state-hover);
+    }
+
+    .code-line.simd { border-left-color: var(--primary); }
+    .code-line.simt { border-left-color: var(--danger); }
+    .code-line.hybrid { border-left-color: var(--warning); }
+    .code-line.warn { background: var(--tone-warning-bg); }
+
+    .line-num {
+      color: var(--foreground-muted);
+      text-align: right;
+      user-select: none;
+    }
+
+    .hw-chain {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .hw-chip {
+      min-height: 18px;
+      padding-inline: 6px;
+      color: var(--foreground);
+      border-color: var(--border-default);
+      background: var(--surface-2);
+      font: 500 10px / 1 var(--font-mono);
+    }
+
+    .hw-pcie, .hw-hilink, .hw-io { color: var(--accent); }
+    .hw-d2d, .hw-stars, .hw-hibl { color: var(--warning); }
+    .hw-mem, .hw-gm { color: var(--foreground); }
+    .hw-dma, .hw-mte { color: var(--warning); }
+    .hw-l2, .hw-l1 { color: var(--accent); }
+    .hw-ub { color: var(--primary); }
+    .hw-aicore, .hw-clink, .hw-ts { color: var(--foreground-secondary); }
+    .hw-loa, .hw-lob, .hw-loc { color: var(--success); }
+    .hw-cube { color: var(--danger); }
+    .hw-vec { color: var(--primary-hover); }
+    .hw-fixpipe { color: var(--warning); }
+    .hw-sync { color: var(--danger); }
+    .hw-scal { color: var(--foreground-muted); }
+
+    .hw-map {
+      display: none;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--surface-1);
+      padding: var(--space-3);
+    }
+
+    .hw-map.is-open {
+      display: block;
+    }
+
+    .hw-note {
+      min-height: 26px;
+      margin-bottom: var(--space-2);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .hw-active-path {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      min-height: 24px;
+      margin-bottom: var(--space-2);
+    }
+
+    .hw-active-path-label {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      text-transform: uppercase;
+      letter-spacing: var(--letter-spacing-label);
+    }
+
+    .hw-pattern-scroll {
+      max-height: 520px;
+      overflow: auto;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      background: #1f1f1f;
+    }
+
+    .hw-pattern-host {
+      min-width: 1180px;
+      padding: var(--space-3);
+    }
+
+    .hw-pattern-host .pto-mem950__notes {
+      display: none;
+    }
+
+    .hw-pattern-host [data-mem950-node].is-line-active,
+    .hw-pattern-host [data-aic-node].is-line-active,
+    .hw-pattern-host [data-aiv-node].is-line-active {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+    }
+
+    .hw-pattern-host [data-aic-node].is-line-active,
+    .hw-pattern-host [data-aiv-node].is-line-active {
+      z-index: 6;
+    }
+
+    .hw-pattern-missing {
+      padding: var(--space-4);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      background: var(--surface-2);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .reason-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-3);
+      align-items: center;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .reason-row:last-child {
+      border-bottom: 0;
+    }
+
+    .reason-row code,
+    code.inline {
+      color: var(--danger);
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    .slider-row {
+      display: grid;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      border-radius: var(--radius-lg);
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .slider-row div {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-2);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      font: var(--text-body-sm);
+    }
+
+    .report-table th,
+    .report-table td {
+      padding: var(--space-2);
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .report-table th {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      text-transform: uppercase;
+      letter-spacing: var(--letter-spacing-label);
+    }
+
+    .diff {
+      display: none;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--surface-1);
+    }
+
+    .diff.is-open {
+      display: block;
+    }
+
+    .diff pre {
+      margin: 0;
+      overflow: auto;
+      padding: var(--space-3);
+      color: var(--foreground-secondary);
+      font: var(--text-mono);
+    }
+
+    .mode-bars {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .mode-bar {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr) 42px;
+      gap: var(--space-2);
+      align-items: center;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .bar-track {
+      height: 8px;
+      overflow: hidden;
+      border-radius: var(--radius-pill);
+      background: var(--surface-disabled);
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--foreground);
+      transition: width var(--duration-base) var(--easing-default);
+    }
+
+    .bar-fill.simd { background: var(--primary); }
+    .bar-fill.simt { background: var(--danger); }
+    .bar-fill.hybrid { background: var(--warning); }
+
+    .pct-0 { width: 0%; }
+    .pct-8 { width: 8%; }
+    .pct-10 { width: 10%; }
+    .pct-20 { width: 20%; }
+    .pct-25 { width: 25%; }
+    .pct-30 { width: 30%; }
+    .pct-32 { width: 32%; }
+    .pct-40 { width: 40%; }
+    .pct-45 { width: 45%; }
+    .pct-50 { width: 50%; }
+    .pct-60 { width: 60%; }
+    .pct-80 { width: 80%; }
+
+    .status-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      background: var(--surface-1);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .status-strip.is-busy {
+      border-color: var(--border-default);
+      background: var(--tone-info-bg);
+    }
+
+    @media (max-width: 1180px) {
+      .workbench-grid,
+      .two-col-grid {
+        grid-template-columns: minmax(0, 1fr);
+        overflow: auto;
+      }
+      .view {
+        height: auto;
+      }
+      body {
+        overflow: auto;
+      }
+      .app {
+        height: auto;
+        min-height: 100vh;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .toolbar-r {
+        display: none;
+      }
+      .metric-grid,
+      .grid-2,
+      .grid-3,
+      .timeline {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="toolbar">
+      <div class="toolbar-l">
+        <a href="../launch.html" class="home-link" title="Back to Launcher">⌂</a>
+        <div class="toolbar-sep"></div>
+        <div class="toolbar-logo">Ascend 950 ModeSelect</div>
+        <span class="stat-chip">SIMD/SIMT 决策助手</span>
+      </div>
+      <div class="toolbar-r">
+        <nav class="top-tabs" aria-label="Views">
+          <button class="btn btn-sm is-selected" data-view-tab="plan">Plan</button>
+          <button class="btn btn-sm" data-view-tab="live">Live Lint</button>
+          <button class="btn btn-sm" data-view-tab="editor">Editor</button>
+          <button class="btn btn-sm" data-view-tab="report">Report</button>
+          <button class="btn btn-sm" data-view-tab="ci">CI Bot</button>
+          <button class="btn btn-sm" data-view-tab="dashboard">Dashboard</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="stage">
+      <section class="view two-col-grid is-active" id="view-plan">
+        <aside class="panel-shell panel-fill">
+          <div class="panel-shell-header">
+            <div>
+              <div class="panel-shell-title">Plan Mode</div>
+              <div class="panel-shell-meta"><span class="tag">写代码前</span><span class="tag simd">约束驱动</span></div>
+            </div>
+          </div>
+          <div class="panel-shell-body stack scroll-body">
+            <div class="section-title">presets</div>
+            <div class="preset-list" id="planPresets"></div>
+
+            <div class="field">
+              <label for="planAlgo">算法描述或 PyTorch reference</label>
+              <textarea id="planAlgo"></textarea>
+            </div>
+
+            <div class="grid-2">
+              <div class="field">
+                <label for="planShape">shape / dtype</label>
+                <input id="planShape" type="text">
+              </div>
+              <div class="field">
+                <label for="planTarget">target / budget</label>
+                <input id="planTarget" type="text">
+              </div>
+            </div>
+
+            <button class="btn btn-solid" id="generatePlan">Generate Plan</button>
+          </div>
+        </aside>
+
+        <section class="panel-shell panel-fill">
+          <div class="panel-shell-header">
+            <div>
+              <div class="panel-shell-title">决策 + 骨架代码</div>
+              <div class="panel-shell-meta" id="planHeaderMeta"><span class="tag">waiting for input</span></div>
+            </div>
+            <button class="btn btn-compact" id="openPlanInEditor">Open in Editor</button>
+          </div>
+          <div class="panel-shell-body stack scroll-body" id="planResult"></div>
+        </section>
+      </section>
+
+      <section class="view two-col-grid" id="view-live">
+        <section class="panel-shell panel-fill">
+          <div class="panel-shell-header">
+            <div>
+              <div class="panel-shell-title">Live Lint</div>
+              <div class="panel-shell-meta"><span class="tag">T1 Static · &lt;1s</span></div>
+            </div>
+            <div class="panel-shell-meta">
+              <button class="btn btn-sm" id="lintPlay">Play</button>
+              <button class="btn btn-sm" id="lintStep">Step</button>
+              <button class="btn btn-sm btn-ghost" id="lintReset">Restart</button>
+            </div>
+          </div>
+          <div class="panel-shell-body stack">
+            <div class="status-strip" id="lintStatus">
+              <span>status: clean</span>
+              <span class="tag simd" id="lintVerdict">PURE SIMD</span>
+            </div>
+            <div class="panel-shell code-panel panel-fill">
+              <div class="code-toolbar">
+                <span class="tag">draft_kernel.cpp</span>
+                <span class="tag" id="lintConfidence">confidence 0.79</span>
+              </div>
+              <div class="code scroll-body" id="lintCode"></div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel-shell panel-fill">
+          <div class="panel-shell-header">
+            <div class="panel-shell-title">实时反馈</div>
+          </div>
+          <div class="panel-shell-body stack scroll-body">
+            <div class="mode-bars" id="lintBars"></div>
+            <div class="lint-events" id="lintEvents"></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="view workbench-grid" id="view-editor">
+        <aside class="rail stack">
+          <section class="panel-shell">
+            <div class="panel-shell-header">
+              <div>
+                <div class="panel-shell-title">Kernel</div>
+                <div class="panel-shell-meta"><span class="tag">Review 阶段</span></div>
+              </div>
+            </div>
+            <div class="panel-shell-body stack">
+              <div class="field">
+                <label for="kernelSelect">算子样例</label>
+                <select id="kernelSelect"></select>
+              </div>
+              <div class="field">
+                <label for="brief">需求与约束</label>
+                <textarea id="brief">BF16 输入，M/N/K 动态；UB 预算紧张；目标 Ascend 950；需要解释 SIMD、SIMT 或 Hybrid 的选择理由。</textarea>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel-shell">
+            <div class="panel-shell-header">
+              <div class="panel-shell-title">开发阶段</div>
+            </div>
+            <div class="panel-shell-body">
+              <div class="preset-list" id="phaseList"></div>
+            </div>
+          </section>
+        </aside>
+
+        <section class="workspace stack">
+          <section class="panel-shell panel-fill">
+            <div class="panel-shell-header">
+              <div>
+                <div class="panel-shell-title" id="workspaceTitle">Editor — 行级模式建议</div>
+                <div class="panel-shell-meta">
+                  <span class="tag" id="tierBadge">T2 Compiled · ~18s</span>
+                  <span class="tag hybrid" id="verdictBadge">HYBRID</span>
+                </div>
+              </div>
+              <button class="btn btn-compact" id="autoRefactor">Apply auto-refactor</button>
+            </div>
+            <div class="panel-shell-body stack scroll-body">
+              <div class="metric-grid">
+                <div class="metric"><span>confidence</span><strong id="confidence">0.81</strong></div>
+                <div class="metric"><span>cycles</span><strong id="cycles">15,612</strong></div>
+                <div class="metric"><span>dual issue</span><strong id="dualIssue">97.4%</strong></div>
+                <div class="metric"><span>L2 hit</span><strong id="l2Hit">87.3%</strong></div>
+              </div>
+              <div id="editorCodeHost"></div>
+              <div class="diff" id="diffBox">
+                <pre>- for (int k = 0; k &lt; tail_len; ++k) {
++ ASCEND_REGION_BEGIN(simt, reason="thread_divergence_measured")
++ for (int k = 0; k &lt; tail_len; ++k) {
+     if (mask[k]) acc[k] += partial_sum(k);
+   }
++ ASCEND_REGION_END(simt)</pre>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <aside class="inspector">
+          <section class="panel-shell panel-fill">
+            <div class="panel-shell-header">
+              <div>
+                <div class="panel-shell-title">ModeSelect</div>
+                <div class="panel-shell-meta"><span class="tag" id="modeTag">T2 analysis</span></div>
+              </div>
+            </div>
+            <div class="panel-shell-body stack scroll-body">
+              <div class="grid-3">
+                <button class="btn btn-sm" data-tier="t1">T1 Static</button>
+                <button class="btn btn-sm is-selected" data-tier="t2">T2 Compiled</button>
+                <button class="btn btn-sm" data-tier="t3">T3 Simulated</button>
+              </div>
+
+              <div class="slider-row">
+                <div><span>K tile</span><strong id="kValue">128</strong></div>
+                <input id="kSlider" type="range" min="64" max="384" step="64" value="128">
+              </div>
+              <div class="slider-row">
+                <div><span>tail length</span><strong id="tailValue">17</strong></div>
+                <input id="tailSlider" type="range" min="0" max="64" step="1" value="17">
+              </div>
+
+              <div class="analysis-list" id="analysisList"></div>
+              <section>
+                <div class="section-title">reason codes</div>
+                <div class="reason-list" id="reasonList"></div>
+              </section>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="view single-grid" id="view-report">
+        <section class="panel-shell panel-fill">
+          <div class="panel-shell-header">
+            <div>
+              <div class="panel-shell-title">Shareable HTML Report</div>
+              <div class="panel-shell-meta"><span class="tag">写完后</span><span class="tag">Review</span></div>
+            </div>
+          </div>
+          <div class="panel-shell-body stack scroll-body" id="reportHost"></div>
+        </section>
+      </section>
+
+      <section class="view single-grid" id="view-ci">
+        <section class="panel-shell panel-fill">
+          <div class="panel-shell-header">
+            <div>
+              <div class="panel-shell-title">CI Bot / PR Review</div>
+              <div class="panel-shell-meta"><span class="tag">Merge 阶段</span></div>
+            </div>
+          </div>
+          <div class="panel-shell-body stack scroll-body" id="ciHost"></div>
+        </section>
+      </section>
+
+      <section class="view single-grid" id="view-dashboard">
+        <section class="panel-shell panel-fill">
+          <div class="panel-shell-header">
+            <div>
+              <div class="panel-shell-title">Repository Mode Health</div>
+              <div class="panel-shell-meta"><span class="tag">Maintain 阶段</span></div>
+            </div>
+          </div>
+          <div class="panel-shell-body stack scroll-body" id="dashboardHost"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="../vendor/pto-design-system/patterns/aiv-core-object/pattern.js"></script>
+  <script src="../vendor/pto-design-system/patterns/aic-core-object/pattern.js"></script>
+  <script src="../vendor/pto-design-system/patterns/memory-architecture/pattern.js"></script>
+  <script>
+    const HW_UNITS = ['PCIE', 'HILINK', 'D2D', 'STARS', 'HIBL', 'MEM', 'DMA', 'L2', 'AICORE', 'CLink', 'GM', 'MTE', 'L1', 'UB', 'LOA', 'LOB', 'LOC', 'CUBE', 'VEC', 'FIXPIPE', 'SYNC', 'SCAL'];
+    const HW_PATTERN_SELECTORS = {
+      MEM: ['[data-mem950-node="rail:GM"]'],
+      GM: ['[data-mem950-node="rail:GM"]'],
+      L2: ['[data-mem950-node="rail:L2"]'],
+      AICORE: ['#mem950-aic', '[data-mem950-node="core:AIC"]'],
+      L1: ['#mem950-aic [data-aic-node="buffer:L1"]'],
+      LOA: ['#mem950-aic [data-aic-node="buffer:L0A"]'],
+      LOB: ['#mem950-aic [data-aic-node="buffer:L0B"]'],
+      LOC: ['#mem950-aic [data-aic-node="buffer:L0C"]'],
+      CUBE: ['#mem950-aic [data-aic-node="cube:CUBE"]'],
+      FIXPIPE: ['#mem950-aic [data-aic-node="buffer:FP"]'],
+      SCAL: ['#mem950-aic [data-aic-node="scalar:Scalar"]', '[data-aiv-node="scalar:Scalar"]'],
+      UB: ['[data-aiv-node="buffer:UB"]'],
+      VEC: ['[data-aiv-node="vector:Vector"]'],
+      DCACHE: ['[data-aic-node="cache:DCache"]', '[data-aiv-node="cache:DCache"]'],
+      ICACHE: ['[data-aic-node="cache:ICache"]', '[data-aiv-node="cache:ICache"]'],
+    };
+
+    const KERNELS = {
+      matmul: {
+        label: 'matmul_tile',
+        verdict: 'HYBRID',
+        confidence: { t1: '0.68', t2: '0.81', t3: '0.94' },
+        cycles: { t1: '15,600', t2: '15,612', t3: '15,612' },
+        dualIssue: { t1: 'estimated', t2: '97.4%', t3: '96.8%' },
+        l2Hit: { t1: 'hidden', t2: '87.3%', t3: '87.3%' },
+        reasons: ['aligned_stride', 'simd_lane_mask_penalty', 'thread_divergence_measured', 'mem_stall_pct'],
+        findings: [
+          ['L42-78 SIMD', '主循环满足 128B 对齐，双发率高，适合 SIMD 批量执行。'],
+          ['L80-95 SIMT', 'tail handling 存在 mask 分支，SIMD lane masking 会损失吞吐。'],
+          ['Auto-refactor', '建议用 ASCEND_REGION_BEGIN/END 标注最小可行区域。']
+        ],
+        code: [
+          [41, 'simd', '__global__ void matmul_tile(...) {', []],
+          [42, 'simd', 'for (int i = 0; i < M; i += TILE_M) {', ['SCAL']],
+          [43, 'simd', '  for (int j = 0; j < N; j += TILE_N) {', ['SCAL']],
+          [44, 'simd', '    LoadGM2L1(aL1, A, aligned_128B);', ['MEM', 'L2', 'DMA', 'GM', 'MTE', 'L1']],
+          [45, 'simd', '    LoadGM2L1(bL1, B, aligned_128B);', ['MEM', 'L2', 'DMA', 'GM', 'MTE', 'L1']],
+          [46, 'simd', '    LoadL12L0A(aL0, aL1);', ['AICORE', 'L1', 'LOA']],
+          [47, 'simd', '    LoadL12L0B(bL0, bL1);', ['AICORE', 'L1', 'LOB']],
+          [48, 'simd', '    MmadFp8(cLoc, aL0, bL0);', ['AICORE', 'LOA', 'LOB', 'CUBE', 'LOC']],
+          [49, 'hybrid', '    Fixpipe(cUb, cLoc);', ['AICORE', 'LOC', 'FIXPIPE', 'UB']],
+          [80, 'simt warn', 'if (tail_handling) {', ['SCAL']],
+          [81, 'simt warn', '  for (k = 0; k < tail_len; ++k) {', ['SCAL']],
+          [82, 'simt warn', '    if (mask[k]) acc[k] += partial_sum(k);', ['UB', 'VEC']],
+          [95, 'simt', '  }', []],
+          [96, 'hybrid', '}', []]
+        ]
+      },
+      flash: {
+        label: 'flash_attn_v2',
+        verdict: 'HYBRID',
+        confidence: { t1: '0.62', t2: '0.79', t3: '0.95' },
+        cycles: { t1: '43,200', t2: '42,944', t3: '42,901' },
+        dualIssue: { t1: 'estimated', t2: '92.1%', t3: '91.8%' },
+        l2Hit: { t1: 'hidden', t2: '74.6%', t3: '75.1%' },
+        reasons: ['kv_cache_stride', 'sector_cache_miss', 'nddma_slice_burst', 'softmax_tail_branch'],
+        findings: [
+          ['QK block SIMD', '矩阵块规整，Cube-Vector 直连可以减少中间搬运。'],
+          ['KV cache SIMT', '变长序列导致访存离散，SIMT 在尾块更稳定。'],
+          ['T3 required', 'KV cache 命中率需要模拟器或实测数据校准。']
+        ],
+        code: [
+          [21, 'simd', '__global__ void flash_attn_v2(...) {', []],
+          [32, 'simd', 'LoadGM2L1(qL1, Q, sector_128B);', ['GM', 'MTE', 'L1']],
+          [33, 'simd', 'LoadGM2L1(kL1, K, sector_128B);', ['GM', 'MTE', 'L1']],
+          [44, 'simd', 'MmadFp8(qkLoc, qL0, kL0);', ['LOA', 'LOB', 'CUBE', 'LOC']],
+          [58, 'hybrid', 'Fixpipe(scoreUb, qkLoc);', ['LOC', 'FIXPIPE', 'UB']],
+          [77, 'simt warn', 'if (kv_len < BLOCK_N || ragged_tail) {', ['SCAL']],
+          [78, 'simt warn', '  NDDMA_Slice(kvTile, kvCache, offsets);', ['MEM', 'L2', 'DMA', 'GM', 'MTE', 'UB']],
+          [89, 'simt', '  SoftmaxMasked(scoreUb, mask);', ['UB', 'VEC']]
+        ]
+      },
+      rmsnorm: {
+        label: 'rmsnorm_fused',
+        verdict: 'PURE SIMD',
+        confidence: { t1: '0.75', t2: '0.88', t3: '0.96' },
+        cycles: { t1: '7,900', t2: '7,864', t3: '7,861' },
+        dualIssue: { t1: 'estimated', t2: '98.2%', t3: '98.0%' },
+        l2Hit: { t1: 'hidden', t2: '90.8%', t3: '91.0%' },
+        reasons: ['contiguous_load', 'vector_reduce_stable', 'no_tail_branch'],
+        findings: [
+          ['All SIMD', '连续加载和规整 reduce，暂不需要拆成 SIMT 区。'],
+          ['Risk', '只需检查 UB 预算，避免寄存器压力引起 spill。'],
+          ['Skeleton', 'Plan 阶段可直接输出 SIMD 骨架和 tile 建议。']
+        ],
+        code: [
+          [12, 'simd', '__global__ void rmsnorm_fused(...) {', []],
+          [18, 'simd', 'DataCopy(xUb, xGm, D);', ['MEM', 'L2', 'DMA', 'GM', 'MTE', 'UB']],
+          [19, 'simd', 'Mul(squareUb, xUb, xUb);', ['UB', 'VEC']],
+          [20, 'simd', 'ReduceSum(sumUb, squareUb);', ['UB', 'VEC']],
+          [21, 'simd', 'Rsqrt(scaleUb, sumUb);', ['UB', 'VEC']],
+          [22, 'simd', 'Mul(yUb, xUb, scaleUb);', ['UB', 'VEC']],
+          [23, 'simd', 'DataCopy(yGm, yUb, D);', ['UB', 'MTE', 'DMA', 'L2', 'MEM']]
+        ]
+      },
+      gelu: {
+        label: 'fused_gelu_proj',
+        verdict: 'HYBRID',
+        confidence: { t1: '0.58', t2: '0.76', t3: '0.92' },
+        cycles: { t1: '22,400', t2: '22,112', t3: '22,090' },
+        dualIssue: { t1: 'estimated', t2: '89.5%', t3: '89.1%' },
+        l2Hit: { t1: 'hidden', t2: '82.0%', t3: '82.4%' },
+        reasons: ['gate_mask_branch', 'register_pressure_spill_risk', 'fixpipe_burst'],
+        findings: [
+          ['Projection SIMD', '主投影计算规整，适合 SIMD/Cube 协同。'],
+          ['Gate mask SIMT', '新增 gate_mask 分支会触发模式漂移，需要 PR Bot 提醒。'],
+          ['CI Bot', '在 Merge 阶段阻止无理由的区域模式切换。']
+        ],
+        code: [
+          [101, 'simd', '__global__ void fused_gelu_proj(...) {', []],
+          [116, 'simd', 'LoadGM2L1(wL1, weight, aligned_128B);', ['MEM', 'L2', 'DMA', 'GM', 'MTE', 'L1']],
+          [123, 'simd', 'MmadFp8(projLoc, xL0, wL0);', ['AICORE', 'LOA', 'LOB', 'CUBE', 'LOC']],
+          [124, 'hybrid', 'Fixpipe(projUb, projLoc);', ['AICORE', 'LOC', 'FIXPIPE', 'UB']],
+          [136, 'simt warn', 'if (gate_mask[token]) {', ['SCAL']],
+          [137, 'simt warn', '  Gelu(gatedUb, projUb);', ['UB', 'VEC']],
+          [155, 'simt', 'DataCopy(outGm, gatedUb, D);', ['UB', 'MTE', 'DMA', 'L2', 'MEM']]
+        ]
+      }
+    };
+
+    const PLAN_PRESETS = {
+      moe: {
+        title: 'MoE Top-2 Dispatch',
+        verdict: 'PURE SIMT',
+        confidence: '0.86',
+        shape: 'batch=16, seq=4096, experts=64, dtype=bf16',
+        target: 'Ascend 950, UB budget 192KB, latency first',
+        algo: 'Fused MoE dispatch, top-2 routing. Per-token expert choice, sparse gather/scatter, dynamic expert load.',
+        reasons: ['gather_scatter_pattern', 'per_token_branching', 'small_burst_under_128b'],
+        caveats: ['top-k > 4 时建议拆出独立 SIMD region', 'expert 数动态变化会触发模式漂移', '需要 CI 回扫 reason code 稳定性'],
+        code: [
+          [1, 'simt', 'ASCEND_REGION_BEGIN(simt, reason="gather_scatter_pattern");', ['SCAL', 'SYNC']],
+          [2, 'simt', 'DataCopy(routeUb, routeGm, tokenCount);', ['MEM', 'L2', 'DMA', 'GM', 'MTE', 'UB']],
+          [3, 'simt warn', 'for (token = GetThreadId(); token < N; token += THREADS) {', ['SCAL']],
+          [4, 'simt warn', '  expert = top2_route(routeUb[token]);', ['UB', 'VEC']],
+          [5, 'simt warn', '  NDDMA_Slice(expertUb, expertGm, expert);', ['MEM', 'L2', 'DMA', 'GM', 'MTE', 'UB']],
+          [6, 'simt', '}', []],
+          [7, 'simt', 'ASCEND_REGION_END(simt);', ['SYNC']]
+        ]
+      },
+      rmsnorm: {
+        title: 'Fused RMSNorm',
+        verdict: 'PURE SIMD',
+        confidence: '0.91',
+        shape: 'D=4096, dtype=bf16, contiguous row-major',
+        target: 'Ascend 950, throughput first, fp32 accumulate',
+        algo: 'RMSNorm fused scale. Contiguous vector load, square, tree reduce, rsqrt, multiply and store.',
+        reasons: ['contiguous_load', 'tree_reduce_stable', 'aligned_128b'],
+        caveats: ['检查 D 是否保持 128B 对齐', '精度敏感路径建议保留 fp32 accumulate', 'UB 预算不足时需要分块 reduce'],
+        code: [
+          [1, 'simd', 'ASCEND_REGION_BEGIN(simd, reason="contiguous_load");', ['SYNC']],
+          [2, 'simd', 'DataCopy(xUb, xGm, D);', ['MEM', 'L2', 'DMA', 'GM', 'MTE', 'UB']],
+          [3, 'simd', 'Mul(squareUb, xUb, xUb);', ['UB', 'VEC']],
+          [4, 'simd', 'ReduceSum(sumUb, squareUb);', ['UB', 'VEC']],
+          [5, 'simd', 'Mul(yUb, xUb, rsqrt(sumUb));', ['UB', 'VEC']],
+          [6, 'simd', 'DataCopy(yGm, yUb, D);', ['UB', 'MTE', 'DMA', 'L2', 'MEM']],
+          [7, 'simd', 'ASCEND_REGION_END(simd);', ['SYNC']]
+        ]
+      },
+      sliding: {
+        title: 'Sliding Window Attention',
+        verdict: 'HYBRID',
+        confidence: '0.78',
+        shape: 'B=8, H=32, window=512, ragged tail, dtype=bf16',
+        target: 'Ascend 950, balance latency and occupancy',
+        algo: 'Sliding-window attention with dense QK block and ragged KV tail. Needs mode split and T3 validation.',
+        reasons: ['dense_qk_block', 'ragged_tail_branch', 'kv_cache_stride'],
+        caveats: ['T3 模拟优先看 KV cache 命中率', 'window 动态变化可能让 split point 漂移', 'softmax tail 需要单独 reason code'],
+        code: [
+          [1, 'simd', 'ASCEND_REGION_BEGIN(simd, reason="dense_qk_block");', ['SYNC']],
+          [2, 'simd', 'LoadGM2L1(qL1, qGm, aligned_128B);', ['MEM', 'L2', 'DMA', 'GM', 'MTE', 'L1']],
+          [3, 'simd', 'MmadFp8(scoreLoc, qL0, kL0);', ['AICORE', 'LOA', 'LOB', 'CUBE', 'LOC']],
+          [4, 'hybrid', 'Fixpipe(scoreUb, scoreLoc);', ['AICORE', 'LOC', 'FIXPIPE', 'UB']],
+          [5, 'simd', 'ASCEND_REGION_END(simd);', ['SYNC']],
+          [6, 'simt warn', 'ASCEND_REGION_BEGIN(simt, reason="ragged_tail_branch");', ['SYNC']],
+          [7, 'simt warn', 'NDDMA_Slice(kvUb, kvCache, dynamic_offset);', ['MEM', 'L2', 'DMA', 'GM', 'MTE', 'UB']],
+          [8, 'simt warn', 'SoftmaxMasked(scoreUb, kvMask);', ['UB', 'VEC']],
+          [9, 'simt', 'ASCEND_REGION_END(simt);', ['SYNC']]
+        ]
+      }
+    };
+
+    const PHASES = [
+      ['Plan', '需求 -> 决策骨架'],
+      ['Code', 'IDE 内行级反馈'],
+      ['Review', '完整分析报告'],
+      ['Merge', 'PR Bot 给 reviewer'],
+      ['Maintain', '模式漂移回归']
+    ];
+
+    const TIER_TEXT = {
+      t1: ['T1 Static · ~1.2s', 'STATIC', '置信度更低，cycles 取整到百位，隐藏需要编译或模拟才能得到的 reason。'],
+      t2: ['T2 Compiled · ~18s', 'COMPILED', '当前默认分析层，展示完整 reason codes 和编译期估算。'],
+      t3: ['T3 Simulated · ~12min', 'SIMULATED', '置信度提升，cycles 精确到个位，追加仿真器才能给出的实测 reason。']
+    };
+
+    const LINT_STEPS = [
+      {
+        verdict: 'PURE SIMD',
+        confidence: '0.79',
+        status: 'clean',
+        bars: [80, 0, 20],
+        events: [['GOOD', '规则循环 + 128B 对齐，适合 SIMD 起手。']],
+        code: [
+          [41, 'simd', 'for (int i = 0; i < M; i += TILE_M) {', ['SCAL']],
+          [42, 'simd', '  LoadGM2L1(aL1, A, aligned_128B);', ['GM', 'MTE', 'L1']],
+          [43, 'simd', '  MmadFp8(cLoc, aL0, bL0);', ['LOA', 'LOB', 'CUBE', 'LOC']]
+        ]
+      },
+      {
+        verdict: 'SIMD?',
+        confidence: '0.62',
+        status: 'analyzing branch',
+        bars: [60, 8, 32],
+        events: [['BRANCH', '新增 mask 分支，SIMD lane masking 风险升高。']],
+        code: [
+          [41, 'simd', 'for (int i = 0; i < M; i += TILE_M) {', ['SCAL']],
+          [42, 'simd', '  LoadGM2L1(aL1, A, aligned_128B);', ['GM', 'MTE', 'L1']],
+          [43, 'simd', '  MmadFp8(cLoc, aL0, bL0);', ['LOA', 'LOB', 'CUBE', 'LOC']],
+          [44, 'simt warn', '  if (mask[i]) acc += partial_sum(i);', ['UB', 'VEC']]
+        ]
+      },
+      {
+        verdict: 'HYBRID',
+        confidence: '0.71',
+        status: 'mode shift',
+        bars: [45, 30, 25],
+        events: [['GATHER', '新增 sparse gather。'], ['MODE-SHIFT', '建议拆出 SIMT region。']],
+        code: [
+          [41, 'simd', 'for (int i = 0; i < M; i += TILE_M) {', ['SCAL']],
+          [42, 'simd', '  MmadFp8(cLoc, aL0, bL0);', ['LOA', 'LOB', 'CUBE', 'LOC']],
+          [44, 'simt warn', '  if (mask[i]) acc += partial_sum(i);', ['UB', 'VEC']],
+          [45, 'simt warn', '  NDDMA_Slice(tailUb, tailGm, offsets[i]);', ['GM', 'MTE', 'UB']]
+        ]
+      },
+      {
+        verdict: 'HYBRID',
+        confidence: '0.89',
+        status: 'resolved',
+        bars: [50, 40, 10],
+        events: [['RESOLVED', '已插入 ASCEND_REGION_BEGIN/END，切分点可解释。']],
+        code: [
+          [41, 'simd', 'ASCEND_REGION_BEGIN(simd, reason="aligned_stride");', ['SYNC']],
+          [42, 'simd', 'MmadFp8(cLoc, aL0, bL0);', ['LOA', 'LOB', 'CUBE', 'LOC']],
+          [43, 'simd', 'ASCEND_REGION_END(simd);', ['SYNC']],
+          [44, 'simt', 'ASCEND_REGION_BEGIN(simt, reason="data_dependent_branch");', ['SYNC']],
+          [45, 'simt', 'if (mask[i]) acc += partial_sum(i);', ['UB', 'VEC']],
+          [46, 'simt', 'ASCEND_REGION_END(simt);', ['SYNC']]
+        ]
+      }
+    ];
+
+    const state = {
+      view: 'plan',
+      plan: 'moe',
+      kernel: 'matmul',
+      tier: 't2',
+      phase: 0,
+      lintStep: 0,
+      lintTimer: null,
+      planCode: PLAN_PRESETS.moe.code
+    };
+
+    function qs(selector, root = document) {
+      return root.querySelector(selector);
+    }
+
+    function qsa(selector, root = document) {
+      return [...root.querySelectorAll(selector)];
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
+    }
+
+    function verdictClass(verdict) {
+      if (verdict.includes('HYBRID')) return 'hybrid';
+      if (verdict.includes('SIMT')) return 'simt';
+      if (verdict.includes('SIMD')) return 'simd';
+      return '';
+    }
+
+    function hardwareClass(unit) {
+      return 'hw-' + unit.toLowerCase();
+    }
+
+    function hwChips(units) {
+      if (!units || !units.length) return '';
+      return units.map(unit => `<span class="hw-chip ${hardwareClass(unit)}">${unit}</span>`).join('');
+    }
+
+    function renderCodeLines(lines, options = {}) {
+      return `<div class="panel-shell code-panel panel-fill">
+        <div class="code-toolbar">
+          <span class="tag">${options.title || 'kernel.cpp'}</span>
+          <span class="tag ${verdictClass(options.verdict || '')}">${options.verdict || 'analysis'}</span>
+        </div>
+        <div class="hw-toolbar">
+          <div class="hw-legend">${HW_UNITS.map(unit => `<span class="hw-chip ${hardwareClass(unit)}">${unit}</span>`).join('')}</div>
+          <button class="btn btn-sm" data-hw-toggle>Show data-flow diagram</button>
+        </div>
+        <div class="code scroll-body" data-code-lines>
+          ${lines.map(line => {
+            const [num, mode, text, units] = line;
+            return `<div class="code-line ${mode}" data-line="${num}" data-units="${(units || []).join(',')}">
+              <span class="line-num">${num}</span>
+              <span>${escapeHtml(text)}</span>
+              <span class="hw-chain">${hwChips(units)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="hw-map" data-hw-map>
+          <div class="hw-note" data-hw-note>点击代码行查看它在 950DT Die 级架构与 AI Core 内部单元上的执行路径。</div>
+          <div class="hw-active-path" data-hw-active-path>
+            <span class="hw-active-path-label">active path</span>
+            <span class="hw-chip">select a code line</span>
+          </div>
+          <div class="hw-pattern-scroll">
+            <div class="hw-pattern-host" data-hw-pattern-host></div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function mountHardwarePattern(map) {
+      if (!map || map.dataset.hwPatternMounted === 'true') return;
+      const host = qs('[data-hw-pattern-host]', map);
+      const helper = window.PtoMemoryArchitecturePattern;
+      if (!host) return;
+      if (!helper || !window.PtoAicCorePattern || !window.PtoAivCorePattern) {
+        host.innerHTML = '<div class="hw-pattern-missing">memory-architecture pattern renderer unavailable</div>';
+        return;
+      }
+
+      helper.renderArchitecture(host, 'ascend950b');
+      map._hwPatternOverlay = helper.createRouteOverlay(host, 'ascend950b');
+      map._hwPatternHover = helper.attachHoverInteractions(host, 'ascend950b');
+      helper.setDetailVisibility(host, true);
+      map.dataset.hwPatternMounted = 'true';
+      requestAnimationFrame(() => map._hwPatternOverlay?.render?.());
+      requestAnimationFrame(() => requestAnimationFrame(() => map._hwPatternOverlay?.render?.()));
+    }
+
+    function refreshHardwarePattern(map) {
+      mountHardwarePattern(map);
+      requestAnimationFrame(() => map?._hwPatternOverlay?.render?.());
+    }
+
+    function clearHardwarePatternHighlights(map) {
+      qsa('.is-line-active', map).forEach(node => node.classList.remove('is-line-active'));
+    }
+
+    function highlightPatternUnits(map, units) {
+      clearHardwarePatternHighlights(map);
+      units.forEach(unit => {
+        const selectors = HW_PATTERN_SELECTORS[String(unit).toUpperCase()] || [];
+        selectors.forEach(selector => {
+          qsa(selector, map).forEach(node => node.classList.add('is-line-active'));
+        });
+      });
+    }
+
+    function renderActivePath(map, units) {
+      const path = qs('[data-hw-active-path]', map);
+      if (!path) return;
+      const chips = units.length
+        ? units.map(unit => `<span class="hw-chip ${hardwareClass(unit)}">${escapeHtml(unit)}</span>`).join('')
+        : '<span class="hw-chip">control / boundary</span>';
+      path.innerHTML = `<span class="hw-active-path-label">active path</span>${chips}`;
+    }
+
+    function connectHardware(root) {
+      qsa('[data-hw-toggle]', root).forEach(button => {
+        button.addEventListener('click', () => {
+          const panel = button.closest('.code-panel');
+          const map = qs('[data-hw-map]', panel);
+          map.classList.toggle('is-open');
+          button.textContent = map.classList.contains('is-open') ? 'Hide data-flow diagram' : 'Show data-flow diagram';
+          if (map.classList.contains('is-open')) refreshHardwarePattern(map);
+        });
+      });
+
+      qsa('.code-line', root).forEach(line => {
+        line.addEventListener('click', () => {
+          const panel = line.closest('.code-panel');
+          qsa('.code-line', panel).forEach(item => item.classList.remove('is-selected'));
+          line.classList.add('is-selected');
+          const units = line.dataset.units ? line.dataset.units.split(',').filter(Boolean) : [];
+          highlightHardware(panel, units, line.dataset.line);
+        });
+      });
+    }
+
+    function highlightHardware(panel, units, lineNumber) {
+      const map = qs('[data-hw-map]', panel);
+      map.classList.add('is-open');
+      const toggle = qs('[data-hw-toggle]', panel);
+      if (toggle) toggle.textContent = 'Hide data-flow diagram';
+      refreshHardwarePattern(map);
+      highlightPatternUnits(map, units);
+      renderActivePath(map, units);
+      const note = qs('[data-hw-note]', map);
+      note.textContent = `L${lineNumber}: ${units.length ? units.join(' -> ') : 'control / region boundary'}`;
+    }
+
+    function finding(item) {
+      return `<article class="finding"><div class="finding-head"><strong>${item[0]}</strong></div><p>${item[1]}</p></article>`;
+    }
+
+    function currentKernel() {
+      return KERNELS[state.kernel];
+    }
+
+    function dynamicVerdict(kernel) {
+      const tail = Number(qs('#tailSlider').value);
+      const kTile = Number(qs('#kSlider').value);
+      if (tail === 0 && kernel.verdict === 'HYBRID') return 'PURE SIMD';
+      if (kTile <= 64 && kernel.verdict !== 'PURE SIMD') return 'PURE SIMT';
+      return kernel.verdict;
+    }
+
+    function renderPlanPresets() {
+      qs('#planPresets').innerHTML = Object.entries(PLAN_PRESETS).map(([key, preset]) => `
+        <button class="preset ${key === state.plan ? 'is-active' : ''}" data-plan-preset="${key}">
+          <strong>${preset.title}</strong>
+          <span><span class="tag ${verdictClass(preset.verdict)}">${preset.verdict}</span> confidence ${preset.confidence}</span>
+          <span>${preset.reasons.join(' / ')}</span>
+        </button>
+      `).join('');
+    }
+
+    function loadPlanPreset(key) {
+      state.plan = key;
+      const preset = PLAN_PRESETS[key];
+      qs('#planAlgo').value = preset.algo;
+      qs('#planShape').value = preset.shape;
+      qs('#planTarget').value = preset.target;
+      state.planCode = preset.code;
+      renderPlanPresets();
+      renderPlanResult(false);
+    }
+
+    function renderPlanResult(showGenerated = true) {
+      const preset = PLAN_PRESETS[state.plan];
+      qs('#planHeaderMeta').innerHTML = `<span class="tag ${verdictClass(preset.verdict)}">${preset.verdict}</span><span class="tag">confidence ${preset.confidence}</span>`;
+      qs('#planResult').innerHTML = `
+        <div class="metric-grid">
+          <div class="metric"><span>verdict</span><strong>${preset.verdict}</strong></div>
+          <div class="metric"><span>confidence</span><strong>${preset.confidence}</strong></div>
+          <div class="metric"><span>tier</span><strong>T1</strong></div>
+          <div class="metric"><span>output</span><strong>skel</strong></div>
+        </div>
+        <div class="grid-3">
+          ${preset.reasons.map((reason, index) => `<div class="phase-card"><strong>${index + 1}. ${reason}</strong><span>用于解释模式选择，并进入后续 lint / CI / report 的同一套 reason code。</span></div>`).join('')}
+        </div>
+        <div class="soft-card">
+          <strong>Tile / layout 建议</strong>
+          <p>${preset.verdict.includes('SIMT') ? '优先按 token / ragged tail 划分线程级并行，避免把动态分支压进 SIMD lane。' : preset.verdict.includes('HYBRID') ? '主计算块保持 SIMD/Cube 协同，ragged tail 和动态 slice 拆成 SIMT region。' : '保持连续向量加载，D 维对齐到 128B，reduce 路径保留 fp32 accumulate。'}</p>
+        </div>
+        ${renderCodeLines(preset.code, { title: `${preset.title}.cpp`, verdict: preset.verdict })}
+        <div class="analysis-list">
+          ${preset.caveats.map(text => `<article class="finding"><strong>caveat</strong><p>${text}</p></article>`).join('')}
+        </div>
+      `;
+      connectHardware(qs('#planResult'));
+      if (showGenerated) {
+        const firstLine = qs('#planResult .code-line[data-units]:not([data-units=""])');
+        if (firstLine) firstLine.click();
+      }
+    }
+
+    function renderPhases() {
+      qs('#phaseList').innerHTML = PHASES.map((phase, index) => `
+        <button class="phase-step ${index === state.phase ? 'is-active' : ''}" data-phase="${index}">
+          <span class="phase-index">${index + 1}</span>
+          <span><strong>${phase[0]}</strong><span class="mini-label">${phase[1]}</span></span>
+        </button>
+      `).join('');
+    }
+
+    function renderKernelSelect() {
+      qs('#kernelSelect').innerHTML = Object.entries(KERNELS).map(([key, kernel]) => `<option value="${key}">${kernel.label}</option>`).join('');
+      qs('#kernelSelect').value = state.kernel;
+    }
+
+    function renderEditor() {
+      const kernel = currentKernel();
+      const tier = TIER_TEXT[state.tier];
+      const verdict = dynamicVerdict(kernel);
+      qs('#workspaceTitle').textContent = `Editor - ${kernel.label}`;
+      qs('#tierBadge').textContent = tier[0];
+      qs('#verdictBadge').textContent = verdict;
+      qs('#verdictBadge').className = `tag ${verdictClass(verdict)}`;
+      qs('#modeTag').textContent = `${tier[1]} analysis`;
+      qs('#confidence').textContent = kernel.confidence[state.tier];
+      qs('#cycles').textContent = kernel.cycles[state.tier];
+      qs('#dualIssue').textContent = kernel.dualIssue[state.tier];
+      qs('#l2Hit').textContent = kernel.l2Hit[state.tier];
+      qs('#kValue').textContent = qs('#kSlider').value;
+      qs('#tailValue').textContent = qs('#tailSlider').value;
+      qs('#analysisList').innerHTML = `<article class="finding"><strong>${tier[0]}</strong><p>${tier[2]}</p></article>${kernel.findings.map(finding).join('')}`;
+      const reasons = state.tier === 't1' ? kernel.reasons.slice(0, 2) : kernel.reasons;
+      qs('#reasonList').innerHTML = reasons.map((reason, index) => `<div class="reason-row"><code>${reason}</code><span class="tag">${index === 0 ? 'primary' : 'supporting'}</span></div>`).join('');
+      qs('#editorCodeHost').innerHTML = renderCodeLines(kernel.code, { title: `${kernel.label}.cpp`, verdict });
+      connectHardware(qs('#editorCodeHost'));
+    }
+
+    function renderReport() {
+      const kernel = currentKernel();
+      qs('#reportHost').innerHTML = `
+        <div class="timeline">
+          <div class="phase-card"><strong>Plan</strong><span>输入算法、shape、dtype、UB 预算和延迟目标，输出模式建议与骨架代码。</span></div>
+          <div class="phase-card"><strong>Code</strong><span>IDE 中按行标注 SIMD / SIMT / Hybrid 区域，并给出 warning。</span></div>
+          <div class="phase-card"><strong>Review</strong><span>导出可分享 HTML，包含统计卡、区域表、reason codes 和 what-if。</span></div>
+          <div class="phase-card"><strong>Merge</strong><span>PR Bot 汇报模式漂移和 reviewer 关注点。</span></div>
+          <div class="phase-card"><strong>Maintain</strong><span>仓库级模式健康度和 reason code 趋势。</span></div>
+        </div>
+        <div class="metric-grid">
+          <div class="metric"><span>kernel</span><strong>${kernel.label}</strong></div>
+          <div class="metric"><span>verdict</span><strong>${kernel.verdict}</strong></div>
+          <div class="metric"><span>confidence</span><strong>${kernel.confidence[state.tier]}</strong></div>
+          <div class="metric"><span>cycles</span><strong>${kernel.cycles[state.tier]}</strong></div>
+        </div>
+        <table class="report-table">
+          <thead><tr><th>Region</th><th>Mode</th><th>Hardware path</th><th>Reason</th></tr></thead>
+          <tbody>
+            ${kernel.code.filter(line => line[3].length).map(line => `<tr><td>L${line[0]}</td><td><span class="tag ${line[1].includes('simt') ? 'simt' : line[1].includes('hybrid') ? 'hybrid' : 'simd'}">${line[1]}</span></td><td>${line[3].join(' -> ')}</td><td>${kernel.reasons[0]}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderCi() {
+      qs('#ciHost').innerHTML = `
+        <article class="finding">
+          <strong>cann-modeselect-bot commented on PR #2347</strong>
+          <p>Summary: 3 kernels affected by this change. <code class="inline">fused_gelu_proj</code> changed from SIMD to HYBRID because a new <code class="inline">gate_mask</code> branch appeared at L137.</p>
+        </article>
+        <div class="diff is-open"><pre>@@ fused_gelu_proj.cpp
++ ASCEND_REGION_BEGIN(simt, reason="gate_mask_branch")
+  if (gate_mask[token]) {
+    Gelu(gatedUb, projUb);
+  }
++ ASCEND_REGION_END(simt)</pre></div>
+        <table class="report-table">
+          <thead><tr><th>Kernel</th><th>Change</th><th>Confidence</th><th>Review action</th></tr></thead>
+          <tbody>
+            <tr><td>flash_attn_v2</td><td>SIMT kept</td><td>0.92</td><td>pass</td></tr>
+            <tr><td>rmsnorm_fused</td><td>SIMD kept</td><td>0.88</td><td>pass</td></tr>
+            <tr><td>fused_gelu_proj</td><td>SIMD -> HYBRID</td><td>0.74</td><td>review region split</td></tr>
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderDashboard() {
+      qs('#dashboardHost').innerHTML = `
+        <div class="metric-grid">
+          <div class="metric"><span>hybrid ratio</span><strong>17%</strong></div>
+          <div class="metric"><span>top reason</span><strong>aligned</strong></div>
+          <div class="metric"><span>avg confidence</span><strong>0.91</strong></div>
+          <div class="metric"><span>mode drift</span><strong>3</strong></div>
+        </div>
+        <div class="grid-3">
+          <div class="phase-card"><strong>Feature enablement</strong><span>NDDMA / C-V / Fixpipe / BufferID 使能率进入团队周报。</span></div>
+          <div class="phase-card"><strong>Reason code trend</strong><span>reason code 稳定枚举，能进入 lint 和 CI 策略。</span></div>
+          <div class="phase-card"><strong>950 -> 960</strong><span>硬件演进时全量回扫，找出模式漂移区域。</span></div>
+        </div>
+        <table class="report-table">
+          <thead><tr><th>Kernel</th><th>Current</th><th>Drift</th><th>Owner</th></tr></thead>
+          <tbody>
+            <tr><td>matmul_tile</td><td>HYBRID</td><td>stable</td><td>compiler</td></tr>
+            <tr><td>flash_attn_v2</td><td>HYBRID</td><td>watch KV cache</td><td>runtime</td></tr>
+            <tr><td>rmsnorm_fused</td><td>PURE SIMD</td><td>stable</td><td>kernel</td></tr>
+            <tr><td>fused_gelu_proj</td><td>HYBRID</td><td>gate mask branch</td><td>model</td></tr>
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderLint() {
+      const step = LINT_STEPS[state.lintStep];
+      qs('#lintStatus').classList.toggle('is-busy', step.status.includes('analyzing'));
+      qs('#lintStatus span:first-child').textContent = `status: ${step.status}`;
+      qs('#lintVerdict').textContent = step.verdict;
+      qs('#lintVerdict').className = `tag ${verdictClass(step.verdict)}`;
+      qs('#lintConfidence').textContent = `confidence ${step.confidence}`;
+      qs('#lintCode').innerHTML = step.code.map(line => {
+        const [num, mode, text, units] = line;
+        return `<div class="code-line ${mode}" data-line="${num}" data-units="${units.join(',')}">
+          <span class="line-num">${num}</span>
+          <span>${escapeHtml(text)}</span>
+          <span class="hw-chain">${hwChips(units)}</span>
+        </div>`;
+      }).join('');
+      qs('#lintBars').innerHTML = [
+        ['SIMD', 'simd', step.bars[0]],
+        ['SIMT', 'simt', step.bars[1]],
+        ['Risk', 'hybrid', step.bars[2]]
+      ].map(([name, cls, value]) => `<div class="mode-bar"><span>${name}</span><span class="bar-track"><span class="bar-fill ${cls} pct-${value}"></span></span><span>${value}%</span></div>`).join('');
+      qs('#lintEvents').innerHTML = step.events.map(event => `<div class="lint-step is-active"><strong>${event[0]}</strong><span>${event[1]}</span></div>`).join('');
+    }
+
+    function switchView(view) {
+      state.view = view;
+      qsa('.view').forEach(node => node.classList.toggle('is-active', node.id === `view-${view}`));
+      qsa('[data-view-tab]').forEach(button => button.classList.toggle('is-selected', button.dataset.viewTab === view));
+      const phaseByView = { plan: 0, live: 1, editor: 2, report: 2, ci: 3, dashboard: 4 };
+      state.phase = phaseByView[view] ?? state.phase;
+      renderPhases();
+      if (view === 'editor') renderEditor();
+      if (view === 'report') renderReport();
+      if (view === 'ci') renderCi();
+      if (view === 'dashboard') renderDashboard();
+    }
+
+    function init() {
+      renderPlanPresets();
+      loadPlanPreset(state.plan);
+      renderKernelSelect();
+      renderPhases();
+      renderEditor();
+      renderReport();
+      renderCi();
+      renderDashboard();
+      renderLint();
+
+      qsa('[data-view-tab]').forEach(button => {
+        button.addEventListener('click', () => switchView(button.dataset.viewTab));
+      });
+
+      qs('#planPresets').addEventListener('click', event => {
+        const button = event.target.closest('[data-plan-preset]');
+        if (button) loadPlanPreset(button.dataset.planPreset);
+      });
+
+      qs('#generatePlan').addEventListener('click', () => {
+        qs('#planHeaderMeta').innerHTML = '<span class="tag">analyzing...</span>';
+        setTimeout(() => renderPlanResult(true), 450);
+      });
+
+      qs('#openPlanInEditor').addEventListener('click', () => {
+        state.kernel = state.plan === 'rmsnorm' ? 'rmsnorm' : state.plan === 'sliding' ? 'flash' : 'gelu';
+        qs('#kernelSelect').value = state.kernel;
+        switchView('editor');
+      });
+
+      qs('#kernelSelect').addEventListener('change', event => {
+        state.kernel = event.target.value;
+        renderEditor();
+      });
+
+      qs('#phaseList').addEventListener('click', event => {
+        const button = event.target.closest('[data-phase]');
+        if (!button) return;
+        const phase = Number(button.dataset.phase);
+        switchView(['plan', 'live', 'editor', 'ci', 'dashboard'][phase]);
+      });
+
+      qsa('[data-tier]').forEach(button => {
+        button.addEventListener('click', () => {
+          state.tier = button.dataset.tier;
+          qsa('[data-tier]').forEach(item => item.classList.toggle('is-selected', item.dataset.tier === state.tier));
+          renderEditor();
+        });
+      });
+
+      qs('#kSlider').addEventListener('input', renderEditor);
+      qs('#tailSlider').addEventListener('input', renderEditor);
+      qs('#autoRefactor').addEventListener('click', () => qs('#diffBox').classList.toggle('is-open'));
+
+      qs('#lintStep').addEventListener('click', () => {
+        state.lintStep = (state.lintStep + 1) % LINT_STEPS.length;
+        renderLint();
+      });
+      qs('#lintReset').addEventListener('click', () => {
+        clearInterval(state.lintTimer);
+        state.lintTimer = null;
+        qs('#lintPlay').textContent = 'Play';
+        state.lintStep = 0;
+        renderLint();
+      });
+      qs('#lintPlay').addEventListener('click', () => {
+        if (state.lintTimer) {
+          clearInterval(state.lintTimer);
+          state.lintTimer = null;
+          qs('#lintPlay').textContent = 'Play';
+          return;
+        }
+        qs('#lintPlay').textContent = 'Pause';
+        state.lintTimer = setInterval(() => {
+          state.lintStep = (state.lintStep + 1) % LINT_STEPS.length;
+          renderLint();
+        }, 1800);
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

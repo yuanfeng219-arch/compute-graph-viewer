@@ -1,0 +1,62 @@
+[
+  {
+    "semanticLabel": "Query-Linear",
+    "kind": "cube",
+    "sourceSummary": "Matmul over q_norm and w_qb inside the unrolled source loop.",
+    "compiledSummary": "Still visible as a dominant semantic label after ExpandFunction and PreGraphProcess.",
+    "runtimeSummary": "Highest runtime event count in merged_swimlane among explicit semantic stages.",
+    "evidenceRefs": [
+      "source:268-272",
+      "pass:ExpandFunction",
+      "swimlane:Query-Linear"
+    ]
+  },
+  {
+    "semanticLabel": "Query-Dequant",
+    "kind": "vector",
+    "sourceSummary": "Casts and rescales INT32 query output back into x_dtype.",
+    "compiledSummary": "Remains one of the most frequent semantic labels after graph preprocessing.",
+    "runtimeSummary": "Shows up as a major event family after Query-Linear.",
+    "evidenceRefs": [
+      "source:274-279",
+      "pass:PreGraphProcess",
+      "swimlane:Query-Dequant"
+    ]
+  },
+  {
+    "semanticLabel": "Key-Linear",
+    "kind": "cube",
+    "sourceSummary": "Key projection matmul driven by x and wk.",
+    "compiledSummary": "Retained through OoOSchedule with stable semantic identity.",
+    "runtimeSummary": "Longer individual event durations than Weight-Linear in sampled swimlane tasks.",
+    "evidenceRefs": [
+      "source:313-318",
+      "pass:OoOSchedule",
+      "swimlane:Key-Linear"
+    ]
+  },
+  {
+    "semanticLabel": "Key-Quant",
+    "kind": "runtime",
+    "sourceSummary": "Quantizes key data and writes cache payloads through scatter_update.",
+    "compiledSummary": "Represents a bridge between semantic compute stages and runtime object updates.",
+    "runtimeSummary": "Not the largest event family, but critical for explaining KV-cache side effects.",
+    "evidenceRefs": [
+      "source:332-341",
+      "source:210-217",
+      "path:PATH0_6"
+    ]
+  },
+  {
+    "semanticLabel": "Weight-Linear",
+    "kind": "cube",
+    "sourceSummary": "Weight-side projection reuses x and emits weights_out within the same loop body.",
+    "compiledSummary": "Persists as a smaller but explicit semantic branch after preprocessing.",
+    "runtimeSummary": "Appears on both AIC and AIV lanes with shorter sampled durations.",
+    "evidenceRefs": [
+      "source:343-352",
+      "pass:PreGraphProcess",
+      "swimlane:Weight-Linear"
+    ]
+  }
+]

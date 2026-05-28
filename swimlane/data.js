@@ -178,39 +178,72 @@ const swimlaneRoot = typeof window !== 'undefined' ? window : globalThis;
     };
   }
 
-  function buildFallbackTraceEvents() {
+  function buildFallbackTraceEvents(kind = 'default') {
     const ev = [{ name: 'process_name', pid: PID, args: { name: PROCESS_NAME } }];
-    const r0 = createRng(7001);
+    const isAfter = kind === 'after';
+    const fakeGapScale = isAfter ? 0.55 : 1.0;
+    const aicGapScale = isAfter ? 0.42 : 0.6;
+    const aivGapScalePrimary = isAfter ? 1.8 : 3.2;
+    const aivGapScaleSecondary = isAfter ? 2.0 : 3.6;
+    const aivGapScaleTertiary = isAfter ? 1.7 : 3.0;
+    const fakeDurationScale = isAfter ? 0.92 : 1.0;
+    const aicDurationScale = isAfter ? 0.9 : 1.0;
+    const aivDurationScale = isAfter ? 0.88 : 1.0;
 
     addThread(ev, 0, 'Fake Core_0');
     const fake = createLaneEmitter(ev, 0, 'Fake Core_0', 'fake', 7001);
-    fake(6, 18, fakeLabels); fake(90, 16, fakeLabels);
-    fake(184, 18, fakeLabels); fake(286, 17, fakeLabels); fake(388, 16, fakeLabels);
+    fake(6, 18, fakeLabels, { gapScale: fakeGapScale, durationScale: fakeDurationScale });
+    fake(90, 16, fakeLabels, { gapScale: fakeGapScale, durationScale: fakeDurationScale });
+    fake(184, 18, fakeLabels, { gapScale: fakeGapScale, durationScale: fakeDurationScale });
+    fake(286, 17, fakeLabels, { gapScale: fakeGapScale, durationScale: fakeDurationScale });
+    fake(388, 16, fakeLabels, { gapScale: fakeGapScale, durationScale: fakeDurationScale });
 
     for (let lane = 1; lane <= 24; lane++) {
       const rng = createRng(1100 + lane);
       addThread(ev, lane, `AIC_${lane}`);
       const emit = createLaneEmitter(ev, lane, `AIC_${lane}`, 'aic', 2100 + lane);
-      emit((lane % 6) * 1.8, intRange(rng, 30, 38), aicLabels, { gapScale: 0.6 });
+      emit((lane % 6) * 1.8, intRange(rng, 30, 38), aicLabels, {
+        gapScale: aicGapScale,
+        durationScale: aicDurationScale,
+      });
     }
 
     for (let lane = 25; lane <= 72; lane++) {
       const rng = createRng(3100 + lane);
       addThread(ev, lane, `AIV_${lane}`);
       const emit = createLaneEmitter(ev, lane, `AIV_${lane}`, 'aiv', 4100 + lane);
-      emit((lane % 8) * 3.2, intRange(rng, 3, 5), aivLabels, { gapScale: 3.2 });
-      emit(160 + (lane % 5) * 6.1, intRange(rng, 2, 4), aivLabels, { gapScale: 3.6 });
-      emit(330 + (lane % 6) * 5.4, intRange(rng, 2, 4), aivLabels, { gapScale: 3.0 });
+      emit((lane % 8) * 3.2, intRange(rng, 3, 5), aivLabels, {
+        gapScale: aivGapScalePrimary,
+        durationScale: aivDurationScale,
+      });
+      emit(160 + (lane % 5) * 6.1, intRange(rng, 2, 4), aivLabels, {
+        gapScale: aivGapScaleSecondary,
+        durationScale: aivDurationScale,
+      });
+      emit(330 + (lane % 6) * 5.4, intRange(rng, 2, 4), aivLabels, {
+        gapScale: aivGapScaleTertiary,
+        durationScale: aivDurationScale,
+      });
     }
     return ev;
   }
 
   root.SWIMLANE_BUILTIN_SAMPLES = {
+    stitchedBeforeSample: {
+      key: 'samples/stitched_before.json',
+      name: 'stitched_before.json',
+      data: { traceEvents: buildFallbackTraceEvents('before') },
+    },
+    stitchedAfterSample: {
+      key: 'samples/stitched_after.json',
+      name: 'stitched_after.json',
+      data: { traceEvents: buildFallbackTraceEvents('after') },
+    },
     // 离线 fallback：无需 HTTP server，自动生成的 Machine View 模拟数据
     defaultSample: {
       key: 'builtin-fallback',
       name: 'builtin-machine-view.json',
-      data: { traceEvents: buildFallbackTraceEvents() },
+      data: { traceEvents: buildFallbackTraceEvents('default') },
     },
   };
 })(swimlaneRoot);

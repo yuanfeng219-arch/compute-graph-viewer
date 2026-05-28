@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swimlane Benchmark</title>
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="bench-page">
+  <main class="bench-shell">
+    <header class="bench-header">
+      <div>
+        <a class="home-link" href="../swimlane/index.html" title="Back to Swimlane">←</a>
+        <h1>Swimlane Benchmark</h1>
+        <p>Generate large synthetic traces and record baseline interaction metrics.</p>
+      </div>
+      <div class="bench-actions">
+        <button id="benchRunBtn" class="btn btn-primary" type="button">Run Benchmark</button>
+        <button id="benchDownloadBtn" class="btn" type="button">Download JSON</button>
+      </div>
+    </header>
+
+    <section class="bench-grid">
+      <form class="bench-card bench-form" id="benchForm">
+        <h2>Scenario</h2>
+        <label>
+          <span>Tasks</span>
+          <select id="benchTaskCount">
+            <option value="10000">10,000</option>
+            <option value="50000">50,000</option>
+            <option value="100000" selected>100,000</option>
+            <option value="300000">300,000</option>
+          </select>
+        </label>
+        <label>
+          <span>Lanes</span>
+          <select id="benchLaneCount">
+            <option value="100">100</option>
+            <option value="300" selected>300</option>
+            <option value="1000">1,000</option>
+          </select>
+        </label>
+        <label>
+          <span>Duration Span (us)</span>
+          <input id="benchSpan" type="number" min="1000" step="1000" value="120000">
+        </label>
+        <label>
+          <span>Seed</span>
+          <input id="benchSeed" type="number" min="1" step="1" value="910">
+        </label>
+      </form>
+
+      <section class="bench-card">
+        <h2>Metrics</h2>
+        <div class="bench-metrics" id="benchMetrics"></div>
+      </section>
+
+      <section class="bench-card bench-preview">
+        <h2>Dataset Preview</h2>
+        <pre id="benchPreview"></pre>
+      </section>
+
+      <section class="bench-card bench-log">
+        <h2>Run Log</h2>
+        <div id="benchLog"></div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

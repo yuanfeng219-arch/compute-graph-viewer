@@ -13,7 +13,7 @@
   root.innerHTML = [
     '<div class="graph-shell">',
     '  <div id="graph" class="graph-canvas"></div>',
-    '  <aside class="view-panel" aria-live="polite">',
+    '  <aside class="view-panel panel-shell" aria-live="polite">',
     '    <div id="view-panel-title" class="view-panel-title"></div>',
     '    <div id="view-panel-note" class="view-panel-note"></div>',
     '    <div id="view-legend"></div>',
@@ -2323,8 +2323,8 @@
   function updateVersionPicker() {
     const v3Btn = document.getElementById("btn-v3");
     const v32Btn = document.getElementById("btn-v3_2");
-    if (v3Btn) v3Btn.classList.toggle("active", state.modelVersion === "v3");
-    if (v32Btn) v32Btn.classList.toggle("active", state.modelVersion === "v3_2");
+    if (v3Btn) v3Btn.classList.toggle("is-selected", state.modelVersion === "v3");
+    if (v32Btn) v32Btn.classList.toggle("is-selected", state.modelVersion === "v3_2");
   }
 
   function updateViewPicker() {
@@ -2332,12 +2332,12 @@
     const parallelBtn = document.getElementById("btn-parallel");
     if (structureBtn) {
       const active = state.viewMode === "structure";
-      structureBtn.classList.toggle("active", active);
+      structureBtn.classList.toggle("is-selected", active);
       structureBtn.setAttribute("aria-selected", active ? "true" : "false");
     }
     if (parallelBtn) {
       const active = state.viewMode === "parallel";
-      parallelBtn.classList.toggle("active", active);
+      parallelBtn.classList.toggle("is-selected", active);
       parallelBtn.setAttribute("aria-selected", active ? "true" : "false");
     }
   }

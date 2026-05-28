@@ -1,9 +1,9 @@
 :root {
-  --eo-bg-0: #17181d;
-  --eo-bg-1: rgba(22, 22, 22, 0.88);
-  --eo-bg-2: rgba(255, 255, 255, 0.05);
-  --eo-line: rgba(255, 255, 255, 0.08);
-  --eo-line-strong: rgba(255, 255, 255, 0.16);
+  --eo-bg-0: var(--background);
+  --eo-bg-1: var(--surface-2);
+  --eo-bg-2: var(--surface-3);
+  --eo-line: var(--border-subtle);
+  --eo-line-strong: var(--border-default);
   --eo-query: #4a8bf5;
   --eo-query-rgb: 74, 139, 245;
   --eo-query-bg: rgba(74, 139, 245, 0.10);
@@ -60,10 +60,10 @@ body.eo-page {
   gap: 6px;
 }
 
-.eo-filter-btn.active {
-  background: var(--op-accent);
-  border-color: transparent;
-  color: #ffffff;
+.eo-filter-btn.is-selected {
+  background: rgba(var(--op-accent-rgb), 0.22);
+  border-color: rgba(var(--op-accent-rgb), 0.28);
+  color: var(--foreground);
 }
 
 .eo-viewport {
@@ -72,7 +72,7 @@ body.eo-page {
   min-height: 0;
   border-radius: 14px;
   border: 1px solid var(--eo-line);
-  background: rgba(18, 18, 18, 0.72);
+  background: var(--surface-1);
 }
 
 .eo-legend {
@@ -83,7 +83,7 @@ body.eo-page {
   flex-wrap: wrap;
   padding: 10px 12px;
   border-bottom: 1px solid var(--eo-line);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-2);
 }
 
 .eo-legend-group {
@@ -338,14 +338,14 @@ body.eo-page {
   gap: 12px;
   padding: 10px 12px;
   border-top: 1px solid var(--eo-line);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-2);
 }
 
 .eo-playback,
 .eo-zoom {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--zoom-control-gap);
 }
 
 .eo-progress {
@@ -389,7 +389,7 @@ body.eo-page {
   border: 1px solid var(--eo-line);
   border-radius: 14px;
   padding: 12px;
-  background: var(--eo-bg-1);
+  background: var(--surface-2);
 }
 
 .eo-copy p {

@@ -1,189 +1,145 @@
-# PTO — Compute Graph Viewer
+# PTO — 计算图工作台
 
-面向 Ascend NPU 的计算图本地可视化工具，纯静态前端（HTML + CSS + Vanilla JS），无需构建。
+PTO 是面向 Ascend NPU 算子开发、编译 Pass 分析、执行泳道和硬件数据路径理解的本地可视化工作台。项目主体是静态前端，优先使用 HTML、CSS 和原生 JavaScript；少数实验模块使用独立的 Vite 或 Node 子工程。
 
-**[→ 打开 Launcher](https://yinyucheng0601.github.io/compute-graph-viewer/launch.html)**
-
----
-
-## 四个入口
-
-| 入口 | 文件 | 功能 |
-|------|------|------|
-| 大模型整网架构 | `model-architecture/index.html` | 架构洞察：DeepSeek V3 L1→L2→L3→L4 折叠展开 |
-| Pass IR 计算图 | `pass-ir/index.html` | 精度调试：逐 Pass 追踪编译优化，节点聚类，锁定计算流 |
-| Swimlane 执行视图 | `swimlane/index.html` | 执行态观察：AIC / AIV 真实任务泳道，支持本地 `merged_swimlane.json` |
-| 图执行叠加原型 | `execution-overlay/index.html` | 研究视图：解析 `claude.txt` 原型，把 DAG、执行热度、核分配和诊断信息叠到一张图上 |
+**线上入口**：https://yinyucheng0601.github.io/compute-graph-viewer/launch.html
 
 ---
 
 ## 快速开始
 
+多数页面需要通过本地 HTTP 服务访问，避免 `file://` 下 fetch、ES 模块或 iframe 资源加载失败。
+
+```bash
+cd /Users/yin/pto
+python3 -m http.server 8765
+```
+
+打开：
+
+```text
+http://127.0.0.1:8765/launch.html
+```
+
+也可以使用 Node：
+
 ```bash
 npx serve .
-# 访问 http://localhost:3000/launch.html
 ```
 
 ---
 
-## 核心功能
+## 主入口
 
-**精度调试（Pass IR 计算图）**
-- DAG 可视化：Incast / Op / Tensor / Outcast 四种节点，SVG 曲线连线
-- Pass 导航：Loop / Unroll / Path / Snap 四层状态，追踪跨 Pass 节点演变
-- 节点聚类（Group 视图）：按 flowSignature + 结构指纹聚合同类节点，支持 5 种颜色模式
-- 锁定计算流：固定选中的 Tensor 链路，Pass 切换时持续追踪
-- Controlflow 面板：开发者控制流 ↔ 编译器生成控制流双列对比
-
-**架构洞察（大模型整网架构）**
-- L1 整网 → L2 融合算子 → L3 基础算子 → L4 步骤展开，四级递进
-- V3 / V3.2 模型版本切换，实时对比结构差异
-- 深色主题，与精度调试模块视觉统一（v0.5）
+| 入口 | 文件 / 链接 | 用途 |
+|------|-------------|------|
+| 启动台 | `launch.html` | 项目总启动页，聚合高保真工作台、实验模块和演示入口 |
+| 演示页 | `low-fi/ppt-web.html` | 演示汇报入口 |
+| 设计系统技能 | [pto-design-system](https://github.com/yinyucheng0601/pto-design-system) | PTO 设计系统专用技能仓库 |
 
 ---
 
-## 项目结构
+## 核心模块
 
-```
-pto/
-├── launch.html          # 启动页（四卡片导航）
-├── pass-ir/
-│   └── index.html       # 精度调试
-├── execution-overlay/
-│   ├── index.html       # 图执行叠加原型解读
-│   ├── app.js           # 原型语义提炼版交互
-│   └── styles.css       # 原型模块样式
-├── swimlane/
-│   ├── index.html       # Swimlane 执行视图
-│   ├── app.js           # Swimlane viewer 解析与渲染
-│   └── styles.css       # Swimlane 页面样式
-├── archive/
-│   └── unreferenced-20260319/ # 无引用旧文件归档
-├── CHANGELOG.md         # 开发日志
-├── css/style.css        # 主样式 + Design Token
-├── js/
-│   ├── app.js           # 主控制器
-│   ├── parser.js        # JSON 解析
-│   ├── layout.js        # Sugiyama 分层布局
-│   ├── renderer.js      # 渲染（节点卡片 + SVG 连线）
-│   ├── colormap.js      # 颜色映射（语义/时延/分区/执行单元）
-│   ├── nav.js           # Pass 导航条
-│   └── controlflow.js   # Controlflow 面板
-├── model-architecture/
-│   ├── index.html       # 大模型整网架构
-│   ├── app.js           # X6 封装（L1→L4）
-│   ├── data.js          # DeepSeek V3/V3.2 内置数据
-│   └── styles.css       # MVP 样式（与主站 Design Token 对齐）
-├── source-flow/
-│   └── index.html       # 源码计算流（保留在仓库，当前不在 Launcher 主入口）
-├── graph-prototype-lab/ # 图原型实验室（辅助入口）
-└── 业务理解/            # PRD + 设计文档
-    └── PROJECT_INDEX.md # 完整模块索引
-```
-
----
-
-## 设计系统
-
-PTO 使用四层 Design Token 架构，所有颜色、排版、间距通过 CSS 变量统一管理。
-
-### Token 层级
-
-```
-tokens/foundation.css   # 原始值：色盘、字号、间距、圆角、阴影、动效
-tokens/semantic.css     # 语义映射：background / foreground / border / surface / 交互状态
-tokens/components.css   # 组件规格：toolbar / button / input / panel / card / tag
-tokens/generate_tokens.py # 生成器：从三份 CSS token 源导出 tokens.js / tokens.json
-css/style.css           # 节点图场景 Token + alias（模块消费层）
-```
-
-### Token 概览
-
-**foundation.css**
-- Neutral 灰阶：`--ark-neutral-0 ~ 4`（纯中性，无蓝色偏移）
-- Accent：blue-500 / blue-600 / domain-aux / green-500 / orange-500 / red-500
-- 排版：6 个字号档（11px ~ 28px）、font-weight（500 / 600 / 700）
-- 间距：`--space-1 ~ 6`（4px ~ 24px）
-- 圆角：`--radius-sm / md / lg / xl / pill`
-- 阴影：`--shadow-sm / md / lg`
-- 动效：`--duration-fast / base / slow` + `--easing-default / out`
-
-**semantic.css（深色主题 :root）**
-- Background：`--background`、`--background-elevated`
-- Surface：`--surface-1 ~ 4`（纯中性灰）
-- Foreground：`--foreground` / `secondary` / `muted` / `disabled`（HOS alpha 四档：0.90 / 0.60 / 0.40 / 0.25）
-- Border：`--border-subtle / default / strong`（白色 alpha，纯中性）
-- 语义色：`--primary` / `accent` / `success` / `warning` / `danger`
-- Tone：`--tone-critical-bg / warning-bg / info-bg` 与 `--tone-*-strong`
-- 交互状态叠加：`--state-hover / press / selected / focus`
-
-**components.css**
-- Toolbar：`--comp-toolbar-height / bg / border`
-- Button：primary / secondary / ghost 高度、圆角、前景背景
-- Input / Panel / Card / Table / Tag：统一尺寸与边框语义
-- Typography Composites：7 个排版角色（`--text-display / title-1 / title-2 / body / body-sm / label / mono`），消费方直接用 `font: var(--text-body)` 即可
-
-**css/style.css（场景 Token）**
-- Pass-IR 节点面：`--node-bg-elevated / hover / selected`（比画布略亮）
-- Severity alias：`--severity-critical / warning / info`
-- Accent alias：`--accent-blue / yellow / green`
-
-### 模块接入状态
-
-| 模块 | 接入 | 说明 |
+| 模块 | 入口 | 说明 |
 |------|------|------|
-| pypto-swimlane-perf-tool | ✅ | `style.css + foundation + semantic + components`，保留少量场景扩展 |
-| swimlane / swimlane-bench | ✅ | `style.css + foundation + semantic + components` |
-| mem_viewer / source-flow / execution-overlay / indexer-exec | ✅ | 通过 `css/style.css` 间接消费共享 token |
-| pass-ir | ✅ | 通过 `css/style.css` 间接消费共享 token，节点提升面已统一到共享 `surface-4` |
-| op-ide-assistant | △ | 仅接入 `foundation.css + semantic.css`，缺 `components.css` 与 `css/style.css` |
-| graph-prototype-lab | ✕ | 仅手工镜像 token 数值，未实际 import 共享 token |
-| model-architecture | ✕ | 仅手工镜像 token 数值，未实际 import 共享 token |
-| devui | ✕ | Angular bundle 体系，尚未接入当前静态 token 路径 |
-
-### 当前缺口
-
-- `tokens/tokens.js`、`tokens/tokens.json` 现为生成产物，不应手工维护；单一来源是三份 CSS token 源。
-- `graph-prototype-lab`、`model-architecture` 已做视觉对齐，但还不是设计系统真实接入。
-- `op-ide-assistant` 仍维护自己的组件变量映射，后续适合拆成“壳层接入 style.css + 组件层复用”两步。
-
-### Token 生成
-
-更新 token 快照时执行：
-
-```bash
-python3 tokens/generate_tokens.py
-```
-
-规则：
-
-- 修改 token → 改 `foundation.css` / `semantic.css` / `components.css`
-- 运行生成器
-- 不要直接编辑 `tokens.js` 或 `tokens.json`
+| 950B 硬件路径工作台 | `ascend-950-workbench-demo/index.html` | 面向 Ascend 950B 的硬件路径、算子迁移和 tiling 执行理解 |
+| A3/A5 差异解读 | `ascend-950-workbench-demo/feature_taxonomy.html` | A3 到 A5 算子迁移差异、分类和硬件联动解读 |
+| Ascend 950 流向图 | `ascend-hardware-map/ascend-hardware-map-v3.html` | 950 数据搬运路径、通信指令和硬件流向地图 |
+| A5 PMU 诊断工作台 | `pmu/06-a5-pmu-visualization-group2-loop.html` | PMU 数据、循环分组和泳道式性能诊断 |
+| Pass IR 计算图 | `pass-ir/index.html` | 编译 Pass 快照浏览、节点分组、语义染色和计算流锁定 |
+| 内存查看器 | `mem_viewer/index.html` | 计算图与 DDR/L1/L0/UB 内存层级联动的逐步执行视图 |
+| 泳道执行视图 | `swimlane/index.html` | AIC/AIV 任务泳道、目录导入、前后对比和任务下钻 |
+| 图执行叠加原型 | `indexer-exec/index.html` | DAG、执行热度、核分配和诊断信息的叠加原型 |
+| 模型算子层级架构图 | `model-architecture/index.html` | DeepSeek V3/V3.2 L1 到 L4 的多层级折叠图 |
+| TorchVista / Graphviz 预览 | `graphviz/torchvista_graphviz_deepseek_v4.html` | DeepSeek V4 图结构预览 |
+| 算子 IDE 助手 | `op-ide-assistant/index.html` / `op-ide-assistant-v2/index.html` | 面向算子开发的 IDE 辅助原型 |
+| 泳道性能工具 | `pypto-swimlane-perf-tool/index.html` | 泳道性能数据解析、统计和对比工具 |
+| 源码流 | `source-flow/index.html` | 源码计算流实验入口 |
+| 图原型实验室 | `graph-prototype-lab/index.html` | 通用图布局、方向切换、分组和检查器实验室 |
+| 竞品分析 | `计算领域竞分/index.html` | CUDA / ROCm / Triton 等算子开发体验竞品分析 |
 
 ---
 
-## 技术架构
+## 白皮书页面
 
-- **前端**：纯 HTML + CSS + Vanilla JS，无构建依赖
-- **布局算法**：自研 Sugiyama 分层布局（`js/layout.js`）
-- **MVP 图库**：AntV X6（仅 `model-architecture/` 使用，bundle 隔离）
-- **主题**：深色系，四层 Design Token 架构（见上方「设计系统」章节）
+| 白皮书 | 页面链接 |
+|--------|------------|
+| 硬件原生系统：面向 Ascend NPU 的 AI 编译运行时栈白皮书 | https://yinyucheng0601.github.io/compute-graph-viewer/hw-native-sys/ |
+| HNSW 白皮书：分层导航小世界图与向量检索工程 | https://yinyucheng0601.github.io/compute-graph-viewer/HNSW/HNSW-whitepaper.html |
+| H-Anchor：分层锚点 VLSI 布局算法白皮书 | https://yinyucheng0601.github.io/compute-graph-viewer/PycPlacer/pycplacer-whitepaper.html |
+| VLSI 布局白皮书：布局算法如何实现芯片“核舟记” | https://yinyucheng0601.github.io/compute-graph-viewer/vlsi-placement-whitepaper/ |
+| PyPTO 工具链白皮书 | `pypto-toolchain-whitepaper/index.html` |
+| PTO 白皮书总稿 | `whitepaper.md` |
+
+---
+
+## 目录地图
+
+```text
+pto/
+├── launch.html                         # 项目总启动页
+├── vendor/pto-design-system/           # 设计系统 submodule，运行时默认来源
+├── js/                                 # Pass IR 共享解析、布局、渲染和导航逻辑
+├── assets/                             # 启动台和演示图像资源
+├── data/                               # 内置样本图数据
+├── pass-ir/                            # Pass IR 计算图工作台
+├── mem_viewer/                         # 内存层级与计算图联动视图
+├── swimlane/                           # 执行泳道主模块
+├── ascend-950-workbench-demo/           # 950B 硬件路径和迁移工作台
+├── ascend-hardware-map/                # Ascend 数据搬运流向图
+├── pmu/                                # A5 PMU 可视化原型
+├── model-architecture/                 # 大模型算子层级架构图
+├── graph-prototype-lab/                # 图布局实验室
+├── op-ide-assistant*/                  # IDE 助手两版原型
+├── pypto-swimlane-perf-tool/           # 泳道性能分析工具
+├── hw-native-sys/                      # 硬件原生系统白皮书页面
+├── HNSW/                               # HNSW 白皮书资料和页面
+├── PycPlacer/                          # H-Anchor / PycPlacer 白皮书页面
+├── vlsi-placement-whitepaper/          # VLSI 布局白皮书页面
+└── 业务理解/                           # PRD、研究笔记、迁移方案和项目索引
+```
+
+---
+
+## 模式库
+
+复用图形模式以 `vendor/pto-design-system/patterns/patterns.json` 为准。
+
+| 模式 | 路径 | 用途 |
+|---------|------|------|
+| swimlane-task-bar | `vendor/pto-design-system/patterns/swimlane-task/` | 泳道任务条 |
+| memory-architecture-layout | `vendor/pto-design-system/patterns/memory-architecture/` | 内存架构层级图 |
+| aic-core-object | `vendor/pto-design-system/patterns/aic-core-object/` | AIC 核心对象图形 |
+| aiv-core-object | `vendor/pto-design-system/patterns/aiv-core-object/` | AIV 核心对象图形 |
+| pass-ir-graph-node | `vendor/pto-design-system/patterns/pass-ir-graph-node/` | Pass IR 图节点 |
+新增图形模式时保持 `pattern.html` / `pattern.css` / `pattern.js` / `pattern.json` 结构，并同步更新 `vendor/pto-design-system/patterns/patterns.json`。
+
+---
+
+## 子工程
+
+根目录整体无统一构建流程。以下目录是独立子工程，进入各自目录后按本地 `package.json` 运行：
+
+| 子工程 | 说明 |
+|--------|------|
+| `ai-for-design-open-slide/` | Open Slide 演示工程 |
+
+---
+
+## 维护规则
+
+- 新页面优先通过 `launch.html` 暴露入口；若只是实验或归档，放在 `archive/` 或对应模块目录内。
+- 设计系统规范以 [pto-design-system](https://github.com/yinyucheng0601/pto-design-system) 为准，README 不再维护展开说明。
+- 页面运行时默认引用 `vendor/pto-design-system/...`；`design-system-share/`、根目录 `tokens/`、`css/`、`patterns/` 只在需要兼容旧工具时由同步脚本临时生成。
+- 复杂图形先判断是否应沉淀为 `patterns/`，避免在页面里散落重复的 SVG、Canvas 或 DOM 图形实现。
+- 白皮书和研究资料优先放在明确模块目录或 `业务理解/`，避免根目录继续堆积临时文件。
+- 当前工作区包含较多历史原型和迁移中目录，修改前先看 `git status`，不要顺手清理无关文件。
 
 ---
 
 ## 版本日志
 
-详见 [CHANGELOG.md](CHANGELOG.md)
-
-| 版本 | 日期 | 主要变更 |
-|------|------|---------|
-| v0.5 | 2026-03-12 | MVP 暗色主题统一、语义染色 VIEW/RESHAPE 修复、Launcher beta 徽章 |
-| v0.4 | 2026-03-11 | MVP 接入探索（复盘） |
-| v0.3 | 2026-03 | Launcher 文件夹 handoff、Group 视图、锁定计算流 |
-| v0.2 | 2026-03 | Pass 导航重设计、迷你地图改进 |
-| v0.1 | 2026-03 | 初始发布、Pass Navigator |
-
----
+详见 `CHANGELOG.md`。
 
 **维护者**：Yin Yucheng

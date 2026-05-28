@@ -4,27 +4,46 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CANN 910B Memory Tier Preview</title>
-  <link rel="stylesheet" href="../tokens/foundation.css">
-  <link rel="stylesheet" href="../tokens/semantic.css">
-  <link rel="stylesheet" href="../tokens/components.css">
-  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
   <style>
     :root {
-      --tier-l1: #3577f6;
-      --tier-l0a: #a855f7;
-      --tier-l0b: #7c3aed;
-      --tier-l0c: #f97316;
-      --tier-ub: #22c55e;
+      --surface-0: var(--background-elevated);
+      --tier-l1: var(--highlight-copy-blue-source);
+      --tier-l0a: var(--highlight-l0a-violet-source);
+      --tier-l0b: var(--highlight-l0b-deep-violet-source);
+      --tier-l0c: var(--highlight-accum-orange-source);
+      --tier-ub: var(--highlight-ub-green-source);
+      --tier-l1-bg: color-mix(in srgb, var(--tier-l1) 12%, transparent);
+      --tier-l1-border: color-mix(in srgb, var(--tier-l1) 38%, transparent);
+      --tier-l1-fill: color-mix(in srgb, var(--tier-l1) 72%, transparent);
+      --tier-l0a-bg: color-mix(in srgb, var(--tier-l0a) 12%, transparent);
+      --tier-l0a-border: color-mix(in srgb, var(--tier-l0a) 38%, transparent);
+      --tier-l0a-fill: color-mix(in srgb, var(--tier-l0a) 72%, transparent);
+      --tier-l0b-bg: color-mix(in srgb, var(--tier-l0b) 12%, transparent);
+      --tier-l0b-border: color-mix(in srgb, var(--tier-l0b) 38%, transparent);
+      --tier-l0b-fill: color-mix(in srgb, var(--tier-l0b) 72%, transparent);
+      --tier-l0c-bg: color-mix(in srgb, var(--tier-l0c) 12%, transparent);
+      --tier-l0c-border: color-mix(in srgb, var(--tier-l0c) 38%, transparent);
+      --tier-l0c-fill: color-mix(in srgb, var(--tier-l0c) 72%, transparent);
+      --tier-ub-bg: color-mix(in srgb, var(--tier-ub) 8%, transparent);
+      --tier-ub-border: color-mix(in srgb, var(--tier-ub) 30%, transparent);
+      --tier-ub-fill: color-mix(in srgb, var(--tier-ub) 72%, transparent);
       --mem-card-lg-w: 272px;
       --mem-card-sm-w: 256px;
       --mem-card-lg-h: 328px;
       --mem-card-sm-h: 154px;
       --mem-card-gap: 14px;
-      --text-dim: rgba(255, 255, 255, 0.72);
-      --mte-line-color: #f59e0b;
-      --mte-pill-bg: #f59e0b;
-      --mte-pill-border: #f59e0b;
-      --mte-pill-text: #1f1300;
+      --text-dim: color-mix(in srgb, var(--foreground) 72%, transparent);
+      --mte-line-color: var(--highlight-mte-amber-source);
+      --mte-pill-bg: var(--highlight-mte-amber-source);
+      --mte-pill-border: var(--highlight-mte-amber-source);
+      --mte-pill-text: var(--highlight-mte-amber-1000);
+      --buf-stat-accent-bg: color-mix(in srgb, var(--highlight-copy-blue-source) 14%, transparent);
+      --buf-stat-accent-border: color-mix(in srgb, var(--highlight-copy-blue-source) 28%, transparent);
+      --buf-stat-accent-fg: var(--highlight-copy-blue-100);
     }
 
     body { margin: 0; background: var(--background); color: var(--foreground); }
@@ -36,14 +55,33 @@
     .preview-card h2 { margin: 0; font: var(--text-title-sm); }
     .preview-note { font: var(--text-body-sm); color: var(--foreground-secondary); line-height: 1.55; }
     .preview-meta { display: flex; flex-wrap: wrap; gap: 8px; }
-    .preview-badge { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(0,0,0,.82); color: rgba(255,255,255,.88); font: 10px/1.2 var(--text-mono); }
-    .preview-map { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; font: var(--text-label); border: 1px solid rgba(251,191,36,.28); color: #fbbf24; background: rgba(251,191,36,.14); }
+    .preview-badge { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; background: var(--surface-3); color: var(--foreground); font: 10px/1.2 var(--text-mono); border: 1px solid var(--border-subtle); }
+    .preview-map { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; font: var(--text-label); border: 1px solid color-mix(in srgb, var(--mte-line-color) 28%, transparent); color: var(--highlight-mte-amber-400); background: color-mix(in srgb, var(--mte-line-color) 14%, transparent); }
 
     .arch-preview {
       min-height: 640px;
       border-radius: 24px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--surface-0);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--foreground) 2%, transparent), transparent), var(--surface-0);
+      border: 1px solid var(--border-subtle);
       padding: 22px;
+    }
+
+    :root[data-theme='light'] body {
+      background:
+        radial-gradient(circle at top left, color-mix(in srgb, var(--tier-l1) 7%, white) 0%, transparent 30%),
+        linear-gradient(180deg, #fcfcfc 0%, var(--background) 100%);
+    }
+
+    :root[data-theme='light'] .preview-card {
+      background: var(--surface-1);
+      border-color: var(--border-default);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+    }
+
+    :root[data-theme='light'] .arch-preview,
+    :root[data-theme='light'] .mte-legend {
+      background: var(--surface-2);
+      border-color: var(--border-default);
     }
 
     #arch-diagram {
@@ -117,9 +155,9 @@
       min-height: 20px;
       padding: 0 8px;
       border-radius: 999px;
-      background: #f59e0b;
-      border: 1px solid #f59e0b;
-      color: #1f1300;
+      background: var(--mte-pill-bg);
+      border: 1px solid var(--mte-pill-border);
+      color: var(--mte-pill-text);
       font-size: 11px;
       font-weight: 700;
       font-family: var(--text-mono, monospace);
@@ -177,11 +215,11 @@
       min-height: 0;
     }
 
-    .buf-l1  { background-color: rgba(53,119,246,0.12); border-color: rgba(53,119,246,0.38); }
-    .buf-l0a { background-color: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.38); }
-    .buf-l0b { background-color: rgba(124,58,237,0.12); border-color: rgba(124,58,237,0.38); }
-    .buf-l0c { background-color: rgba(249,115,22,0.12); border-color: rgba(249,115,22,0.38); }
-    .buf-ub  { background-color: rgba(135,200,15,0.08); border-color: rgba(135,200,15,0.30); }
+    .buf-l1  { background-color: var(--tier-l1-bg); border-color: var(--tier-l1-border); }
+    .buf-l0a { background-color: var(--tier-l0a-bg); border-color: var(--tier-l0a-border); }
+    .buf-l0b { background-color: var(--tier-l0b-bg); border-color: var(--tier-l0b-border); }
+    .buf-l0c { background-color: var(--tier-l0c-bg); border-color: var(--tier-l0c-border); }
+    .buf-ub  { background-color: var(--tier-ub-bg); border-color: var(--tier-ub-border); }
 
     .buf-l1,
     .buf-l0c,
@@ -229,7 +267,7 @@
       padding: 0 8px;
       border-radius: 999px;
       border: 1px solid var(--border-default);
-      background: rgba(255,255,255,0.06);
+      background: var(--state-muted);
       color: var(--text-primary);
       font-size: 11px;
       font-weight: 600;
@@ -239,9 +277,9 @@
     }
 
     .buf-stat-tag.is-accent {
-      background: rgba(147,186,255,0.14);
-      border-color: rgba(147,186,255,0.28);
-      color: #c6deff;
+      background: var(--buf-stat-accent-bg);
+      border-color: var(--buf-stat-accent-border);
+      color: var(--buf-stat-accent-fg);
     }
 
     .buf-meta-list {
@@ -301,11 +339,11 @@
       border: 1px solid transparent;
     }
 
-    .bpg-cell.is-l1  { background: rgba(53,119,246,0.72); }
-    .bpg-cell.is-l0a { background: rgba(168,85,247,0.72); }
-    .bpg-cell.is-l0b { background: rgba(124,58,237,0.72); }
-    .bpg-cell.is-l0c { background: rgba(249,115,22,0.72); }
-    .bpg-cell.is-ub  { background: rgba(135,200,15,0.72); }
+    .bpg-cell.is-l1  { background: var(--tier-l1-fill); }
+    .bpg-cell.is-l0a { background: var(--tier-l0a-fill); }
+    .bpg-cell.is-l0b { background: var(--tier-l0b-fill); }
+    .bpg-cell.is-l0c { background: var(--tier-l0c-fill); }
+    .bpg-cell.is-ub  { background: var(--tier-ub-fill); }
 
     .bpg-legend {
       display: flex;
@@ -347,7 +385,7 @@
       padding: 8px 12px;
       min-width: 96px;
       border-radius: var(--radius-sm);
-      background: rgba(255,255,255,0.08);
+      background: var(--state-hover);
       border: 1px solid var(--border-subtle);
       font-size: 11px;
       font-weight: 600;
@@ -363,8 +401,8 @@
       width: 144px;
       min-height: var(--mem-card-lg-h);
       padding: 12px 14px;
-      background: rgba(53,119,246,0.12);
-      border: 1px solid rgba(53,119,246,0.30);
+      background: var(--tier-l1-bg);
+      border: 1px solid var(--tier-l1-border);
       color: var(--text-primary);
       flex: 0 0 auto;
     }
@@ -398,7 +436,7 @@
       justify-content: center;
       font-size: 11px;
       font-weight: 600;
-      color: rgba(147,186,255,0.9);
+      color: var(--highlight-copy-blue-200);
       letter-spacing: 0.04em;
     }
 
@@ -529,7 +567,7 @@
                     </div>
                     <div class="bpg-grid" data-tier="L1" style="--bpg-cols:8"></div>
                     <div class="bpg-legend">
-                      <span class="bpg-legend-item"><span class="bpg-legend-dot" style="background:rgba(53,119,246,0.9)"></span>copy-in</span>
+                      <span class="bpg-legend-item"><span class="bpg-legend-dot" style="background:var(--tier-l1)"></span>copy-in</span>
                     </div>
                     <div class="buf-meta-list">
                       <div class="buf-meta-row"><span class="buf-meta-key">Format:</span><span class="buf-meta-val">row-major</span></div>
@@ -593,7 +631,7 @@
                     </div>
                     <div class="bpg-grid" data-tier="L0C" style="--bpg-cols:8"></div>
                     <div class="bpg-legend">
-                      <span class="bpg-legend-item"><span class="bpg-legend-dot" style="background:rgba(249,115,22,0.9)"></span>accum</span>
+                      <span class="bpg-legend-item"><span class="bpg-legend-dot" style="background:var(--tier-l0c)"></span>accum</span>
                     </div>
                     <div class="buf-meta-list">
                       <div class="buf-meta-row"><span class="buf-meta-key">Format:</span><span class="buf-meta-val">nZ</span></div>
@@ -630,7 +668,7 @@
                   </div>
                   <div class="bpg-grid" data-tier="UB" style="--bpg-cols:8"></div>
                   <div class="bpg-legend">
-                    <span class="bpg-legend-item"><span class="bpg-legend-dot" style="background:rgba(135,200,15,0.9)"></span>vector tile</span>
+                    <span class="bpg-legend-item"><span class="bpg-legend-dot" style="background:var(--tier-ub)"></span>vector tile</span>
                   </div>
                   <div class="buf-meta-list">
                     <div class="buf-meta-row"><span class="buf-meta-key">Format:</span><span class="buf-meta-val">row-major</span></div>
@@ -657,7 +695,7 @@
           <span class="preview-badge">new memory-tier visual</span>
           <span class="preview-badge">shared system pattern</span>
         </div>
-        <div class="preview-note">这套 pattern 复用了 shared card shell、shared type scale、shared neutral surfaces，并把 memory-tier block 与 MTE 标识确认为新的 shared system pattern。后续应同步进入 `button-preview.html`，再由正式模块消费。</div>
+        <div class="preview-note">这套 pattern 复用了 shared card shell、shared type scale、shared neutral surfaces，并把 memory-tier block 与 MTE 标识确认为新的 shared system pattern。后续应同步进入 `design-system-preview.html`，再由正式模块消费。</div>
         <div class="mte-legend">
           <div class="mte-legend-row">
             <div class="mte-legend-line" data-dir="aic-to-aiv"><span class="mte-legend-pill">MTE2</span></div>

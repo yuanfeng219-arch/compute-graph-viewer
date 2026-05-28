@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Execution Overlay Component Preview</title>
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    body { margin: 0; background: var(--background); color: var(--foreground); }
+    .preview-shell { max-width: 1320px; margin: 0 auto; padding: 28px 24px 48px; display: flex; flex-direction: column; gap: 18px; }
+    .preview-head { display: flex; flex-direction: column; gap: 8px; }
+    .preview-title { font: var(--text-display); }
+    .preview-sub { font: var(--text-body); color: var(--foreground-secondary); max-width: 880px; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+    .preview-card { background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+    .preview-card h2 { margin: 0; font: var(--text-title-sm); }
+    .preview-stage { min-height: 124px; background: var(--surface-0); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .preview-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+    .preview-badge { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.85); color: rgba(255,255,255,0.88); font: 10px/1.2 var(--text-mono); }
+    .preview-note { font: var(--text-body-sm); color: var(--foreground-secondary); line-height: 1.5; }
+    .preview-map { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; font: var(--text-label); border: 1px solid transparent; }
+    .preview-map.ok { color: #4ade80; background: rgba(74,222,128,.14); border-color: rgba(74,222,128,.28); }
+    .preview-map.no { color: #fbbf24; background: rgba(251,191,36,.14); border-color: rgba(251,191,36,.28); }
+  </style>
+</head>
+<body>
+  <main class="preview-shell">
+    <header class="preview-head">
+      <div class="preview-title">Execution Overlay Component Preview</div>
+      <div class="preview-sub">这个页面只承载未完全落地的目标态映射。已经能直接迁移的部分已进入正式模块；仍存在 hard-coded 或 system 未覆盖的视觉参数会先停在这里，等你确认。</div>
+    </header>
+
+    <section class="preview-grid">
+      <article class="preview-card">
+        <h2>Playback CTA Mapping</h2>
+        <div class="preview-stage">
+          <button class="btn btn-solid" type="button">播放</button>
+          <button class="btn" type="button">适配</button>
+          <button class="btn btn-icon" type="button">+</button>
+        </div>
+        <div class="preview-meta">
+          <span class="preview-map ok">已直接迁移</span>
+          <span class="preview-badge">.btn.btn-solid</span>
+          <span class="preview-badge">shared button system</span>
+        </div>
+        <div class="preview-note">旧的 `.btn-primary` 已废弃，正式模块现已切到共享 solid 按钮。</div>
+      </article>
+
+      <article class="preview-card">
+        <h2>Filter Strip Mapping</h2>
+        <div class="preview-stage">
+          <div class="eo-filter-bar">
+            <button class="btn eo-filter-btn is-selected" type="button">全部</button>
+            <button class="btn eo-filter-btn" type="button">Query</button>
+            <button class="btn eo-filter-btn" type="button">Key</button>
+          </div>
+        </div>
+        <div class="preview-meta">
+          <span class="preview-map ok">已直接迁移</span>
+          <span class="preview-badge">.btn + .is-selected</span>
+        </div>
+        <div class="preview-note">行为保持原样，但状态类统一到了共享选择态命名。</div>
+      </article>
+
+      <article class="preview-card">
+        <h2>Viewport Surface Mapping</h2>
+        <div class="preview-stage">
+          <div class="viewport eo-viewport" style="position: static; width: 100%; min-height: 160px;">
+            <div class="eo-legend">
+              <div class="eo-legend-group">
+                <span class="eo-legend-label">Pipeline</span>
+                <span class="eo-legend-chip query">Query</span>
+                <span class="eo-legend-chip key">Key</span>
+              </div>
+            </div>
+            <div class="eo-footer">
+              <div class="eo-progress" style="width: 160px;"><div class="eo-progress-fill" style="width: 44%;"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-meta">
+          <span class="preview-map ok">已直接迁移</span>
+          <span class="preview-badge">--surface-1 / --surface-2</span>
+          <span class="preview-badge">--border-subtle / --border-default</span>
+        </div>
+        <div class="preview-note">视口容器、legend、footer 的中性表面层已经改为 shared token；图节点与管线色块仍保持 data-viz exempt。</div>
+      </article>
+
+      <article class="preview-card">
+        <h2>Graph Viz Exempt</h2>
+        <div class="preview-stage">
+          <div class="eo-node query" style="position: static; width: 180px;">
+            <div class="eo-node-title">q_proj</div>
+            <div class="eo-node-meta"><span class="eo-node-tag">Query</span><span class="eo-node-core">AIC 0-7</span></div>
+            <div class="eo-node-foot"><div class="eo-node-progress" style="width: 58%;"></div></div>
+          </div>
+        </div>
+        <div class="preview-meta">
+          <span class="preview-map ok">Approved: exempt</span>
+          <span class="preview-badge">#292d35 node skin</span>
+          <span class="preview-badge">heat gradient</span>
+          <span class="preview-badge">pipeline color accents</span>
+        </div>
+        <div class="preview-note">这些值承担了 execution-overlay 的核心可视化编码。已按你的批复保留为 data-viz exempt，不进入 shared system。</div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

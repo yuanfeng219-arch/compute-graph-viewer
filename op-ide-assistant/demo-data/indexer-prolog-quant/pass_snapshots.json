@@ -1,0 +1,87 @@
+[
+  {
+    "passName": "ExpandFunction",
+    "snapshotLabel": "After_004_ExpandFunction",
+    "funcMagicName": "TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6",
+    "stats": {
+      "operations": 8729,
+      "tensors": 6110,
+      "rawTensors": 3591,
+      "subgraphs": 0
+    },
+    "topSemanticLabels": [
+      { "label": "Query-Dequant", "count": 4439 },
+      { "label": "Query-Linear", "count": 1920 },
+      { "label": "Prolog-Quant", "count": 1055 },
+      { "label": "Key-LayerNorm", "count": 325 },
+      { "label": "Query-Hadamard", "count": 295 },
+      { "label": "Key-Linear", "count": 280 }
+    ],
+    "topSubgraphs": [
+      { "id": "-1", "count": 8729 }
+    ],
+    "evidenceRefs": [
+      "/Users/yin/gitcode/output_deepseek/Pass_04_ExpandFunction/After_004_ExpandFunction_TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6.json"
+    ]
+  },
+  {
+    "passName": "PreGraphProcess",
+    "snapshotLabel": "After_025_PreGraphProcess",
+    "funcMagicName": "TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6",
+    "stats": {
+      "operations": 6077,
+      "tensors": 5779,
+      "rawTensors": 5059,
+      "subgraphs": 316
+    },
+    "topSemanticLabels": [
+      { "label": "Prolog-Quant", "count": 3075 },
+      { "label": "Query-Dequant", "count": 1221 },
+      { "label": "Query-Linear", "count": 1152 },
+      { "label": "Query-Hadamard", "count": 192 },
+      { "label": "Key-Linear", "count": 168 },
+      { "label": "Key-LayerNorm", "count": 151 }
+    ],
+    "topSubgraphs": [
+      { "id": "302", "count": 71 },
+      { "id": "301", "count": 71 },
+      { "id": "294", "count": 71 },
+      { "id": "293", "count": 71 },
+      { "id": "165", "count": 55 },
+      { "id": "164", "count": 55 }
+    ],
+    "evidenceRefs": [
+      "/Users/yin/gitcode/output_deepseek/Pass_25_PreGraphProcess/After_025_PreGraphProcess_TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6.json"
+    ]
+  },
+  {
+    "passName": "OoOSchedule",
+    "snapshotLabel": "After_031_OoOSchedule",
+    "funcMagicName": "TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6",
+    "stats": {
+      "operations": 6077,
+      "tensors": 5779,
+      "rawTensors": 5059,
+      "subgraphs": 316
+    },
+    "topSemanticLabels": [
+      { "label": "Prolog-Quant", "count": 3075 },
+      { "label": "Query-Dequant", "count": 1221 },
+      { "label": "Query-Linear", "count": 1152 },
+      { "label": "Query-Hadamard", "count": 192 },
+      { "label": "Key-Linear", "count": 168 },
+      { "label": "Weight-Linear", "count": 91 }
+    ],
+    "topSubgraphs": [
+      { "id": "302", "count": 71 },
+      { "id": "301", "count": 71 },
+      { "id": "294", "count": 71 },
+      { "id": "293", "count": 71 },
+      { "id": "165", "count": 55 },
+      { "id": "164", "count": 55 }
+    ],
+    "evidenceRefs": [
+      "/Users/yin/gitcode/output_deepseek/Pass_31_OoOSchedule/After_031_OoOSchedule_TENSOR_IndexerPrologQuantQuantLoop_Unroll1_PATH0_6.json"
+    ]
+  }
+]

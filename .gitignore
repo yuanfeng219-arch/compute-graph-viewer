@@ -3,3 +3,8 @@ output_deepseek
 .claude/
 lightning_indexer_prolog_quant.py
 js/test-syntax.js
+node_modules/
+dist/
+.DS_Store
+*.zip
+__pycache__/

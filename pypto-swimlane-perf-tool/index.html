@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PyPTO 泳道图性能分析工具</title>
-  <link rel="stylesheet" href="../css/style.css">
-  <link rel="stylesheet" href="../tokens/foundation.css">
-  <link rel="stylesheet" href="../tokens/semantic.css">
-  <link rel="stylesheet" href="../tokens/components.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -195,10 +195,10 @@
 
           <!-- 泳道主体: viewport + inplace 详情 -->
           <div class="swimlane-body">
+            <!-- 左侧标签: 固定列，不参与横向滚动 -->
+            <div class="swimlane-labels" id="swimlaneLabel"></div>
             <div class="swimlane-viewport" id="swimlaneViewport">
               <div class="swimlane-inner">
-                <!-- 左侧标签: sticky left -->
-                <div class="swimlane-labels" id="swimlaneLabel"></div>
                 <!-- 主泳道 canvas -->
                 <div id="swimlaneCanvas"></div>
               </div>
@@ -354,6 +354,7 @@
 <script src="js/sample-data.js"></script>
 <script src="js/parser.js"></script>
 <script src="js/analyzer.js"></script>
+<script src="../vendor/pto-design-system/patterns/swimlane-task/pattern.js"></script>
 <script src="js/swimlane.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/compute-graph.js"></script>
