@@ -6,6 +6,7 @@
 <title>910B / 950 算子迁移特征分类</title>
 <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
 <link rel="stylesheet" href="../vendor/pto-design-system/patterns/workbench-shell/pattern.css">
+<link rel="stylesheet" href="../vendor/pto-design-system/patterns/hardware-architecture-viewport/pattern.css">
 <style>
 :root {
   --background: #101010;
@@ -118,18 +119,21 @@ header.topbar {
 /* ============ Main Grid ============ */
 main.layout {
   display: flex;
+  flex-direction: row;
   align-items: stretch;
   height: 100%;
   overflow: hidden;
   min-height: 0;
-  --split-gutter-size: 10px;
+  padding: 10px;
+  gap: 0;
+  background: var(--background);
 }
 
 /* ============ Left Nav ============ */
 nav.left-nav {
-  flex: 0 0 auto;
-  background: var(--surface-1);
-  border-right: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   overflow-y: auto;
   padding: 16px 12px;
 }
@@ -195,10 +199,11 @@ nav.left-nav h2 {
 
 /* ============ Middle Detail ============ */
 section.detail {
-  flex: 0 0 auto;
   overflow-y: auto;
-  padding: 28px 36px 56px 36px;
-  background: var(--background);
+  padding: 28px 32px 48px 32px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   min-width: 0;
 }
 .detail-head {
@@ -238,10 +243,10 @@ section.detail {
 }
 
 .essence {
-  border-left: 3px solid var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border-default));
   padding: 14px 16px;
   background: color-mix(in srgb, var(--accent) 8%, var(--surface-1));
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-radius: var(--radius-md);
   margin-bottom: 24px;
   font-size: 13.5px;
   line-height: 1.6;
@@ -424,7 +429,7 @@ table.spec .code {
 /* A/B/C detail cards (in speedlookup view) */
 .abc-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 14px;
   margin-bottom: 24px;
 }
@@ -432,14 +437,11 @@ table.spec .code {
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 16px 16px 18px 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.abc-card.A { border-top: 3px solid var(--success); }
-.abc-card.B { border-top: 3px solid var(--diff-new); }
-.abc-card.C { border-top: 3px solid var(--danger); }
 .abc-card .card-head {
   display: flex;
   align-items: center;
@@ -481,9 +483,9 @@ table.spec .code {
 
 /* ============ Right Hardware Pane ============ */
 aside.right-pane {
-  flex: 0 0 auto;
-  background: var(--surface-1);
-  border-left: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   display: grid;
   grid-template-rows: 56px 1fr 60px;
   overflow: hidden;
@@ -688,7 +690,7 @@ aside.right-pane {
   </div>
 </header>
 
-<main class="workbench-frame workbench-frame-split layout">
+<main class="workbench-frame-split layout">
   <nav class="workbench-pane left-nav" id="left-nav">
     <h2>速查 · 先看这里</h2>
     <div class="nav-item" data-cat="map">
@@ -705,18 +707,18 @@ aside.right-pane {
 
   <section class="workbench-pane detail" id="detail"></section>
 
-  <aside class="workbench-pane right-pane">
-    <div class="hw-toolbar">
-      <div class="title">硬件架构图 <small id="hw-status">910B</small></div>
-      <div class="hw-controls" aria-label="画布设置">
-        <button type="button" class="hw-control" id="hw-detail-toggle" aria-pressed="true">细节开</button>
-        <button type="button" class="hw-control" id="hw-zoom-out" aria-label="缩小">−</button>
-        <button type="button" class="hw-control hw-zoom-readout" id="hw-zoom-reset" aria-label="重置缩放">60%</button>
-        <button type="button" class="hw-control" id="hw-zoom-in" aria-label="放大">+</button>
+  <aside class="workbench-pane right-pane pto-hw-viewport">
+    <div class="hw-toolbar pto-hw-viewport__toolbar">
+      <div class="title pto-hw-viewport__title">硬件架构图 <small id="hw-status">910B</small></div>
+      <div class="hw-controls pto-hw-viewport__controls pto-hw-viewport__tools" aria-label="画布设置">
+        <button type="button" class="hw-control pto-hw-viewport__tool" id="hw-detail-toggle" aria-pressed="true">细节开</button>
+        <button type="button" class="hw-control pto-hw-viewport__tool" id="hw-zoom-out" aria-label="缩小">−</button>
+        <button type="button" class="hw-control hw-zoom-readout pto-hw-viewport__tool pto-hw-viewport__readout" id="hw-zoom-reset" aria-label="重置缩放">60%</button>
+        <button type="button" class="hw-control pto-hw-viewport__tool" id="hw-zoom-in" aria-label="放大">+</button>
       </div>
     </div>
-    <div class="hw-frame-wrap">
-      <iframe id="hw-iframe" src="hardware-frame.html" title="hardware architecture"></iframe>
+    <div class="hw-frame-wrap pto-hw-viewport__stage">
+      <iframe class="pto-hw-viewport__frame" id="hw-iframe" src="hardware-frame.html?preset=ascend910b" title="hardware architecture"></iframe>
     </div>
     <div class="hw-footer">
       <button id="diff-btn" class="diff-btn" disabled title="切换到 950 后启用">
@@ -733,7 +735,7 @@ aside.right-pane {
 </main>
 
 <script src="../vendor/pto-design-system/patterns/workbench-shell/pattern.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/split.js@1.6.5/dist/split.min.js"></script>
+<script src="../vendor/pto-design-system/patterns/hardware-architecture-viewport/pattern.js"></script>
 <script>
 /* ====================================================================
    CATEGORY DATA — 9 essential differences + reverse map
@@ -1090,46 +1092,9 @@ let state = {
 };
 
 const HW_ZOOM_LEVELS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2];
-const TAXONOMY_SPLIT_KEY = 'ascend950-taxonomy-column-sizes-v1';
-const TAXONOMY_SPLIT_DEFAULT = [17, 33, 50];
-const TAXONOMY_SPLIT_MIN = [220, 420, 520];
-
-function readSplitSizes(key, fallback) {
-  try {
-    const value = JSON.parse(localStorage.getItem(key) || 'null');
-    if (Array.isArray(value) && value.length === fallback.length && value.every(item => Number.isFinite(item) && item > 4)) {
-      return value;
-    }
-  } catch (error) {
-    return fallback;
-  }
-  return fallback;
-}
-
-function writeSplitSizes(key, sizes) {
-  try {
-    localStorage.setItem(key, JSON.stringify(sizes.map(item => Math.round(item * 100) / 100)));
-  } catch (error) {
-    // Ignore storage failures; the current drag session still applies.
-  }
-}
-
-function makeSplitGutter(index, direction) {
-  if (window.PtoWorkbenchShellPattern?.createSplitGutter) {
-    return window.PtoWorkbenchShellPattern.createSplitGutter({
-      index,
-      direction,
-      label: '调整相邻栏宽度',
-    });
-  }
-  const gutter = document.createElement('div');
-  gutter.className = `split-gutter split-gutter-${direction}`;
-  gutter.setAttribute('role', 'separator');
-  gutter.setAttribute('aria-orientation', 'vertical');
-  gutter.setAttribute('aria-label', '调整相邻栏宽度');
-  gutter.tabIndex = 0;
-  return gutter;
-}
+const TAXONOMY_SPLIT_KEY = 'ascend950-taxonomy-column-sizes-v3';
+const TAXONOMY_SPLIT_DEFAULT = [18, 46, 36];
+const TAXONOMY_SPLIT_MIN = [200, 440, 360];
 
 let splitLayoutFrame = 0;
 function scheduleSplitLayoutRefresh() {
@@ -1140,77 +1105,19 @@ function scheduleSplitLayoutRefresh() {
   });
 }
 
-function initFallbackSplit(panes, sizes, minSizes, storageKey) {
-  panes.forEach((pane, index) => {
-    pane.style.width = `${sizes[index]}%`;
-  });
-  panes.slice(0, -1).forEach((pane, index) => {
-    const gutter = makeSplitGutter(index + 1, 'horizontal');
-    pane.after(gutter);
-    gutter.addEventListener('pointerdown', (event) => {
-      event.preventDefault();
-      gutter.setPointerCapture?.(event.pointerId);
-      document.body.classList.add('is-column-resizing');
-      const startX = event.clientX;
-      const startWidths = panes.map(item => item.getBoundingClientRect().width);
-      const totalWidth = startWidths.reduce((sum, width) => sum + width, 0);
-      const leftIndex = index;
-      const rightIndex = index + 1;
-
-      const move = (moveEvent) => {
-        const dx = moveEvent.clientX - startX;
-        let leftWidth = startWidths[leftIndex] + dx;
-        let rightWidth = startWidths[rightIndex] - dx;
-        if (leftWidth < minSizes[leftIndex]) {
-          rightWidth -= minSizes[leftIndex] - leftWidth;
-          leftWidth = minSizes[leftIndex];
-        }
-        if (rightWidth < minSizes[rightIndex]) {
-          leftWidth -= minSizes[rightIndex] - rightWidth;
-          rightWidth = minSizes[rightIndex];
-        }
-        panes[leftIndex].style.width = `${Math.max(minSizes[leftIndex], leftWidth) / totalWidth * 100}%`;
-        panes[rightIndex].style.width = `${Math.max(minSizes[rightIndex], rightWidth) / totalWidth * 100}%`;
-        scheduleSplitLayoutRefresh();
-      };
-
-      const up = () => {
-        window.removeEventListener('pointermove', move);
-        window.removeEventListener('pointerup', up);
-        document.body.classList.remove('is-column-resizing');
-        const nextTotal = panes.reduce((sum, item) => sum + item.getBoundingClientRect().width, 0);
-        writeSplitSizes(storageKey, panes.map(item => item.getBoundingClientRect().width / nextTotal * 100));
-      };
-
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up, { once: true });
-    });
-  });
-}
-
 function initTaxonomySplit() {
-  const panes = ['#left-nav', '#detail', '.right-pane']
-    .map(selector => document.querySelector(selector))
-    .filter(Boolean);
-  if (panes.length !== 3) return;
-  const sizes = readSplitSizes(TAXONOMY_SPLIT_KEY, TAXONOMY_SPLIT_DEFAULT);
-  if (typeof window.Split === 'function') {
-    window.Split(panes, {
-      sizes,
-      minSize: TAXONOMY_SPLIT_MIN,
-      gutterSize: 10,
-      snapOffset: 0,
-      cursor: 'col-resize',
-      gutter: makeSplitGutter,
-      onDrag: scheduleSplitLayoutRefresh,
-      onDragEnd: (nextSizes) => {
-        writeSplitSizes(TAXONOMY_SPLIT_KEY, nextSizes);
-        scheduleSplitLayoutRefresh();
-      },
-    });
-    return;
-  }
-  initFallbackSplit(panes, sizes, TAXONOMY_SPLIT_MIN, TAXONOMY_SPLIT_KEY);
+  const shell = window.PtoWorkbenchShell;
+  if (!shell?.initResizablePanes) return;
+  shell.initResizablePanes({
+    panes: ['#left-nav', '#detail', '.right-pane'],
+    direction: 'horizontal',
+    sizes: TAXONOMY_SPLIT_DEFAULT,
+    minSize: TAXONOMY_SPLIT_MIN,
+    gutterSize: 10,
+    storageKey: TAXONOMY_SPLIT_KEY,
+    gutterLabel: '调整相邻栏宽度',
+    onResize: scheduleSplitLayoutRefresh,
+  });
 }
 
 const DIFF_950_NEW = {
@@ -1384,24 +1291,12 @@ function postHardwareDetails() {
   }, '*');
 }
 
-window.addEventListener('message', (e) => {
-  if (e.data && e.data.type === 'hardware-ready') {
-    state.iframeReady = true;
-    applyArch();
-    postHardwareDetails();
-  }
-});
-
-function applyArch() {
-  if (!state.iframeReady) return;
-  iframe.contentWindow.postMessage({
-    type: 'hardware-arch-change',
-    preset: state.arch === '910b' ? 'ascend910b' : 'ascend950b',
-  }, '*');
-  postHardwareDetails();
+function syncArchUi() {
+  document.querySelectorAll('#arch-seg button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.arch === state.arch);
+  });
   document.getElementById('hw-status').textContent = state.arch === '910b' ? '910B' : '950';
 
-  // diff button only available on 950
   const diffBtn = document.getElementById('diff-btn');
   if (state.arch === '910b') {
     diffBtn.disabled = true;
@@ -1412,6 +1307,54 @@ function applyArch() {
     diffBtn.disabled = false;
     diffBtn.title = '高亮 950 相对 910B 的新增节点 / 通路';
   }
+}
+
+function postHardwareArch() {
+  if (!state.iframeReady || !iframe.contentWindow) return;
+  iframe.contentWindow.postMessage({
+    type: 'hardware-arch-change',
+    preset: state.arch === '910b' ? 'ascend910b' : 'ascend950b',
+  }, '*');
+}
+
+function markIframeReady() {
+  if (state.iframeReady) return;
+  state.iframeReady = true;
+  applyArch();
+  postHardwareDetails();
+}
+
+function ensureIframeReady() {
+  if (state.iframeReady) return;
+  try {
+    const readyState = iframe.contentDocument?.readyState;
+    if (readyState === 'interactive' || readyState === 'complete') {
+      markIframeReady();
+    }
+  } catch (error) {
+    // File/iframe access can be restricted in some browsers; message/load events still cover the normal path.
+  }
+}
+
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'hardware-ready') {
+    markIframeReady();
+  }
+});
+
+iframe.addEventListener('load', () => {
+  requestAnimationFrame(markIframeReady);
+});
+
+window.addEventListener('load', () => {
+  requestAnimationFrame(ensureIframeReady);
+  setTimeout(ensureIframeReady, 250);
+});
+
+function applyArch() {
+  syncArchUi();
+  postHardwareArch();
+  postHardwareDetails();
 
   // Hardware arch change can take a moment to apply; re-apply highlight after.
   setTimeout(applyHighlight, 120);
@@ -1460,7 +1403,6 @@ document.getElementById('left-nav').addEventListener('click', (e) => {
 document.getElementById('arch-seg').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-arch]');
   if (!btn) return;
-  document.querySelectorAll('#arch-seg button').forEach(b => b.classList.toggle('active', b === btn));
   state.arch = btn.dataset.arch;
   applyArch();
 });
@@ -1499,6 +1441,7 @@ document.getElementById('hw-zoom-reset').addEventListener('click', () => {
 renderNav();
 renderDetail();
 syncHardwareControls();
+syncArchUi();
 initTaxonomySplit();
 // applyArch fires once iframe sends 'hardware-ready'.
 </script>

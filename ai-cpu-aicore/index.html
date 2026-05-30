@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/aic-core-object/pattern.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/aiv-core-object/pattern.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/memory-architecture/pattern.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/hardware-architecture-viewport/pattern.css">
   <style>
     :root {
       --pto-aiv-core-shadow: none;
@@ -1405,32 +1406,33 @@
 
       <section class="workbench-pane iv-right-split" id="rightPane" data-split-pane>
         <div class="workbench-frame workbench-frame-split iv-right-split" id="rightSplit">
-          <section class="panel-shell panel-shell-quiet workbench-pane iv-panel" id="archPane" aria-label="Architecture map" data-split-pane>
-            <header class="panel-shell-header">
+          <section class="panel-shell panel-shell-quiet workbench-pane iv-panel pto-hw-viewport" id="archPane" aria-label="Architecture map" data-split-pane>
+            <header class="panel-shell-header pto-hw-viewport__toolbar">
               <div class="iv-header-copy">
                 <span class="iv-panel-kicker">Architecture Map</span>
                 <div class="kernel-select-wrap">
-                  <select class="kernel-select" id="archSelect" aria-label="选择架构视图">
+                  <select class="kernel-select pto-hw-viewport__select" id="archSelect" aria-label="选择架构视图">
                     <option value="ascend950b" selected>Ascend 950B · 内置架构图</option>
                     <option value="ascend910b">Ascend 910B · 控制面抽象</option>
                   </select>
                 </div>
               </div>
-              <div class="panel-shell-meta">
+              <div class="panel-shell-meta pto-hw-viewport__controls">
                 <span class="iv-chip">无 iframe</span>
-                <div class="toolbar-control" aria-label="架构图缩放控制">
-                  <button class="btn btn-sm btn-ghost" type="button" id="archZoomOutBtn" aria-label="缩小架构图">-</button>
-                  <button class="btn btn-sm btn-ghost" type="button" id="archFitBtn">适配</button>
-                  <button class="btn btn-sm btn-ghost" type="button" id="archActualBtn">1:1</button>
-                  <span class="toolbar-readout" id="archZoomReadout">76%</span>
-                  <button class="btn btn-sm btn-ghost" type="button" id="archZoomInBtn" aria-label="放大架构图">+</button>
+                <div class="toolbar-control pto-hw-viewport__tools" aria-label="架构图缩放控制">
+                  <button class="btn btn-sm btn-ghost pto-hw-viewport__tool" type="button" id="archDetailToggle" aria-pressed="true">细节开</button>
+                  <button class="btn btn-sm btn-ghost pto-hw-viewport__tool" type="button" id="archZoomOutBtn" aria-label="缩小架构图">-</button>
+                  <button class="btn btn-sm btn-ghost pto-hw-viewport__tool" type="button" id="archFitBtn">适配</button>
+                  <button class="btn btn-sm btn-ghost pto-hw-viewport__tool" type="button" id="archActualBtn">1:1</button>
+                  <span class="toolbar-readout pto-hw-viewport__readout" id="archZoomReadout">76%</span>
+                  <button class="btn btn-sm btn-ghost pto-hw-viewport__tool" type="button" id="archZoomInBtn" aria-label="放大架构图">+</button>
                 </div>
                 <span class="iv-chip" id="selectedPathChip">等待选择源码行</span>
               </div>
             </header>
             <div class="panel-shell-body arch-body">
-              <div class="arch-stage layout-surface-fill" id="archStage">
-                <div class="arch-host iv-arch-shell" id="archHost"></div>
+              <div class="arch-stage layout-surface-fill pto-hw-viewport__stage" id="archStage">
+                <div class="arch-host iv-arch-shell pto-hw-viewport__scale" id="archHost"></div>
               </div>
               <div class="arch-status" id="pathChips"></div>
             </div>
@@ -1525,6 +1527,7 @@
   <script src="../vendor/pto-design-system/patterns/aiv-core-object/pattern.js"></script>
   <script src="../vendor/pto-design-system/patterns/aic-core-object/pattern.js"></script>
   <script src="../vendor/pto-design-system/patterns/memory-architecture/pattern.js"></script>
+  <script src="../vendor/pto-design-system/patterns/hardware-architecture-viewport/pattern.js"></script>
   <script>
     (function initInstructionVisualizerDemo() {
       'use strict';
@@ -1551,6 +1554,7 @@
         archOverlay: null,
         controlOverlay: null,
         archScaleIndex: 1,
+        archDetailsVisible: true,
         playbackTimer: 0,
         playbackControl: null,
         scrubberHover: null,
@@ -1967,6 +1971,8 @@
         if (readout) readout.textContent = `${Math.round(scale * 100)}%`;
         helper.renderArchitecture(host, 'ascend950b');
         injectControlPlane(host);
+        helper.setDetailVisibility?.(host, state.archDetailsVisible);
+        syncArchDetailToggle();
         state.archOverlay?.destroy?.();
         state.archOverlay = helper.createRouteOverlay(host, 'ascend950b');
         state.archOverlay?.render?.();
@@ -2072,6 +2078,22 @@
           ${routes.map((route) => drawPath(root, route)).join('')}
         `;
         root.appendChild(svg);
+      }
+
+      function syncArchDetailToggle() {
+        const button = qs('#archDetailToggle');
+        if (!button) return;
+        button.textContent = state.archDetailsVisible ? '细节开' : '细节关';
+        button.setAttribute('aria-pressed', state.archDetailsVisible ? 'true' : 'false');
+      }
+
+      function toggleArchDetails() {
+        state.archDetailsVisible = !state.archDetailsVisible;
+        window.PtoMemoryArchitecturePattern?.setDetailVisibility?.(qs('#archHost'), state.archDetailsVisible);
+        syncArchDetailToggle();
+        state.archOverlay?.render?.();
+        renderControlOverlay();
+        applyArchitectureFocus();
       }
 
       function applyArchitectureFocus() {
@@ -2442,6 +2464,7 @@
           state.archScaleIndex = archZoomLevels.length - 1;
           renderArchitecture();
         });
+        qs('#archDetailToggle')?.addEventListener('click', toggleArchDetails);
         qs('#archSelect').addEventListener('change', () => {
           qs('#selectedPathChip').textContent = qs('#archSelect').value === 'ascend910b'
             ? '910B 抽象：AICPU + AIV path'

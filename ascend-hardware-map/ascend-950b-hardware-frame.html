@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/aic-core-object/pattern.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/aiv-core-object/pattern.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/memory-architecture/pattern.css">
@@ -17,6 +20,8 @@
       padding: 0;
       overflow: hidden;
       background: transparent;
+      color: var(--foreground, rgba(255, 255, 255, 0.9));
+      font-family: var(--font-sans, Inter, "Source Han Sans SC", "PingFang SC", "Noto Sans SC", sans-serif);
       box-sizing: border-box;
     }
 
@@ -108,6 +113,7 @@
   <script>
     let overlay = null;
     let hoverInteractions = null;
+    let detailsVisible = true;
 
     const qs = (selector, root = document) => root.querySelector(selector);
     const qsa = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -181,7 +187,7 @@
       window.PtoMemoryArchitecturePattern.renderArchitecture(host, 'ascend950b');
       overlay = window.PtoMemoryArchitecturePattern.createRouteOverlay(host, 'ascend950b');
       hoverInteractions = window.PtoMemoryArchitecturePattern.attachHoverInteractions(host, 'ascend950b');
-      window.PtoMemoryArchitecturePattern.setDetailVisibility(host, true);
+      window.PtoMemoryArchitecturePattern.setDetailVisibility(host, detailsVisible);
       requestAnimationFrame(() => {
         overlay?.update?.();
         requestAnimationFrame(() => {
@@ -192,7 +198,17 @@
     }
 
     window.addEventListener('message', (event) => {
-      if (!event.data || event.data.type !== 'hardware-focus') return;
+      if (!event.data) return;
+      if (event.data.type === 'hardware-details') {
+        detailsVisible = event.data.visible !== false;
+        window.PtoMemoryArchitecturePattern.setDetailVisibility(qs('#hardwareHost'), detailsVisible);
+        requestAnimationFrame(() => {
+          overlay?.update?.();
+          postReady();
+        });
+        return;
+      }
+      if (event.data.type !== 'hardware-focus') return;
       applyFocus(event.data.selectors || [], event.data.routes || []);
       requestAnimationFrame(() => overlay?.update?.());
     });

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/aiv-core-object/pattern.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/aic-core-object/pattern.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/memory-architecture/pattern.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/hardware-architecture-viewport/pattern.css">
   <script>
     if (new URLSearchParams(location.search).get('preview') === '1') {
       document.documentElement.classList.add('preview');
@@ -936,7 +937,7 @@
         <span class="graph-title">shared memory-architecture pattern + PTO communication ISA notes</span>
       </div>
       <div class="layout-header-right">
-        <div class="segmented-control view-mode-tabs" aria-label="flow mode">
+        <div class="segmented-control view-mode-tabs pto-hw-viewport__segmented" aria-label="flow mode">
           <button class="btn btn-sm is-selected" type="button" data-view-mode="architecture">架构底图</button>
           <button class="btn btn-sm" type="button" data-view-mode="subsystem">通信子系统</button>
         </div>
@@ -963,18 +964,21 @@
           <strong>Ascend 950B Memory Architecture Pattern</strong>
           <span>1 AIC + 2 AIV；GM/L2 在 AI Core 外；L0C→UB 和 UB→L1 作为 950 直接 CV lanes。</span>
         </div>
-        <div class="stage-meta">
+        <div class="stage-meta pto-hw-viewport__controls">
           <span class="stat-chip">pattern: memory-architecture-layout</span>
           <span class="stat-chip">preset: ascend950b</span>
           <span class="stat-chip">source: md + ascend-950-hardware-v1.html</span>
+          <div class="pto-hw-viewport__tools" aria-label="架构图显示控制">
+            <button class="btn btn-sm btn-ghost pto-hw-viewport__tool" type="button" id="architectureDetailToggle" aria-pressed="true">细节开</button>
+          </div>
         </div>
       </div>
-      <section class="architecture-scroll" id="architectureScroll">
+      <section class="architecture-scroll pto-hw-viewport__stage" id="architectureScroll">
         <div class="architecture-canvas">
           <div class="arch-frame" id="architectureFrame">
-            <div class="pattern-iframe-shell">
+            <div class="pattern-iframe-shell pto-hw-viewport__scale">
               <iframe
-                class="pattern-iframe"
+                class="pattern-iframe pto-hw-viewport__frame"
                 id="architectureFrameEl"
                 title="Ascend 950B Memory Architecture Pattern"
                 src="./ascend-950b-hardware-frame.html"></iframe>
@@ -1058,6 +1062,7 @@
     </div>
   </div>
 
+  <script src="../vendor/pto-design-system/patterns/hardware-architecture-viewport/pattern.js"></script>
   <script>
     "use strict";
 
@@ -1297,6 +1302,7 @@
       activeStep: -1,
       playTimer: null,
       iframeReady: false,
+      detailsVisible: true,
       viewMode: 'architecture',
     };
 
@@ -1322,6 +1328,7 @@
 
       const onFrameReady = () => {
         state.iframeReady = true;
+        postArchitectureDetails();
         applyHighlights();
       };
 
@@ -1340,6 +1347,22 @@
         type: 'hardware-focus',
         selectors,
         routes,
+      }, '*');
+    }
+
+    function syncArchitectureDetailToggle() {
+      const button = document.getElementById('architectureDetailToggle');
+      if (!button) return;
+      button.textContent = state.detailsVisible ? '细节开' : '细节关';
+      button.setAttribute('aria-pressed', state.detailsVisible ? 'true' : 'false');
+    }
+
+    function postArchitectureDetails() {
+      const frame = document.getElementById('architectureFrameEl');
+      if (!state.iframeReady || !frame?.contentWindow) return;
+      frame.contentWindow.postMessage({
+        type: 'hardware-details',
+        visible: state.detailsVisible,
       }, '*');
     }
 
@@ -1582,6 +1605,7 @@
     function handleArchitectureMessage(event) {
       if (!event.data || event.data.type !== 'hardware-ready') return;
       state.iframeReady = true;
+      postArchitectureDetails();
       applyHighlights();
     }
 
@@ -1591,6 +1615,7 @@
       renderScenarioList();
       renderDetail();
       setViewMode(state.viewMode);
+      syncArchitectureDetailToggle();
       window.setTimeout(applyHighlights, 80);
       window.setTimeout(applyHighlights, 260);
 
@@ -1619,6 +1644,11 @@
       });
       document.querySelectorAll('[data-view-mode]').forEach((button) => {
         button.addEventListener('click', () => setViewMode(button.dataset.viewMode));
+      });
+      document.getElementById('architectureDetailToggle')?.addEventListener('click', () => {
+        state.detailsVisible = !state.detailsVisible;
+        syncArchitectureDetailToggle();
+        postArchitectureDetails();
       });
       window.addEventListener('resize', () => {
         applyHighlights();

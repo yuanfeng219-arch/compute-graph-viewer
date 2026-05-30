@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/aic-core-object/pattern.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/aiv-core-object/pattern.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/patterns/memory-architecture/pattern.css">
@@ -15,6 +18,8 @@
       padding: 32px;
       overflow: hidden;
       background: transparent;
+      color: var(--foreground, rgba(255, 255, 255, 0.9));
+      font-family: var(--font-sans, Inter, "Source Han Sans SC", "PingFang SC", "Noto Sans SC", sans-serif);
       box-sizing: border-box;
     }
 
@@ -97,7 +102,10 @@
   <script>
     let overlay = null;
     let hoverInteractions = null;
-    let currentPreset = 'ascend950b';
+    const INITIAL_PRESET = new URLSearchParams(location.search).get('preset');
+    let currentPreset = (INITIAL_PRESET === 'ascend910b' || INITIAL_PRESET === 'ascend950b')
+      ? INITIAL_PRESET
+      : 'ascend950b';
     let detailsVisible = true;
     let pendingFocus = { selectors: [], routes: [] };
 
