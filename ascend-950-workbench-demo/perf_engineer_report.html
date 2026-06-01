@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>昇腾 950 算子开发者报告</title>
-  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
-  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/workbench-shell/pattern.css">
-  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/hardware-architecture-viewport/pattern.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css?v=20260601-950-report-v3">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/workbench-shell/pattern.css?v=20260601-950-report-v3">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/hardware-architecture-viewport/pattern.css?v=20260601-950-report-v3">
   <style>
     * { box-sizing: border-box; }
 
@@ -3309,7 +3309,7 @@ msdebug \
       </div>
       <div class="arch-frame pto-hw-viewport__stage" id="hardwareViewport">
         <div class="pto-hw-viewport__scale" id="hardwareScale">
-          <iframe class="pto-hw-viewport__frame" id="hardwareFrame" src="hardware-frame.html?preset=ascend950b&theme=light" title="Ascend 950 hardware architecture"></iframe>
+          <iframe class="pto-hw-viewport__frame" id="hardwareFrame" src="hardware-frame.html?preset=ascend950b&theme=light&v=20260601-950-report-v3" title="Ascend 950 hardware architecture"></iframe>
         </div>
       </div>
       <section class="annotation-rail" aria-label="联动注释">
@@ -3322,8 +3322,8 @@ msdebug \
     </aside>
   </main>
 
-  <script src="../vendor/pto-design-system/patterns/workbench-shell/pattern.js"></script>
-  <script src="../vendor/pto-design-system/patterns/hardware-architecture-viewport/pattern.js"></script>
+  <script src="../vendor/pto-design-system/patterns/workbench-shell/pattern.js?v=20260601-950-report-v3"></script>
+  <script src="../vendor/pto-design-system/patterns/hardware-architecture-viewport/pattern.js?v=20260601-950-report-v3"></script>
   <script>
     const ANNOTATIONS = [
       {
@@ -3545,6 +3545,8 @@ msdebug \
       s8: 'migration-risk',
     };
 
+    const ASSET_VERSION = '20260601-950-report-v3';
+
     const state = {
       activeSectionId: 's1',
       activeAnnotationId: 'hardware-overview',
@@ -3616,7 +3618,7 @@ msdebug \
     }
 
     function syncHardwareFramePreset() {
-      const nextSrc = `hardware-frame.html?preset=${state.archPreset}&theme=light`;
+      const nextSrc = `hardware-frame.html?preset=${state.archPreset}&theme=light&v=${ASSET_VERSION}`;
       if (hardwareFrame.getAttribute('src') === nextSrc) return;
       state.iframeReady = false;
       hardwareFrame.setAttribute('src', nextSrc);
@@ -3728,6 +3730,7 @@ msdebug \
     archFoldAivToggle.addEventListener('click', () => {
       state.aivFolded = !state.aivFolded;
       renderAivFoldToggle();
+      sendHardwareMessage({ type: 'hardware-aiv-fold', folded: state.aivFolded });
       const annotation = ANNOTATIONS.find((item) => item.id === state.activeAnnotationId);
       sendHardwareMessage({
         type: 'hardware-focus',
