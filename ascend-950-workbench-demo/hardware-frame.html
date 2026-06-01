@@ -3,6 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    (() => {
+      const theme = new URLSearchParams(location.search).get('theme');
+      if (theme === 'light' || theme === 'dark' || theme === 'glass') {
+        document.documentElement.dataset.theme = theme;
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
   <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
@@ -15,7 +23,7 @@
       width: max-content;
       height: max-content;
       margin: 0;
-      padding: 32px;
+      padding: 52px;
       overflow: hidden;
       background: transparent;
       color: var(--foreground, rgba(255, 255, 255, 0.9));
@@ -60,6 +68,10 @@
       opacity: 0.18;
     }
 
+    .is-path-focused .pto-mem950__overlay [data-route-default-hidden="true"] {
+      opacity: 0.08;
+    }
+
     .is-path-focused .pto-mem950__overlay [data-route-id].is-route-active {
       opacity: 1;
       filter: drop-shadow(0 0 7px color-mix(in srgb, #ffaa3b 72%, transparent));
@@ -67,6 +79,17 @@
 
     .is-path-focused .pto-mem950__overlay [data-route-id].is-route-active path {
       stroke-width: 3;
+    }
+
+    .is-path-focused .pto-aiv-core__route {
+      opacity: 0.18;
+      filter: saturate(0.65);
+    }
+
+    .is-path-focused .pto-aiv-core__route.is-internal-route-active {
+      opacity: 0.96;
+      filter: drop-shadow(0 0 6px color-mix(in srgb, #ffaa3b 58%, transparent));
+      stroke-width: 2.6;
     }
 
     .is-path-focused .pto-aic-core__route {
@@ -92,6 +115,23 @@
       border-color: #ffdf1f;
       color: #111111;
     }
+
+    .has-instruction-focus .instruction-sequence-chip {
+      opacity: 0.34;
+      filter: saturate(0.62);
+      transition: opacity 160ms ease, filter 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+    }
+
+    .has-instruction-focus .instruction-sequence-chip.is-instruction-active {
+      opacity: 1;
+      filter: none;
+      border-color: color-mix(in srgb, #ffaa3b 76%, white);
+      background: color-mix(in srgb, #ffaa3b 86%, white);
+      color: #111111;
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, #ffaa3b 34%, transparent),
+        0 0 12px color-mix(in srgb, #ffaa3b 28%, transparent);
+    }
   </style>
 </head>
 <body>
@@ -107,12 +147,14 @@
       ? INITIAL_PRESET
       : 'ascend950b';
     let detailsVisible = true;
-    let pendingFocus = { selectors: [], routes: [] };
+    let aivFolded = false;
+    let viewportScale = 1;
+    let pendingFocus = { selectors: [], routes: [], instructionTags: [] };
 
     const qs = (selector, root = document) => root.querySelector(selector);
     const qsa = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
-    const BLEED = 32;
+    const BLEED = 52;
     function postSize(type = 'hardware-size') {
       const stage = qs('#hardwareHost .pto-mem950');
       if (!stage) return;
@@ -137,10 +179,18 @@
       qsa('.is-hardware-active').forEach((el) => el.classList.remove('is-hardware-active'));
       qsa('.is-route-active').forEach((el) => el.classList.remove('is-route-active'));
       qsa('.is-internal-route-active').forEach((el) => el.classList.remove('is-internal-route-active'));
+      qsa('.is-instruction-active').forEach((el) => el.classList.remove('is-instruction-active'));
     }
 
     function attrValue(value) {
       return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    }
+
+    function normalizeInstructionTag(value) {
+      return String(value || '')
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/[_-]+/g, '');
     }
 
     function applyInternalRouteFocus(host) {
@@ -158,9 +208,31 @@
             .forEach((pill) => pill.classList.add('is-internal-route-active'));
         }
       });
+
+      qsa('.pto-aiv-core__route[data-aiv-route-from][data-aiv-route-to]', host).forEach((routeEl) => {
+        const core = routeEl.closest('.pto-aiv-core');
+        const fromEl = core?.querySelector(`[data-aiv-node="${attrValue(routeEl.dataset.aivRouteFrom)}"]`);
+        const toEl = core?.querySelector(`[data-aiv-node="${attrValue(routeEl.dataset.aivRouteTo)}"]`);
+        const isActive = Boolean(
+          fromEl?.classList.contains('is-hardware-active') &&
+          toEl?.classList.contains('is-hardware-active')
+        );
+        routeEl.classList.toggle('is-internal-route-active', isActive);
+      });
     }
 
-    function applyFocus(selectors = [], routeIds = []) {
+    function applyInstructionFocus(host, instructionTags = []) {
+      const tags = instructionTags.map(normalizeInstructionTag).filter(Boolean);
+      host.classList.toggle('has-instruction-focus', tags.length > 0);
+      if (tags.length === 0) return;
+      qsa('.instruction-sequence-chip', host).forEach((chip) => {
+        const text = normalizeInstructionTag(chip.textContent);
+        const active = tags.some((tag) => text.includes(tag) || tag.includes(text));
+        chip.classList.toggle('is-instruction-active', active);
+      });
+    }
+
+    function applyFocus(selectors = [], routeIds = [], instructionTags = []) {
       const host = qs('#hardwareHost');
       clearFocus();
       host.classList.toggle('is-path-focused', selectors.length > 0 || routeIds.length > 0);
@@ -174,6 +246,20 @@
       });
 
       applyInternalRouteFocus(host);
+      applyInstructionFocus(host, instructionTags);
+    }
+
+    function applyAivFolded(folded = false) {
+      const host = qs('#hardwareHost');
+      aivFolded = folded === true;
+      window.PtoMemoryArchitecturePattern?.setAivFolded?.(host, aivFolded);
+      requestAnimationFrame(() => overlay?.update?.());
+    }
+
+    function setTooltipViewportScale(scale = 1) {
+      const numericScale = Number(scale);
+      viewportScale = Number.isFinite(numericScale) && numericScale > 0 ? numericScale : 1;
+      hoverInteractions?.setViewportScale?.(viewportScale);
     }
 
     function render() {
@@ -182,11 +268,12 @@
       hoverInteractions?.destroy?.();
       window.PtoMemoryArchitecturePattern.renderArchitecture(host, currentPreset);
       overlay = window.PtoMemoryArchitecturePattern.createRouteOverlay(host, currentPreset);
-      hoverInteractions = window.PtoMemoryArchitecturePattern.attachHoverInteractions(host, currentPreset);
+      hoverInteractions = window.PtoMemoryArchitecturePattern.attachHoverInteractions(host, currentPreset, { viewportScale });
       window.PtoMemoryArchitecturePattern.setDetailVisibility(host, detailsVisible);
+      applyAivFolded(aivFolded);
       requestAnimationFrame(() => {
         overlay?.update?.();
-        applyFocus(pendingFocus.selectors, pendingFocus.routes);
+        applyFocus(pendingFocus.selectors, pendingFocus.routes, pendingFocus.instructionTags);
         requestAnimationFrame(() => {
           postSize('hardware-ready');
         });
@@ -211,12 +298,20 @@
         });
         return;
       }
+      if (event.data.type === 'hardware-scale') {
+        setTooltipViewportScale(event.data.scale);
+        return;
+      }
       if (event.data.type !== 'hardware-focus') return;
       pendingFocus = {
         selectors: event.data.selectors || [],
-        routes: event.data.routes || []
+        routes: event.data.routes || [],
+        instructionTags: event.data.instructionTags || []
       };
-      applyFocus(pendingFocus.selectors, pendingFocus.routes);
+      if (Object.prototype.hasOwnProperty.call(event.data, 'foldAiv')) {
+        applyAivFolded(event.data.foldAiv);
+      }
+      applyFocus(pendingFocus.selectors, pendingFocus.routes, pendingFocus.instructionTags);
       requestAnimationFrame(() => {
         overlay?.update?.();
         postSize();

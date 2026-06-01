@@ -310,6 +310,107 @@
       color: var(--foreground);
     }
 
+    .source-line.is-key.is-selected .source-line-tag {
+      color: #15110a;
+      border-color: color-mix(in srgb, var(--warning) 74%, white);
+      background: color-mix(in srgb, var(--warning) 88%, white);
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--warning) 28%, transparent),
+        0 0 14px color-mix(in srgb, var(--warning) 24%, transparent);
+    }
+
+    .source-line.is-key.is-selected.is-memory .source-line-tag {
+      border-color: color-mix(in srgb, var(--primary-hover) 74%, white);
+      background: color-mix(in srgb, var(--primary-hover) 84%, white);
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--primary-hover) 28%, transparent),
+        0 0 14px color-mix(in srgb, var(--primary-hover) 22%, transparent);
+    }
+
+    .source-line.is-key.is-selected.is-compute .source-line-tag {
+      border-color: color-mix(in srgb, var(--success) 74%, white);
+      background: color-mix(in srgb, var(--success) 84%, white);
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--success) 28%, transparent),
+        0 0 14px color-mix(in srgb, var(--success) 22%, transparent);
+    }
+
+    .wb-source-body.is-compare-source {
+      display: grid;
+      overflow: hidden;
+      padding: var(--space-2);
+    }
+
+    .source-compare {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+      gap: var(--space-2);
+    }
+
+    .source-compare-pane {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
+      background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+    }
+
+    .source-compare-head {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--border-subtle);
+      background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+    }
+
+    .source-compare-title {
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2);
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .source-compare-title strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .source-compare-title span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      letter-spacing: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .source-compare-lines {
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      padding: var(--space-2) 0 var(--space-3);
+    }
+
+    .source-compare-lines .source-line {
+      grid-template-columns: 48px minmax(0, 1fr) auto;
+    }
+
+    .source-compare-lines .line-detail {
+      margin-left: 48px;
+    }
+
     .line-detail {
       margin: 2px var(--space-3) var(--space-3) 56px;
     }
@@ -602,6 +703,36 @@
       color: var(--foreground-muted);
     }
 
+    .hardware-delta-tags {
+      position: absolute;
+      top: calc(var(--space-2) + 24px);
+      left: var(--space-2);
+      right: var(--space-2);
+      z-index: var(--z-raised);
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      pointer-events: none;
+    }
+
+    .hardware-delta-tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 0 var(--space-2);
+      border-radius: var(--radius-pill);
+      border: 1px solid color-mix(in srgb, var(--warning) 42%, transparent);
+      background: color-mix(in srgb, var(--background-elevated) 88%, transparent);
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+      letter-spacing: 0;
+      backdrop-filter: blur(8px);
+    }
+
+    .hardware-viewport:not(.is-compare) .hardware-delta-tags {
+      display: none;
+    }
+
     .hardware-compare-stage {
       min-width: 0;
       min-height: 0;
@@ -656,6 +787,25 @@
 
     .hardware-viewport.is-compare .hardware-status {
       display: none;
+    }
+
+    .wb-workbench.is-source-compare .wb-source-panel,
+    .wb-workbench.is-source-compare .wb-hardware-panel {
+      width: calc(50% - 6px) !important;
+      flex: 1 1 calc(50% - 6px) !important;
+    }
+
+    .wb-workbench.is-source-compare .wb-inspector-panel {
+      display: none !important;
+    }
+
+    .wb-workbench.is-source-compare .split-gutter,
+    .wb-workbench.is-source-compare .gutter {
+      display: none !important;
+    }
+
+    .wb-workbench.is-source-compare .hardware-compare {
+      grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     }
 
     .path-chip {
@@ -2028,6 +2178,7 @@
                 <span>Ascend 950</span>
                 <span class="wb-chip">40%</span>
               </div>
+              <div class="hardware-delta-tags" data-delta-tags="ascend950"></div>
               <div class="hardware-compare-stage">
                 <div class="hardware-scale pto-hw-viewport__scale" data-hardware-scale="ascend950">
                   <iframe class="hardware-frame pto-hw-viewport__frame" data-hardware-frame="ascend950" data-src="./hardware-frame.html" loading="lazy" title="Ascend 950 architecture map"></iframe>
@@ -2039,6 +2190,7 @@
                 <span>Ascend 910B</span>
                 <span class="wb-chip">40%</span>
               </div>
+              <div class="hardware-delta-tags" data-delta-tags="ascend910b"></div>
               <div class="hardware-compare-stage">
                 <div class="hardware-scale pto-hw-viewport__scale" data-hardware-scale="ascend910b">
                   <iframe class="hardware-frame pto-hw-viewport__frame" data-hardware-frame="ascend910b" data-src="./hardware-frame.html" loading="lazy" title="Ascend 910B architecture map"></iframe>
@@ -2147,6 +2299,7 @@
 
   <script src="./kernels/registry.js"></script>
   <script src="./kernels/c_api_add.js"></script>
+  <script src="./kernels/c_api_add_a3_a5_compare.js"></script>
   <script src="./kernels/gelu_high_api.js"></script>
   <script src="./kernels/gelu_high_performance.js"></script>
   <script src="./kernels/fp8_mmad_masked_reduce.js"></script>
@@ -2502,9 +2655,30 @@
       return currentKernel().sourceLines || [];
     }
 
+    function sourceCompareConfig(kernel = currentKernel()) {
+      return kernel.sourceCompare || null;
+    }
+
+    function isSourceCompareKernel(kernel = currentKernel()) {
+      return !!sourceCompareConfig(kernel);
+    }
+
+    function syncWorkbenchMode() {
+      const compare = isSourceCompareKernel();
+      qs('.wb-workbench')?.classList.toggle('is-source-compare', compare);
+      qs('#sourceBody')?.classList.toggle('is-compare-source', compare);
+    }
+
     function analysisMeta() {
       const kernel = currentKernel();
       const arch = currentArch();
+      if (isSourceCompareKernel(kernel)) {
+        return {
+          target: 'Ascend 950 / Atlas A3',
+          analysis: '官方源码 · A3/A5 对齐对比',
+          verdict: 'UB tensor → RegBase'
+        };
+      }
       if (isCompareArch()) {
         if (isGeluKernel(kernel)) {
           return {
@@ -2748,10 +2922,16 @@
       const kernel = currentKernel();
       const annotations = currentAnnotations();
       const meta = analysisMeta();
+      syncWorkbenchMode();
       const select = qs('#kernelSelect');
       if (select) select.value = kernel.id;
       const lineCount = qs('#sourceLineCount');
-      if (lineCount) lineCount.textContent = `${kernel.sourceLines.length} 行`;
+      if (lineCount) {
+        const compare = sourceCompareConfig(kernel);
+        lineCount.textContent = compare
+          ? compare.panes.map((pane) => `${pane.shortLabel || pane.title} ${pane.sourceLines.length} 行`).join(' / ')
+          : `${kernel.sourceLines.length} 行`;
+      }
       const markToggle = qs('#sourceMarkToggle');
       if (markToggle) {
         markToggle.textContent = state.annotationsVisible ? '隐藏标注' : '显示标注';
@@ -2778,9 +2958,81 @@
       select.onchange = () => selectArch(select.value);
     }
 
+    function compareLineForPane(annotation, paneId) {
+      const lines = annotation?.compareLines?.[paneId] || [];
+      return Array.isArray(lines) ? lines : [lines];
+    }
+
+    function annotationForCompareLine(paneId, lineNo) {
+      return currentAnnotations().find((annotation) => compareLineForPane(annotation, paneId).includes(lineNo));
+    }
+
+    function renderSourceCompare(body, compare) {
+      body.innerHTML = '';
+      const wrapper = document.createElement('div');
+      wrapper.className = 'source-compare';
+      compare.panes.forEach((pane) => {
+        const paneEl = document.createElement('section');
+        paneEl.className = 'source-compare-pane';
+        paneEl.setAttribute('aria-label', pane.title);
+        paneEl.innerHTML = `
+          <div class="source-compare-head">
+            <div class="source-compare-title">
+              <strong>${escapeHtml(pane.title)}</strong>
+              <span>${escapeHtml(pane.subtitle || '')}</span>
+            </div>
+            <span class="mode-tag ${pane.archId === 'ascend950' ? 'is-compute' : 'is-memory'}">${escapeHtml(pane.badge || pane.shortLabel || '')}</span>
+          </div>
+          <div class="source-compare-lines" data-source-pane="${escapeHtml(pane.id)}"></div>
+        `;
+        const linesEl = paneEl.querySelector('.source-compare-lines');
+        pane.sourceLines.forEach((code, idx) => {
+          const lineNo = idx + 1;
+          const annotation = annotationForCompareLine(pane.id, lineNo);
+          const line = state.annotationsVisible ? lineForArch(annotation, pane.archId) : null;
+          const isCard = state.annotationsVisible && !!line && !annotation?.tagOnly;
+          const row = document.createElement('div');
+          let cls = 'source-line';
+          if (isCard) {
+            cls += ` is-key ${tagClass(line.kind)}`;
+            if (annotation.id === state.selectedId) cls += ' is-selected';
+          }
+          row.className = cls;
+          row.dataset.lineNo = lineNo;
+          if (isCard) {
+            row.dataset.lineId = annotation.id;
+            row.setAttribute('role', 'option');
+            row.setAttribute('aria-selected', annotation.id === state.selectedId ? 'true' : 'false');
+            row.addEventListener('click', () => selectLine(annotation.id));
+          }
+          const tagHtml = state.annotationsVisible && line
+            ? `<span class="mode-tag source-line-tag ${tagClass(line.kind)}">${escapeHtml(line.sourceTag || line.tag)}</span>`
+            : '<span></span>';
+          row.innerHTML = `<span class="source-line-no">${lineNo}</span><span class="source-line-code">${highlightCpp(code)}</span>${tagHtml}`;
+          linesEl.appendChild(row);
+        });
+        wrapper.appendChild(paneEl);
+      });
+      body.appendChild(wrapper);
+      qsa('.source-compare-lines', body).forEach((linesEl) => {
+        const sel = linesEl.querySelector('.is-selected');
+        if (!sel) return;
+        const containerRect = linesEl.getBoundingClientRect();
+        const selRect = sel.getBoundingClientRect();
+        const offset = linesEl.scrollTop + (selRect.top - containerRect.top) - linesEl.clientHeight / 2 + selRect.height / 2;
+        linesEl.scrollTop = Math.max(0, offset);
+      });
+    }
+
     function renderSource() {
       const body = qs('#sourceBody');
       if (!body) return;
+      const compare = sourceCompareConfig();
+      body.classList.toggle('is-compare-source', !!compare);
+      if (compare) {
+        renderSourceCompare(body, compare);
+        return;
+      }
       const keyByLine = {};
       currentAnnotations().forEach((l) => { keyByLine[l.line] = l; });
       body.innerHTML = '';
@@ -4004,6 +4256,7 @@
 
     function renderPathChips() {
       const baseLine = selectedAnnotation();
+      renderHardwareDeltaTags(baseLine);
       if (!baseLine) return;
       const chips = qs('#pathChips');
       chips.innerHTML = '';
@@ -4025,8 +4278,17 @@
       });
     }
 
+    function renderHardwareDeltaTags(baseLine = selectedAnnotation()) {
+      qsa('[data-delta-tags]').forEach((host) => {
+        const archId = host.dataset.deltaTags;
+        const line = baseLine ? lineForArch(baseLine, archId) : null;
+        const tags = line?.deltaTags || baseLine?.deltaTags || [];
+        host.innerHTML = tags.map((tag) => `<span class="hardware-delta-tag">${escapeHtml(tag)}</span>`).join('');
+      });
+    }
+
     function clearHardwareFocus() {
-      ['primary', 'ascend950', 'ascend910b'].forEach((key) => postHardwareFocus([], [], key));
+      ['primary', 'ascend950', 'ascend910b'].forEach((key) => postHardwareFocus([], [], [], key));
     }
 
     function applyHardwareFocus() {
@@ -4034,7 +4296,7 @@
       if (!baseLine) return;
       activeArchIds().forEach((archId) => {
         const line = lineForArch(baseLine, archId);
-        postHardwareFocus(line.selectors, line.routes, frameKeyForArch(archId));
+        postHardwareFocus(line.selectors, line.routes, line.instructionTags || [], frameKeyForArch(archId));
       });
     }
 
@@ -4100,16 +4362,22 @@
       const kernel = KERNELS.find((item) => item.id === id);
       if (!kernel) return;
       state.selectedKernelId = kernel.id;
+      if (isSourceCompareKernel(kernel)) {
+        state.selectedArch = 'compare950910b';
+      }
       state.tier = kernel.defaultTier || state.tier;
       state.selectedId = kernel.selectedId || kernel.annotations[0]?.id;
       const selected = selectedLine();
       state.pathKind = selected?.kind || state.pathKind;
       renderKernelSelector();
+      renderArchSelector();
       renderKernelMeta();
       syncPathButtons();
       renderSource();
       renderInspector();
       renderPathChips();
+      renderHardwareMode();
+      postHardwareArch();
       applyHardwareFocus();
     }
 
@@ -4244,16 +4512,17 @@
       }
     }
 
-    function postHardwareFocus(selectors, routes, key = 'primary') {
+    function postHardwareFocus(selectors, routes, instructionTags = [], key = 'primary') {
       const frame = frameForKey(key);
       if (!state.frameReady[key] || !frame?.contentWindow) return;
-      const focusKey = JSON.stringify([selectors, routes]);
+      const focusKey = JSON.stringify([selectors, routes, instructionTags]);
       if (state.frameFocusKeys[key] === focusKey) return;
       state.frameFocusKeys[key] = focusKey;
       frame.contentWindow.postMessage({
         type: 'hardware-focus',
         selectors,
         routes,
+        instructionTags,
       }, '*');
     }
 
