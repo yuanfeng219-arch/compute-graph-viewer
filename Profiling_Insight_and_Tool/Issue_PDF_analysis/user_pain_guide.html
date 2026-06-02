@@ -1,0 +1,1768 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基于用户痛点的 950 迁移指导</title>
+<style>
+  :root {
+    /* PTO design token alignment */
+    --topnav-h:     48px;
+    --bg:           #101010;
+    --bg-elevated:  #141414;
+    --card:         #161616;   /* surface-1 */
+    --card2:        #1C1C1C;   /* surface-2 */
+    --surface-3:    #262626;
+    --surface-4:    #313131;
+    --border:       #292929;   /* border-default */
+    --border-subtle:#202020;
+    --border-strong:#3A3A3A;
+    --accent:       #4369EF;   /* primary */
+    --accent2:      #7C8DB8;   /* accent */
+    --accent3:      #04D793;   /* success */
+    --accent4:      #FFAA3B;   /* warning */
+    --text:         #E6E6E6;   /* foreground */
+    --muted:        #999999;   /* foreground-secondary */
+    --fg-muted:     #666666;   /* foreground-muted */
+    --danger:       #FF4B7B;
+    --warn:         #FFAA3B;
+    --success:      #04D793;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-padding-top: var(--topnav-h); }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Source Han Sans SC', 'PingFang SC', 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding-top: var(--topnav-h);
+  }
+  .page {
+    max-width: 1600px;
+    width: calc(100% - 64px);
+    margin: 0 auto;
+    padding: 40px 0 80px;
+  }
+
+  /* Header */
+  .hero {
+    background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg) 100%);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: 40px 48px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(67,105,239,0.10) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(67,105,239,0.12);
+    border: 1px solid rgba(67,105,239,0.35);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+    line-height: 1.25;
+  }
+  .hero h1 span { color: var(--accent); }
+  .hero p {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 700px;
+  }
+  .hero-meta {
+    display: flex;
+    gap: 24px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .hero-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .hero-meta-item .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent3);
+  }
+
+  /* Section */
+  .section { margin-bottom: 48px; }
+  .section-title {
+    position: sticky;
+    top: var(--topnav-h);
+    z-index: 50;
+    background: var(--bg);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 20px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* 吸顶后用 box-shadow 补底部分隔感 */
+    transition: box-shadow 0.2s;
+  }
+  .section-title.is-stuck {
+    box-shadow: 0 2px 16px rgba(0,0,0,0.55), 0 1px 0 var(--border);
+    border-bottom-color: var(--border-strong);
+  }
+
+  /* 右侧锚点导航 */
+  .sidenav {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 8px 0;
+  }
+  .sidenav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px 6px 10px;
+    cursor: pointer;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .sidenav-item:hover { background: var(--card2); }
+  .sidenav-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border-strong);
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+  }
+  .sidenav-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--fg-muted);
+    transition: color 0.15s;
+    letter-spacing: 0.2px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sidenav-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--border-strong);
+    font-weight: 700;
+    width: 14px;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .sidenav-item.active .sidenav-dot {
+    background: var(--accent);
+    transform: scale(1.5);
+    box-shadow: 0 0 6px rgba(67,105,239,0.5);
+  }
+  .sidenav-item.active .sidenav-label { color: var(--text); }
+  .sidenav-item.active .sidenav-num   { color: var(--accent); }
+  .sidenav-item:hover .sidenav-dot    { background: var(--muted); }
+  .sidenav-item:hover .sidenav-label  { color: var(--muted); }
+  @media (max-width: 1100px) { .sidenav { display: none; } }
+  .section-num {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    background: var(--surface-3);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid rgba(67,105,239,0.25);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Cards grid */
+  .cards { display: grid; gap: 16px; }
+  .cards-2 { grid-template-columns: repeat(2, 1fr); }
+  .cards-3 { grid-template-columns: repeat(3, 1fr); }
+  .cards-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) {
+    .cards-2, .cards-3, .cards-4 { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+  }
+  th {
+    background: var(--card2);
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: top;
+    font-size: 13px;
+    color: var(--text);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.015); }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin: 1px;
+  }
+  .tag-blue   { background: rgba(67,105,239,0.14);  color: #8BA4F8; border: 1px solid rgba(67,105,239,0.28); }
+  .tag-green  { background: rgba(4,215,147,0.12);   color: #04D793; border: 1px solid rgba(4,215,147,0.28); }
+  .tag-orange { background: rgba(255,170,59,0.12);  color: #FFAA3B; border: 1px solid rgba(255,170,59,0.28); }
+  .tag-purple { background: rgba(124,141,184,0.14); color: #7C8DB8; border: 1px solid rgba(124,141,184,0.28); }
+  .tag-red    { background: rgba(255,75,123,0.12);  color: #FF4B7B; border: 1px solid rgba(255,75,123,0.28); }
+
+  /* Performance badge */
+  .perf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(4,215,147,0.12);
+    border: 1px solid rgba(4,215,147,0.28);
+    color: var(--success);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  /* Progress bars for optimization steps */
+  .opt-steps { display: flex; flex-direction: column; gap: 12px; }
+  .opt-step {
+    background: var(--card2);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .opt-step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .opt-step-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .opt-step-perf { font-size: 12px; color: var(--success); font-weight: 700; }
+  .opt-step-detail { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .progress-bar {
+    height: 4px;
+    background: var(--surface-3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent3), var(--accent));
+    transition: width 0.3s;
+  }
+
+  /* Workflow steps */
+  .workflow {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    background: var(--card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .workflow-step {
+    flex: 1;
+    padding: 18px;
+    border-right: 1px solid var(--border-subtle);
+    position: relative;
+  }
+  .workflow-step:last-child { border-right: none; }
+  .workflow-step::after {
+    content: '→';
+    position: absolute;
+    right: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--fg-muted);
+    font-size: 14px;
+    font-weight: 400;
+    z-index: 1;
+    background: var(--card);
+    padding: 4px 0;
+  }
+  .workflow-step:last-child::after { display: none; }
+  .workflow-num {
+    font-size: 36px;
+    font-weight: 900;
+    color: rgba(67,105,239,0.18);
+    line-height: 1;
+    margin-bottom: 6px;
+    font-family: 'Inter', monospace;
+  }
+  .workflow-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .workflow-tool {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    background: rgba(67,105,239,0.10);
+    color: var(--accent);
+    border: 1px solid rgba(67,105,239,0.22);
+    padding: 2px 8px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .workflow-desc { font-size: 12px; color: var(--muted); }
+
+  /* Iceberg model */
+  .iceberg {
+    background: var(--card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .iceberg-layer {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .iceberg-layer:last-child { border-bottom: none; }
+  .iceberg-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .iceberg-content { flex: 1; }
+  .iceberg-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .iceberg-detail { font-size: 12px; color: var(--muted); }
+  .iceberg-effort {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    flex-shrink: 0;
+    min-width: 60px;
+  }
+
+  /* Code block */
+  pre {
+    background: #0C0C0C;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    overflow-x: auto;
+    line-height: 1.7;
+  }
+  pre .cm  { color: var(--fg-muted); }
+  pre .kw  { color: #8BA4F8; }
+  pre .str { color: #3EEAB5; }
+  pre .num { color: #FFAA3B; }
+  pre .flag{ color: #FFAA3B; }
+  pre .out { color: #04D793; }
+
+  /* Decision tree */
+  .dtree {
+    background: var(--card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .dtree-node {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .dtree-q {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(67,105,239,0.10);
+    border: 1px solid rgba(67,105,239,0.25);
+    color: #8BA4F8;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    width: fit-content;
+  }
+  .dtree-children {
+    padding-left: 24px;
+    border-left: 1px solid var(--border);
+    margin-left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 4px;
+  }
+  .dtree-branch {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .dtree-label {
+    font-size: 11px;
+    color: var(--fg-muted);
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--card2);
+    flex-shrink: 0;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dtree-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(4,215,147,0.08);
+    border: 1px solid rgba(4,215,147,0.22);
+    color: var(--success);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  /* Pitfall list */
+  .pitfall-list { display: flex; flex-direction: column; gap: 10px; }
+  .pitfall-item {
+    background: var(--card2);
+    border: 1px solid var(--border-subtle);
+    border-left: 2px solid var(--danger);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .pitfall-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .pitfall-content {}
+  .pitfall-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .pitfall-desc { font-size: 12px; color: var(--muted); }
+  .pitfall-fix {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--success);
+    background: rgba(4,215,147,0.07);
+    border: 1px solid rgba(4,215,147,0.18);
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+
+  /* Inline comparison */
+  .vs-row {
+    display: grid;
+    grid-template-columns: 1fr 40px 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .vs-old {
+    background: rgba(255,75,123,0.07);
+    border: 1px solid rgba(255,75,123,0.20);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .vs-new {
+    background: rgba(4,215,147,0.07);
+    border: 1px solid rgba(4,215,147,0.20);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .vs-mid { text-align: center; color: var(--muted); font-size: 18px; }
+  .vs-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .vs-old .vs-label { color: var(--danger); }
+  .vs-new .vs-label { color: var(--success); }
+
+  .vs-text { font-size: 13px; color: var(--text); }
+
+  /* Chip/inline tag */
+  .chip {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    background: var(--surface-3);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    margin: 1px;
+  }
+
+  /* Metric cards */
+  .metrics { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .metric-card {
+    background: var(--card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 14px 18px;
+    min-width: 140px;
+    flex: 1;
+  }
+  .metric-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--accent3);
+    line-height: 1;
+    margin-bottom: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .metric-label { font-size: 12px; color: var(--muted); }
+  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 2px; opacity: 0.7; }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border); margin: 32px 0; }
+
+  /* Pain hook — "你是否发现" 代入式开场 */
+  .pain-hook {
+    background: rgba(255,170,59,0.05);
+    border: 1px solid rgba(255,170,59,0.18);
+    border-left: 3px solid var(--warn);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+  }
+  .pain-hook-q {
+    font-size: 13px;
+    color: var(--warn);
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.5;
+  }
+  .pain-hook-sub {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* 用户原声折叠区块 */
+  .user-voice {
+    margin-top: 12px;
+    border: 1px solid rgba(124,141,184,0.22);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .user-voice summary {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    cursor: pointer;
+    list-style: none;
+    background: rgba(124,141,184,0.06);
+    color: var(--accent2);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .user-voice summary::-webkit-details-marker { display: none; }
+  .user-voice summary::before {
+    content: '▶';
+    font-size: 8px;
+    opacity: 0.45;
+    transition: transform 0.18s;
+    flex-shrink: 0;
+  }
+  .user-voice[open] summary::before { transform: rotate(90deg); opacity: 0.8; }
+  .user-voice summary:hover { background: rgba(124,141,184,0.11); }
+  .uv-badge {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(124,141,184,0.18);
+    border: 1px solid rgba(124,141,184,0.32);
+    color: #7C8DB8;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 0 7px;
+    height: 17px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .user-voice-body {
+    padding: 10px 12px;
+    background: var(--bg);
+    border-top: 1px solid rgba(124,141,184,0.14);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .uv-item {
+    padding: 7px 10px;
+    background: var(--card2);
+    border: 1px solid var(--border-subtle);
+    border-left: 2px solid rgba(124,141,184,0.45);
+    border-radius: 0 6px 6px 0;
+  }
+  .uv-text {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.55;
+    margin-bottom: 3px;
+  }
+  .uv-text::before { content: '"'; color: var(--accent2); }
+  .uv-text::after  { content: '"'; color: var(--accent2); }
+  .uv-meta { display: flex; align-items: center; gap: 8px; }
+  .uv-sp { background:rgba(67,105,239,.12); color:#8BA4F8; border:1px solid rgba(67,105,239,.28); padding:1px 6px; border-radius:3px; font-size:10px; font-weight:600; font-family:'JetBrains Mono',monospace; }
+  .uv-sd { background:rgba(4,215,147,.10); color:#04D793; border:1px solid rgba(4,215,147,.25); padding:1px 6px; border-radius:3px; font-size:10px; font-weight:600; font-family:'JetBrains Mono',monospace; }
+  .uv-si { background:rgba(124,141,184,.12); color:#7C8DB8; border:1px solid rgba(124,141,184,.3); padding:1px 6px; border-radius:3px; font-size:10px; font-weight:600; font-family:'JetBrains Mono',monospace; }
+  .uv-link { font-size:10px; color:var(--fg-muted); text-decoration:none; }
+  .uv-link:hover { color:var(--muted); text-decoration:underline; }
+
+  /* Before/After 左右对比 */
+  .before-after {
+    display: grid;
+    grid-template-columns: 1fr 36px 1fr;
+    gap: 0;
+    margin-bottom: 20px;
+    align-items: stretch;
+  }
+  .ba-old {
+    background: rgba(255,75,123,0.04);
+    border: 1px solid rgba(255,75,123,0.18);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    padding: 16px 20px;
+  }
+  .ba-new {
+    background: rgba(4,215,147,0.04);
+    border: 1px solid rgba(4,215,147,0.18);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+  }
+  .ba-mid {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--fg-muted);
+    font-size: 16px;
+    font-weight: 400;
+    background: var(--card2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .ba-header {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ba-old .ba-header { color: var(--danger); border-color: rgba(255,75,123,0.18); }
+  .ba-new .ba-header { color: var(--success); border-color: rgba(4,215,147,0.18); }
+  .ba-point {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  .ba-point:last-child { margin-bottom: 0; }
+  .ba-dot { flex-shrink: 0; margin-top: 3px; font-size: 11px; }
+  .ba-old .ba-dot { color: var(--danger); }
+  .ba-new .ba-dot { color: var(--success); }
+  .ba-point-text { color: var(--text); }
+  .ba-point-muted { color: var(--muted); font-size: 11.5px; display: block; margin-top: 1px; }
+  @media (max-width: 860px) {
+    .before-after { grid-template-columns: 1fr; }
+    .ba-mid { display: none; }
+    .ba-old { border-radius: 8px; border-right: 1px solid rgba(255,75,123,0.18); border-bottom: none; }
+    .ba-new { border-radius: 8px; border-left: 1px solid rgba(4,215,147,0.18); }
+  }
+  /* ── 架构图对比容器 ── */
+  .arch-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 0;
+  }
+  .arch-pane {
+    background: var(--card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .arch-pane-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .arch-pane-head .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .arch-pane.old .arch-pane-head { color: var(--danger); }
+  .arch-pane.old .arch-pane-head .dot { background: var(--danger); }
+  .arch-pane.new .arch-pane-head { color: var(--success); }
+  .arch-pane.new .arch-pane-head .dot { background: var(--success); }
+  .arch-frame-wrap {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: transparent;
+    /* 默认高度，JS 收到 hardware-ready 后会调整为内容等比高度 */
+    min-height: 320px;
+  }
+  .arch-frame {
+    display: block;
+    border: 0;
+    transform-origin: top left;
+    /* scale 由 JS 动态设置 */
+    transition: opacity 0.3s;
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;  /* 缩放后点击坐标由 wrapper 透传 */
+  }
+  .arch-frame-wrap.is-ready .arch-frame {
+    pointer-events: auto;
+  }
+
+  /* Toggle switch */
+  .arch-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .arch-toggle input { display: none; }
+  .arch-toggle-track {
+    width: 38px; height: 22px;
+    border-radius: 12px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    position: relative;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .arch-toggle input:checked + .arch-toggle-track {
+    background: rgba(255,170,59,0.25);
+    border-color: rgba(255,170,59,0.45);
+    box-shadow: 0 0 8px rgba(255,170,59,0.20);
+  }
+  .arch-toggle-knob {
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform 0.2s, background 0.2s;
+  }
+  .arch-toggle input:checked + .arch-toggle-track .arch-toggle-knob {
+    transform: translateX(16px);
+    background: #ffaa3b;
+    box-shadow: 0 0 6px rgba(255,170,59,0.5);
+  }
+  .arch-toggle-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.3px;
+    transition: color 0.2s;
+  }
+  .arch-toggle input:checked ~ .arch-toggle-label { color: #ffaa3b; }
+
+  /* 差异图例 */
+  .arch-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--card2);
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+  }
+  .arch-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+  .arch-legend-swatch {
+    width: 18px; height: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .arch-legend-swatch.transport { background: #ffcf59; }
+  .arch-legend-swatch.direct { background: #4d97ff; }
+  .arch-legend-swatch.direct-return { background: #29c7a6; }
+  .arch-legend-swatch.highlight { background: #ffaa3b; box-shadow: 0 0 4px rgba(255,170,59,0.5); }
+
+  @media (max-width: 860px) {
+    .arch-compare { grid-template-columns: 1fr; }
+  }
+
+  /* 信息来源折叠卡片 */
+  .src-ref {
+    margin-top: 20px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .src-ref summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    list-style: none;
+    background: var(--card);
+    color: var(--fg-muted);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: background 0.15s, color 0.15s;
+  }
+  .src-ref summary::-webkit-details-marker { display: none; }
+  .src-ref summary::before {
+    content: '▶';
+    font-size: 8px;
+    opacity: 0.5;
+    transition: transform 0.18s;
+  }
+  .src-ref[open] summary::before { transform: rotate(90deg); opacity: 0.8; }
+  .src-ref summary:hover { background: var(--card2); color: var(--muted); }
+  .src-ref-body {
+    padding: 12px 16px;
+    background: var(--card);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .src-ref-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    flex-wrap: wrap;
+  }
+  .src-ref-pdf  { color: var(--muted); font-weight: 500; flex-shrink: 0; }
+  .src-ref-pages { color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; flex-shrink: 0; white-space: nowrap; }
+  .src-ref-note { color: var(--fg-muted); font-size: 11px; }
+
+  /* ── 顶部一级导航 ── */
+  .topnav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--topnav-h);
+    z-index: 500;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 28px;
+  }
+  .topnav-brand {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+    flex-shrink: 0;
+  }
+  .topnav-tabs {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+  }
+  .topnav-tab {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fg-muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-bottom-color 0.15s;
+    white-space: nowrap;
+  }
+  .topnav-tab:hover { color: var(--muted); }
+  .topnav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+</style>
+</head>
+<body>
+<nav class="topnav">
+  <span class="topnav-brand">950性能调优指南</span>
+  <div class="topnav-tabs">
+    <a class="topnav-tab" href="user_issue_analysis.html">TOP用户痛点</a>
+    <a class="topnav-tab active" href="user_pain_guide.html">基于TOP用户痛点的950性能调优指导</a>
+    <a class="topnav-tab" href="perf_engineer_guide.html">基于PDF材料的950性能调优指导</a>
+    <a class="topnav-tab" href="top_issue_detail.html">附录：TOP痛点与Issue映射关系</a>
+  </div>
+</nav>
+<div class="page">
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge">Pain-Driven Migration Guide</div>
+  <h1>基于用户痛点的 <span>950</span> 迁移指导</h1>
+  <p>以 803 条性能相关 issue 聚类出的 TOP 问题为顺序主线，逐条给出从 A2/A3 迁移至昇腾 950 架构时的实操指导。每条指导都对应真实用户反馈，结合官方硬件 / Profiling / 算子优化 / 大模型实践文档，给出"旧做法失效原因 → 950 正确姿势 → 命令与避坑"的闭环。</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><span class="dot"></span>泳道图与时间线（118）</div>
+    <div class="hero-meta-item"><span class="dot" style="background:var(--accent)"></span>Roofline 基线与 CI（112）</div>
+    <div class="hero-meta-item"><span class="dot" style="background:var(--accent4)"></span>流水线同步（38）</div>
+    <div class="hero-meta-item"><span class="dot" style="background:var(--accent2)"></span>MoE 通信与 CCU（38）</div>
+    <div class="hero-meta-item"><span class="dot" style="background:var(--warn)"></span>HBM 快照与 OOM（63）</div>
+    <div class="hero-meta-item"><span class="dot" style="background:var(--danger)"></span>Profiling 全链路（31）</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     以 user_issue_analysis.html TOP 问题为顺序主线的 7 条迁移指导
+     ════════════════════════════════════════════════════════ -->
+
+<!-- Section 1 ← TOP1：泳道图 / 时间线 -->
+<div class="section" id="s1">
+  <div class="section-title"><div class="section-num">1</div>读懂 950 上的泳道图与时间线（对应 TOP1 · 118 次）</div>
+
+  <div class="metrics">
+    <div class="metric-card"><div class="metric-value">118</div><div class="metric-label">主题全量频次</div><div class="metric-sub">PYPTO 62 · Insight 56</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--warn)">P1</div><div class="metric-label">影响等级</div><div class="metric-sub">修复难度：中</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)">更棘手</div><div class="metric-label">950 迁移复杂度</div><div class="metric-sub">泳道层级翻倍</div></div>
+    <div class="metric-card"><div class="metric-value" style="font-size:15px;line-height:1.3;">Timeline View</div><div class="metric-label">对标 Nsight Systems</div><div class="metric-sub">NVTX / SQL 过滤</div></div>
+  </div>
+
+  <div style="font-size:11.5px;color:var(--fg-muted);margin:-6px 0 18px;line-height:1.6;">频次 118 = 该主题 issue <strong>全量聚类数</strong>（PYPTO 62 + Insight 56，A3/950 通用，每条 issue 仅计一个主题）；"950 更棘手"为迁移<strong>定性判定</strong>，非 118 的子集计数。下方折叠区列出其中 <strong>12 条代表性原声</strong>，均可点击跳转原 issue。</div>
+
+  <div class="pain-hook">
+    <div class="pain-hook-q">你是否发现：A3 上"卡 × 核"两层泳道看得清清楚楚，到了 950 大规模训练场景，泳道图一框选就卡顿、缩放频繁重绘，时间线通信数据还和通信总览对不齐？</div>
+    <div class="pain-hook-sub">根本原因：950 Chiplet 架构把泳道层级从"卡 × 核"扩展为"卡 × Chiplet × 核 × CCU"，单次采集数据量成倍增加；DT / PR 两形态拓扑不同，多机时间线对齐还要适配 Chiplet 内直连带宽。旧的读图心智模型已经不够用。</div>
+    <details class="user-voice">
+      <summary><span class="uv-badge">12</span>&ensp;条代表性原声 · 全量 118 条（点击 ↗ 跳转 issue）</summary>
+      <div class="user-voice-body">
+        <div class="uv-item"><div class="uv-text">时间线通信和通信总览的通信不一致</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/278" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">【timeline】框选后，泳道边框不明显</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/190" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">置顶同名泳道大于 100 条时点击取消也上报 Found 396 lanes, only the first 100 have been pinned</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/290" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">泳道合并与隐藏后不支持设置置顶同名泳道，前端需要封掉该功能</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/292" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">Timeline 支持通信算子一键对齐</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/271" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">timeline 泳道设置偏移量后，需要有标记</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/164" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">设置基线数据工程后，新增按卡序号搜索无基线卡序号</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/297" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">比对后时间线不显示</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/176" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">windows 上 timeline 泳道文字位置偏下（偶现）</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/157" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">mstx 场景部分泳道算子未显示</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/151" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">数据工程切换时间线界面查找模块下名称筛选条件未被初始化</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/296" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">偏移量 offset 计算（多卡时间对齐）</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/40" target="_blank" rel="noopener">↗</a></div></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="before-after">
+    <div class="ba-old">
+      <div class="ba-header">▼ A2 / A3 旧读图方式</div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">泳道层级只有"卡 × 核"两层<span class="ba-point-muted">单卡几十条泳道，全量渲染无压力</span></span></div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">通信走 HCCL 单一时钟域，时间线与通信总览天然对齐</span></div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">Pipe-bubble、CrossCore 同步靠人工经验在图里"找空隙"</span></div>
+    </div>
+    <div class="ba-mid">→</div>
+    <div class="ba-new">
+      <div class="ba-header">▲ 950 正确姿势</div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">读图先建"卡 × Chiplet × 核 × CCU"四层心智<span class="ba-point-muted">先按 Chiplet 折叠，再下钻到核，避免一次性铺开</span></span></div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">多 Chiplet / 多机存在多个时钟域，对齐前先核对 CCU trace 基准</span></div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">把 Pipe-bubble、CrossCore 事件当一级元素读（<code>MarkStampImpl</code> + 事件 ID14/ID15）</span></div>
+    </div>
+  </div>
+
+  <div class="card-title" style="margin-top:24px;">读图三步法 · 从采集到定位</div>
+  <div class="workflow" style="margin-bottom:20px;">
+    <div class="workflow-step">
+      <div class="workflow-num">1</div>
+      <div class="workflow-tool">msProf / Insight</div>
+      <div class="workflow-title">先折叠后下钻</div>
+      <div class="workflow-desc">按 Chiplet 维度折叠泳道，定位到热点 Chiplet 再展开核级泳道，避免一次性渲染数千条导致卡顿。</div>
+    </div>
+    <div class="workflow-step">
+      <div class="workflow-num">2</div>
+      <div class="workflow-tool">CCU trace</div>
+      <div class="workflow-title">对齐时钟域</div>
+      <div class="workflow-desc">多机 / 多 Chiplet 先用通信总览校准时钟基准，再看时间线，杜绝"集合通信算子对不齐"的假瓶颈。</div>
+    </div>
+    <div class="workflow-step">
+      <div class="workflow-num">3</div>
+      <div class="workflow-tool">Pipe-bubble</div>
+      <div class="workflow-title">看气泡而非看耗时</div>
+      <div class="workflow-desc">MoE 大规模训练 Pipe-bubble 数量更多，直接定位 MTE2/V/MTE3 流水空隙与 CrossCore 等待，比看单算子绝对耗时更高效。</div>
+    </div>
+  </div>
+
+  <div class="pitfall-list">
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">把 Chiplet 跨片通信当成 HCCL 慢</div><div class="pitfall-desc">Chiplet 内通信走片内直连，不经 HCCL，但旧时间线仍按 HCCL 标注，导致"通信慢"误判。</div><div class="pitfall-fix">✓ 先区分片内直连 / 跨机 HCCL 两类通信，再下结论</div></div></div>
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">一次性展开全部同名泳道</div><div class="pitfall-desc">同名泳道破百后渲染与置顶交互都会异常（Found 396 lanes），且大概率卡死页面。</div><div class="pitfall-fix">✓ 用时间范围 / 卡级别分片，按需展开</div></div></div>
+  </div>
+</div>
+
+<!-- Section 2 ← TOP2：性能基线 + Roofline + CI -->
+<div class="section" id="s2">
+  <div class="section-title"><div class="section-num">2</div>建立 950 专属性能基线与 Roofline 归因（对应 TOP2 · 112 次）</div>
+
+  <div class="metrics">
+    <div class="metric-card"><div class="metric-value">112</div><div class="metric-label">主题全量频次</div><div class="metric-sub">PYPTO 77 · devkit 31</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)">P0</div><div class="metric-label">影响等级</div><div class="metric-sub">修复难度：高</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)">更棘手</div><div class="metric-label">950 迁移复杂度</div><div class="metric-sub">A3 基线完全失效</div></div>
+    <div class="metric-card"><div class="metric-value" style="font-size:15px;line-height:1.3;">Kernel Profiler</div><div class="metric-label">对标 Nsight Compute</div><div class="metric-sub">Roofline / Stall</div></div>
+  </div>
+
+  <div style="font-size:11.5px;color:var(--fg-muted);margin:-6px 0 18px;line-height:1.6;">频次 112 = 该主题 issue <strong>全量聚类数</strong>（PYPTO 77 + devkit 31 + Insight 4，A3/950 通用）；"950 更棘手"为迁移<strong>定性判定</strong>，非 112 的子集计数。下方折叠区列出其中 <strong>12 条代表性原声</strong>，均可点击跳转原 issue。</div>
+
+  <div class="pain-hook">
+    <div class="pain-hook-q">你是否发现：在 950 上写的 matmul / FFN 比 torch-npu、AscendC 实现慢一大截，却拿不出 Roofline 依据说清差在哪；主线 patch 合入后 glm_attention 从 38us 劣化到 47us，竟然没有任何 CI 拦住？</div>
+    <div class="pain-hook-sub">根本原因：950 引入 MXFP4、L0C→UB 直通、CCU 融合等全新执行路径，A3 时代的性能基线对 950 完全失效；同名算子在 A3 / 950 之间耗时差异可达数倍（属架构差异而非 bug），必须为 950 单独建基线 + CI 劣化看护。</div>
+    <details class="user-voice">
+      <summary><span class="uv-badge">12</span>&ensp;条代表性原声 · 全量 112 条（点击 ↗ 跳转 issue）</summary>
+      <div class="user-voice-body">
+        <div class="uv-item"><div class="uv-text">[GreenLight] interleave_rope 950 上性能显著低于 AscendC 实现</div><div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/2009" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">gather_in_ub 指令运行耗时 A3 比 A5 慢一倍左右</div><div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/1785" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">RMSNORM A5 性能有劣化</div><div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/1865" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">matmul_allreduce_add_rmsnorm 性能劣化</div><div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/1855" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">解决核内 View/Assemble 引起的性能劣化问题</div><div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/1748" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">MXFP8 中的 Reshape 造成冗余拷贝，导致性能较差</div><div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/1738" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">dispatch 中 receive/cumsum 存在 loop 串行处理导致性能较差</div><div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/1867" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">ci 看护 combine 8 卡、bs=256 的用例</div><div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/1710" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">950 MC2 aicpu alltoall 场景性能较差</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/723" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">A5 复用 A2 上 membase 代码，SIMD 的原子加操作导致性能劣化严重</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/655" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">Ascend C 的 assert 性能差</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/622" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">在 MindStudio Insight 上支持 GPU nsys 格式性能数据，快速分析 NPU 与 GPU 流水差异</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/238" target="_blank" rel="noopener">↗</a></div></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="before-after">
+    <div class="ba-old">
+      <div class="ba-header">▼ 旧做法（失效）</div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">拿 A3 经验值 / 历史耗时判断算子"快不快"</span></div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">凭感觉认定"已经到瓶颈"，无 Roofline 量化依据</span></div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">合入只看精度，不看 Op-level 耗时，劣化无人发现</span></div>
+    </div>
+    <div class="ba-mid">→</div>
+    <div class="ba-new">
+      <div class="ba-header">▲ 950 正确姿势</div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">为 950 单独建基线，区分 SIMD / SIMT 两条执行路径</span></div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">用 <code>msprof op</code> 的 Roofline + ArithmeticUtilization 判定 compute / memory bound</span></div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">CI 把每个 PR 的 Op-level 耗时对比上车，劣化即拦截</span></div>
+    </div>
+  </div>
+
+  <div class="card-title" style="margin-top:24px;">目标基线参照 · 官方优化案例可达到的提升幅度</div>
+  <div class="opt-steps" style="margin-bottom:20px;">
+    <div class="opt-step">
+      <div class="opt-step-header"><span class="opt-step-name">MXFP4 Quant Matmul</span><span class="opt-step-perf">408μs → 175μs · 2.33×</span></div>
+      <div class="opt-step-detail">Double Buffer 1.99× → SWAT 2.07× → UnitFlag 2.11× → L1 Bank Conflict 2.25× → Scale 2.33×</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+    </div>
+    <div class="opt-step">
+      <div class="opt-step-header"><span class="opt-step-name">RmsNorm（RegBase 重写）</span><span class="opt-step-perf">7693μs → 49μs · 157×</span></div>
+      <div class="opt-step-detail">Gamma 1.13× → RegBase 67.7× → Double Buffer 91.5× → UB 优化 141.7× → rsqrt 融合 157×</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+    </div>
+    <div class="opt-step">
+      <div class="opt-step-header"><span class="opt-step-name">TileLang Flash Attention（相对 AscendC）</span><span class="opt-step-perf">36% → 80%</span></div>
+      <div class="opt-step-detail">Cube gemm+L0 DB 47% → Vector DB+prefetch 55% → axpy+scalar 63% → Pipeline num_stages=8/cross_interval=2 80%</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:80%"></div></div>
+    </div>
+  </div>
+
+  <div class="dtree">
+    <div class="dtree-node">
+      <div class="dtree-q">算子比 AscendC 慢，怎么归因？</div>
+      <div class="dtree-children">
+        <div class="dtree-branch"><span class="dtree-label">Roofline 偏左</span><span class="dtree-action">Memory bound：查 UB 对齐 / Double Buffer / L1 Bank Conflict</span></div>
+        <div class="dtree-branch"><span class="dtree-label">Roofline 偏右</span><span class="dtree-action">Compute bound：查 Tile 形状 / MXFP4 利用率 / CV Mix 比例</span></div>
+        <div class="dtree-branch"><span class="dtree-label">SIMT 路径</span><span class="dtree-action">看 Occupancy / Warp Stall（DumpPerf 未适配时以 PcSampling 为准）</span></div>
+        <div class="dtree-branch"><span class="dtree-label">合入后突降</span><span class="dtree-action">回滚比对：CI Op-level 基线 diff 定位劣化 commit</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 3 ← TOP3 + TOP7：OOM / 内存快照 / 大文件 -->
+<div class="section" id="s3">
+  <div class="section-title"><div class="section-num">3</div>大模型 OOM 与内存快照诊断（对应 TOP3 + TOP7 · 63 次）</div>
+
+  <div class="metrics">
+    <div class="metric-card"><div class="metric-value">63</div><div class="metric-label">主题全量频次</div><div class="metric-sub">快照 40 + 大文件 23</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--warn)">P1</div><div class="metric-label">影响等级</div><div class="metric-sub">修复难度：中 / 高</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--warn)">略微加重</div><div class="metric-label">950 迁移复杂度</div><div class="metric-sub">HBM 更大、快照更大</div></div>
+    <div class="metric-card"><div class="metric-value" style="font-size:14px;line-height:1.3;">memcheck / leakcheck</div><div class="metric-label">对标 Compute Sanitizer</div><div class="metric-sub">+ Memory Tracking</div></div>
+  </div>
+
+  <div style="font-size:11.5px;color:var(--fg-muted);margin:-6px 0 18px;line-height:1.6;">频次 63 = TOP3 内存快照 40 + TOP7 大文件 23 两主题 <strong>全量聚类数</strong>（A3/950 通用）；"950 略微加重"为迁移<strong>定性判定</strong>，非 63 的子集计数。下方折叠区列出其中 <strong>12 条代表性原声</strong>，均可点击跳转原 issue。</div>
+
+  <div class="pain-hook">
+    <div class="pain-hook-q">你是否发现：19MB 的内存快照一解析，工具自己先 OOM 占了 5GB，页面直接白屏；55GB 的 bin 文件想打开，报错却只说"超出限制"不说限制是多少？</div>
+    <div class="pain-hook-sub">根本原因：950 HBM 容量更大，MoE 384 专家全量驻留时快照体积数倍于 A3，OOM 触发更快；Chiplet 间 HBM 分区独立管理，完整快照要覆盖多个 partition，解析与展示复杂度同步上升。工具端 OOM 根因没变，但 950 允许的模型规模更大，更容易触达极限。</div>
+    <details class="user-voice">
+      <summary><span class="uv-badge">12</span>&ensp;条代表性原声 · 全量 63 条（TOP3 快照 40 + TOP7 大文件 23，点击 ↗ 跳转）</summary>
+      <div class="user-voice-body">
+        <div class="uv-item"><div class="uv-text">加载大数据 snapshot.pkl 文件后出现 OOM 问题，请修改</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/233" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">oom memory snapshot 解析报错</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/214" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">内存快照支持潜在泄漏 tensor 识别</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/279" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">内存分配器模块需适配多 stream 场景下不同设备 / 不同版本 PyTorch 的内存快照</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/183" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">内存快照分析开启自动筛选区间未释放后，内存块视图总和与指标小数点末位数据不一致</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/295" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">解析 snapshot 使用 pickle.load() 反序列化，可能导致任意代码执行，建议增加安全防护</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/146" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">【内存快照】【体验优化】大数据量场景下用户体验优化</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/281" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">快速导入或切换调优与 snapshot 数据工程上报 Failed to query events: get database connection failed</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/148" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">针对大数据场景下的性能优化（内存快照）</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/229" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">verl 场景下 Snapshot 数据采集和分析案例</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/280" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">内存快照-内存详情表存在联合搜索、筛选数据不正确及中文翻译不生效问题</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/172" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">AscendC 支持 OOM 检测</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/523" target="_blank" rel="noopener">↗</a></div></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="before-after">
+    <div class="ba-old">
+      <div class="ba-header">▼ 旧做法（失效）</div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">整文件一次性 load 进前端，55G bin 直接撑爆</span></div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">单 device 视角看快照，忽略 Chiplet 多 partition</span></div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">OOM 全靠人工 0.5～3 天逐层翻 snapshot</span></div>
+    </div>
+    <div class="ba-mid">→</div>
+    <div class="ba-new">
+      <div class="ba-header">▲ 950 正确姿势</div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">按时间范围 / 卡级别分片、流式加载，避免一次性吃满</span></div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">快照覆盖多个 HBM partition，按 Chiplet 分区读</span></div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">Virtual Optimizer：Host 内存映射到 Device，分离梯度累积 / 权重更新，从源头降 HBM 压力</span></div>
+    </div>
+  </div>
+
+  <div class="card-title" style="margin-top:24px;">OOM 根因冰山 · 从表象到源头</div>
+  <div class="iceberg" style="margin-bottom:20px;">
+    <div class="iceberg-layer"><div class="iceberg-num" style="background:rgba(4,215,147,0.15);color:var(--success);">1</div><div class="iceberg-content"><div class="iceberg-title">工具自身 OOM（表象）</div><div class="iceberg-detail">19MB 快照 → 5GB 占用，解析器健壮性不足、二次加载未释放</div></div><div class="iceberg-effort">分片 / 流式</div></div>
+    <div class="iceberg-layer"><div class="iceberg-num" style="background:rgba(255,170,59,0.15);color:var(--warn);">2</div><div class="iceberg-content"><div class="iceberg-title">模型本身 HBM 压力</div><div class="iceberg-detail">MoE 384 专家全量驻留，KV Cache 从 Flash 13B 涨到 Pro 49B</div></div><div class="iceberg-effort">HiF8 KV ↓20~50%</div></div>
+    <div class="iceberg-layer"><div class="iceberg-num" style="background:rgba(255,75,123,0.15);color:var(--danger);">3</div><div class="iceberg-content"><div class="iceberg-title">分配策略 / 潜在泄漏（源头）</div><div class="iceberg-detail">Workspace 异常偏大、潜在泄漏 tensor 未自动识别</div></div><div class="iceberg-effort">Agent 20min</div></div>
+  </div>
+
+  <div class="pitfall-list">
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">默认按 A3 的快照体积预估工具内存</div><div class="pitfall-desc">950 MoE 全量驻留快照数倍增长，按旧经验留的内存余量必然不够。</div><div class="pitfall-fix">✓ 采集前先估算 partition × 专家数，预留 N 倍余量或直接分片</div></div></div>
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">迁移期忽略 Virtual Optimizer</div><div class="pitfall-desc">TorchTitan-NPU 的 Virtual Optimizer 能把梯度/权重搬到 Host 虚拟映射，迁移时不开等于白白扛满 HBM。</div><div class="pitfall-fix">✓ 训练入图时启用 Virtual Optimizer + DSA 融合降内存</div></div></div>
+  </div>
+</div>
+
+<!-- Section 4 ← TOP4：分布式 MoE 通信 + CCU -->
+<div class="section" id="s4">
+  <div class="section-title"><div class="section-num">4</div>分布式 MoE 通信调优：Chiplet 直连 + CCU 融合（对应 TOP4 · 38 次）</div>
+
+  <div class="metrics">
+    <div class="metric-card"><div class="metric-value">38</div><div class="metric-label">主题全量频次</div><div class="metric-sub">PYPTO 21 · Insight 15</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)">P0</div><div class="metric-label">影响等级</div><div class="metric-sub">修复难度：高</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)">更棘手</div><div class="metric-label">950 迁移复杂度</div><div class="metric-sub">异构并行 + 直连拓扑</div></div>
+    <div class="metric-card"><div class="metric-value" style="font-size:14px;line-height:1.3;">NCCL / UCX</div><div class="metric-label">对标 Nsight Systems</div><div class="metric-sub">collective 时间线</div></div>
+  </div>
+
+  <div style="font-size:11.5px;color:var(--fg-muted);margin:-6px 0 18px;line-height:1.6;">频次 38 = 该主题 issue <strong>全量聚类数</strong>（PYPTO 21 + Insight 15 + devkit 2，A3/950 通用）；"950 更棘手"为迁移<strong>定性判定</strong>，非 38 的子集计数。下方折叠区列出其中 <strong>12 条代表性原声</strong>，均可点击跳转原 issue。</div>
+
+  <div class="pain-hook">
+    <div class="pain-hook-q">你是否发现：GLM 网络接入通信 Combine 算子后，每轮推理都生成 output 目录，半分钟才推出一个 token；32 卡集群通信缩略图只显示一半 16 卡，双机 16 卡数据导入后通信界面干脆是空的？</div>
+    <div class="pain-hook-sub">根本原因：950 Chiplet 内通信走片内直连（非 HCCL），现有 shmem 实现对 950 内通信路径完全盲区；DeepSeek-V4 在 950 上用 Prefill CP+EP / Decode DP+EP 异构并行，rankId 映射比 A3 复杂得多，Chiplet 级亲和分析更是 950 专属新场景。</div>
+    <details class="user-voice">
+      <summary><span class="uv-badge">12</span>&ensp;条代表性原声 · 全量 38 条（点击 ↗ 跳转 issue）</summary>
+      <div class="user-voice-body">
+        <div class="uv-item"><div class="uv-text">HCCL 通信域名称包含中文时，Insight 中名称显示乱码</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/283" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">【Insight】通信耗时页签通信算子缩略图，32 卡集群只显示了一半 16 卡</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/59" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">最新版本 insight 导入双机 16 卡的 mindspore 数据，通信界面为空</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/212" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">服务器上使用 MindStudio-insight 通信域解析失败，本地解析正常</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/298" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">单 JSON 单 DeviceId 文件导入无法从文件路径知道 rankId deviceId 映射</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/177" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">单独导入 cluster_analysis.db，通信算子缩略图所有通信算子开始时间都是 0</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/158" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">第二次导入已存在数据工程，概览与通信界面显示黑屏</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/63" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">通信算子缩略图交互优化</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/240" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">shmem wait until 中的 prepareTask 操作优化</div><div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/2005" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">950 MC2 aicpu alltoall 场景性能较差</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/723" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">alltoallV ccu 场景性能不符合预期，需修改 xn data 逻辑</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/608" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">950 MC2 aicpu 用例，alltoallv 多轮执行必现报错</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/616" target="_blank" rel="noopener">↗</a></div></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="before-after">
+    <div class="ba-old">
+      <div class="ba-header">▼ A2 / A3 旧做法</div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">集合通信经软件 CCL Buffer，AllReduce 有额外拷贝</span></div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">以 CPU 为中心组网，通信占用计算算力</span></div>
+      <div class="ba-point"><span class="ba-dot">✕</span><span class="ba-point-text">统一并行策略，rankId 映射简单</span></div>
+    </div>
+    <div class="ba-mid">→</div>
+    <div class="ba-new">
+      <div class="ba-header">▲ 950 正确姿势</div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">硬件 CCU 零拷贝，<strong>AllGather + MatMul 融合 +70%</strong>，不占计算算力</span></div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">灵衡互联对等架构 + 全局内存语义，打通以 CPU 为中心模式</span></div>
+      <div class="ba-point"><span class="ba-dot">✓</span><span class="ba-point-text">Prefill CP+EP / Decode DP+EP 异构并行，按场景分别建 rankId 映射</span></div>
+    </div>
+  </div>
+
+  <div class="card-title" style="margin-top:24px;">CCU 融合收益 · 950 通信加速来源</div>
+  <table style="margin-bottom:20px;">
+    <thead><tr><th>场景</th><th>融合方式</th><th>收益</th><th>迁移动作</th></tr></thead>
+    <tbody>
+      <tr><td>稠密 / Prefill</td><td>AllGather + MatMul 融合</td><td><span class="perf-badge">+70%</span></td><td>用 CCU 融合算子替代 AllGather→MatMul 串行</td></tr>
+      <tr><td>MoE 路由</td><td>Dispatch &amp; Combine 融合</td><td><span class="perf-badge">+20%+</span></td><td>EP Dispatch/Combine 走 CCU，减少 shmem 关键路径</td></tr>
+      <tr><td>超节点</td><td>128P / 1024P 灵衡互联</td><td><span class="tag tag-blue">UB 协议</span></td><td>POD 间单层 SW 组网，按 Chiplet 亲和排布</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pitfall-list">
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">把 Chiplet 片内直连按 HCCL 调</div><div class="pitfall-desc">片内直连不走 HCCL，shmem prepareTask / wait_until 若按 HCCL 路径优化等于白忙。</div><div class="pitfall-fix">✓ 区分片内直连 / 跨机 HCCL，分别走 CCU 与 HCCL 调优路径</div></div></div>
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">异构并行下沿用统一 rankId 假设</div><div class="pitfall-desc">Prefill 与 Decode 并行维度不同，rankId/deviceId 不一致会让通信总览缺卡 / 错位。</div><div class="pitfall-fix">✓ 对 Prefill CP+EP、Decode DP+EP 分别校验卡序号一致性</div></div></div>
+  </div>
+</div>
+
+<!-- Section 5 ← TOP5 + TOP10：数据通路 + 流水同步 -->
+<div class="section" id="s5">
+  <div class="section-title"><div class="section-num">5</div>用对 950 新数据通路与流水同步原语（对应 TOP5 + TOP10 · 48 次）</div>
+
+  <div class="metrics">
+    <div class="metric-card"><div class="metric-value">48</div><div class="metric-label">主题全量频次</div><div class="metric-sub">流水 38 + 内存通路 10</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)">P0</div><div class="metric-label">影响等级</div><div class="metric-sub">修复难度：中</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)">更棘手</div><div class="metric-label">950 迁移复杂度</div><div class="metric-sub">5 大不兼容项</div></div>
+    <div class="metric-card"><div class="metric-value" style="font-size:13px;line-height:1.3;">Scheduler Stats</div><div class="metric-label">对标 Nsight Compute</div><div class="metric-sub">warp stall / pipe</div></div>
+  </div>
+
+  <div style="font-size:11.5px;color:var(--fg-muted);margin:-6px 0 18px;line-height:1.6;">频次 48 = TOP5 流水同步 38 + TOP10 内存通路 10 两主题 <strong>全量聚类数</strong>（A3/950 通用）；"950 更棘手"为迁移<strong>定性判定</strong>，非 48 的子集计数。下方折叠区列出其中 <strong>12 条代表性原声</strong>，均可点击跳转原 issue。</div>
+
+  <div class="pain-hook">
+    <div class="pain-hook-q">你是否发现：<code>AscendC::LoadData</code> 的 load3D 指令阻塞 MTE2 流水、卷积 L1 Double Buffer 死活开不起来；<code>PipeBarrier&lt;PIPE_ALL&gt;()</code> 清不掉 Vector 挂起状态，后续算子正确率直接暴跌到 0.07%？</div>
+    <div class="pain-hook-sub">根本原因：950 新增 L0C→UB 直通路径（DualDest），旧代码绕路 GM 会多两次 HBM 搬运，流水 bubble 代价比 A3 更大；SIMT 模式引入 Warp 级同步语义，与 SIMD <code>PipeBarrier</code> 不兼容，混用直接死锁；CCU 跨核同步 <code>CrossCoreSetFlag</code> 是 950 新接口，文档样例极度匮乏。</div>
+    <details class="user-voice">
+      <summary><span class="uv-badge">12</span>&ensp;条代表性原声 · 全量 48 条（TOP5 流水 38 + TOP10 内存通路 10，点击 ↗ 跳转）</summary>
+      <div class="user-voice-body">
+        <div class="uv-item"><div class="uv-text">[310B1 微架构约束] Matmul IterateAll 导致 Cube/Vector 资源死锁与 UB 内存踩踏</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/692" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">添加搬运 l1 to ub 的通路</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/626" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">NPU 架构 200x 的硬件架构图中 L0C 和 UB 之间的箭头线不正确</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/696" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">A5 中搬运模式缺少样例</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/553" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">AscendC 基础 API，DataCopy 等增加返回值，方便问题定位</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/664" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">TensorAPI 添加 L12L0 的 Scale 搬运功能</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/600" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">fixpipe_l0c2gm 中为什么要切 k 轴？</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/601" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">L0C2UB st 用例看护</div><div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/1834" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">tensor-api fixpipe 搬运通路和 vector 侧搬运通路回合主线</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/561" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">SIMT 样例缺少 reduction 类算子示例（shared memory / UB + 线程同步）</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/500" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">global memory 溢出检测维测支持 DatacopyPad 接口负 stride 能力</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/665" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">主线同步 TensorAPI 样例代码</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/752" target="_blank" rel="noopener">↗</a></div></div>
+      </div>
+    </details>
+  </div>
+
+  <!-- ── 架构图对比: 910B vs 950（突出 L0C→UB 直通 + SIMT exec） ── -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;">架构原图对比 · 橙色高亮 950 新增数据通路</span>
+    <label class="arch-toggle" id="archDiffToggle" title="切换差异标记高亮">
+      <input type="checkbox" checked id="archDiffCheckbox">
+      <span class="arch-toggle-track"><span class="arch-toggle-knob"></span></span>
+      <span class="arch-toggle-label">差异标记</span>
+    </label>
+  </div>
+  <div class="arch-compare" id="archCompare">
+    <div class="arch-pane old">
+      <div class="arch-pane-head"><span class="dot"></span>Ascend 910B — 数据绕路 GM</div>
+      <div class="arch-pane-body" style="padding:0;overflow:hidden;border-radius:0 0 12px 12px;">
+        <div class="arch-frame-wrap">
+          <iframe class="arch-frame" id="archFrame910B" src="hardware-frame.html" style="width:100%;min-height:460px;border:0;display:block;" loading="lazy"></iframe>
+        </div>
+      </div>
+    </div>
+    <div class="arch-pane new">
+      <div class="arch-pane-head"><span class="dot"></span>Ascend 950 — L0C→UB 直通 + SIMT</div>
+      <div class="arch-pane-body" style="padding:0;overflow:hidden;border-radius:0 0 12px 12px;">
+        <div class="arch-frame-wrap">
+          <iframe class="arch-frame" id="archFrame950" src="hardware-frame.html" style="width:100%;min-height:520px;border:0;display:block;" loading="lazy"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="arch-legend" style="margin-bottom:20px;">
+    <div class="arch-legend-item"><span class="arch-legend-swatch highlight"></span>橙色高亮：950 新增 L0C→UB / SIMT 执行差异点</div>
+    <div class="arch-legend-item"><span class="arch-legend-swatch transport"></span>MTE 搬运路径（不变）</div>
+    <div class="arch-legend-item" style="font-size:10.5px;color:var(--muted);margin-left:auto;">非活跃节点/路由自动变暗</div>
+  </div>
+
+  <div class="card-title">A2 / A3 → 950：约 95% 兼容，5 大必改不兼容项</div>
+  <table style="margin-bottom:20px;">
+    <thead><tr><th>硬件单元</th><th>变化</th><th>影响接口</th><th>迁移方案</th></tr></thead>
+    <tbody>
+      <tr><td>搬运单元</td><td>删除 L1Buffer→GM 通路</td><td><code>DataCopy / DumpTensor</code></td><td>cube only：经 MIX 用 Vector 搬运；mix：L1→UB→GM 替代</td></tr>
+      <tr><td>搬运单元</td><td>删除 GM→L0A/L0B 通路</td><td><code>InitConstValue / LoadData</code></td><td>用 LoadData Pipeline 先搬到 L1 再到 L0</td></tr>
+      <tr><td>计算单元</td><td>Cube 不支持 int4b_t</td><td><code>LoadData / Mmad</code></td><td>通过 MIX 用 Vector Core 实现</td></tr>
+      <tr><td>计算单元</td><td>L0A 形状 ZZ→ZN</td><td><code>LoadDataWithTranspose</code></td><td>L0A 切分数 ×2 个 Buffer 大小，Stride 不变</td></tr>
+      <tr><td>计算单元</td><td>不支持单个 MMAD 语义</td><td><code>matmul_mx(...)</code></td><td>通过 mix 类型用 MIX Core 执行</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pitfall-list">
+    <div class="pitfall-item"><span class="pitfall-icon">🔥</span><div class="pitfall-content"><div class="pitfall-title">SIMD PipeBarrier 与 SIMT warp 同步混用</div><div class="pitfall-desc">两套同步语义不兼容，混用导致死锁或结果正确率暴跌（0.07%）。</div><div class="pitfall-fix">✓ SIMT 用 <code>asc_syncthreads / asc_threadfence</code>，SIMD 用 PipeBarrier，分清边界不混用</div></div></div>
+    <div class="pitfall-item"><span class="pitfall-icon">🔥</span><div class="pitfall-content"><div class="pitfall-title">迁移代码仍走 GM 中转</div><div class="pitfall-desc">没用上 L0C→UB / UB2L1 直通，额外两次 HBM 搬运，且该路径在内存拷贝总览中完全缺失，排查难。</div><div class="pitfall-fix">✓ 用 DualDest（<code>dualDstCtl</code>）让 L0C 直出 UB，省 GM 往返</div></div></div>
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">DualDest 对齐约束违规无告警</div><div class="pitfall-desc">DualDest 要求 M 为 2 倍数 / N 为 32 倍数，违规不在 profiler 告警，静默出错。</div><div class="pitfall-fix">✓ 配置 DualDest 前先校验 M/N 对齐；CrossCoreSetFlag 参照官方样例补同步</div></div></div>
+  </div>
+</div>
+
+<!-- Section 6 ← TOP6 + TOP8：采集可靠性 + 跨平台 -->
+<div class="section" id="s6">
+  <div class="section-title"><div class="section-num">6</div>性能数据采集与工具链可靠性（对应 TOP6 + TOP8 · 48 次）</div>
+
+  <div class="metrics">
+    <div class="metric-card"><div class="metric-value">48</div><div class="metric-label">主题全量频次</div><div class="metric-sub">采集 31 + 跨平台 17</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)">P0</div><div class="metric-label">影响等级</div><div class="metric-sub">修复难度：中 / 低</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)">更棘手</div><div class="metric-label">950 迁移复杂度</div><div class="metric-sub">采集维度更多</div></div>
+    <div class="metric-card"><div class="metric-value" style="font-size:13px;line-height:1.3;">Robust Driver</div><div class="metric-label">对标 nsys / ncu</div><div class="metric-sub">错误码 + Replay</div></div>
+  </div>
+
+  <div style="font-size:11.5px;color:var(--fg-muted);margin:-6px 0 18px;line-height:1.6;">频次 48 = TOP6 采集可靠性 31 + TOP8 跨平台 17 两主题 <strong>全量聚类数</strong>（A3/950 通用）；其中 TOP8 跨平台被判 <strong>"基本不变"</strong>、TOP6 采集被判 <strong>"更棘手"</strong>，均为迁移定性判定而非频次子集。下方折叠区列出其中 <strong>12 条代表性原声</strong>，均可点击跳转原 issue。</div>
+
+  <div class="pain-hook">
+    <div class="pain-hook-q">你是否发现：用 API 方式采集 ftrace 却不生成 trace.dat，后续脚本直接报错；A5 vllm-ascend 采集解析成功，Insight 加载后却卡住点不动；PMU metrics 干脆静默不采？</div>
+    <div class="pain-hook-sub">根本原因：950 新增 CCU trace、PC Sampling、SIMT GPR 等采集维度，采集管道更长、静默失效点更多；<code>msSanitizer</code> 必须编译时加 <code>--sanitizer -g</code> 才能生效，迁移期极易遗漏；MXFP4 利用率、CCU 融合率等新 PMU 指标尚无成熟采集支持。</div>
+    <details class="user-voice">
+      <summary><span class="uv-badge">12</span>&ensp;条代表性原声 · 全量 48 条（TOP6 采集 31 + TOP8 跨平台 17，点击 ↗ 跳转）</summary>
+      <div class="user-voice-body">
+        <div class="uv-item"><div class="uv-text">A5 vllm-ascend 采集 profiling，成功解析，insight 加载卡住</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/223" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">Windows 加载 prof 时报错：Websocket connection has been closed</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/234" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">导入 profiling 数据报错</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/289" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">导入 ftrace_data.db 文件后点击连线按钮上报 Failed to query flow category</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/293" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">Triton 片上内存文件在 linux 环境上不可用</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/262" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">Linux 环境如何使用工具，服务器端口不能对外暴露，jupyterlab 和 vnc 都不太能行</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/260" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">按 DB 格式导入 ftrace 数据</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/272" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">EventID 使用卡死</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/750" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">Wsl_l300 芯片不支持该接口，编译阶段无问题，运行阶段一定会卡死</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/718" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">修复 simt profiling 样例拼写错误</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/668" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">全量编译过程中卡死</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/59" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">MatmulConfig 中 enableGetTensorC 设为 false 但计算调用 GetTensorC，执行用例卡死</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/87" target="_blank" rel="noopener">↗</a></div></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="card-title">迁移期采集 · 防静默失效检查清单</div>
+  <div class="workflow" style="margin-bottom:20px;">
+    <div class="workflow-step">
+      <div class="workflow-num">1</div>
+      <div class="workflow-tool">编译选项</div>
+      <div class="workflow-title">先确认 sanitizer 开关</div>
+      <div class="workflow-desc">msSanitizer 需编译时加 <code>--sanitizer -g</code>；memcheck / racecheck / initcheck / synccheck 才会生效，否则静默失效。</div>
+    </div>
+    <div class="workflow-step">
+      <div class="workflow-num">2</div>
+      <div class="workflow-tool">采集前</div>
+      <div class="workflow-title">sanity check</div>
+      <div class="workflow-desc">检查依赖 / 权限 / 进程号唯一，避免两次采集同 PID 混入；ftrace 与 msopprof 配自动重试兜底。</div>
+    </div>
+    <div class="workflow-step">
+      <div class="workflow-num">3</div>
+      <div class="workflow-tool">采集中</div>
+      <div class="workflow-title">覆盖 950 新维度</div>
+      <div class="workflow-desc">显式开启 CCU trace / PC Sampling / SIMT GPR；MXFP4 利用率等新 PMU 暂以 PcSampling 旁证。</div>
+    </div>
+    <div class="workflow-step">
+      <div class="workflow-num">4</div>
+      <div class="workflow-tool">导入</div>
+      <div class="workflow-title">分平台核对</div>
+      <div class="workflow-desc">Win / Linux / Mac 打包依赖（MinGW / poppler）先装齐；大文件优先走 jupyterlab 服务化模式。</div>
+    </div>
+  </div>
+
+  <div class="card-title">关键命令参考</div>
+  <pre><span class="cm"># 编译时开启 sanitizer（漏掉则工具静默失效）</span>
+cmake .. <span class="flag">-DCOMPILE_LANGUAGE.ASC</span>=npu-arch-dav-3510 <span class="flag">--sanitizer</span> <span class="flag">-g</span>
+<span class="cm"># 运行内存 / 竞争 / 初始化 / 同步检查</span>
+mssanitizer <span class="flag">--tool</span>=<span class="str">memcheck</span> ./op_test   <span class="cm"># racecheck / initcheck / synccheck</span>
+<span class="cm"># Op 级 Roofline / 利用率采集</span>
+msprof op <span class="flag">--application</span>=<span class="str">"python run.py"</span> <span class="flag">--output</span>=./prof
+<span class="cm"># 指标族: Timeline / Occupancy / Memory / Roofline / Source / PcSampling</span></pre>
+
+  <div class="pitfall-list" style="margin-top:16px;">
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">迁移期沿用 A3 编译脚本</div><div class="pitfall-desc">忘记切架构号 <code>dav-3510</code> 或漏 <code>--sanitizer -g</code>，工具不报错但什么都采不到。</div><div class="pitfall-fix">✓ 把 sanitizer / arch 开关纳入 CI 模板，缺失即失败</div></div></div>
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">跨平台依赖漏带当成工具 bug</div><div class="pitfall-desc">缺 MinGW / poppler 时 Insight 直接打印内部错误，易误判为软件缺陷。</div><div class="pitfall-fix">✓ 优先用官方 Docker 镜像 + jupyterlab 在线模式统一环境</div></div></div>
+  </div>
+</div>
+
+<!-- Section 7 ← TOP9 + 精度选型：SIMD/SIMT 双模式 + MXFP4 -->
+<div class="section" id="s7">
+  <div class="section-title"><div class="section-num">7</div>SIMD/SIMT 双模式与低比特算子的识别与选型（对应 TOP9 + 精度 · 17 次）</div>
+
+  <div class="metrics">
+    <div class="metric-card"><div class="metric-value">17+</div><div class="metric-label">主题全量频次</div><div class="metric-sub">叠加精度类咨询</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--muted)">P2</div><div class="metric-label">影响等级</div><div class="metric-sub">修复难度：低</div></div>
+    <div class="metric-card"><div class="metric-value" style="color:var(--danger)">更棘手</div><div class="metric-label">950 迁移复杂度</div><div class="metric-sub">同名算子双实现</div></div>
+    <div class="metric-card"><div class="metric-value" style="font-size:14px;line-height:1.3;">Kernel List</div><div class="metric-label">对标 Nsight Compute</div><div class="metric-sub">+ nsys stats</div></div>
+  </div>
+
+  <div style="font-size:11.5px;color:var(--fg-muted);margin:-6px 0 18px;line-height:1.6;">频次 17+ = TOP9 算子搜索/索引 17 条 <strong>全量聚类数</strong>，叠加精度选型与 SIMD/SIMT 双模式类咨询（散落在各仓，未单独聚为一主题）；"950 更棘手"为迁移<strong>定性判定</strong>。下方折叠区列出其中 <strong>12 条代表性原声</strong>，均可点击跳转原 issue。</div>
+
+  <div class="pain-hook">
+    <div class="pain-hook-q">你是否发现：CSV 里明明能找到 <code>aclnnInplaceMuls</code>，在 MindStudio 界面却搜不到；算子源码页面每次打开排序都不一样，到底该信哪条数据？</div>
+    <div class="pain-hook-sub">根本原因：950 同名算子同时存在 SIMD / SIMT 两种实现，CSV 各有一条，Insight 不区分就会搜索混乱；MXFP4 是全新算子类型，现有分类体系未覆盖；CCU 融合算子跨多核执行，按单核搜索结果天然不完整。读数据前必须先建立"一个算子名可能对应多条实现"的认知。</div>
+    <details class="user-voice">
+      <summary><span class="uv-badge">12</span>&ensp;条代表性原声 · TOP9 搜索 17 + 精度/双模式类咨询（点击 ↗ 跳转）</summary>
+      <div class="user-voice-body">
+        <div class="uv-item"><div class="uv-text">部分算子在 csv 中可以找到，在 mindstudio 中无法找到</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/180" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">算子源码页面排序不稳定</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/208" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">算子搜索接口可中断</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/250" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">导出全部表格——专家系统视图下亲和 API 栏目结果页数较多，希望支持导出全部</div><div class="uv-meta"><span class="uv-si">Insight</span><a class="uv-link" href="https://gitcode.com/Ascend/msinsight/issues/245" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">SIMT+SIMD 混合编程：SIMD VF 中 LoadAlign 读取 UB 数据异常（全零/垃圾值）</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/760" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">C API 缺少 hifloat8 转换为 float 类型的文档</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/761" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">fp4/fp8 类型名称不一致，建议统一</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/675" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">SIMT 编程章节注意增加说明约束、限制、适用场景</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/658" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">RegAPI Cast s16 转 s4 数据类型转换接口优化</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/662" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">Simt 样例 hello-world 执行失败</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/751" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">ScalarCast 缺少在 3003 平台的实现；l300 平台 vadds 不支持 int64</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/699" target="_blank" rel="noopener">↗</a></div></div>
+        <div class="uv-item"><div class="uv-text">.asc 文件（AscendC SIMT kernel 源码）在 VSCode 无语法高亮</div><div class="uv-meta"><span class="uv-sd">devkit</span><a class="uv-link" href="https://gitcode.com/cann/asc-devkit/issues/657" target="_blank" rel="noopener">↗</a></div></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="card-title">950 精度格式对比 · 选型依据</div>
+  <table style="margin-bottom:20px;">
+    <thead><tr><th>格式</th><th>最大值 / 缩放</th><th>典型用途</th><th>实测收益</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag tag-green">HiF8</span></td><td>max ~32768.0（CTS / DTS）</td><td>训推量化、KV Cache</td><td>vs BF16 1.113×，KV ↓20~50%，64K 序列 1.7~2.6×</td></tr>
+      <tr><td><span class="tag tag-blue">FP8 E4M3</span></td><td>max 448.0</td><td>Linear / MoE Per-Token</td><td>vs HiF8 精度略低，动态范围小</td></tr>
+      <tr><td><span class="tag tag-orange">MXFP8</span></td><td>共享 e8m0，32:1</td><td>A8W8 Linear / MoE</td><td>HiF8 vs MXFP8 1.295×</td></tr>
+      <tr><td><span class="tag tag-purple">MXFP4</span></td><td>共享 e8m0，32:1</td><td>Linear 极致压缩</td><td>Quant Matmul 408→175μs 2.33×</td></tr>
+    </tbody>
+  </table>
+
+  <div class="dtree" style="margin-bottom:20px;">
+    <div class="dtree-node">
+      <div class="dtree-q">在 950 上给一层选什么精度 / 实现？</div>
+      <div class="dtree-children">
+        <div class="dtree-branch"><span class="dtree-label">动态范围大</span><span class="dtree-action">选 HiF8（max 32768），W Per-Channel + A Per-Tensor</span></div>
+        <div class="dtree-branch"><span class="dtree-label">Linear 要极致压缩</span><span class="dtree-action">MXFP4 + scaled_mm，注意 e8m0 scale 32:1</span></div>
+        <div class="dtree-branch"><span class="dtree-label">Scalar / 索引密集</span><span class="dtree-action">走 SIMT 实现，512~1024 线程，b32 优先</span></div>
+        <div class="dtree-branch"><span class="dtree-label">大矩阵密集</span><span class="dtree-action">走 SIMD / Cube，CV Mix 1:2 配比</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-title">编程框架选型矩阵</div>
+  <table style="margin-bottom:20px;">
+    <thead><tr><th>框架</th><th>抽象级别</th><th>性能上限</th><th>典型场景</th></tr></thead>
+    <tbody>
+      <tr><td>AsNumpy / PyAsc</td><td>NumPy 风格</td><td><span class="tag tag-red">低</span></td><td>快速验证、框架集成</td></tr>
+      <tr><td>PyPTO</td><td>Tensor / Tile</td><td><span class="tag tag-orange">中-高</span></td><td>融合算子原型、动态 Shape</td></tr>
+      <tr><td>TileLang</td><td>Tile（TVM 风格）</td><td><span class="tag tag-green">高</span></td><td>Flash Attention 等典型算子</td></tr>
+      <tr><td>Ascend C</td><td>Kernel（C++）</td><td><span class="tag tag-green">极高</span></td><td>极致性能、商业产品</td></tr>
+      <tr><td>PTO ISA</td><td>指令</td><td><span class="tag tag-green">极致</span></td><td>底层调优、ISA 研究</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pitfall-list">
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">按算子名唯一来比对 CSV 与界面</div><div class="pitfall-desc">同名算子有 SIMD / SIMT 两条实现，不带模式标签比对必然"概览/CSV 不一致"。</div><div class="pitfall-fix">✓ 比对时带上执行模式（SIMD/SIMT）与数据类型（含 MXFP4）维度</div></div></div>
+    <div class="pitfall-item"><span class="pitfall-icon">⚠️</span><div class="pitfall-content"><div class="pitfall-title">用单核视角搜 CCU 融合算子</div><div class="pitfall-desc">CCU 融合算子跨多个 AI Core 执行，按单核搜索结果不完整、排序不稳定。</div><div class="pitfall-fix">✓ 以融合算子整体为单位聚合检索，导出全部再核对</div></div></div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div style="text-align:center;padding:32px 0;color:var(--fg-muted);font-size:12px;border-top:1px solid var(--border-subtle);margin-top:16px;">
+  基于昇腾 950 官方文档综合整理（2026-05 CANN 技术峰会资料，共 24 份 PDF）<br>
+  已读：探索性能天花板 · 面向下一代硬件的性能调优 · 昇腾950利用率提升的奥秘 · 昇腾950特性全景剖析 · DeepSeek-V4集群优化 · TileLang典型算子性能优化 · TorchTitan-NPU · PTO ISA · 场景驱动算子编程语言选型 · Ascend C编译调试调优 · CANN技术架构变与不变 · PyPTO Hello World/Tensor编程范式/模型融合算子/IDE调优工具 · Ascend C算子编程概述 · SIMT编程介绍 · Reg矢量编程（部分）<br>
+  待读：Reg矢量编程（续）· SIMD与SIMT混合编程 · Cube编程 · HiF8量化实践 · OSP-Next文生视频
+</div>
+
+</div>
+
+<!-- 右侧锚点导航 -->
+<nav class="sidenav" id="sidenav">
+  <a class="sidenav-item" href="#s1">
+    <span class="sidenav-num">1</span>
+    <span class="sidenav-dot"></span>
+    <span class="sidenav-label">泳道图与时间线</span>
+  </a>
+  <a class="sidenav-item" href="#s2">
+    <span class="sidenav-num">2</span>
+    <span class="sidenav-dot"></span>
+    <span class="sidenav-label">基线与 Roofline</span>
+  </a>
+  <a class="sidenav-item" href="#s3">
+    <span class="sidenav-num">3</span>
+    <span class="sidenav-dot"></span>
+    <span class="sidenav-label">OOM 与内存快照</span>
+  </a>
+  <a class="sidenav-item" href="#s4">
+    <span class="sidenav-num">4</span>
+    <span class="sidenav-dot"></span>
+    <span class="sidenav-label">MoE 通信与 CCU</span>
+  </a>
+  <a class="sidenav-item" href="#s5">
+    <span class="sidenav-num">5</span>
+    <span class="sidenav-dot"></span>
+    <span class="sidenav-label">数据通路与流水</span>
+  </a>
+  <a class="sidenav-item" href="#s6">
+    <span class="sidenav-num">6</span>
+    <span class="sidenav-dot"></span>
+    <span class="sidenav-label">采集与工具链</span>
+  </a>
+  <a class="sidenav-item" href="#s7">
+    <span class="sidenav-num">7</span>
+    <span class="sidenav-dot"></span>
+    <span class="sidenav-label">双模式与精度选型</span>
+  </a>
+</nav>
+
+<script>
+  // ── 右侧导航：高亮当前章节 ──
+  const sectionIds = ['s1','s2','s3','s4','s5','s6','s7'];
+  const navItems   = document.querySelectorAll('.sidenav-item');
+
+  const sectionObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const id = entry.target.id;
+      const idx = sectionIds.indexOf(id);
+      if (idx === -1) return;
+      if (entry.isIntersecting) {
+        navItems.forEach(n => n.classList.remove('active'));
+        navItems[idx].classList.add('active');
+      }
+    });
+  }, {
+    rootMargin: '-10% 0px -80% 0px',   // 激活区：视口上方 10%~20% 之间
+    threshold: 0
+  });
+
+  sectionIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) sectionObserver.observe(el);
+  });
+
+  // 初始状态：高亮第一节
+  if (navItems.length) navItems[0].classList.add('active');
+
+  // ── 章节标题吸顶检测：加 is-stuck 阴影 ──
+  const titleObservers = [];
+  document.querySelectorAll('.section-title').forEach(title => {
+    // 在 section-title 上方插入一个 1px 哨兵元素，当哨兵离开视口时说明 title 吸顶了
+    const sentinel = document.createElement('div');
+    sentinel.style.cssText = 'position:relative;height:1px;margin-bottom:-1px;pointer-events:none;';
+    title.parentElement.insertBefore(sentinel, title);
+
+    const obs = new IntersectionObserver(([entry]) => {
+      title.classList.toggle('is-stuck', !entry.isIntersecting);
+    }, { rootMargin: '0px 0px 0px 0px', threshold: 1 });
+    obs.observe(sentinel);
+    titleObservers.push(obs);
+  });
+
+  // ══════════════════════════════════════════
+  // 架构图 iframe 自适应缩放 + 差异标记系统
+  // ══════════════════════════════════════════
+  (function() {
+    var frame910B = document.getElementById('archFrame910B');
+    var frame950  = document.getElementById('archFrame950');
+    var wrap910B  = frame910B && frame910B.parentElement;
+    var wrap950   = frame950  && frame950.parentElement;
+    var diffCheckbox = document.getElementById('archDiffCheckbox');
+    var diffEnabled = true;
+
+    // 缓存每个 iframe 的内容原始尺寸
+    var contentSize = {};
+
+    // 950 差异聚焦定义
+    var FOCUS_950 = {
+      selectors: [
+        '[data-aiv-node="exec:SIMT"]',
+        '#mem950-aic [data-aic-node="buffer:L0C"]',
+        '#mem950-aiv1 [data-aiv-node="buffer:UB"]',
+        '#mem950-aiv2 [data-aiv-node="buffer:UB"]'
+      ],
+      routes: ['aic-to-aiv1', 'aiv2-to-aic']
+    };
+
+    function postToFrame(frame, msg) {
+      if (frame && frame.contentWindow) {
+        frame.contentWindow.postMessage(msg, '*');
+      }
+    }
+
+    function sendFocus() {
+      postToFrame(frame950, {
+        type: 'hardware-focus',
+        selectors: diffEnabled ? FOCUS_950.selectors : [],
+        routes: diffEnabled ? FOCUS_950.routes : []
+      });
+    }
+
+    // ── 自适应缩放 ──
+    function scaleFrame(frame, wrap) {
+      if (!frame || !wrap) return;
+      var key = frame.id;
+      var size = contentSize[key];
+      if (!size || !size.width || !size.height) return;
+
+      var wrapWidth = wrap.clientWidth;
+      if (wrapWidth <= 0) return;
+
+      // 计算缩放比：填满容器宽度，保留少量内边距
+      var pad = 16; // 左右各 8px
+      var scale = Math.min((wrapWidth - pad) / size.width, 1.0);
+
+      frame.style.width  = size.width + 'px';
+      frame.style.height = size.height + 'px';
+      frame.style.transform = 'scale(' + scale + ')';
+      wrap.style.height = Math.ceil(size.height * scale) + 'px';
+      wrap.classList.add('is-ready');
+    }
+
+    function rescaleAll() {
+      scaleFrame(frame910B, wrap910B);
+      scaleFrame(frame950, wrap950);
+    }
+
+    // 监听 iframe ready/size 消息
+    window.addEventListener('message', function(e) {
+      if (!e.data) return;
+      var src950  = frame950  && frame950.contentWindow;
+      var src910B = frame910B && frame910B.contentWindow;
+
+      if (e.data.type === 'hardware-ready' || e.data.type === 'hardware-size') {
+        var frame, wrap;
+        if (e.source === src950)  { frame = frame950;  wrap = wrap950; }
+        if (e.source === src910B) { frame = frame910B; wrap = wrap910B; }
+        if (frame && e.data.width && e.data.height) {
+          contentSize[frame.id] = { width: e.data.width, height: e.data.height };
+          scaleFrame(frame, wrap);
+
+          // 首次 ready → 重新发送 preset + focus
+          if (e.data.type === 'hardware-ready') {
+            if (e.source === src950) {
+              postToFrame(frame950, { type: 'hardware-arch-change', preset: 'ascend950b' });
+              setTimeout(function() { sendFocus(); }, 300);
+            } else if (e.source === src910B) {
+              postToFrame(frame910B, { type: 'hardware-arch-change', preset: 'ascend910b' });
+            }
+          }
+        }
+        return;
+      }
+
+      if (e.data.type === 'hardware-ready') {
+        // (handled above)
+      }
+    });
+
+    // 窗口 resize 时重新缩放
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(rescaleAll, 200);
+    });
+
+    // 切换开关
+    if (diffCheckbox) {
+      diffCheckbox.addEventListener('change', function() {
+        diffEnabled = this.checked;
+        sendFocus();
+      });
+    }
+
+    // 初始化
+    function initFrame(frame, wrap, preset) {
+      if (!frame) return;
+      frame.addEventListener('load', function() {
+        postToFrame(frame, { type: 'hardware-arch-change', preset: preset });
+        // 加载后尝试缩放（可能已有缓存尺寸或等待 hardware-ready）
+        scaleFrame(frame, wrap);
+      });
+    }
+
+    initFrame(frame910B, wrap910B, 'ascend910b');
+    initFrame(frame950,  wrap950,  'ascend950b');
+
+    // 兜底：延迟重试
+    setTimeout(function() {
+      postToFrame(frame910B, { type: 'hardware-arch-change', preset: 'ascend910b' });
+      postToFrame(frame950,  { type: 'hardware-arch-change', preset: 'ascend950b' });
+      rescaleAll();
+      setTimeout(function() { sendFocus(); }, 600);
+    }, 1200);
+  })();
+</script>
+</body>
+</html>

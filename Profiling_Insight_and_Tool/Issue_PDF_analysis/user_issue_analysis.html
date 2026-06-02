@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>性能调优类issue分析总结</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --topnav-h:      48px;
+    --bg:            #101010;
+    --bg-elevated:   #141414;
+    --surface-1:     #161616;
+    --surface-2:     #1C1C1C;
+    --surface-3:     #262626;
+    --surface-4:     #313131;
+    --border-subtle: #202020;
+    --border:        #292929;
+    --border-strong: #3A3A3A;
+    --primary:       #4369EF;
+    --primary-lt:    #8BA4F8;
+    --accent:        #7C8DB8;
+    --success:       #04D793;
+    --warning:       #FFAA3B;
+    --danger:        #FF4B7B;
+    --fg:            #E6E6E6;
+    --fg-sec:        #999999;
+    --fg-muted:      #666666;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: var(--topnav-h); }
+  body {
+    margin: 0;
+    font-family: 'Inter', 'Source Han Sans SC', 'PingFang SC', 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.5;
+    padding-top: var(--topnav-h);
+  }
+  .page {
+    max-width: 1600px;
+    width: calc(100% - 64px);
+    margin: 0 auto;
+    padding: 48px 40px 80px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--fg);
+    letter-spacing: 0;
+  }
+  .subtitle {
+    color: var(--fg-muted);
+    font-size: 12px;
+    margin-bottom: 32px;
+  }
+  h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    padding-left: 12px;
+    border-left: 3px solid var(--primary);
+    color: var(--fg);
+  }
+  .section-intro {
+    color: var(--fg-sec);
+    font-size: 13px;
+    margin-bottom: 20px;
+    max-width: 1100px;
+  }
+
+  table.issues {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--bg);
+  }
+  table.issues thead th {
+    position: sticky;
+    top: var(--topnav-h);
+    z-index: 10;
+    background: var(--surface-1);
+    color: var(--fg-sec);
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-right: 1px solid var(--border-subtle);
+    /* border-collapse:collapse 下 sticky 会丢 border-bottom，用 box-shadow 补 */
+    box-shadow: 0 1px 0 var(--border);
+    white-space: nowrap;
+  }
+  table.issues thead th:last-child { border-right: none; }
+  table.issues thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+  table.issues thead th.sortable:hover { background: var(--surface-2); color: var(--fg); }
+  .sort-arrow {
+    display: inline-block;
+    margin-left: 5px;
+    opacity: 0.35;
+    font-size: 10px;
+    transition: opacity 0.15s;
+  }
+  th.sort-asc .sort-arrow,
+  th.sort-desc .sort-arrow { opacity: 1; color: var(--primary-lt); }
+  th.sort-asc .sort-arrow::after  { content: " ↑"; }
+  th.sort-desc .sort-arrow::after { content: " ↓"; }
+  th:not(.sort-asc):not(.sort-desc) .sort-arrow::after { content: " ↕"; }
+
+  table.issues tbody td {
+    padding: 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    border-right: 1px solid var(--border-subtle);
+    vertical-align: top;
+  }
+  table.issues tbody td:last-child { border-right: none; }
+  table.issues tbody tr:nth-child(even) td { background: #0D0D0D; }
+  table.issues tbody tr:hover td { background: var(--bg-elevated); }
+
+  .col-rank     { width: 40px;  text-align: center; font-weight: 700; color: var(--primary); font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+  .col-topic    { width: 200px; }
+  .col-quotes   { width: 240px; }
+  .col-count    { width: 72px;  text-align: center; }
+  .col-impact   { width: 82px;  text-align: center; }
+  .col-solution { width: 260px; }
+  .col-diff     { width: 76px;  text-align: center; }
+  .col-nsight   { width: 260px; }
+  .col-950      { width: 220px; }
+  .v950-verdict { margin-bottom: 6px; }
+  .pdf-src {
+    display: inline; margin-left: 4px;
+    font-size: 10px; color: var(--fg-muted);
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 3px; padding: 1px 3px;
+    text-decoration: none; vertical-align: middle;
+  }
+  .pdf-src:hover { color: var(--primary-lt); border-color: var(--primary); }
+
+  .topic-name { font-weight: 500; color: var(--fg); margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+
+  /* 来源柱状图 */
+  .src-bars { display: flex; flex-direction: column; gap: 4px; }
+  .src-bar-row { display: flex; align-items: center; gap: 5px; }
+  .src-bar-label { font-size: 10px; color: var(--fg-muted); width: 36px; flex-shrink: 0; white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
+  .src-bar-track { flex: 1; height: 4px; background: var(--surface-3); border-radius: 3px; overflow: hidden; min-width: 0; }
+  .src-bar-fill { height: 100%; border-radius: 3px; min-width: 0; }
+  .src-bar-fill.pypto   { background: var(--primary); }
+  .src-bar-fill.devkit  { background: var(--success); }
+  .src-bar-fill.insight { background: var(--accent); }
+  .src-bar-num { font-size: 10px; color: var(--fg-muted); font-weight: 500; width: 22px; text-align: right; flex-shrink: 0; font-family: 'JetBrains Mono', monospace; }
+
+  .quotes { display: flex; flex-direction: column; gap: 5px; }
+  .quote {
+    font-size: 12px;
+    color: var(--fg-sec);
+    font-style: italic;
+    padding: 3px 8px;
+    border-left: 2px solid var(--border-strong);
+    line-height: 1.5;
+    word-break: break-all;
+  }
+  .quote::before { content: "\201C"; color: var(--fg-muted); margin-right: 1px; }
+  .quote::after  { content: "\201D"; color: var(--fg-muted); margin-left: 1px; }
+
+  .count-num {
+    display: inline-block;
+    background: rgba(67,105,239,0.12);
+    color: var(--primary-lt);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+    border: 1px solid rgba(67,105,239,0.25);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+  .b-p0   { background: rgba(255,75,123,0.12);  color: var(--danger);  border: 1px solid rgba(255,75,123,0.28); }
+  .b-p1   { background: rgba(255,170,59,0.12);  color: var(--warning); border: 1px solid rgba(255,170,59,0.28); }
+  .b-p2   { background: var(--surface-3); color: var(--fg-sec); border: 1px solid var(--border); }
+  .b-high { background: rgba(255,75,123,0.12);  color: var(--danger);  border: 1px solid rgba(255,75,123,0.28); }
+  .b-mid  { background: rgba(255,170,59,0.12);  color: var(--warning); border: 1px solid rgba(255,170,59,0.28); }
+  .b-low  { background: rgba(4,215,147,0.12);   color: var(--success); border: 1px solid rgba(4,215,147,0.28); }
+
+  .solution-list { margin: 0; padding-left: 16px; color: var(--fg-sec); }
+  .solution-list li { margin-bottom: 4px; font-size: 12px; }
+  .sol-tag {
+    display: inline-block;
+    position: relative;
+    cursor: default;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-right: 5px;
+    vertical-align: middle;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    line-height: 1.8;
+  }
+  .sol-tag[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--border-strong);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 201;
+  }
+  .sol-tag[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface-4);
+    color: var(--fg);
+    font-size: 11px;
+    font-weight: 400;
+    font-style: normal;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 200;
+    letter-spacing: 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+  }
+  .sol-tag[data-tooltip]:hover::before,
+  .sol-tag[data-tooltip]:hover::after { opacity: 1; }
+  .sol-tag.t-feat { background: rgba(67,105,239,0.12);  color: var(--primary-lt); border: 1px solid rgba(67,105,239,0.28); }
+  .sol-tag.t-bug  { background: rgba(255,75,123,0.12);  color: var(--danger);     border: 1px solid rgba(255,75,123,0.28); }
+  .sol-tag.t-ux   { background: rgba(255,170,59,0.12);  color: var(--warning);    border: 1px solid rgba(255,170,59,0.28); }
+  .sol-tag.t-perf { background: rgba(4,215,147,0.12);   color: var(--success);    border: 1px solid rgba(4,215,147,0.28); }
+  .sol-tag.t-doc  { background: rgba(124,141,184,0.12); color: var(--accent);     border: 1px solid rgba(124,141,184,0.3); }
+  .sol-tag.t-rel  { background: rgba(0,200,180,0.10);   color: #4ECDC4;           border: 1px solid rgba(0,200,180,0.25); }
+  .sol-tag.t-arch { background: rgba(130,100,220,0.12); color: #B09EF0;           border: 1px solid rgba(130,100,220,0.28); }
+  .sol-tag.t-eng  { background: var(--surface-3);       color: var(--fg-muted);   border: 1px solid var(--border); }
+  .sol-tag.t-sec  { background: rgba(200,50,50,0.12);   color: #FF6B6B;           border: 1px solid rgba(200,50,50,0.28); }
+
+  .nsight-feature {
+    font-weight: 500;
+    color: var(--success);
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  .nsight-feature a {
+    color: var(--success);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(4,215,147,0.3);
+  }
+  .nsight-feature a:hover { color: #3EEAB5; border-bottom-color: #3EEAB5; }
+  .nsight-desc { color: var(--fg-muted); font-size: 12px; margin-top: 4px; }
+  .nsight-links { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .nsight-link {
+    font-size: 11px;
+    color: var(--accent);
+    text-decoration: none;
+    background: var(--surface-2);
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .nsight-link:hover { background: var(--surface-3); color: var(--fg); }
+
+  .quadrant-section { margin-top: 56px; }
+  .quadrant-svg { width: 100%; height: auto; display: block; }
+  .quadrant-legend {
+    display: flex;
+    gap: 28px;
+    justify-content: center;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .ql-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--fg-sec);
+  }
+
+  .sources-section { margin-top: 48px; }
+  .sources {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .source-card {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    background: var(--surface-1);
+    padding: 16px 20px;
+    border-radius: 8px;
+  }
+  .source-repo {
+    font-weight: 500;
+    color: var(--fg);
+    font-size: 13px;
+    margin-bottom: 8px;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  }
+  .source-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    color: var(--fg-sec);
+    font-size: 12px;
+  }
+  .source-num {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--primary);
+    font-variant-numeric: tabular-nums;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .source-pct { color: var(--fg-muted); font-size: 11px; }
+  .source-meta { margin-top: 6px; color: var(--fg-muted); font-size: 12px; }
+
+  .footer-note {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 11px;
+    color: var(--fg-muted);
+    line-height: 1.6;
+  }
+
+  /* ── 顶部一级导航 ── */
+  .topnav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--topnav-h);
+    z-index: 500;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 28px;
+  }
+  .topnav-brand {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fg);
+    white-space: nowrap;
+    letter-spacing: 0.2px;
+    flex-shrink: 0;
+  }
+  .topnav-tabs {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+  }
+  .topnav-tab {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fg-muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-bottom-color 0.15s;
+    white-space: nowrap;
+  }
+  .topnav-tab:hover { color: var(--fg-sec); }
+  .topnav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+</style>
+</head>
+<body>
+<nav class="topnav">
+  <span class="topnav-brand">950性能调优指南</span>
+  <div class="topnav-tabs">
+    <a class="topnav-tab active" href="user_issue_analysis.html">TOP用户痛点</a>
+    <a class="topnav-tab" href="user_pain_guide.html">基于TOP用户痛点的950性能调优指导</a>
+    <a class="topnav-tab" href="perf_engineer_guide.html">基于PDF材料的950性能调优指导</a>
+    <a class="topnav-tab" href="top_issue_detail.html">附录：TOP痛点与Issue映射关系</a>
+  </div>
+</nav>
+<div class="page">
+
+  <h1>性能调优类 issue 分析总结-v20260530</h1>
+  <div class="subtitle">基于 cann/pypto、cann/asc-devkit、Ascend/msinsight 三个仓 Gitcode issue（导出快照 2026-05-28）803 条性能相关问题中关键词匹配归类 444 条，每条 issue 仅计入一个主题</div>
+
+  <h2>用户问题分析</h2>
+  <p class="section-intro">
+    对 803 条性能相关 issue 按主题聚类后，按"用户提出频率"取 Top 10。每条给出当前观察到的影响等级、可参考解决方案、修复难度评估，以及对标的 NVIDIA Nsight（Systems / Compute / Compute Sanitizer）能力。
+  </p>
+
+  <table class="issues" id="issueTable">
+    <thead>
+      <tr>
+        <th class="col-rank">#</th>
+        <th class="col-topic">问题主题</th>
+        <th class="col-quotes">用户原声</th>
+        <th class="col-count">频次</th>
+        <th class="col-impact sortable" onclick="sortTable('impact')" id="th-impact">
+          影响等级<span class="sort-arrow"></span>
+        </th>
+        <th class="col-solution">解决方案建议</th>
+        <th class="col-diff sortable" onclick="sortTable('diff')" id="th-diff">
+          修复难度<span class="sort-arrow"></span>
+        </th>
+        <th class="col-nsight">对标 NVIDIA Nsight 特性</th>
+        <th class="col-950">950 迁移影响</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+
+      <tr data-impact="1" data-diff="1">
+        <td class="col-rank">1</td>
+        <td>
+          <div class="topic-name">大规模训练场景下泳道图渲染卡顿、框选交互异常，且时间线与通信总览数据持续不一致</div>
+          <div class="src-bars">
+            <div class="src-bar-row">
+              <span class="src-bar-label">PYPTO</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:80.5%"></div></div>
+              <span class="src-bar-num">62</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">devkit</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:0%"></div></div>
+              <span class="src-bar-num">0</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">Insight</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:72.7%"></div></div>
+              <span class="src-bar-num">56</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="quotes">
+            <div class="quote">Timeline框选后泳道边框不明显，缩放时频繁重绘导致页面卡顿</div>
+            <div class="quote">时间线通信和通信总览的通信数据不一致，集合通信算子对不齐</div>
+            <div class="quote">Python泳道通过右键菜单隐藏后，再次展示前后会导致连线错位</div>
+            <div class="quote">同名泳道超过100条时，取消置顶也上报Found 396 lanes异常</div>
+            <div class="quote">多卡时间对齐需逐个泳道手动调offset，操作成本极高</div>
+          </div>
+        </td>
+        <td class="col-count"><span class="count-num">118</span></td>
+        <td class="col-impact"><span class="badge b-p1">P1</span></td>
+        <td>
+          <ul class="solution-list">
+            <li><span class="sol-tag t-perf">性能优化</span>引入虚拟滚动 + LOD，缓解大泳道场景卡顿</li>
+            <li><span class="sol-tag t-eng">工程规范</span>统一 PyPTO swimlane.json 与 Insight Timeline 渲染规约</li>
+            <li><span class="sol-tag t-ux">易用性改进</span>框选/缩放/同名泳道置顶等交互专项打磨</li>
+            <li><span class="sol-tag t-feat">功能补全</span>Pipe-bubble、CrossCore 事件作为一级元素渲染</li>
+          </ul>
+        </td>
+        <td class="col-diff"><span class="badge b-mid">中</span></td>
+        <td>
+          <div class="nsight-feature"><a href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html" target="_blank">Nsight Systems · Timeline View</a></div>
+          <div class="nsight-desc">多 GPU/线程/NVTX/CUDA stream 泳道，缩略图导航、表达式过滤、按事件类型染色、SQL 查询入口</div>
+          <div class="nsight-links">
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#timeline-view" target="_blank">Timeline 视图文档</a>
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#nvtx" target="_blank">NVTX 标注</a>
+          </div>
+        </td>
+        <td class="col-950">
+          <div class="v950-verdict"><span class="badge b-high">更棘手</span></div>
+          <ul class="solution-list">
+            <li>Chiplet 架构使泳道层级从"卡×核"扩展为"卡×Chiplet×核×CCU"，采集数据量成倍增加 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950特性全景剖析.pdf" target="_blank">昇腾950特性全景剖析 p3、11</a><a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260320/探索Ascend%20950的性能天花板.pdf" target="_blank">探索Ascend 950的性能天花板 p30</a></li>
+            <li>DT / PR 两形态拓扑不同，多机时间线对齐逻辑需适配 Chiplet 内直连带宽 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950特性全景剖析.pdf" target="_blank">昇腾950特性全景剖析 p2</a></li>
+            <li>大规模 MoE 训练场景 Pipe-bubble 数量更多，渲染与通信总览数据一致性压力同步放大 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/DeepSeek-V4的950集群优化实践.pdf" target="_blank">DeepSeek-V4的950集群优化实践 p4、12</a></li>
+          </ul>
+        </td>
+      </tr>
+
+      <tr data-impact="0" data-diff="2">
+        <td class="col-rank">2</td>
+        <td>
+          <div class="topic-name">算子性能显著落后于 AscendC 参考实现，缺少 Auto-tuner / Roofline 量化依据，代码合入后性能劣化无 CI 自动看护</div>
+          <div class="src-bars">
+            <div class="src-bar-row">
+              <span class="src-bar-label">PYPTO</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:100%"></div></div>
+              <span class="src-bar-num">77</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">devkit</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:40.3%"></div></div>
+              <span class="src-bar-num">31</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">Insight</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:5.2%"></div></div>
+              <span class="src-bar-num">4</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="quotes">
+            <div class="quote">基础 FFN 或大维度 matmul 对比 torch npu/cce 实现性能差距较大，PyPTO 侧无 Roofline 参考依据</div>
+            <div class="quote">主线patch合入后glm_attention的Mix版本性能劣化38us→47us，master branch比三周前慢~15%</div>
+            <div class="quote">更新 pypto whl 包和 isa 包后同等 shape 下性能回退，合入无 CI 性能看护拦截</div>
+            <div class="quote">相同shape dtype下PyPTO interleave_rope明显慢于AscendC官方实现</div>
+            <div class="quote">[GreenLight] 使用 agent 生成代码，计算算子性能和实际执行性能差距过大</div>
+          </div>
+        </td>
+        <td class="col-count"><span class="count-num">112</span></td>
+        <td class="col-impact"><span class="badge b-p0">P0</span></td>
+        <td>
+          <ul class="solution-list">
+            <li><span class="sol-tag t-feat">功能补全</span>建设算子级 Auto-tuner（Tile 形状/Buffer/Layout 搜索）</li>
+            <li><span class="sol-tag t-feat">功能补全</span>Roofline + Stall Reasons 自动归因报告</li>
+            <li><span class="sol-tag t-eng">工程规范</span>"基线 → 增量优化"标准化 benchmark 流水线</li>
+            <li><span class="sol-tag t-eng">工程规范</span>劣化看护：CI 把每个 PR 的 Op-level 耗时对比上车</li>
+          </ul>
+        </td>
+        <td class="col-diff"><span class="badge b-high">高</span></td>
+        <td>
+          <div class="nsight-feature"><a href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html" target="_blank">Nsight Compute · Kernel Profiler</a></div>
+          <div class="nsight-desc">Roofline、Occupancy、warp stall reasons、Source/SASS 关联与逐行性能映射、Rule-based optimization hints</div>
+          <div class="nsight-links">
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#roofline" target="_blank">Roofline 模型</a>
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#source-page" target="_blank">Source 视图</a>
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#scheduler-statistics" target="_blank">Scheduler 统计</a>
+          </div>
+        </td>
+        <td class="col-950">
+          <div class="v950-verdict"><span class="badge b-high">更棘手</span></div>
+          <ul class="solution-list">
+            <li>950 引入 MXFP4、L0C→UB 直通、CCU 融合等全新执行路径，A3 性能基线对 950 完全失效，CI 劣化看护需为 950 单独建基线 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260320/探索Ascend%20950的性能天花板.pdf" target="_blank">探索Ascend 950的性能天花板 p4</a><a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950利用率提升的奥秘.pdf" target="_blank">昇腾950利用率提升的奥秘 p3</a></li>
+            <li>SIMD 与 SIMT 双模式下同名算子执行路径和性能特征不同，DumpPerf 未适配 SIMT 模式，采集数据失真 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/sig-tools/20260313/面向下一代硬件的性能调优.pdf" target="_blank">面向下一代硬件的性能调优 p19、20</a><a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260318/场景驱动下的算子编程语言选型.pdf" target="_blank">场景驱动下的算子编程语言选型 p12</a></li>
+            <li>同名算子在 A3 / 950 之间耗时差异可高达数倍（属架构差异而非 bug），工具无法自动区分 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950利用率提升的奥秘.pdf" target="_blank">昇腾950利用率提升的奥秘 p3</a></li>
+          </ul>
+        </td>
+      </tr>
+
+      <tr data-impact="1" data-diff="1">
+        <td class="col-rank">3</td>
+        <td>
+          <div class="topic-name">OOM 快照解析后页面空白，19MB 快照触发工具自身 5GB 内存占用，潜在泄漏 Tensor 无法自动识别</div>
+          <div class="src-bars">
+            <div class="src-bar-row">
+              <span class="src-bar-label">PYPTO</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:3.9%"></div></div>
+              <span class="src-bar-num">3</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">devkit</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:0%"></div></div>
+              <span class="src-bar-num">0</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">Insight</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:48.1%"></div></div>
+              <span class="src-bar-num">37</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="quotes">
+            <div class="quote">oom memory snapshot解析报错，页面空白无内容，日志显示Failed to parse snapshot data</div>
+            <div class="quote">加载大数据snapshot.pkl文件后工具本身出现OOM，页面崩溃白屏</div>
+            <div class="quote">加载19MB内存快照后工具内存占用达5GB，缩放时再次OOM崩溃</div>
+            <div class="quote">开启自动筛选区间未释放后内存总和与指标末位小数数据不一致</div>
+            <div class="quote">内存快照支持潜在泄漏tensor自动识别，已多次提出但未实现</div>
+          </div>
+        </td>
+        <td class="col-count"><span class="count-num">40</span></td>
+        <td class="col-impact"><span class="badge b-p1">P1</span></td>
+        <td>
+          <ul class="solution-list">
+            <li><span class="sol-tag t-bug">缺陷修复</span>snapshot 解析器健壮性（中文路径、二次加载、大文件 OOM）</li>
+            <li><span class="sol-tag t-feat">功能补全</span>潜在泄漏 tensor 自动识别（用户已多次提需求）</li>
+            <li><span class="sol-tag t-feat">功能补全</span>多 device / 多 stream / 多 PyTorch 版本适配</li>
+            <li><span class="sol-tag t-sec">安全加固</span>pickle.load 反序列化安全加固</li>
+          </ul>
+        </td>
+        <td class="col-diff"><span class="badge b-mid">中</span></td>
+        <td>
+          <div class="nsight-feature">
+            <a href="https://docs.nvidia.com/compute-sanitizer/ComputeSanitizer/index.html" target="_blank">Compute Sanitizer · memcheck / leakcheck</a><br>
+            + <a href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#memory-tracking" target="_blank">Nsight Systems · Memory Tracking</a>
+          </div>
+          <div class="nsight-desc">设备分配/释放跟踪、leak detection、内存生命周期可视化、初始化检查</div>
+          <div class="nsight-links">
+            <a class="nsight-link" href="https://docs.nvidia.com/compute-sanitizer/ComputeSanitizer/index.html#memcheck-tool" target="_blank">memcheck 文档</a>
+            <a class="nsight-link" href="https://docs.nvidia.com/compute-sanitizer/ComputeSanitizer/index.html#leakcheck-tool" target="_blank">leakcheck 文档</a>
+          </div>
+        </td>
+        <td class="col-950">
+          <div class="v950-verdict"><span class="badge b-mid">略微加重</span></div>
+          <ul class="solution-list">
+            <li>950 HBM 容量更大，MoE 384 专家全量驻留场景下快照体积数倍于 A3，OOM 触发更快 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/DeepSeek-V4的950集群优化实践.pdf" target="_blank">DeepSeek-V4的950集群优化实践 p4、14</a></li>
+            <li>Chiplet 间 HBM 分区独立管理，完整快照需覆盖多个 partition，解析和展示复杂度提升 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950特性全景剖析.pdf" target="_blank">昇腾950特性全景剖析 p3、4</a></li>
+            <li>工具端 OOM 根因未变，但 950 允许的模型规模更大，更容易触达极限</li>
+          </ul>
+        </td>
+      </tr>
+
+      <tr data-impact="0" data-diff="2">
+        <td class="col-rank">4</td>
+        <td>
+          <div class="topic-name">分布式 MoE shmem / AICPU 调度性能未达预期，HCCL 通信域中文乱码、32 卡缩略图仅渲染一半、跨机通信界面为空</div>
+          <div class="src-bars">
+            <div class="src-bar-row">
+              <span class="src-bar-label">PYPTO</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:27.3%"></div></div>
+              <span class="src-bar-num">21</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">devkit</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:2.6%"></div></div>
+              <span class="src-bar-num">2</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">Insight</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:19.5%"></div></div>
+              <span class="src-bar-num">15</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="quotes">
+            <div class="quote">GLM网络接入通信Combine算子时，每轮推理都生成output目录，推理性能极差（半分钟才推出一个token）</div>
+            <div class="quote">HCCL通信域名称包含中文时，Insight中名称显示乱码</div>
+            <div class="quote">通信耗时页签通信算子缩略图，32卡的集群只显示了一半16卡</div>
+            <div class="quote">最新版insight导入双机16卡mindspore数据，通信界面为空</div>
+            <div class="quote">服务器上通信域解析失败，同一份数据下载到本地却可以正常解析</div>
+          </div>
+        </td>
+        <td class="col-count"><span class="count-num">38</span></td>
+        <td class="col-impact"><span class="badge b-p0">P0</span></td>
+        <td>
+          <ul class="solution-list">
+            <li><span class="sol-tag t-perf">性能优化</span>PyPTO shmem prepareTask / wait_until 关键路径专项优化</li>
+            <li><span class="sol-tag t-feat">功能补全</span>HCCL trace 与 Cube/Vector 时间线时钟对齐</li>
+            <li><span class="sol-tag t-feat">功能补全</span>AllGather+MatMul / MoE Dispatch&amp;Combine 融合归因视图</li>
+            <li><span class="sol-tag t-feat">功能补全</span>卡序号一致性校验、跨集群 rankId/deviceId 自动映射</li>
+            <li><span class="sol-tag t-bug">缺陷修复</span>通信域中文乱码、缩略图截断等遗留缺陷</li>
+          </ul>
+        </td>
+        <td class="col-diff"><span class="badge b-high">高</span></td>
+        <td>
+          <div class="nsight-feature"><a href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#nccl-trace" target="_blank">Nsight Systems · NCCL/UCX Integration</a></div>
+          <div class="nsight-desc">多 GPU collective op 时间线、集合通信 critical path 分析、跨设备时钟对齐</div>
+          <div class="nsight-links">
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#nccl-trace" target="_blank">NCCL Trace 文档</a>
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#multi-gpu-profiling" target="_blank">多 GPU Profiling</a>
+          </div>
+        </td>
+        <td class="col-950">
+          <div class="v950-verdict"><span class="badge b-high">更棘手</span></div>
+          <ul class="solution-list">
+            <li>950 Chiplet 内通信走片内直连（非 HCCL），PyPTO shmem API 需重新适配 Chiplet 间直连拓扑，现有 shmem 实现对 950 内通信路径完全盲区 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950特性全景剖析.pdf" target="_blank">昇腾950特性全景剖析 p3、11</a></li>
+            <li>DeepSeek V4 在 950 上采用 Prefill CP+EP / Decode DP+EP 异构并行，rankId 映射比 A3 场景更复杂，Insight 通信域解析需同步适配 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/DeepSeek-V4的950集群优化实践.pdf" target="_blank">DeepSeek-V4的950集群优化实践 p12</a></li>
+            <li>Chiplet 级亲和分析（Affinity Analysis）是 950 专属新场景，现有通信总览完全未覆盖 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/DeepSeek-V4的950集群优化实践.pdf" target="_blank">DeepSeek-V4的950集群优化实践 p14</a></li>
+          </ul>
+        </td>
+      </tr>
+
+      <tr data-impact="0" data-diff="1">
+        <td class="col-rank">5</td>
+        <td>
+          <div class="topic-name">load3D 指令阻塞 MTE2 流水，卷积 L1 Double Buffer 无法开启，PipeBarrier 排空语义易出错且缺少样例</div>
+          <div class="src-bars">
+            <div class="src-bar-row">
+              <span class="src-bar-label">PYPTO</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:24.7%"></div></div>
+              <span class="src-bar-num">19</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">devkit</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:23.4%"></div></div>
+              <span class="src-bar-num">18</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">Insight</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:1.3%"></div></div>
+              <span class="src-bar-num">1</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="quotes">
+            <div class="quote">AscendC::LoadData的load3D指令会阻塞MTE2流水线，影响整体吞吐</div>
+            <div class="quote">卷积L1 double buffer不能开启，UB优化的双缓冲场景受阻</div>
+            <div class="quote">PipeBarrier&lt;PIPE_ALL&gt;()无法清空Vector挂起状态，后续算子计算结果正确率暴跌至0.07%</div>
+            <div class="quote">静态Tensor编程时需手动流水同步，但样例仓缺少PipeBarrier的使用样例</div>
+            <div class="quote">Matmul::IterateAll结束后不显式调End()，后序Vector指令引发时序死锁</div>
+          </div>
+        </td>
+        <td class="col-count"><span class="count-num">38</span></td>
+        <td class="col-impact"><span class="badge b-p0">P0</span></td>
+        <td>
+          <ul class="solution-list">
+            <li><span class="sol-tag t-feat">功能补全</span>Insight 增加 Pipe-bubble 自动检测视图（复用 MarkStampImpl + 事件 ID14/15）</li>
+            <li><span class="sol-tag t-ux">易用性改进</span>PyPTO 编译器提示 Double Buffer 缺失</li>
+            <li><span class="sol-tag t-feat">功能补全</span>MTE2/V/MTE3 stall 比例可视化</li>
+            <li><span class="sol-tag t-doc">文档补全</span>PipeBarrier / CrossCoreSetFlag 使用样例化文档</li>
+          </ul>
+        </td>
+        <td class="col-diff"><span class="badge b-mid">中</span></td>
+        <td>
+          <div class="nsight-feature"><a href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#scheduler-statistics" target="_blank">Nsight Compute · Scheduler Statistics</a></div>
+          <div class="nsight-desc">warp stall reasons、issue slot utilization、dependency stall、各 pipe 占用率与瓶颈定位</div>
+          <div class="nsight-links">
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#warp-state-statistics" target="_blank">Warp State 统计</a>
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#occupancy" target="_blank">Occupancy 分析</a>
+          </div>
+        </td>
+        <td class="col-950">
+          <div class="v950-verdict"><span class="badge b-high">更棘手</span></div>
+          <ul class="solution-list">
+            <li>950 新增 L0C→UB 直通路径（DualDest），旧代码绕路 GM 额外多两次 HBM 搬运，流水 bubble 代价比 A3 更大 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950特性全景剖析.pdf" target="_blank">昇腾950特性全景剖析 p4</a><a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950利用率提升的奥秘.pdf" target="_blank">昇腾950利用率提升的奥秘 p3</a></li>
+            <li>SIMT 模式引入 Warp 级同步语义（__sync_warp 等），与 SIMD PipeBarrier 不兼容，混用导致死锁 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/sig-tools/20260313/面向下一代硬件的性能调优.pdf" target="_blank">面向下一代硬件的性能调优 p19、20</a><a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260318/场景驱动下的算子编程语言选型.pdf" target="_blank">场景驱动下的算子编程语言选型 p12</a></li>
+            <li>CCU 跨核同步原语（CrossCoreSetFlag）是 950 新增接口，文档和样例极度匮乏，误用率高 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260317/CANN%20算子开发全链路体验升级.pdf" target="_blank">Ascend C算子编译与调试调优能力概述 p20</a><a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/sig-tools/20260313/面向下一代硬件的性能调优.pdf" target="_blank">面向下一代硬件的性能调优 p13</a></li>
+          </ul>
+        </td>
+      </tr>
+
+      <tr data-impact="0" data-diff="1">
+        <td class="col-rank">6</td>
+        <td>
+          <div class="topic-name">ftrace 采集后 trace.dat 未生成，vllm-ascend 采集成功但 Insight 加载后页面卡死，PMU metrics 静默失效</div>
+          <div class="src-bars">
+            <div class="src-bar-row">
+              <span class="src-bar-label">PYPTO</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:13%"></div></div>
+              <span class="src-bar-num">10</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">devkit</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:2.6%"></div></div>
+              <span class="src-bar-num">2</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">Insight</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:24.7%"></div></div>
+              <span class="src-bar-num">19</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="quotes">
+            <div class="quote">使用API方式采集ftrace，不生成trace.dat，后续解析脚本直接报错</div>
+            <div class="quote">A5 vllm-ascend采集profiling成功解析，但insight加载后页面卡住无法点击</div>
+            <div class="quote">两次采集进程号相同混在一起导入，profiling报错database连接失败</div>
+            <div class="quote">导入profiling数据报错，错误信息无法帮助用户定位根因</div>
+            <div class="quote">单独导入ftrace数据中断统计有数据，联合导入后中断统计显示无数据</div>
+          </div>
+        </td>
+        <td class="col-count"><span class="count-num">31</span></td>
+        <td class="col-impact"><span class="badge b-p0">P0</span></td>
+        <td>
+          <ul class="solution-list">
+            <li><span class="sol-tag t-ux">易用性改进</span>采集器错误码统一，缺失依赖/权限给明确指引</li>
+            <li><span class="sol-tag t-feat">功能补全</span>补齐 PMU metrics（用户反馈 "PMU metrics doesn't collect"）</li>
+            <li><span class="sol-tag t-rel">可靠性提升</span>ftrace / msopprof 自动重试与失败兜底</li>
+            <li><span class="sol-tag t-rel">可靠性提升</span>采集任务异常恢复，避免整段数据丢弃</li>
+          </ul>
+        </td>
+        <td class="col-diff"><span class="badge b-mid">中</span></td>
+        <td>
+          <div class="nsight-feature"><a href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#cli-profiling" target="_blank">nsys profile / ncu · Robust Driver Agent</a></div>
+          <div class="nsight-desc">完善的错误码 + 解决建议、自动会话重启、Replay 模式补采、采集前 sanity check</div>
+          <div class="nsight-links">
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#cli-profiling" target="_blank">nsys CLI 参考</a>
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html" target="_blank">ncu CLI 参考</a>
+          </div>
+        </td>
+        <td class="col-950">
+          <div class="v950-verdict"><span class="badge b-high">更棘手</span></div>
+          <ul class="solution-list">
+            <li>950 新增 CCU trace、PC Sampling、SIMT GPR 分析等采集维度，采集管道更长，静默失效点更多 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/sig-tools/20260313/面向下一代硬件的性能调优.pdf" target="_blank">面向下一代硬件的性能调优 p13、18、19</a></li>
+            <li>msSanitizer 必须编译时加 --sanitizer -g 才能生效，迁移期极易遗漏，工具静默失效 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260317/CANN%20算子开发全链路体验升级.pdf" target="_blank">Ascend C算子编译与调试调优能力概述 p20</a></li>
+            <li>MXFP4 利用率、CCU 融合率等 950 新 PMU 指标尚无成熟采集支持，PMU metrics 缺失更普遍 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260320/探索Ascend%20950的性能天花板.pdf" target="_blank">探索Ascend 950的性能天花板 p4、27</a></li>
+          </ul>
+        </td>
+      </tr>
+
+      <tr data-impact="1" data-diff="2">
+        <td class="col-rank">7</td>
+        <td>
+          <div class="topic-name">55GB bin 文件超限但报错提示误导用户，jupyterlab 解析 400MB+ 数据时 WebSocket 断连无法恢复</div>
+          <div class="src-bars">
+            <div class="src-bar-row">
+              <span class="src-bar-label">PYPTO</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:3.9%"></div></div>
+              <span class="src-bar-num">3</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">devkit</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:1.3%"></div></div>
+              <span class="src-bar-num">1</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">Insight</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:24.7%"></div></div>
+              <span class="src-bar-num">19</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="quotes">
+            <div class="quote">打不开55g的bin文件，日志显示The size limit for the file has been exceeded</div>
+            <div class="quote">55g的bin文件导入失败，前端报错未提及20g限制，指向错误请修改</div>
+            <div class="quote">insight_jupyterlab启动后解析服务化数据（大于400M）出现断连</div>
+            <div class="quote">大数据量场景下获取事件列表行为异常，内存占用失控</div>
+            <div class="quote">加载大数据snapshot.pkl后出现OOM，建议分批或流式解析</div>
+          </div>
+        </td>
+        <td class="col-count"><span class="count-num">23</span></td>
+        <td class="col-impact"><span class="badge b-p1">P1</span></td>
+        <td>
+          <ul class="solution-list">
+            <li><span class="sol-tag t-arch">架构改进</span>解析后端服务化（已有 jupyterlab 方向），前端按需流式拉取</li>
+            <li><span class="sol-tag t-perf">性能优化</span>chunked 解析 + 索引化（SQLite），避免一次性 load 55G bin</li>
+            <li><span class="sol-tag t-feat">功能补全</span>时间范围 / 卡级别分片加载</li>
+            <li><span class="sol-tag t-rel">可靠性提升</span>websocket 断连后断点续传</li>
+          </ul>
+        </td>
+        <td class="col-diff"><span class="badge b-high">高</span></td>
+        <td>
+          <div class="nsight-feature"><a href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#export-report-files" target="_blank">Nsight Systems · SQLite Backend + Selective Load</a></div>
+          <div class="nsight-desc">.nsys-rep 后端按时间窗/事件类型按需加载，CLI 可导出指定区段，避免整文件加载</div>
+          <div class="nsight-links">
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#export-report-files" target="_blank">导出 / 分段加载</a>
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#sqlite-schema" target="_blank">SQLite Schema</a>
+          </div>
+        </td>
+        <td class="col-950">
+          <div class="v950-verdict"><span class="badge b-high">更棘手</span></div>
+          <ul class="solution-list">
+            <li>950 Chiplet 架构下单次 profiling 数据 ≈ A3 × Chiplet 数量，多机集群文件体积快速突破工具限制 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950特性全景剖析.pdf" target="_blank">昇腾950特性全景剖析 p3</a><a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/sig-tools/20260313/面向下一代硬件的性能调优.pdf" target="_blank">面向下一代硬件的性能调优 p14</a></li>
+            <li>多 Chiplet 时钟对齐数据额外增加 trace overhead，单卡数据量也显著大于 A3 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/sig-tools/20260313/面向下一代硬件的性能调优.pdf" target="_blank">面向下一代硬件的性能调优 p14</a></li>
+            <li>55G 上限对 950 全规格训练场景更快触达，WebSocket 断连频率正比于文件大小 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/DeepSeek-V4的950集群优化实践.pdf" target="_blank">DeepSeek-V4的950集群优化实践 p12</a></li>
+          </ul>
+        </td>
+      </tr>
+
+      <tr data-impact="1" data-diff="0">
+        <td class="col-rank">8</td>
+        <td>
+          <div class="topic-name">Windows 加载 prof 时 WebSocket 断开，Linux 远程 jupyterlab 无法打开 Insight，Mac 块图位置错乱</div>
+          <div class="src-bars">
+            <div class="src-bar-row">
+              <span class="src-bar-label">PYPTO</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:6.5%"></div></div>
+              <span class="src-bar-num">5</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">devkit</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:1.3%"></div></div>
+              <span class="src-bar-num">1</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">Insight</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:14.3%"></div></div>
+              <span class="src-bar-num">11</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="quotes">
+            <div class="quote">Windows加载prof时报错：Websocket connection has been closed</div>
+            <div class="quote">jupyter lab --allow-root可正常打开，但mindstudio insight无法打开</div>
+            <div class="quote">Linux下远程访问显示WebSocket is already in CLOSING or CLOSED state</div>
+            <div class="quote">缺少MinGW时构建Insight应提示安装依赖，而非直接打印内部运行错误</div>
+            <div class="quote">Mac设备上memscope块图和状态图绘制位置异常，偏移严重</div>
+          </div>
+        </td>
+        <td class="col-count"><span class="count-num">17</span></td>
+        <td class="col-impact"><span class="badge b-p1">P1</span></td>
+        <td>
+          <ul class="solution-list">
+            <li><span class="sol-tag t-eng">工程规范</span>统一 Win / Linux / Mac (x86 + ARM) 打包脚本</li>
+            <li><span class="sol-tag t-ux">易用性改进</span>自动检测 MinGW / poppler 等运行依赖并提示</li>
+            <li><span class="sol-tag t-feat">功能补全</span>提供官方 Docker 镜像 + jupyterlab 在线模式</li>
+            <li><span class="sol-tag t-bug">缺陷修复</span>Windows 长路径、Mac 签名、安装包社区版/商发统一</li>
+          </ul>
+        </td>
+        <td class="col-diff"><span class="badge b-low">低</span></td>
+        <td>
+          <div class="nsight-feature">Nsight 一键安装包</div>
+          <div class="nsight-desc">CUDA Toolkit / 独立 Nsight Systems / Nsight Compute 均提供 Win/Linux/Mac 原生安装包，CLI + GUI 一体</div>
+          <div class="nsight-links">
+            <a class="nsight-link" href="https://developer.nvidia.com/nsight-systems" target="_blank">Nsight Systems 下载</a>
+            <a class="nsight-link" href="https://developer.nvidia.com/nsight-compute" target="_blank">Nsight Compute 下载</a>
+          </div>
+        </td>
+        <td class="col-950">
+          <div class="v950-verdict"><span class="badge b-p2">基本不变</span></div>
+          <ul class="solution-list">
+            <li>跨平台打包问题属工具链 CI 债务，与硬件代次无直接关联，根因不变</li>
+            <li>950 新增 msSanitizer / msDebug / PC Sampling 等组件，安装包依赖项增加，漏带概率略升 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260317/CANN%20算子开发全链路体验升级.pdf" target="_blank">Ascend C算子编译与调试调优能力概述 p20</a></li>
+            <li>DT 形态的桌面化部署路径可能带来 Mac / Win 上新的路径和权限问题，但尚未大规模暴露 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950特性全景剖析.pdf" target="_blank">昇腾950特性全景剖析 p2</a></li>
+          </ul>
+        </td>
+      </tr>
+
+      <tr data-impact="2" data-diff="0">
+        <td class="col-rank">9</td>
+        <td>
+          <div class="topic-name">CSV 中可查到的算子在 Insight 界面找不到，GPR Status 列被截断显示，搜索接口大数据量下无法中止</div>
+          <div class="src-bars">
+            <div class="src-bar-row">
+              <span class="src-bar-label">PYPTO</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:6.5%"></div></div>
+              <span class="src-bar-num">5</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">devkit</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:2.6%"></div></div>
+              <span class="src-bar-num">2</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">Insight</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:13%"></div></div>
+              <span class="src-bar-num">10</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="quotes">
+            <div class="quote">csv中可以找到aclnnInplaceMuls算子，mindstudio中却无法找到</div>
+            <div class="quote">算子源码页面排序不稳定，每次打开顺序都不一样</div>
+            <div class="quote">msopprof热点图GPR Status列因列宽限制无法完全显示，可能误导判断</div>
+            <div class="quote">大数据量下算子搜索接口响应很慢，缺少中途取消功能，页面其他功能受阻</div>
+            <div class="quote">专家系统视图亲和API结果页数较多，希望支持一键导出全部表格</div>
+          </div>
+        </td>
+        <td class="col-count"><span class="count-num">17</span></td>
+        <td class="col-impact"><span class="badge b-p2">P2</span></td>
+        <td>
+          <ul class="solution-list">
+            <li><span class="sol-tag t-bug">缺陷修复</span>算子全文索引 + 稳定排序，解决"概览/csv 不一致"</li>
+            <li><span class="sol-tag t-ux">易用性改进</span>msopprof 热点图水平滚动 / GPR Status 完整显示</li>
+            <li><span class="sol-tag t-ux">易用性改进</span>表格虚拟滚动 + 导出全部</li>
+            <li><span class="sol-tag t-ux">易用性改进</span>算子搜索接口可中断（用户已提需求）</li>
+          </ul>
+        </td>
+        <td class="col-diff"><span class="badge b-low">低</span></td>
+        <td>
+          <div class="nsight-feature"><a href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#kernel-table" target="_blank">Nsight Compute Kernel List + nsys stats CLI</a></div>
+          <div class="nsight-desc">算子级聚合表、过滤/排序/列定制、CLI 可输出 CSV/SQL 查询友好格式</div>
+          <div class="nsight-links">
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#kernel-table" target="_blank">Kernel Table 文档</a>
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-systems/UserGuide/index.html#exporting-to-sqlite" target="_blank">nsys stats 导出</a>
+          </div>
+        </td>
+        <td class="col-950">
+          <div class="v950-verdict"><span class="badge b-high">更棘手</span></div>
+          <ul class="solution-list">
+            <li>950 同名算子同时存在 SIMD / SIMT 两种实现，CSV 各有一条，Insight 若不区分则搜索结果混乱 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260318/场景驱动下的算子编程语言选型.pdf" target="_blank">场景驱动下的算子编程语言选型 p12</a><a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/sig-tools/20260313/面向下一代硬件的性能调优.pdf" target="_blank">面向下一代硬件的性能调优 p19</a></li>
+            <li>MXFP4 算子是全新类型，现有算子分类体系未覆盖，概览/详情不一致场景增多 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260320/探索Ascend%20950的性能天花板.pdf" target="_blank">探索Ascend 950的性能天花板 p4</a><a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950利用率提升的奥秘.pdf" target="_blank">昇腾950利用率提升的奥秘 p3</a></li>
+            <li>CCU 融合算子跨多个 AI Core 执行，按单核搜索时结果不完整，排序也不稳定 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/950/20260320/探索Ascend%20950的性能天花板.pdf" target="_blank">探索Ascend 950的性能天花板 p27</a></li>
+          </ul>
+        </td>
+      </tr>
+
+      <tr data-impact="1" data-diff="1">
+        <td class="col-rank">10</td>
+        <td>
+          <div class="topic-name">内存调优文档文件名与交付件不符，ACLGraph 和 Text 数据场景下内存拷贝总览详情始终无数据</div>
+          <div class="src-bars">
+            <div class="src-bar-row">
+              <span class="src-bar-label">PYPTO</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:5.2%"></div></div>
+              <span class="src-bar-num">4</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">devkit</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:1.3%"></div></div>
+              <span class="src-bar-num">1</span>
+            </div>
+            <div class="src-bar-row">
+              <span class="src-bar-label">Insight</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:6.5%"></div></div>
+              <span class="src-bar-num">5</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="quotes">
+            <div class="quote">内存调优文档中的memscope文件名与实际交付件文件名不一致</div>
+            <div class="quote">aclgraphdebug数据和ftrace数据导入后，内存拷贝总览一直转圈</div>
+            <div class="quote">Text数据应用时间范围分析后，内存拷贝总览详情显示无数据</div>
+            <div class="quote">UB到UB的DataCopy是哪个流水线，文档中找不到明确说明</div>
+            <div class="quote">两份数据工程切换后内存拷贝总览详情数据未刷新，显示上份数据</div>
+          </div>
+        </td>
+        <td class="col-count"><span class="count-num">10</span></td>
+        <td class="col-impact"><span class="badge b-p1">P1</span></td>
+        <td>
+          <ul class="solution-list">
+            <li><span class="sol-tag t-feat">功能补全</span>UB / L1 / L2 / HBM 带宽利用率分层视图</li>
+            <li><span class="sol-tag t-feat">功能补全</span>L1 Bank Conflict 自动检测（已在样例优化中验证有效）</li>
+            <li><span class="sol-tag t-bug">缺陷修复</span>内存拷贝总览数据修复（ACLGraph / Text 数据场景空显示）</li>
+            <li><span class="sol-tag t-doc">文档补全</span>Workspace 异常偏大问题的系统化定位指导</li>
+          </ul>
+        </td>
+        <td class="col-diff"><span class="badge b-mid">中</span></td>
+        <td>
+          <div class="nsight-feature"><a href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#memory-tables" target="_blank">Nsight Compute · Memory Workload Analysis</a></div>
+          <div class="nsight-desc">L1/L2/DRAM 带宽利用率、shared memory bank conflict、Memory Chart 全链路视图、访问模式分类</div>
+          <div class="nsight-links">
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#memory-tables" target="_blank">Memory Tables</a>
+            <a class="nsight-link" href="https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#shared-memory" target="_blank">Shared Mem / Bank Conflict</a>
+          </div>
+        </td>
+        <td class="col-950">
+          <div class="v950-verdict"><span class="badge b-high">更棘手</span></div>
+          <ul class="solution-list">
+            <li>950 新增 L0C→UB 直通路径（DualDest），迁移代码中该路径在现有内存拷贝总览中完全缺失 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950特性全景剖析.pdf" target="_blank">昇腾950特性全景剖析 p4</a><a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950利用率提升的奥秘.pdf" target="_blank">昇腾950利用率提升的奥秘 p3</a></li>
+            <li>DualDest 有严格对齐约束（M 为 2 倍数 / N 为 32 倍数），违规不在 profiler 中告警，排查极难 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950利用率提升的奥秘.pdf" target="_blank">昇腾950利用率提升的奥秘 p4-9</a></li>
+            <li>Chiplet 间跨 HBM partition 的内存拷贝是 950 新场景，总览视图需新增跨分区展示 <a class="pdf-src" href="https://gitcode.com/zwd060924/community/blob/master/events/meetup/slides/meetup/20260523/昇腾950特性全景剖析.pdf" target="_blank">昇腾950特性全景剖析 p3、4</a></li>
+          </ul>
+        </td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <div class="quadrant-section">
+    <h2>问题分布矩阵</h2>
+    <p class="section-intro">横轴为问题严重程度（越靠右越严重），纵轴为修复难度（越靠下越难）。形状与颜色表示 950 迁移后复杂程度的变化，悬停可查看问题标题。</p>
+    <div>
+      <svg class="quadrant-svg" viewBox="0 0 760 445">
+        <!-- quadrant background fills, split at P1/中 交叉点 (405,215) -->
+        <rect x="80" y="40" width="325" height="175" fill="rgba(4,215,147,0.03)"/>
+        <rect x="405" y="40" width="325" height="175" fill="rgba(255,170,59,0.04)"/>
+        <rect x="80" y="215" width="325" height="175" fill="rgba(255,170,59,0.04)"/>
+        <rect x="405" y="215" width="325" height="175" fill="rgba(255,75,123,0.06)"/>
+
+        <!-- band guide lines (very faint dashed) -->
+        <line x1="145" y1="40" x2="145" y2="390" stroke="#1e1e1e" stroke-width="1" stroke-dasharray="3,6"/>
+        <line x1="405" y1="40" x2="405" y2="390" stroke="#1e1e1e" stroke-width="1" stroke-dasharray="3,6"/>
+        <line x1="665" y1="40" x2="665" y2="390" stroke="#1e1e1e" stroke-width="1" stroke-dasharray="3,6"/>
+        <line x1="80" y1="75"  x2="730" y2="75"  stroke="#1e1e1e" stroke-width="1" stroke-dasharray="3,6"/>
+        <line x1="80" y1="215" x2="730" y2="215" stroke="#1e1e1e" stroke-width="1" stroke-dasharray="3,6"/>
+        <line x1="80" y1="355" x2="730" y2="355" stroke="#1e1e1e" stroke-width="1" stroke-dasharray="3,6"/>
+
+        <!-- axes -->
+        <line x1="80" y1="40" x2="80" y2="393" stroke="#3A3A3A" stroke-width="1.5"/>
+        <line x1="77" y1="390" x2="733" y2="390" stroke="#3A3A3A" stroke-width="1.5"/>
+        <!-- axis arrowheads -->
+        <polygon points="733,386 742,390 733,394" fill="#3A3A3A"/>
+        <polygon points="76,40 80,31 84,40" fill="#3A3A3A"/>
+
+        <!-- X tick marks -->
+        <line x1="145" y1="390" x2="145" y2="397" stroke="#3A3A3A" stroke-width="1.5"/>
+        <line x1="405" y1="390" x2="405" y2="397" stroke="#3A3A3A" stroke-width="1.5"/>
+        <line x1="665" y1="390" x2="665" y2="397" stroke="#3A3A3A" stroke-width="1.5"/>
+        <!-- Y tick marks -->
+        <line x1="80" y1="75"  x2="73" y2="75"  stroke="#3A3A3A" stroke-width="1.5"/>
+        <line x1="80" y1="215" x2="73" y2="215" stroke="#3A3A3A" stroke-width="1.5"/>
+        <line x1="80" y1="355" x2="73" y2="355" stroke="#3A3A3A" stroke-width="1.5"/>
+
+        <!-- X axis labels -->
+        <text x="145" y="413" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#666">P2</text>
+        <text x="405" y="413" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#999">P1</text>
+        <text x="665" y="413" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#FFAA3B">P0</text>
+        <text x="405" y="432" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" fill="#555">严重程度</text>
+
+        <!-- Y axis labels -->
+        <text x="69" y="79"  text-anchor="end" font-family="Inter,sans-serif" font-size="11" fill="#04D793">低</text>
+        <text x="69" y="219" text-anchor="end" font-family="Inter,sans-serif" font-size="11" fill="#999">中</text>
+        <text x="69" y="359" text-anchor="end" font-family="Inter,sans-serif" font-size="11" fill="#FF4B7B">高</text>
+        <text x="22" y="215" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" fill="#555" transform="rotate(-90,22,215)">修复难度</text>
+
+        <!-- quadrant corner hints -->
+        <text x="88" y="57" font-family="Inter,sans-serif" font-size="9" fill="rgba(4,215,147,0.35)">低优先</text>
+        <text x="722" y="57" text-anchor="end" font-family="Inter,sans-serif" font-size="9" fill="rgba(255,170,59,0.45)">快速响应</text>
+        <text x="88" y="384" font-family="Inter,sans-serif" font-size="9" fill="rgba(255,170,59,0.4)">长期债务</text>
+        <text x="722" y="384" text-anchor="end" font-family="Inter,sans-serif" font-size="9" fill="rgba(255,75,123,0.55)">重点攻关</text>
+
+        <!-- ── MARKERS ──
+             Arrow (更棘手):  M0,-16 L10,0 L6,0 L6,14 L-6,14 L-6,0 L-10,0 Z
+             Diamond (略微加重): M0,-14 L12,0 L0,14 L-12,0 Z
+             Square (基本不变): rect x=-11 y=-11 w=22 h=22 rx=2
+        -->
+
+        <!-- #9  P2/低  (145,75)  更棘手 -->
+        <g transform="translate(145,75)" style="cursor:default">
+          <title>9. CSV 中可查到的算子在 Insight 界面找不到，GPR Status 列被截断显示，搜索接口大数据量下无法中止</title>
+          <path d="M0,-16 L10,0 L6,0 L6,14 L-6,14 L-6,0 L-10,0 Z" fill="#FF4B7B"/>
+          <text x="0" y="7" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="white">9</text>
+        </g>
+
+        <!-- #8  P1/低  (405,75)  基本不变 -->
+        <g transform="translate(405,75)" style="cursor:default">
+          <title>8. Windows 加载 prof 时 WebSocket 断开，Linux 远程 jupyterlab 无法打开 Insight，Mac 块图位置错乱</title>
+          <rect x="-11" y="-11" width="22" height="22" rx="2" fill="#555555"/>
+          <text x="0" y="5" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="white">8</text>
+        </g>
+
+        <!-- #1  P1/中  (365,189)  更棘手 -->
+        <g transform="translate(365,189)" style="cursor:default">
+          <title>1. 大规模训练场景下泳道图渲染卡顿、框选交互异常，且时间线与通信总览数据持续不一致</title>
+          <path d="M0,-16 L10,0 L6,0 L6,14 L-6,14 L-6,0 L-10,0 Z" fill="#FF4B7B"/>
+          <text x="0" y="7" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="white">1</text>
+        </g>
+
+        <!-- #10 P1/中  (405,215)  更棘手 -->
+        <g transform="translate(405,215)" style="cursor:default">
+          <title>10. 内存调优文档文件名与交付件不符，ACLGraph 和 Text 数据场景下内存拷贝总览详情始终无数据</title>
+          <path d="M0,-16 L10,0 L6,0 L6,14 L-6,14 L-6,0 L-10,0 Z" fill="#FF4B7B"/>
+          <text x="0" y="7" text-anchor="middle" font-family="Inter,sans-serif" font-size="7.5" font-weight="700" fill="white">10</text>
+        </g>
+
+        <!-- #3  P1/中  (445,243)  略微加重 -->
+        <g transform="translate(445,243)" style="cursor:default">
+          <title>3. OOM 快照解析后页面空白，19MB 快照触发工具自身 5GB 内存占用，潜在泄漏 Tensor 无法自动识别</title>
+          <path d="M0,-14 L12,0 L0,14 L-12,0 Z" fill="#FFAA3B"/>
+          <text x="0" y="4" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="white">3</text>
+        </g>
+
+        <!-- #5  P0/中  (641,197)  更棘手 -->
+        <g transform="translate(641,197)" style="cursor:default">
+          <title>5. load3D 指令阻塞 MTE2 流水，卷积 L1 Double Buffer 无法开启，PipeBarrier 排空语义易出错且缺少样例</title>
+          <path d="M0,-16 L10,0 L6,0 L6,14 L-6,14 L-6,0 L-10,0 Z" fill="#FF4B7B"/>
+          <text x="0" y="7" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="white">5</text>
+        </g>
+
+        <!-- #6  P0/中  (689,233)  更棘手 -->
+        <g transform="translate(689,233)" style="cursor:default">
+          <title>6. ftrace 采集后 trace.dat 未生成，vllm-ascend 采集成功但 Insight 加载后页面卡死，PMU metrics 静默失效</title>
+          <path d="M0,-16 L10,0 L6,0 L6,14 L-6,14 L-6,0 L-10,0 Z" fill="#FF4B7B"/>
+          <text x="0" y="7" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="white">6</text>
+        </g>
+
+        <!-- #7  P1/高  (405,355)  更棘手 -->
+        <g transform="translate(405,355)" style="cursor:default">
+          <title>7. 55GB bin 文件超限但报错提示误导用户，jupyterlab 解析 400MB+ 数据时 WebSocket 断连无法恢复</title>
+          <path d="M0,-16 L10,0 L6,0 L6,14 L-6,14 L-6,0 L-10,0 Z" fill="#FF4B7B"/>
+          <text x="0" y="7" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="white">7</text>
+        </g>
+
+        <!-- #2  P0/高  (643,341)  更棘手 -->
+        <g transform="translate(643,341)" style="cursor:default">
+          <title>2. 同名算子在不同硬件代次耗时翻倍，主线代码合入后性能骤降，DumpPerf 统计与实际不符</title>
+          <path d="M0,-16 L10,0 L6,0 L6,14 L-6,14 L-6,0 L-10,0 Z" fill="#FF4B7B"/>
+          <text x="0" y="7" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="white">2</text>
+        </g>
+
+        <!-- #4  P0/高  (687,369)  更棘手 -->
+        <g transform="translate(687,369)" style="cursor:default">
+          <title>4. 分布式 MoE shmem / AICPU 调度性能未达预期，HCCL 通信域中文乱码、32 卡缩略图仅渲染一半、跨机通信界面为空</title>
+          <path d="M0,-16 L10,0 L6,0 L6,14 L-6,14 L-6,0 L-10,0 Z" fill="#FF4B7B"/>
+          <text x="0" y="7" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="700" fill="white">4</text>
+        </g>
+      </svg>
+
+      <div class="quadrant-legend">
+        <div class="ql-item">
+          <svg width="22" height="22" viewBox="-11 -11 22 22"><path d="M0,-10 L7,0 L4,0 L4,9 L-4,9 L-4,0 L-7,0 Z" fill="#FF4B7B"/></svg>
+          <span>更棘手</span>
+        </div>
+        <div class="ql-item">
+          <svg width="22" height="22" viewBox="-11 -11 22 22"><path d="M0,-9 L9,0 L0,9 L-9,0 Z" fill="#FFAA3B"/></svg>
+          <span>略微加重</span>
+        </div>
+        <div class="ql-item">
+          <svg width="22" height="22" viewBox="-11 -11 22 22"><rect x="-8" y="-8" width="16" height="16" rx="1.5" fill="#555"/></svg>
+          <span>基本不变</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sources-section">
+    <h2>信息来源</h2>
+    <div class="sources">
+      <div class="source-card">
+        <div class="source-repo">cann/pypto</div>
+        <div class="source-stat">
+          <span class="source-num">452</span>
+          <span>/ 1944 条</span>
+          <span class="source-pct">（占 23.3%）</span>
+        </div>
+        <div class="source-meta">PyPTO 编程框架的需求/缺陷/任务，性能问题集中在算子耗时、CodeGen 性能、Distributed/MoE、流水线</div>
+      </div>
+      <div class="source-card">
+        <div class="source-repo">cann/asc-devkit</div>
+        <div class="source-stat">
+          <span class="source-num">111</span>
+          <span>/ 733 条</span>
+          <span class="source-pct">（占 15.1%）</span>
+        </div>
+        <div class="source-meta">Ascend C 开发套件的需求/缺陷/文档，性能问题集中在流水线编程接口、Tiling、性能样例缺失、Cast/ReduceMax 精度</div>
+      </div>
+      <div class="source-card">
+        <div class="source-repo">Ascend/msinsight</div>
+        <div class="source-stat">
+          <span class="source-num">240</span>
+          <span>/ 295 条</span>
+          <span class="source-pct">（占 81.4%）</span>
+        </div>
+        <div class="source-meta">MindStudio Insight 工具本体即性能分析工具，绝大多数 issue 属性能相关；以 Timeline、Memory Snapshot、HCCL、数据加载为主</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    数据来源：profiling_issue/ 目录下 3 份 perf_*.csv（导出于 2026-05-28）。803 条性能相关 issue 通过关键词正则匹配按优先级独占分配至各主题，共归类 444 条；每条 issue 仅计入一个主题，完整明细见 Issue详单 页。"对标 NVIDIA Nsight 特性"为编辑判断，用于提示能力差距方向，不代表完全等价。柱状图宽度以全局最大值 77 为基准归一化。
+  </div>
+
+</div>
+
+<script>
+  const tagRoles = {
+    't-feat': '工程师 · 新功能开发',
+    't-bug':  '工程师 · 已知问题修复',
+    't-ux':   '设计师 + 工程师 · 交互体验优化',
+    't-perf': '工程师 · 渲染/解析性能提升',
+    't-doc':  '资料工程师 · 文档与样例补充',
+    't-rel':  '工程师 · 容错稳定性提升',
+    't-arch': '工程师 · 较大范围架构重构',
+    't-eng':  '工程师 · CI/规范/流程建设',
+    't-sec':  '工程师 · 安全性与防护',
+  };
+  document.querySelectorAll('.sol-tag').forEach(el => {
+    for (const [cls, tip] of Object.entries(tagRoles)) {
+      if (el.classList.contains(cls)) { el.dataset.tooltip = tip; break; }
+    }
+  });
+
+  const sortState = { impact: null, diff: null };
+
+  function sortTable(col) {
+    const tbody = document.getElementById('tableBody');
+    const rows  = Array.from(tbody.querySelectorAll('tr'));
+    const thImpact = document.getElementById('th-impact');
+    const thDiff   = document.getElementById('th-diff');
+
+    if (sortState[col] === 'asc') {
+      sortState[col] = 'desc';
+    } else if (sortState[col] === 'desc') {
+      sortState[col] = null;
+    } else {
+      sortState[col] = 'asc';
+    }
+
+    thImpact.className = 'col-impact sortable' + (sortState.impact ? ' sort-' + sortState.impact : '');
+    thDiff.className   = 'col-diff sortable'   + (sortState.diff   ? ' sort-' + sortState.diff   : '');
+
+    if (!sortState[col]) {
+      rows.sort((a, b) => {
+        const ra = parseInt(a.querySelector('.col-rank').textContent, 10);
+        const rb = parseInt(b.querySelector('.col-rank').textContent, 10);
+        return ra - rb;
+      });
+    } else {
+      rows.sort((a, b) => {
+        const va = parseInt(a.dataset[col], 10);
+        const vb = parseInt(b.dataset[col], 10);
+        return sortState[col] === 'asc' ? va - vb : vb - va;
+      });
+    }
+
+    rows.forEach(r => tbody.appendChild(r));
+  }
+</script>
+</body>
+</html>

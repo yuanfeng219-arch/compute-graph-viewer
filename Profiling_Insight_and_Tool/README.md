@@ -1,0 +1,57 @@
+# 目录结构
+
+```
+Profiling_Insight_and_Tool/
+├── README.md                                       # 本文件：更新日志与文件说明
+│
+├── AI_Profiling_Tool/
+│   └── MindStudioNext_20260602_205850.html         # AI 辅助性能调优工具（MindStudioNext）
+│                                                   # 单文件 Web 应用，内嵌多份 Profiling
+│                                                   # 报告原文；支持总览、算子视图、通信视图、
+│                                                   # Timeline 等分析视图；覆盖强化学习、
+│                                                   # 多机多卡等多类训练场景的自动诊断与调优建议
+│
+└── Issue_PDF_analysis/
+    ├── perf_engineer_guide.html                    # 《昇腾 950 性能工程师速成指南》
+    │                                               # 面向性能工程师，区分 AscendC / PyPTO
+    │                                               # 两条路径，系统梳理调优方法和关键操作点
+    │
+    ├── top_issue_detail.html                       # 《Top 10 问题 · Issue 完整清单》
+    │                                               # 基于 803 条性能 issue 关键词独占分配，
+    │                                               # 归入 444 条；含三仓 TOP 问题与 issue
+    │                                               # 映射追溯表（快照：2026-05-28）
+    │
+    ├── user_issue_analysis.html                    # 《性能调优类 issue 分析总结》
+    │                                               # 从用户视角聚合分析，含问题归纳与分类，
+    │                                               # 附各类问题的用户声音与案例索引
+    │
+    └── user_pain_guide.html                        # 《基于用户痛点的 950 迁移指导》
+                                                    # 结合真实用户 issue 给出 950 迁移和
+                                                    # 性能调优建议，每个调优点附用户声音
+                                                    # 及 PDF 附着链接
+```
+
+# 关键更新
+
+## 2026-06-02
+
+### TOP痛点分析和950调优指导
+
+链接：[Issue_PDF_analysis/user_issue_analysis.html](Issue_PDF_analysis/user_issue_analysis.html)
+
+* 补充`基于TOP用户痛点的950性能调优指导`页签
+* 2份950性能调优指导，补充每个点的相关用户声音（没有用户案例）、pdf附着链接方便追溯
+* `基于pdf的950性能调优指导`文档区分了AscendC和PyPTO
+* 补充了三仓的Top问题与issue映射追溯表`附录：TOP痛点与Issue映射关系`，校准了部分TOP问题内容和排序
+
+### AI辅助下的性能调优工具
+
+链接：[AI_Profiling_Tool/MindStudioNext_20260602_205850.html](AI_Profiling_Tool/MindStudioNext_20260602_205850.html)
+
+* 重刷视觉
+* 问题列表布局更新，问题卡片内的举证视图的`算子表格`增加了问题所在行的直接标注
+* 补充了`强化学习`、`多机多卡`两类报告的分析
+* 总览页右下角补充了`落盘数据`信息，包括了大家关注的“是基于什么模型训练的”的答案
+* 简化了问题卡片内的内容，优化`可视化举证`的取数来源，取消硬编码方式
+* 补充了`文档`页签，方便查阅基于MSagent套件分析的报告结果原文
+
