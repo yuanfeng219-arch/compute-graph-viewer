@@ -1602,10 +1602,22 @@
     if (els.traceInfoMeta) {
       els.traceInfoMeta.textContent = `${state.stepIndex + 1}/${trace.steps.length} · ${zh(stage.label)}`;
     }
+    const axisText = axes.length ? `当前轴名是 ${formatListCn(axes)}。` : '';
     els.traceInfoContent.innerHTML = `
       <section class="avz-info-panel__section">
-        <h3>Trace Visual</h3>
-        <p>${escapeHtml(visualNarrative(trace, step, stage, visual, axes, blocks))}</p>
+        <p class="avz-info-panel__eyebrow">Tensor View</p>
+        <h3>Logical Tensor 3D Viewport</h3>
+        <p>${escapeHtml(`${axisText}${tensorSceneNarrative(trace, step, stage, visual)}`)}</p>
+      </section>
+      <section class="avz-info-panel__section">
+        <p class="avz-info-panel__eyebrow">Execution Timeline</p>
+        <h3>${escapeHtml(timelineStageTitle(stage, step))}</h3>
+        <p>${escapeHtml(timelineInfoNarrative(trace, step, stage))}</p>
+      </section>
+      <section class="avz-info-panel__section">
+        <p class="avz-info-panel__eyebrow">Memory Architecture</p>
+        <h3>硬件链路和片上 buffer</h3>
+        <p>${escapeHtml(memoryArchitectureInfoNarrative(visual, blocks))}</p>
       </section>
     `;
   }
@@ -1679,6 +1691,23 @@
     }
 
     return intro;
+  }
+
+  function timelineInfoNarrative(trace, step, stage) {
+    const sourceLines = (step.sourceLines || []).length ? `源码行 ${step.sourceLines.join(', ')}` : '当前源码片段';
+    return `底部时间线按 trace step 展示执行顺序，当前步骤是 ${state.stepIndex + 1}/${trace.steps.length}：${zh(step.label)}。阶段数据流是 ${timelineStageFlow(stage, step)}，对应 ${sourceLines}。播放只是在这些离散步骤之间移动当前帧，高亮块和右侧链路会跟着当前步骤切换。`;
+  }
+
+  function memoryArchitectureInfoNarrative(visual, blocks) {
+    const focus = visual.architectureFocus || {};
+    const routes = focus.routes || focus.routeIds || [];
+    const routeText = routes.length
+      ? `右侧 Memory Architecture 高亮 ${formatListCn(routes)} 这些硬件链路，用来表达当前步骤的数据搬运或跨核同步路径。`
+      : '右侧 Memory Architecture 只展示当前步骤涉及的硬件单元，没有额外高亮跨单元链路。';
+    const blockText = blocks.length
+      ? `buffer grid 中额外标出的 data block 是片上局部驻留，例如 ${formatListCn(blocks.map((block) => `${displayBufferTarget(block)} ${block.label || ''}`))}；它们不是完整 logical tensor grid。`
+      : '当前步骤没有需要单独标出的片上 buffer data block。';
+    return `${routeText}${blockText}`;
   }
 
   function memoryNarrative(regions, blocks) {
