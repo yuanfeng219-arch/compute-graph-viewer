@@ -33,6 +33,24 @@ Profiling_Insight_and_Tool/
 
 # 关键更新
 
+## 2026-06-03
+
+### TOP痛点分析和950调优指导
+
+* 补充`home`入口，点击可返回compute-graph-viewer/launch.html
+
+### AI辅助下的性能调优工具
+
+* 分析记录栏中补充拖入文件后的`AI分析过程`演示Demo，基于多机多卡真实分析过程等比到20秒演示ai分析的阶段和工作内容、token消耗、真实耗时等
+
+* 补充`home`入口，点击可返回compute-graph-viewer/launch.html
+
+* 补充部分问题中缺失的timeline问题局部、通信视图
+
+* 屏蔽暂无数据的代码、文档页签
+
+* 问题详情的章节顺序、标题调整
+
 ## 2026-06-02
 
 ### TOP痛点分析和950调优指导
