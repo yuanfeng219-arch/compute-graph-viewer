@@ -7,6 +7,7 @@
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
   :root {
     --topnav-h:48px;
+    --tabbar-h:40px;
     --bg:#101010;--bg-elevated:#141414;
     --surface-1:#161616;--surface-2:#1C1C1C;--surface-3:#262626;--surface-4:#313131;
     --border-subtle:#202020;--border:#292929;--border-strong:#3A3A3A;
@@ -15,8 +16,8 @@
     --fg:#E6E6E6;--fg-sec:#999999;--fg-muted:#666666;
   }
   *{box-sizing:border-box;}
-  html{scroll-padding-top:var(--topnav-h);}
-  body{margin:0;font-family:'Inter','Source Han Sans SC','PingFang SC','Noto Sans SC',sans-serif;background:var(--bg);color:var(--fg);line-height:1.5;padding-top:var(--topnav-h);}
+  html{scroll-padding-top:calc(var(--topnav-h) + var(--tabbar-h));}
+  body{margin:0;font-family:'Inter','Source Han Sans SC','PingFang SC','Noto Sans SC',sans-serif;background:var(--bg);color:var(--fg);line-height:1.5;padding-top:calc(var(--topnav-h) + var(--tabbar-h));}
   .page{max-width:1600px;width:calc(100% - 64px);margin:0 auto;padding:48px 40px 80px;}
   h1{font-size:28px;font-weight:700;margin:0 0 8px;color:var(--fg);}
   .subtitle{color:var(--fg-muted);font-size:12px;margin-bottom:32px;}
@@ -38,7 +39,7 @@
   .topic-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
   .count-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .count-bubble{background:rgba(67,105,239,.12);color:var(--primary-lt);padding:2px 10px;border-radius:999px;font-weight:700;font-size:13px;border:1px solid rgba(67,105,239,.25);font-family:'JetBrains Mono',monospace;}
-  .ref-bubble{background:var(--surface-2);color:var(--fg-muted);padding:2px 10px;border-radius:999px;font-size:11px;border:1px solid var(--border);font-family:'JetBrains Mono',monospace;}
+  .ref-bubble{display:none;}
   .count-label{font-size:12px;color:var(--fg-sec);}
   .ref-label{font-size:11px;color:var(--fg-muted);font-style:italic;}
 
@@ -52,7 +53,7 @@
   .src-ref{color:var(--fg-muted);font-size:10px;}
 
   table.issues{width:100%;border-collapse:collapse;font-size:12px;background:var(--bg);}
-  table.issues thead th{position:sticky;top:var(--topnav-h);z-index:10;background:var(--surface-1);color:var(--fg-sec);text-align:left;padding:8px 12px;font-weight:500;font-size:10px;letter-spacing:.5px;text-transform:uppercase;border-right:1px solid var(--border-subtle);box-shadow:0 1px 0 var(--border);white-space:nowrap;}
+  table.issues thead th{position:sticky;top:calc(var(--topnav-h) + var(--tabbar-h));z-index:10;background:var(--surface-1);color:var(--fg-sec);text-align:left;padding:8px 12px;font-weight:500;font-size:10px;letter-spacing:.5px;text-transform:uppercase;border-right:1px solid var(--border-subtle);box-shadow:0 1px 0 var(--border);white-space:nowrap;}
   table.issues thead th:last-child{border-right:none;}
   table.issues tbody td{padding:10px 12px;border-bottom:1px solid var(--border-subtle);border-right:1px solid var(--border-subtle);vertical-align:top;}
   table.issues tbody td:last-child{border-right:none;}
@@ -87,11 +88,19 @@
   .toc-item:hover{border-color:var(--primary);color:var(--fg);}
   .toc-rank{font-weight:700;color:var(--primary);font-family:'JetBrains Mono',monospace;}
   .toc-n{font-size:11px;color:var(--fg-muted);}
-  .toc-ref{font-size:10px;color:var(--fg-muted);opacity:.6;}
+  .toc-ref{display:none;}
 
   .footer-note{margin-top:16px;padding-top:16px;border-top:1px solid var(--border-subtle);font-size:11px;color:var(--fg-muted);line-height:1.7;}
-  .divider{border:none;border-top:1px solid var(--border);margin:48px 0;}
   .empty-note{color:var(--fg-muted);font-size:13px;padding:12px 0;}
+
+  /* Tab bar */
+  .tab-bar{position:fixed;top:var(--topnav-h);left:0;right:0;height:var(--tabbar-h);z-index:400;background:var(--surface-1);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:4px;padding:0 24px;}
+  .tab-btn{padding:6px 20px;border-radius:7px;border:none;background:transparent;color:var(--fg-muted);font-size:13px;font-weight:500;cursor:pointer;transition:background .15s,color .15s;font-family:inherit;letter-spacing:.2px;}
+  .tab-btn:hover{background:var(--surface-2);color:var(--fg);}
+  .tab-btn.active{background:var(--surface-3);color:var(--fg);}
+  .tab-btn.tab-pypto.active{color:var(--primary);}
+  .tab-btn.tab-insight.active{color:var(--accent);}
+  .tab-btn.tab-ascendc.active{color:var(--success);}
 </style>
 </head>
 <body>
@@ -101,38 +110,46 @@
   <div class="topnav-tabs">
     <a class="topnav-tab" href="user_issue_analysis.html">TOP用户痛点</a>
     <a class="topnav-tab" href="user_pain_guide.html">基于TOP用户痛点的950性能调优指导</a>
-    <a class="topnav-tab" href="perf_engineer_guide.html">基于PDF材料的950性能调优指导</a>
-    <a class="topnav-tab active" href="top_issue_detail.html">附录：TOP痛点与Issue映射关系</a>
+    <a class="topnav-tab" href="perf_engineer_guide.html">微信视频号中的950知识提炼</a>
+    <a class="topnav-tab active" href="top_issue_detail.html">附录：3仓性能调优类issue总结数据源表</a>
   </div>
 </nav>
+
+<!-- Tab bar (fixed, below topnav) -->
+<div class="tab-bar" id="mainTabBar">
+  <button class="tab-btn active"        data-tab="all"     onclick="switchTab('all')">所有</button>
+  <button class="tab-btn tab-pypto"     data-tab="pypto"   onclick="switchTab('pypto')">PyPTO</button>
+  <button class="tab-btn tab-insight"   data-tab="insight" onclick="switchTab('insight')">Insight</button>
+  <button class="tab-btn tab-ascendc"   data-tab="ascendc" onclick="switchTab('ascendc')">AscendC</button>
+</div>
+
 <div class="page">
-  <h1>Top 10 问题 · Issue 完整清单</h1>  <div class='subtitle'>独占分配关键词匹配：803 条性能 issue 中共归入 444 条（原始语义聚类参考 521 条）· 每条 issue 仅归入一个主题 · 导出快照 2026-05-28</div>
+  <h1>Top 10 问题 · Issue 完整清单</h1>  <div class='subtitle'>独占分配关键词匹配：856 条性能 issue 中共归入 465 条（原始语义聚类参考 521 条）· 每条 issue 仅归入一个主题 · 其余 391 条因措辞分散、未命中任何 Top 10 主题关键词而未纳入统计 · 导出快照 2026-06-04</div>
   <div class='toc'>
-    <a class='toc-item' href='#topic-1'><span class='toc-rank'>#1</span><span>大规模训练场景下泳道图渲染卡顿、框选交互异常，且时间线与…</span><span class='toc-n'>(118</span><span class='toc-ref'>/128)</span></a>
-    <a class='toc-item' href='#topic-2'><span class='toc-rank'>#2</span><span>同名算子在不同硬件代次耗时翻倍，主线代码合入后性能骤降，…</span><span class='toc-n'>(112</span><span class='toc-ref'>/112)</span></a>
+    <a class='toc-item' href='#topic-1'><span class='toc-rank'>#1</span><span>大规模训练场景下泳道图渲染卡顿、框选交互异常，且时间线与…</span><span class='toc-n'>(125</span><span class='toc-ref'>/128)</span></a>
+    <a class='toc-item' href='#topic-2'><span class='toc-rank'>#2</span><span>同名算子在不同硬件代次耗时翻倍，主线代码合入后性能骤降，…</span><span class='toc-n'>(120</span><span class='toc-ref'>/112)</span></a>
     <a class='toc-item' href='#topic-3'><span class='toc-rank'>#3</span><span>OOM 快照解析后页面空白，19MB 快照触发工具自身 …</span><span class='toc-n'>(40</span><span class='toc-ref'>/53)</span></a>
     <a class='toc-item' href='#topic-4'><span class='toc-rank'>#4</span><span>分布式 MoE shmem / AICPU 调度性能未达预期…</span><span class='toc-n'>(38</span><span class='toc-ref'>/73)</span></a>
     <a class='toc-item' href='#topic-5'><span class='toc-rank'>#5</span><span>load3D 指令阻塞 MTE2 流水，卷积 L1 Do…</span><span class='toc-n'>(38</span><span class='toc-ref'>/43)</span></a>
-    <a class='toc-item' href='#topic-6'><span class='toc-rank'>#6</span><span>ftrace 采集后 trace.dat 未生成，vll…</span><span class='toc-n'>(31</span><span class='toc-ref'>/31)</span></a>
+    <a class='toc-item' href='#topic-6'><span class='toc-rank'>#6</span><span>ftrace 采集后 trace.dat 未生成，vll…</span><span class='toc-n'>(37</span><span class='toc-ref'>/31)</span></a>
     <a class='toc-item' href='#topic-7'><span class='toc-rank'>#7</span><span>55GB bin 文件超限但报错提示误导用户，jupyt…</span><span class='toc-n'>(23</span><span class='toc-ref'>/30)</span></a>
     <a class='toc-item' href='#topic-8'><span class='toc-rank'>#8</span><span>Windows 加载 prof 时 WebSocket …</span><span class='toc-n'>(17</span><span class='toc-ref'>/18)</span></a>
     <a class='toc-item' href='#topic-9'><span class='toc-rank'>#9</span><span>CSV 中可查到的算子在 Insight 界面找不到，G…</span><span class='toc-n'>(17</span><span class='toc-ref'>/17)</span></a>
     <a class='toc-item' href='#topic-10'><span class='toc-rank'>#10</span><span>内存调优文档文件名与交付件不符，ACLGraph 和 T…</span><span class='toc-n'>(10</span><span class='toc-ref'>/16)</span></a>
   </div>
-<hr class='divider'>
 <div class='topic-section' id='topic-1'>
   <div class='topic-header'>
     <div class='topic-rank'>1</div>
     <div class='topic-title'>大规模训练场景下泳道图渲染卡顿、框选交互异常，且时间线与通信总览数据持续不一致</div>
   </div>
   <div class='count-row'>
-    <span class='count-bubble'>118</span><span class='count-label'>条</span>
+    <span class='count-bubble'>125</span><span class='count-label'>条</span>
     <span class='ref-bubble'>原始聚类 128 条</span>
   </div>
   <div class='src-bars-mini' style='margin-top:10px;'>
-    <div class='src-bar-item'><span class='src-dot pypto'></span>PYPTO <span class='src-n'>62</span><span class='src-ref'>/72</span></div>
+    <div class='src-bar-item'><span class='src-dot pypto'></span>PYPTO <span class='src-n'>63</span><span class='src-ref'>/72</span></div>
     <div class='src-bar-item'><span class='src-dot devkit'></span>devkit <span class='src-n'>0</span><span class='src-ref'>/0</span></div>
-    <div class='src-bar-item'><span class='src-dot insight'></span>Insight <span class='src-n'>56</span><span class='src-ref'>/56</span></div>
+    <div class='src-bar-item'><span class='src-dot insight'></span>Insight <span class='src-n'>62</span><span class='src-ref'>/56</span></div>
   </div>
   <table class='issues'><thead><tr><th class='col-idx'>#</th><th class='col-title'>标题</th><th class='col-src'>来源仓</th><th class='col-status'>状态</th><th class='col-pri'>优先级</th><th class='col-tags'>标签</th><th class='col-date'>创建时间</th></tr></thead><tbody>
         <tr><td class='col-idx'>1</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/pypto/issues/1268' target='_blank'>[Bug-Report|缺陷反馈]: 泳道图上任务的前驱依赖关系显示失败</a></div></td><td class='col-src'><span class='src-chip chip-pypto'>PYPTO</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'></td><td class='col-date'>2026-04-16</td></tr>
@@ -253,21 +270,27 @@
         <tr><td class='col-idx'>116</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/68' target='_blank'>[Bug]: 【insight】ACLGraph项目类型的内存拷贝总览存在数量但是详情显示无数据</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>medium-priority</span><span class='tag-chip'>triaged</span><span class='tag-chip'>bug</span><span class='tag-chip'>duplicate</span></td><td class='col-date'>2026-02-25</td></tr>
         <tr><td class='col-idx'>117</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/65' target='_blank'>[Bug]: 【insight】最新版本解析最新调优数据（blockNum数据）后切换数据工程内存界面上报各种异常</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>bug</span><span class='tag-chip'>medium-priority</span><span class='tag-chip'>triaged</span><span class='tag-chip'>resolved</span></td><td class='col-date'>2026-02-24</td></tr>
         <tr><td class='col-idx'>118</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/41' target='_blank'>[Bug]: 【insight】数据工程切换概览界面计算详情下数据概率性消失</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>medium-priority</span><span class='tag-chip'>bug</span><span class='tag-chip'>triaged</span><span class='tag-chip'>resolved</span></td><td class='col-date'>2026-02-02</td></tr>
+        <tr><td class='col-idx'>119</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/pypto/issues/2011' target='_blank'>[Bug-Report|缺陷反馈]: 【green light】流水图启动时间长达30us如何解决？</a></div></td><td class='col-src'><span class='src-chip chip-pypto'>PYPTO</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>Machine</span><span class='tag-chip'>green-light</span></td><td class='col-date'>2026-05-28</td></tr>
+        <tr><td class='col-idx'>120</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/322' target='_blank'>[Bug]: 多卡 Profiling 在mindstudio insight中通信算子完全被通算掩盖</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>bug</span></td><td class='col-date'>2026-06-03</td></tr>
+        <tr><td class='col-idx'>121</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/315' target='_blank'>[Feature] 【算子调优】 Insight支持仿真流水图scalar头开销耗时展示</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>feature</span></td><td class='col-date'>2026-06-02</td></tr>
+        <tr><td class='col-idx'>122</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/314' target='_blank'>[Bug]: 【insight】时间线下搜索成功后上报未找到跳转目标</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>medium-priority</span><span class='tag-chip'>bug</span></td><td class='col-date'>2026-06-01</td></tr>
+        <tr><td class='col-idx'>123</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/312' target='_blank'>[Bug]: 【insight】锁定区域查找功能后切换到另外一个数据工程时间线下搜索查询失效，需要关闭工具界面才能恢复</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>medium-priority</span><span class='tag-chip'>bug</span></td><td class='col-date'>2026-06-01</td></tr>
+        <tr><td class='col-idx'>124</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/311' target='_blank'>[Feature]: timeline增加悬浮工具栏，优化算子框选模式交互</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>resolved</span><span class='tag-chip'>triaged</span><span class='tag-chip'>feature</span></td><td class='col-date'>2026-05-30</td></tr>
+        <tr><td class='col-idx'>125</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/308' target='_blank'>[RFC]: 算子下发流程端到端时间表显示</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>rfc</span><span class='tag-chip'>triaged</span></td><td class='col-date'>2026-05-30</td></tr>
   </tbody></table>
 </div>
-<hr class='divider'>
 <div class='topic-section' id='topic-2'>
   <div class='topic-header'>
     <div class='topic-rank'>2</div>
     <div class='topic-title'>算子性能显著落后于 AscendC 参考实现，缺少 Auto-tuner / Roofline 量化依据，代码合入后性能劣化无 CI 自动看护</div>
   </div>
   <div class='count-row'>
-    <span class='count-bubble'>112</span><span class='count-label'>条</span>
+    <span class='count-bubble'>120</span><span class='count-label'>条</span>
     <span class='ref-bubble'>原始聚类 112 条</span>
   </div>
   <div class='src-bars-mini' style='margin-top:10px;'>
-    <div class='src-bar-item'><span class='src-dot pypto'></span>PYPTO <span class='src-n'>77</span><span class='src-ref'>/77</span></div>
-    <div class='src-bar-item'><span class='src-dot devkit'></span>devkit <span class='src-n'>31</span><span class='src-ref'>/31</span></div>
+    <div class='src-bar-item'><span class='src-dot pypto'></span>PYPTO <span class='src-n'>83</span><span class='src-ref'>/77</span></div>
+    <div class='src-bar-item'><span class='src-dot devkit'></span>devkit <span class='src-n'>33</span><span class='src-ref'>/31</span></div>
     <div class='src-bar-item'><span class='src-dot insight'></span>Insight <span class='src-n'>4</span><span class='src-ref'>/4</span></div>
   </div>
   <table class='issues'><thead><tr><th class='col-idx'>#</th><th class='col-title'>标题</th><th class='col-src'>来源仓</th><th class='col-status'>状态</th><th class='col-pri'>优先级</th><th class='col-tags'>标签</th><th class='col-date'>创建时间</th></tr></thead><tbody>
@@ -383,9 +406,16 @@
         <tr><td class='col-idx'>110</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/108' target='_blank'>[Bug]: insight导入采集的CPU性能数据，报错且无法加载数据</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>次要</span></td><td class='col-tags'><span class='tag-chip'>bug</span><span class='tag-chip'>medium-priority</span><span class='tag-chip'>triaged</span><span class='tag-chip'>pending</span><span class='tag-chip'>resolved</span></td><td class='col-date'>2026-03-11</td></tr>
         <tr><td class='col-idx'>111</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/145' target='_blank'>[Doc]: 快速入门大模型检查问题同步</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>document</span><span class='tag-chip'>triaged</span><span class='tag-chip'>resolved</span></td><td class='col-date'>2026-03-24</td></tr>
         <tr><td class='col-idx'>112</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/30' target='_blank'>[Feature]: MindStudio Insight支持展示CPU/NPU/NUMA拓扑关系</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>主要</span></td><td class='col-tags'><span class='tag-chip'>resolved</span><span class='tag-chip'>feature</span><span class='tag-chip'>high-priority</span><span class='tag-chip'>triaged</span></td><td class='col-date'>2026-01-27</td></tr>
+        <tr><td class='col-idx'>113</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/pypto/issues/2029' target='_blank'>[Bug-Report|缺陷反馈]: mla_prolog_quant用例A5劣化与A3</a></div></td><td class='col-src'><span class='src-chip chip-pypto'>PYPTO</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>Operations</span></td><td class='col-date'>2026-05-29</td></tr>
+        <tr><td class='col-idx'>114</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/pypto/issues/2074' target='_blank'>[Task|任务跟踪]: mla非量化算子性能</a></div></td><td class='col-src'><span class='src-chip chip-pypto'>PYPTO</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>resolved</span></td><td class='col-date'>2026-06-02</td></tr>
+        <tr><td class='col-idx'>115</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/pypto/issues/2076' target='_blank'>[Task|任务跟踪]: SFA antiquant A5性能优化</a></div></td><td class='col-src'><span class='src-chip chip-pypto'>PYPTO</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'></td><td class='col-date'>2026-06-02</td></tr>
+        <tr><td class='col-idx'>116</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/pypto/issues/2062' target='_blank'>[Bug-Report|缺陷反馈]: 【green light】apply_adam_w_v2单个核执行的都是vector操作，vf融合欠佳，性能不理想</a></div></td><td class='col-src'><span class='src-chip chip-pypto'>PYPTO</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>bug-report</span><span class='tag-chip'>green-light</span></td><td class='col-date'>2026-06-01</td></tr>
+        <tr><td class='col-idx'>117</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/pypto/issues/2038' target='_blank'>[Bug-Report|缺陷反馈]: 【green light】mhc_post单个核执行的都是vector操作，vf融合欠佳，性能不理想</a></div></td><td class='col-src'><span class='src-chip chip-pypto'>PYPTO</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>Passes</span><span class='tag-chip'>green-light</span></td><td class='col-date'>2026-05-30</td></tr>
+        <tr><td class='col-idx'>118</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/pypto/issues/2047' target='_blank'>[Bug-Report|缺陷反馈]: 【green light】mhc_pre算子aiv->aic切换时延高达13us，aic计算块不规整，如何解决？</a></div></td><td class='col-src'><span class='src-chip chip-pypto'>PYPTO</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>Machine</span><span class='tag-chip'>green-light</span></td><td class='col-date'>2026-05-30</td></tr>
+        <tr><td class='col-idx'>119</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/asc-devkit/issues/784' target='_blank'>[Requirement|需求建议]: SIMT算子性能优化短向量应用文档</a></div></td><td class='col-src'><span class='src-chip chip-devkit'>devkit</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>requirement</span></td><td class='col-date'>2026-05-30</td></tr>
+        <tr><td class='col-idx'>120</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/asc-devkit/issues/769' target='_blank'>[Question|问题咨询]: 提高Cube核利用率</a></div></td><td class='col-src'><span class='src-chip chip-devkit'>devkit</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'></td><td class='col-date'>2026-05-29</td></tr>
   </tbody></table>
 </div>
-<hr class='divider'>
 <div class='topic-section' id='topic-4'>
   <div class='topic-header'>
     <div class='topic-rank'>4</div>
@@ -441,7 +471,6 @@
         <tr><td class='col-idx'>38</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/206' target='_blank'>[Feature]: 建议 MindStudio Insight “概览”页面，“计算/通信概览”柱状图做成可缩放大小的</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>feature</span><span class='tag-chip'>triaged</span></td><td class='col-date'>2026-04-21</td></tr>
   </tbody></table>
 </div>
-<hr class='divider'>
 <div class='topic-section' id='topic-3'>
   <div class='topic-header'>
     <div class='topic-rank'>3</div>
@@ -499,7 +528,6 @@
         <tr><td class='col-idx'>40</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/111' target='_blank'>[Bug]: 【insight】Triton内存可视化内存池状态图显示存在两个一模一样的，请修改</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>bug</span><span class='tag-chip'>medium-priority</span><span class='tag-chip'>triaged</span><span class='tag-chip'>resolved</span></td><td class='col-date'>2026-03-11</td></tr>
   </tbody></table>
 </div>
-<hr class='divider'>
 <div class='topic-section' id='topic-5'>
   <div class='topic-header'>
     <div class='topic-rank'>5</div>
@@ -555,20 +583,19 @@
         <tr><td class='col-idx'>38</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/19' target='_blank'>适配MindStudio Insight的JupyterLab插件流水线构建</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>triaged</span><span class='tag-chip'>resolved</span></td><td class='col-date'>2026-01-23</td></tr>
   </tbody></table>
 </div>
-<hr class='divider'>
 <div class='topic-section' id='topic-6'>
   <div class='topic-header'>
     <div class='topic-rank'>6</div>
     <div class='topic-title'>ftrace 采集后 trace.dat 未生成，vllm-ascend 采集成功但 Insight 加载后页面卡死，PMU metrics 静默失效</div>
   </div>
   <div class='count-row'>
-    <span class='count-bubble'>31</span><span class='count-label'>条</span>
+    <span class='count-bubble'>37</span><span class='count-label'>条</span>
     <span class='ref-bubble'>原始聚类 31 条</span>
   </div>
   <div class='src-bars-mini' style='margin-top:10px;'>
-    <div class='src-bar-item'><span class='src-dot pypto'></span>PYPTO <span class='src-n'>10</span><span class='src-ref'>/10</span></div>
+    <div class='src-bar-item'><span class='src-dot pypto'></span>PYPTO <span class='src-n'>11</span><span class='src-ref'>/10</span></div>
     <div class='src-bar-item'><span class='src-dot devkit'></span>devkit <span class='src-n'>2</span><span class='src-ref'>/2</span></div>
-    <div class='src-bar-item'><span class='src-dot insight'></span>Insight <span class='src-n'>19</span><span class='src-ref'>/19</span></div>
+    <div class='src-bar-item'><span class='src-dot insight'></span>Insight <span class='src-n'>24</span><span class='src-ref'>/19</span></div>
   </div>
   <table class='issues'><thead><tr><th class='col-idx'>#</th><th class='col-title'>标题</th><th class='col-src'>来源仓</th><th class='col-status'>状态</th><th class='col-pri'>优先级</th><th class='col-tags'>标签</th><th class='col-date'>创建时间</th></tr></thead><tbody>
         <tr><td class='col-idx'>1</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/pypto/issues/1211' target='_blank'>[Question|问题咨询]: msprof采集数据</a></div></td><td class='col-src'><span class='src-chip chip-pypto'>PYPTO</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>infrastructure</span></td><td class='col-date'>2026-04-14</td></tr>
@@ -602,9 +629,14 @@
         <tr><td class='col-idx'>29</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/220' target='_blank'>[Bug]: aclgraphdebug数据和ftrace数据内存拷贝总览一直转圈</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>bug</span><span class='tag-chip'>triaged</span><span class='tag-chip'>resolved</span></td><td class='col-date'>2026-04-26</td></tr>
         <tr><td class='col-idx'>30</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/223' target='_blank'>[Bug]: A5 vllm-ascend采集profiling，成功解析，insight加载卡住</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>pending</span><span class='tag-chip'>triaged</span><span class='tag-chip'>bug</span><span class='tag-chip'>resolved</span></td><td class='col-date'>2026-04-28</td></tr>
         <tr><td class='col-idx'>31</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/58' target='_blank'>[Feature]: Windows和macOS集成Python解释器</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>resolved</span><span class='tag-chip'>stale</span><span class='tag-chip'>feature</span><span class='tag-chip'>triaged</span></td><td class='col-date'>2026-02-10</td></tr>
+        <tr><td class='col-idx'>32</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/cann/pypto/issues/2084' target='_blank'>[Bug-Report|缺陷反馈]: capture模式时，开启DUMP_DEVICE_PERF性能采集，runtime日志报MemCopySync:Memory copy sync failed</a></div></td><td class='col-src'><span class='src-chip chip-pypto'>PYPTO</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>bug-report</span><span class='tag-chip'>Machine</span></td><td class='col-date'>2026-06-02</td></tr>
+        <tr><td class='col-idx'>33</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/321' target='_blank'>[Feature]: 支持profiling数据和ftrace数据联合导入+导入报错优化</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>feature</span></td><td class='col-date'>2026-06-03</td></tr>
+        <tr><td class='col-idx'>34</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/317' target='_blank'>[Bug]: 8卡profiling解析只有4卡</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>bug</span><span class='tag-chip'>resolved</span><span class='tag-chip'>triaged</span></td><td class='col-date'>2026-06-03</td></tr>
+        <tr><td class='col-idx'>35</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/313' target='_blank'>[Bug]: 【insight】Ftrace文件设置基线比对之后在系统视图下显示异常，需要删除生成的db文件后再次导入才能恢复</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>bug</span><span class='tag-chip'>medium-priority</span></td><td class='col-date'>2026-06-01</td></tr>
+        <tr><td class='col-idx'>36</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/309' target='_blank'>[Feature]: 提供Profiling数据调用栈火焰图分析</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>resolved</span><span class='tag-chip'>feature</span></td><td class='col-date'>2026-05-30</td></tr>
+        <tr><td class='col-idx'>37</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/319' target='_blank'>[Doc]: 【ftrace_tools】ReadMe 中 trace_convert 示例使用 .json 输出名但未指定 --format=json</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-open'>opened</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>document</span></td><td class='col-date'>2026-06-03</td></tr>
   </tbody></table>
 </div>
-<hr class='divider'>
 <div class='topic-section' id='topic-7'>
   <div class='topic-header'>
     <div class='topic-rank'>7</div>
@@ -645,7 +677,6 @@
         <tr><td class='col-idx'>23</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/171' target='_blank'>[Bug]: 导入db数据，选择fwdbwd连线类型，没有显示连线数据</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>resolved</span><span class='tag-chip'>bug</span><span class='tag-chip'>triaged</span></td><td class='col-date'>2026-04-03</td></tr>
   </tbody></table>
 </div>
-<hr class='divider'>
 <div class='topic-section' id='topic-8'>
   <div class='topic-header'>
     <div class='topic-rank'>8</div>
@@ -680,7 +711,6 @@
         <tr><td class='col-idx'>17</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/82' target='_blank'>[Bug]:正常的profiling数据连线显示有问题</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>triaged</span><span class='tag-chip'>bug</span><span class='tag-chip'>resolved</span><span class='tag-chip'>help-wanted</span></td><td class='col-date'>2026-03-03</td></tr>
   </tbody></table>
 </div>
-<hr class='divider'>
 <div class='topic-section' id='topic-9'>
   <div class='topic-header'>
     <div class='topic-rank'>9</div>
@@ -715,7 +745,6 @@
         <tr><td class='col-idx'>17</td><td class='col-title'><div class='issue-title'><a href='https://gitcode.com/Ascend/msinsight/issues/208' target='_blank'>[Bug]: 算子源码页面排序不稳定</a></div></td><td class='col-src'><span class='src-chip chip-insight'>Insight</span></td><td class='col-status'><span class='st-badge st-closed'>closed</span></td><td class='col-pri'><span class='badge b-p2'>无优先级</span></td><td class='col-tags'><span class='tag-chip'>triaged</span><span class='tag-chip'>resolved</span><span class='tag-chip'>bug</span></td><td class='col-date'>2026-04-21</td></tr>
   </tbody></table>
 </div>
-<hr class='divider'>
 <div class='topic-section' id='topic-10'>
   <div class='topic-header'>
     <div class='topic-rank'>10</div>
@@ -746,8 +775,153 @@
   <div class="footer-note">
     <b>数据来源：</b>profiling_issue/ 目录下 3 份 perf_*.csv（导出于 2026-05-28）。<br>
     <b>分类方法：</b>独占关键词匹配——每条 issue 经正则匹配后按优先级（主题 1 最高）排队，仅归入最高匹配主题，与 user_issue_analysis.html 原始分析的「单条 issue 仅计入最高优先匹配主题」保持一致。<br>
-    <b>数量差异说明：</b>原始聚类（灰色参考数）来自 AI 语义分类，覆盖描述措辞更广；关键词匹配受词汇覆盖限制，部分主题数量低于参考值（尤其 #3 通信类、#7 大文件类）。各主题标题旁显示「实际匹配 / 原始参考」供对照。
   </div>
 </div>
+
+<script>
+/* ── 各 Tab 对应的来源 chip 类 ── */
+const SRC_CLASS = {
+  all: null,
+  pypto: 'chip-pypto',
+  insight: 'chip-insight',
+  ascendc: 'chip-devkit'
+};
+
+/* ── 每个仓库视图下各 topic 的独立标题 ── */
+const TITLES = {
+  all: {
+    'topic-1': '泳道图渲染卡顿与交互异常，profiling 时间线与通信数据持续不一致',
+    'topic-2': '算子性能落后参考实现，缺失 Auto-tuner 基线与 CI 性能回归看护',
+    'topic-3': 'profiling 内存分析：OOM 快照解析失败，工具自身内存暴涨，泄漏 Tensor 难以定位',
+    'topic-4': '分布式训练 profiling：通信数据展示缺失，MoE / AICPU 调度性能未达预期',
+    'topic-5': '流水线指令语义障碍：load3D 阻塞 MTE2 / Double Buffer 错误 / PipeBarrier 误用',
+    'topic-6': 'profiling 采集工具链失效：trace.dat 不生成 / 加载卡死 / PMU 静默失效',
+    'topic-7': '大文件场景工具崩溃：超限报错不明确，WebSocket 断连无法恢复',
+    'topic-8': '跨平台兼容性缺失：Windows / Linux 远程 / Mac 环境各有异常',
+    'topic-9': 'Insight 界面数据显示异常：算子不可见、列截断、搜索功能不稳定',
+    'topic-10': '内存拷贝分析数据空白，工具文档与实际交付件不对齐'
+  },
+  pypto: {
+    'topic-1': '泳道图采集失败、渲染卡顿，AICore 端到端耗时统计偏差',
+    'topic-2': '算子 perf 回归无 CI 看护，Roofline / Auto-tuner 量化基线缺失',
+    'topic-3': '内存快照分析能力不足，泄漏 Tensor 识别缺失',
+    'topic-4': '多机多卡 profiling 数据残缺，HCCL 通信域分析异常',
+    'topic-5': 'load3D / PipeBarrier 流水线指令用法错误，Double Buffer 无法开启',
+    'topic-6': 'msprof / ftrace 采集集成失效，profiling 数据无法生成',
+    'topic-7': '大文件场景 WebSocket 断连，超限提示不清晰',
+    'topic-8': '工具跨平台启动失败或 UI 布局错乱',
+    'topic-9': '计算图显示异常，算子数据截断，大数据量下搜索卡死',
+    'topic-10': 'TileTensor 存储与精度工具算子支持缺失，ccache 基础设施不支持'
+  },
+  insight: {
+    'topic-1': '大规模训练泳道图渲染卡顿与框选异常，通信总览数据与时间线不符',
+    'topic-2': '算子性能 profiling 数据在 Insight 界面展示不完整',
+    'topic-3': 'OOM 内存快照解析后页面空白，Insight 自身内存占用暴涨至 5GB',
+    'topic-4': '分布式通信总览界面异常：HCCL 中文乱码、32 卡缩略图不全、跨机为空',
+    'topic-5': '采集数据中流水线 profiling 信息缺失或与预期不符',
+    'topic-6': 'vllm-ascend / ftrace 采集成功但 Insight 加载后页面卡死',
+    'topic-7': '大文件解析时 WebSocket 超时断连，超限报错提示不清晰',
+    'topic-8': 'Windows 加载 prof 断开、Linux 远程 jupyterlab 无法打开、Mac 块图错乱',
+    'topic-9': '算子在 Insight 界面不可见，GPR Status 列被截断，搜索大数据量下卡死',
+    'topic-10': '内存拷贝总览详情数据为空，工程切换后数据不刷新'
+  },
+  ascendc: {
+    'topic-1': '泳道图通信数据与 AscendC 算子耗时统计不符',
+    'topic-2': '算子性能显著落后 AscendC 参考实现，缺少 Roofline 基线与 CI 性能回归看护',
+    'topic-3': '内存分析工具对 AscendC 算子 Tensor 泄漏的检测能力不足',
+    'topic-4': 'MoE / AICPU 分布式调度性能未达预期，shmem 使用问题',
+    'topic-5': 'load3D 阻塞 MTE2 流水，Double Buffer 配置错误，PipeBarrier 排空语义晦涩',
+    'topic-6': 'PMU metrics 静默失效，profiling 采集结果异常',
+    'topic-7': '大文件场景下 AscendC 算子 profiling 数据加载失败',
+    'topic-8': '跨平台环境下 AscendC 工具链启动或展示异常',
+    'topic-9': 'GPR Status 数据截断，算子级 profiling 数据在工具界面不可见',
+    'topic-10': 'CACHE_MODE_DISABLE 控制 L2 cache 路径，Fixpipe 与 DataCopy 行为不一致'
+  }
+};
+
+const SUBTITLES = {
+  all: '独占分配关键词匹配：856 条性能 issue 中共归入 465 条（原始语义聚类参考 521 条）· 每条 issue 仅归入一个主题 · 其余 391 条因措辞分散未纳入统计 · 导出快照 2026-06-04',
+  pypto: 'PyPTO 仓库独立视图 · 来自 cann/pypto 仓 · 按 PyPTO 视角独立归类 TOP 用户问题，话题权重以 PyPTO issue 数量排序 · 导出快照 2026-06-04',
+  insight: 'Insight 仓库独立视图 · 来自 Ascend/msinsight 仓 · 按 Insight 视角独立归类 TOP 用户问题，话题权重以 Insight issue 数量排序 · 导出快照 2026-06-04',
+  ascendc: 'AscendC 仓库独立视图 · 来自 cann/asc-devkit 仓 · 按 AscendC（算子开发）视角独立归类 TOP 用户问题，话题权重以 devkit issue 数量排序 · 导出快照 2026-06-04'
+};
+
+function switchTab(tab) {
+  /* 1. 更新按钮激活状态 */
+  document.querySelectorAll('.tab-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab)
+  );
+
+  const srcClass = SRC_CLASS[tab];
+
+  /* 2. 过滤行，并对每个 topic 内部重新编号 */
+  document.querySelectorAll('.topic-section').forEach(section => {
+    let idx = 1;
+    section.querySelectorAll('tbody tr').forEach(row => {
+      const chip = row.querySelector('.src-chip');
+      const show = !srcClass || (chip && chip.classList.contains(srcClass));
+      row.style.display = show ? '' : 'none';
+      if (show) {
+        const cell = row.querySelector('.col-idx');
+        if (cell) cell.textContent = idx++;
+      }
+    });
+  });
+
+  /* 3. 统计各 topic 可见行数 */
+  const data = Array.from(document.querySelectorAll('.topic-section')).map(s => ({
+    s,
+    id: s.id,
+    count: Array.from(s.querySelectorAll('tbody tr')).filter(r => r.style.display !== 'none').length
+  }));
+  data.sort((a, b) => b.count - a.count);
+
+  /* 4. 重排 DOM，更新排名 / 数量 / 标题 */
+  const titles = TITLES[tab] || TITLES.all;
+  const page   = document.querySelector('.page');
+  const footer = document.querySelector('.footer-note');
+  let rank = 1;
+
+  data.forEach(({ s, id, count }) => {
+    s.style.display = count ? '' : 'none';
+    if (count) {
+      const rankEl = s.querySelector('.topic-rank');
+      if (rankEl) rankEl.textContent = rank++;
+      const bubble = s.querySelector('.count-bubble');
+      if (bubble) bubble.textContent = count;
+      const titleEl = s.querySelector('.topic-title');
+      if (titleEl && titles[id]) titleEl.textContent = titles[id];
+    }
+    /* 按排序插回 DOM（footer 之前）*/
+    if (footer) page.insertBefore(s, footer);
+    else page.appendChild(s);
+  });
+
+  /* 5. 仅在"所有"视图下显示来源分布条 */
+  const showMeta = tab === 'all';
+  document.querySelectorAll('.src-bars-mini').forEach(b => b.style.display = showMeta ? '' : 'none');
+
+  /* 6. 更新副标题 */
+  const sub = document.querySelector('.subtitle');
+  if (sub) sub.textContent = SUBTITLES[tab] || SUBTITLES.all;
+
+  /* 7. 重建 TOC */
+  const toc = document.querySelector('.toc');
+  if (!toc) return;
+  toc.innerHTML = '';
+  let r = 1;
+  data.filter(d => d.count > 0).forEach(({ id, count }) => {
+    const text = (titles[id] || '').slice(0, 24) + '…';
+    const a = document.createElement('a');
+    a.className = 'toc-item';
+    a.href = '#' + id;
+    a.innerHTML = `<span class="toc-rank">#${r++}</span><span>${text}</span><span class="toc-n">(${count})</span>`;
+    toc.appendChild(a);
+  });
+}
+
+/* 页面加载后立即应用"所有"视图以更新标题 */
+document.addEventListener('DOMContentLoaded', () => switchTab('all'));
+</script>
 </body>
 </html>

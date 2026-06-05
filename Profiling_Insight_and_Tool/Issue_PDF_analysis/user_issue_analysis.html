@@ -399,18 +399,18 @@
   <div class="topnav-tabs">
     <a class="topnav-tab active" href="user_issue_analysis.html">TOP用户痛点</a>
     <a class="topnav-tab" href="user_pain_guide.html">基于TOP用户痛点的950性能调优指导</a>
-    <a class="topnav-tab" href="perf_engineer_guide.html">基于PDF材料的950性能调优指导</a>
+    <a class="topnav-tab" href="perf_engineer_guide.html">微信视频号中的950知识提炼</a>
     <a class="topnav-tab" href="top_issue_detail.html">附录：TOP痛点与Issue映射关系</a>
   </div>
 </nav>
 <div class="page">
 
-  <h1>性能调优类 issue 分析总结-v20260530</h1>
-  <div class="subtitle">基于 cann/pypto、cann/asc-devkit、Ascend/msinsight 三个仓 Gitcode issue（导出快照 2026-05-28）803 条性能相关问题中关键词匹配归类 444 条，每条 issue 仅计入一个主题</div>
+  <h1>性能调优类 issue 分析总结-v20260604</h1>
+  <div class="subtitle">基于 cann/pypto、cann/asc-devkit、Ascend/msinsight 三个仓 Gitcode issue（导出快照 2026-06-04）856 条性能相关问题中关键词匹配归类 465 条，每条 issue 仅计入一个主题</div>
 
   <h2>用户问题分析</h2>
   <p class="section-intro">
-    对 803 条性能相关 issue 按主题聚类后，按"用户提出频率"取 Top 10。每条给出当前观察到的影响等级、可参考解决方案、修复难度评估，以及对标的 NVIDIA Nsight（Systems / Compute / Compute Sanitizer）能力。
+    对 856 条性能相关 issue 按主题聚类后，按"用户提出频率"取 Top 10。每条给出当前观察到的影响等级、可参考解决方案、修复难度评估，以及对标的 NVIDIA Nsight（Systems / Compute / Compute Sanitizer）能力。
   </p>
 
   <table class="issues" id="issueTable">
@@ -440,8 +440,8 @@
           <div class="src-bars">
             <div class="src-bar-row">
               <span class="src-bar-label">PYPTO</span>
-              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:80.5%"></div></div>
-              <span class="src-bar-num">62</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:75.9%"></div></div>
+              <span class="src-bar-num">63</span>
             </div>
             <div class="src-bar-row">
               <span class="src-bar-label">devkit</span>
@@ -450,8 +450,8 @@
             </div>
             <div class="src-bar-row">
               <span class="src-bar-label">Insight</span>
-              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:72.7%"></div></div>
-              <span class="src-bar-num">56</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:74.7%"></div></div>
+              <span class="src-bar-num">62</span>
             </div>
           </div>
         </td>
@@ -464,7 +464,7 @@
             <div class="quote">多卡时间对齐需逐个泳道手动调offset，操作成本极高</div>
           </div>
         </td>
-        <td class="col-count"><span class="count-num">118</span></td>
+        <td class="col-count"><span class="count-num">125</span></td>
         <td class="col-impact"><span class="badge b-p1">P1</span></td>
         <td>
           <ul class="solution-list">
@@ -501,16 +501,16 @@
             <div class="src-bar-row">
               <span class="src-bar-label">PYPTO</span>
               <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:100%"></div></div>
-              <span class="src-bar-num">77</span>
+              <span class="src-bar-num">83</span>
             </div>
             <div class="src-bar-row">
               <span class="src-bar-label">devkit</span>
-              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:40.3%"></div></div>
-              <span class="src-bar-num">31</span>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:39.8%"></div></div>
+              <span class="src-bar-num">33</span>
             </div>
             <div class="src-bar-row">
               <span class="src-bar-label">Insight</span>
-              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:5.2%"></div></div>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:4.8%"></div></div>
               <span class="src-bar-num">4</span>
             </div>
           </div>
@@ -524,7 +524,7 @@
             <div class="quote">[GreenLight] 使用 agent 生成代码，计算算子性能和实际执行性能差距过大</div>
           </div>
         </td>
-        <td class="col-count"><span class="count-num">112</span></td>
+        <td class="col-count"><span class="count-num">120</span></td>
         <td class="col-impact"><span class="badge b-p0">P0</span></td>
         <td>
           <ul class="solution-list">
@@ -745,18 +745,18 @@
           <div class="src-bars">
             <div class="src-bar-row">
               <span class="src-bar-label">PYPTO</span>
-              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:13%"></div></div>
-              <span class="src-bar-num">10</span>
+              <div class="src-bar-track"><div class="src-bar-fill pypto" style="width:13.3%"></div></div>
+              <span class="src-bar-num">11</span>
             </div>
             <div class="src-bar-row">
               <span class="src-bar-label">devkit</span>
-              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:2.6%"></div></div>
+              <div class="src-bar-track"><div class="src-bar-fill devkit" style="width:2.4%"></div></div>
               <span class="src-bar-num">2</span>
             </div>
             <div class="src-bar-row">
               <span class="src-bar-label">Insight</span>
-              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:24.7%"></div></div>
-              <span class="src-bar-num">19</span>
+              <div class="src-bar-track"><div class="src-bar-fill insight" style="width:28.9%"></div></div>
+              <span class="src-bar-num">24</span>
             </div>
           </div>
         </td>
@@ -769,7 +769,7 @@
             <div class="quote">单独导入ftrace数据中断统计有数据，联合导入后中断统计显示无数据</div>
           </div>
         </td>
-        <td class="col-count"><span class="count-num">31</span></td>
+        <td class="col-count"><span class="count-num">37</span></td>
         <td class="col-impact"><span class="badge b-p0">P0</span></td>
         <td>
           <ul class="solution-list">
@@ -1194,27 +1194,27 @@
       <div class="source-card">
         <div class="source-repo">cann/pypto</div>
         <div class="source-stat">
-          <span class="source-num">452</span>
-          <span>/ 1944 条</span>
-          <span class="source-pct">（占 23.3%）</span>
+          <span class="source-num">482</span>
+          <span>/ 2048 条</span>
+          <span class="source-pct">（占 23.5%）</span>
         </div>
         <div class="source-meta">PyPTO 编程框架的需求/缺陷/任务，性能问题集中在算子耗时、CodeGen 性能、Distributed/MoE、流水线</div>
       </div>
       <div class="source-card">
         <div class="source-repo">cann/asc-devkit</div>
         <div class="source-stat">
-          <span class="source-num">111</span>
-          <span>/ 733 条</span>
-          <span class="source-pct">（占 15.1%）</span>
+          <span class="source-num">123</span>
+          <span>/ 804 条</span>
+          <span class="source-pct">（占 15.3%）</span>
         </div>
         <div class="source-meta">Ascend C 开发套件的需求/缺陷/文档，性能问题集中在流水线编程接口、Tiling、性能样例缺失、Cast/ReduceMax 精度</div>
       </div>
       <div class="source-card">
         <div class="source-repo">Ascend/msinsight</div>
         <div class="source-stat">
-          <span class="source-num">240</span>
-          <span>/ 295 条</span>
-          <span class="source-pct">（占 81.4%）</span>
+          <span class="source-num">251</span>
+          <span>/ 312 条</span>
+          <span class="source-pct">（占 80.4%）</span>
         </div>
         <div class="source-meta">MindStudio Insight 工具本体即性能分析工具，绝大多数 issue 属性能相关；以 Timeline、Memory Snapshot、HCCL、数据加载为主</div>
       </div>
@@ -1222,7 +1222,7 @@
   </div>
 
   <div class="footer-note">
-    数据来源：profiling_issue/ 目录下 3 份 perf_*.csv（导出于 2026-05-28）。803 条性能相关 issue 通过关键词正则匹配按优先级独占分配至各主题，共归类 444 条；每条 issue 仅计入一个主题，完整明细见 Issue详单 页。"对标 NVIDIA Nsight 特性"为编辑判断，用于提示能力差距方向，不代表完全等价。柱状图宽度以全局最大值 77 为基准归一化。
+    数据来源：profiling_issue/ 目录下 3 份 perf_*.csv（导出于 2026-06-04）。856 条性能相关 issue 通过关键词正则匹配按优先级独占分配至各主题，共归类 465 条；每条 issue 仅计入一个主题，完整明细见 Issue详单 页。"对标 NVIDIA Nsight 特性"为编辑判断，用于提示能力差距方向，不代表完全等价。柱状图宽度以全局最大值 77 为基准归一化。
   </div>
 
 </div>

@@ -287,6 +287,33 @@ body {
   border-radius: var(--radius-lg); overflow: hidden;
 }
 .phs-chart-wrap { width: 100%; }
+
+/* 合并仪表盘（单盘：当前分数+等级 / 优化后增益+等级，分小段渐变） */
+.phs-gauge-box { position: relative; width: 100%; height: 210px; }
+.phs-gauge-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  transform: translateY(9%);
+  pointer-events: none; text-align: center;
+}
+.phs-gauge-grade {
+  font-size: 12px; font-weight: 700; line-height: 1;
+  padding: 2px 10px; border-radius: 999px; margin-bottom: 3px;
+}
+.phs-gauge-score {
+  font-size: 46px; font-weight: 700; line-height: 1.04;
+  font-family: var(--font-sans); letter-spacing: -1px;
+}
+.phs-gauge-sub {
+  font-size: 11px; color: var(--fg-muted); margin-top: 3px;
+  display: flex; align-items: center; gap: 5px;
+}
+.phs-gauge-sub b { color: var(--fg-secondary); font-weight: 600; }
+.phs-gauge-estbadge {
+  font-size: 10px; font-weight: 700; line-height: 1.4;
+  padding: 1px 7px; border-radius: 999px;
+}
 .overview-right { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 
 /* Summary cards */
@@ -301,10 +328,11 @@ body {
 }
 .sum-text { font-size: 12px; color: var(--fg-secondary); line-height: 1.5; }
 .sum-conclusion .sum-text { color: var(--fg); }
-.sum-bottleneck { border-left: 2px solid var(--warning); }
-.sum-bottleneck .sum-text { color: #FFD080; }
+.sum-bottleneck { border-left: 2px solid var(--danger); cursor: pointer; transition: opacity 0.12s; }
+.sum-bottleneck:hover { opacity: 0.82; }
+.sum-bottleneck .sum-text { color: var(--danger); }
 .sum-gain { border-left: 2px solid var(--success); }
-.sum-gain .sum-text { color: #60EEC0; }
+.sum-gain .sum-text { color: var(--success); }
 
 .meta-panel {
   background: var(--surface-1); border: 1px solid var(--border);
@@ -759,12 +787,13 @@ pre.cv-code-after  { border-left: 3px solid rgba(4,215,147,0.4); }
   padding: 3px 10px; border-radius: var(--radius-sm);
   font-size: 11px; font-weight: 600;
 }
-.grade-s  { background: rgba(4,215,147,0.13);   color: #04D793; }
-.grade-a  { background: rgba(67,105,239,0.13);   color: #7C8DB8; }
-.grade-bp { background: rgba(167,139,250,0.13);  color: #A78BFA; }
-.grade-b  { background: rgba(255,170,59,0.13);   color: #FFAA3B; }
-.grade-c  { background: rgba(255,140,66,0.13);   color: #FF8C42; }
-.grade-d  { background: rgba(255,75,123,0.13);   color: #FF4B7B; }
+/* 6 档等级色 */
+.grade-s  { background: rgba(2,153,49,0.14);    color: #029931; }
+.grade-a  { background: rgba(75,153,2,0.14);    color: #4b9902; }
+.grade-bp { background: rgba(149,179,18,0.14);  color: #95b312; }
+.grade-b  { background: rgba(224,166,16,0.14);  color: #e0a610; }
+.grade-c  { background: rgba(217,105,0,0.14);   color: #d96900; }
+.grade-d  { background: rgba(191,10,28,0.14);   color: #bf0a1c; }
 
 /* ===================== Action Card Swimlane ===================== */
 .ac-sl-title {
@@ -1016,6 +1045,109 @@ pre.cv-code-after  { border-left: 3px solid rgba(4,215,147,0.4); }
 .fa-type-badge {
   font-size: 9px; padding: 1px 5px; border-radius: 3px;
   font-family: var(--font-mono); white-space: nowrap; font-weight: 600;
+}
+
+/* ===================== Source View ===================== */
+.ac-src-container {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.ac-src-file-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 10px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-sans);
+}
+.ac-src-filename {
+  font-size: 11px; font-weight: 600; color: var(--primary);
+}
+.ac-src-ctx-note {
+  font-size: 10px; color: var(--fg-muted);
+}
+.ac-src-body {
+  display: flex; max-height: 320px;
+}
+.ac-src-left {
+  flex: 3; overflow: auto; border-right: 1px solid var(--border);
+}
+.ac-src-right {
+  flex: 2; overflow: auto; display: flex; flex-direction: column;
+}
+.ac-src-table {
+  width: 100%; border-collapse: collapse;
+}
+.ac-src-table thead { position: sticky; top: 0; z-index: 2; }
+.ac-src-table th {
+  background: var(--surface-3); padding: 3px 8px;
+  font-size: 10px; font-weight: 500; color: var(--fg-muted);
+  font-family: var(--font-sans); white-space: nowrap;
+  border-bottom: 1px solid var(--border); text-align: left;
+}
+.ac-src-th-ln  { width: 38px; text-align: center !important; }
+.ac-src-th-cy  { width: 46px; text-align: right !important; }
+.ac-src-th-code { }
+.ac-src-table td { padding: 1px 8px; border-bottom: 1px solid var(--border-subtle); }
+.ac-src-ln {
+  text-align: right; padding: 1px 10px 1px 6px !important;
+  color: var(--fg-muted); user-select: none; white-space: nowrap;
+  border-right: 1px solid var(--border-subtle);
+}
+.ac-src-ln-hot { color: #FF4B7B; font-weight: 700; }
+.ac-src-cy {
+  text-align: right; padding-right: 10px !important;
+  color: var(--fg-muted); white-space: nowrap;
+}
+.ac-src-cy-hot { color: #FF8C42; font-weight: 600; }
+.ac-src-code-cell {
+  white-space: pre; padding-left: 12px !important; color: var(--fg-secondary);
+}
+.ac-src-row-hot { background: rgba(255, 75, 123, 0.07); }
+.ac-src-row-hot .ac-src-code-cell { color: var(--fg); }
+.ac-src-cm-badge {
+  display: inline-block; margin-left: 12px;
+  padding: 0 5px; border-radius: 3px;
+  background: rgba(255, 75, 123, 0.18); color: #FF4B7B;
+  font-size: 9.5px; font-weight: 700; font-family: var(--font-sans);
+  vertical-align: middle; white-space: nowrap;
+}
+/* Instruction pane */
+.ac-src-instr-hdr {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; background: var(--surface-3);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-sans); font-size: 10px; font-weight: 600; color: var(--fg-secondary);
+  flex-shrink: 0;
+}
+.ac-src-instr-total {
+  margin-left: auto; color: #FF4B7B; font-weight: 700;
+}
+.ac-src-instr-table {
+  width: 100%; border-collapse: collapse; flex: 1;
+}
+.ac-src-instr-table thead { position: sticky; top: 0; z-index: 2; }
+.ac-src-instr-table th {
+  background: var(--surface-3); padding: 3px 8px;
+  font-size: 10px; font-weight: 500; color: var(--fg-muted);
+  font-family: var(--font-sans); white-space: nowrap;
+  border-bottom: 1px solid var(--border); text-align: left;
+}
+.ac-src-instr-table td {
+  padding: 2px 8px; border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono); font-size: 11px;
+}
+.ac-src-instr-table tr.ac-src-row-hot td { background: rgba(255, 75, 123, 0.07); }
+.ac-instr-pc   { color: var(--fg-muted); white-space: nowrap; }
+.ac-instr-ln   { color: var(--fg-muted); white-space: nowrap; }
+.ac-instr-code { color: var(--fg); white-space: nowrap; }
+.ac-instr-miss { color: #FF4B7B; font-weight: 700; text-align: right; white-space: nowrap; }
+.ac-instr-type-badge {
+  display: inline-block; padding: 1px 5px; border-radius: 3px;
+  background: rgba(255, 170, 59, 0.18); color: #FFAA3B;
+  font-size: 9px; font-weight: 700; font-family: var(--font-sans); white-space: nowrap;
 }
 
 /* ===================== Scrollbar ===================== */
@@ -3444,6 +3576,25 @@ class SwimlaneRenderer {
       --danger:          #b42318;
       --font-sans:       'Inter', ui-sans-serif, system-ui, sans-serif;
       --font-mono:       'Space Mono', ui-monospace, monospace;
+      /* ── model-graphviz tokens (for pattern.js) ── */
+      --model-graphviz-line:                     rgba(33,33,33,0.55);
+      --model-graphviz-line-soft:                rgba(33,33,33,0.18);
+      --model-graphviz-node-label:               #0c0c12;
+      --model-graphviz-node-type:                #5a5a68;
+      --model-graphviz-cluster-label:            rgba(12,12,18,0.65);
+      --model-graphviz-tensor-fill:              rgba(240,241,248,0.90);
+      --model-graphviz-tensor-stroke:            rgba(33,33,33,0.18);
+      --model-graphviz-toggle-bg:                rgba(24,99,220,0.18);
+      --model-graphviz-toggle-border:            rgba(24,99,220,0.38);
+      --model-graphviz-toggle-icon:              #0c0c12;
+      --model-graphviz-report-p0:                #e0134e;
+      --model-graphviz-report-p1:                #d97700;
+      --model-graphviz-report-p2:                #b89000;
+      --model-graphviz-report-priority-on-dark:  #ffffff;
+      --model-graphviz-report-priority-on-light: #0c0c12;
+      --model-graphviz-node-shadow:              none;
+      --model-graphviz-parent-shadow:            none;
+      --model-graphviz-panel-shadow:             none;
     }
     html, body {
       background:
@@ -3847,6 +3998,435 @@ class SwimlaneRenderer {
       border-top-color: rgba(12,12,18,0.91);
     }
     .v2-hi-tip.show { opacity: 1; }
+
+    /* ═══════════════════════════════════════════════════════
+       Tab 6: 计算图 layout
+       ═══════════════════════════════════════════════════════ */
+    .graph-tab-layout {
+      flex: 1; display: flex; overflow: hidden; position: relative;
+    }
+
+    /* ── Left: graph stage ── */
+    .graph-left-pane {
+      flex: 0 0 58%; width: 58%; min-width: 0;
+      border-right: 1px solid var(--border-subtle);
+      position: relative; overflow: hidden;
+      background: var(--surface-1);
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+    .graph-left-pane.is-panning { cursor: grabbing; }
+    .graph-left-pane svg {
+      display: block;
+      transform-origin: 0 0;
+      will-change: transform;
+      overflow: visible;
+    }
+    /* Override pattern.js SVG text styles for readability */
+    .graph-left-pane .pto-model-graphviz-node-label {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 500;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+    .graph-left-pane .pto-model-graphviz-node-type {
+      font-family: var(--font-sans);
+      font-size: 9px;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+    .graph-left-pane .pto-model-graphviz-report-node-badge-text {
+      font-family: var(--font-sans);
+      font-size: 8px;
+      font-weight: 700;
+    }
+    .graph-left-pane .pto-model-graphviz-cluster text {
+      font-family: var(--font-sans);
+      font-size: 10px;
+    }
+    /* ── Node fill + border: 50% transparent ── */
+    .graph-left-pane .pto-model-graphviz-node rect {
+      fill-opacity: 0.5;
+      stroke: rgba(30, 30, 40, 0.5);
+      stroke-width: 1;
+    }
+
+    /* ── Edge paths: no fill (SVG path defaults to black fill) ── */
+    .graph-left-pane .pto-model-graphviz-edge {
+      fill: none;
+    }
+
+    /* ── Cluster toggle buttons ── */
+    .graph-left-pane .pto-model-graphviz-toggle {
+      fill: var(--model-graphviz-toggle-bg);
+      stroke: var(--model-graphviz-toggle-border);
+      stroke-width: 0.8px;
+      cursor: pointer;
+    }
+    .graph-left-pane .pto-model-graphviz-toggle-icon {
+      fill: var(--model-graphviz-toggle-icon);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+
+    /* ── Problem nodes: priority-colored ripple stroke + breathing ── */
+    @keyframes graph-node-breathe {
+      0%   { stroke-width: 4;  stroke-opacity: 0.92; }
+      55%  { stroke-width: 14; stroke-opacity: 0.06; }
+      100% { stroke-width: 4;  stroke-opacity: 0.92; }
+    }
+    .graph-left-pane .pto-model-graphviz-node.is-problem-p0 rect {
+      stroke: #FF2D7A;
+      stroke-width: 4;
+      animation: graph-node-breathe 2s ease-in-out infinite;
+    }
+    .graph-left-pane .pto-model-graphviz-node.is-problem-p1 rect {
+      stroke: #FF9D00;
+      stroke-width: 4;
+      animation: graph-node-breathe 2.4s ease-in-out infinite;
+    }
+    .graph-left-pane .pto-model-graphviz-node.is-problem-p2 rect {
+      stroke: #FFE600;
+      stroke-width: 4;
+      animation: graph-node-breathe 2.8s ease-in-out infinite;
+    }
+
+    /* Selected node ring — black, overrides problem breathing, comes last */
+    .graph-left-pane .pto-model-graphviz-node.is-graph-selected rect {
+      stroke: #0c0c12;
+      stroke-width: 4;
+      stroke-opacity: 1;
+      animation: none;
+    }
+    /* All nodes are clickable */
+    .graph-left-pane .pto-model-graphviz-node { cursor: pointer; }
+    /* Fit-zoom hint overlay */
+    .graph-zoom-hint {
+      position: absolute; bottom: 10px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px; color: var(--fg-muted);
+      font-family: var(--font-mono);
+      pointer-events: none; white-space: nowrap;
+      background: rgba(255,255,255,0.82);
+      padding: 3px 8px; border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Right: detail pane ── */
+    .graph-right-pane {
+      flex: 0 0 42%; width: 42%;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    /* ── Right panel: permanent nameplate header ── */
+    .gd-node-nameplate {
+      flex-shrink: 0; padding: 10px 16px 9px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .gd-node-nameplate:empty { display: none; }
+    .gd-nameplate-id {
+      font-size: 10px; color: var(--fg-muted);
+      font-family: var(--font-mono); margin-bottom: 2px;
+    }
+    .gd-nameplate-title { font-size: 14px; font-weight: 600; color: var(--fg); line-height: 1.3; }
+    .gd-nameplate-type { font-size: 11px; color: var(--fg-muted); margin-top: 2px; font-family: var(--font-mono); }
+    /* scrollable detail body */
+    .gd-detail-body {
+      flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+      padding: 14px 16px 20px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    /* Content cards must keep their natural height: as flex items with
+       overflow:hidden their automatic min-height is 0, so in tight vertical
+       space (low resolution) flexbox would otherwise shrink/clip them to
+       nothing instead of letting the body scroll. Empty/placeholder states
+       still use flex:1 to center, so exclude them. */
+    .gd-detail-body > *:not(.gd-empty):not(.gd-no-graph) { flex-shrink: 0; }
+    /* Remove default SVG fill on edge paths */
+    .graph-left-pane .pto-model-graphviz-edge { fill: none; }
+    .gd-empty {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px; color: var(--fg-muted);
+      text-align: center; padding: 24px;
+    }
+    .gd-empty-icon { font-size: 28px; opacity: 0.45; }
+    .gd-empty-text { font-size: 12px; line-height: 1.6; max-width: 200px; }
+
+    /* no-graph placeholder */
+    .gd-no-graph {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; color: var(--fg-muted); text-align: center;
+    }
+    .gd-no-graph-icon { font-size: 36px; opacity: 0.35; }
+    .gd-no-graph-title { font-size: 13px; font-weight: 500; color: var(--fg-secondary); }
+    .gd-no-graph-sub { font-size: 11px; line-height: 1.6; max-width: 220px; }
+
+    /* detail card */
+    .gd-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px; overflow: hidden;
+    }
+    .gd-card-header {
+      padding: 10px 14px 8px;
+      background: linear-gradient(120deg, rgba(24,99,220,0.07), rgba(155,96,170,0.05));
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    .gd-priority-badge {
+      flex-shrink: 0; font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 999px;
+      font-family: var(--font-mono); margin-top: 1px;
+    }
+    .gd-priority-badge.p0 { background: #ffd6e4; color: #b01040; }
+    .gd-priority-badge.p1 { background: #ffeac0; color: #8a4f00; }
+    .gd-priority-badge.p2 { background: #fff8c0; color: #6b5c00; }
+    .gd-node-title-block { flex: 1; min-width: 0; }
+    .gd-node-id {
+      font-size: 10px; color: var(--fg-muted);
+      font-family: var(--font-mono); margin-bottom: 2px;
+    }
+    .gd-node-title {
+      font-size: 13px; font-weight: 600; color: var(--fg);
+      line-height: 1.35;
+    }
+    .gd-op-type {
+      font-size: 10px; color: var(--fg-muted); margin-top: 2px;
+      font-family: var(--font-mono);
+    }
+
+    .gd-section { padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); }
+    .gd-section:last-child { border-bottom: none; }
+    .gd-section-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--fg-muted); margin-bottom: 5px;
+    }
+    .gd-metric {
+      font-size: 12px; color: var(--fg-secondary); line-height: 1.5;
+      font-family: var(--font-mono);
+    }
+    .gd-impact { font-size: 12px; color: var(--fg-secondary); line-height: 1.5; }
+    .gd-fix-list {
+      list-style: none; padding: 0; margin: 0;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .gd-fix-list li {
+      font-size: 11px; color: var(--fg-secondary); line-height: 1.5;
+      padding-left: 12px; position: relative;
+    }
+    .gd-fix-list li::before {
+      content: '›'; position: absolute; left: 0;
+      color: var(--primary); font-weight: 700;
+    }
+    .gd-verify { font-size: 11px; color: var(--success); line-height: 1.5; }
+    .gd-code {
+      background: rgba(12,12,18,0.05);
+      border: 1px solid var(--border);
+      border-radius: 7px; padding: 8px 10px;
+      font-size: 10px; font-family: var(--font-mono);
+      color: var(--fg-secondary); line-height: 1.6;
+      white-space: pre; overflow-x: auto;
+    }
+
+    /* ── Graph: name-mapping button ── */
+    .graph-map-btn {
+      position: absolute; top: 10px; right: calc(42% + 10px); z-index: 5;
+      display: flex; align-items: center; gap: 4px;
+      padding: 4px 10px; height: 26px;
+      background: rgba(255,255,255,0.88); backdrop-filter: blur(4px);
+      border: 1px solid var(--border); border-radius: 999px;
+      font-size: 11px; font-family: var(--font-sans); color: var(--fg-muted);
+      cursor: pointer; white-space: nowrap; user-select: none;
+      box-shadow: 0 1px 4px rgba(22,23,28,0.08);
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .graph-map-btn:hover { background: #fff; color: var(--fg); border-color: rgba(33,33,33,0.22); }
+    .graph-map-btn.active {
+      background: rgba(24,99,220,0.09); color: var(--primary);
+      border-color: rgba(24,99,220,0.30);
+    }
+
+    /* ── Graph: name-mapping popover ── */
+    .graph-map-pop {
+      position: fixed; z-index: 9990;
+      width: 640px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border); border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(22,23,28,0.15), 0 0 0 1px rgba(33,33,33,0.04);
+      display: none; flex-direction: column;
+      font-family: var(--font-sans); overflow: hidden;
+    }
+    .graph-map-pop.show { display: flex; }
+    .gmp-hd {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 14px 9px; flex-shrink: 0;
+      background: linear-gradient(120deg, rgba(24,99,220,0.07), rgba(155,96,170,0.05));
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .gmp-hd-icon { font-size: 13px; line-height: 1; }
+    .gmp-hd-title { flex: 1; font-size: 13px; font-weight: 600; color: var(--fg); }
+    .gmp-hd-close {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: none; border: none; cursor: pointer; flex-shrink: 0;
+      color: var(--fg-muted);
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.12s, color 0.12s;
+    }
+    .gmp-hd-close:hover { background: var(--surface-2); color: var(--fg); }
+    .gmp-body { padding: 12px 14px 14px; overflow-y: auto; }
+    .gmp-note {
+      font-size: 11px; line-height: 1.65; color: var(--fg-secondary);
+      background: rgba(24,99,220,0.05); border: 1px solid rgba(24,99,220,0.13);
+      border-radius: 8px; padding: 9px 11px; margin-bottom: 12px;
+    }
+    .gmp-note strong { color: var(--fg); }
+    .gmp-note code {
+      font-family: var(--font-mono); font-size: 10px;
+      background: rgba(24,99,220,0.09); padding: 1px 4px; border-radius: 4px;
+    }
+    .gmp-slabel {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--fg-muted); margin-bottom: 7px;
+    }
+    .gmp-tbl { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .gmp-tbl th {
+      position: sticky; top: 0; z-index: 2;
+      text-align: left; padding: 5px 8px;
+      font-size: 10px; font-weight: 600; color: var(--fg-muted);
+      border-bottom: 1.5px solid var(--border); background: var(--surface-1);
+    }
+    .gmp-tbl td { padding: 6px 8px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+    .gmp-tbl tr:last-child td { border-bottom: none; }
+    .gmp-tbl tbody tr:hover td { background: var(--surface-1); }
+    .gmp-node-label { font-weight: 500; color: var(--fg); display: block; }
+    .gmp-node-id { font-family: var(--font-mono); font-size: 10px; color: var(--fg-muted); display: block; margin-top: 1px; }
+    .gmp-op { font-family: var(--font-mono); font-size: 10px; color: var(--fg-secondary); line-height: 1.45; }
+    .gmp-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+      font-family: var(--font-mono); white-space: nowrap;
+    }
+    .gmp-badge.p0 { background: #ffd6e4; color: #b01040; }
+    .gmp-badge.p1 { background: #ffeac0; color: #8a4f00; }
+    .gmp-sup { font-size: 8px; vertical-align: super; line-height: 0; color: var(--primary); font-family: var(--font-mono); }
+    .gmp-src-notes {
+      margin-top: 10px; padding: 9px 11px;
+      background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: 8px;
+      font-size: 10px; color: var(--fg-muted); line-height: 1.7;
+    }
+    .gmp-src-notes p { margin: 0 0 5px; }
+    .gmp-src-notes p:last-child { margin: 0; }
+    .gmp-src-path { font-family: var(--font-mono); font-size: 10px; color: var(--fg-secondary); }
+    .gmp-src-warn { color: var(--warning); font-weight: 500; }
+    .gmp-reason { font-size: 10px; color: var(--fg-secondary); line-height: 1.5; max-width: 180px; }
+    .gmp-link { color: var(--primary); text-decoration: none; border-bottom: 1px dotted rgba(24,99,220,0.35); }
+    .gmp-link:hover { border-bottom-style: solid; }
+    .gmp-pop-footer {
+      padding: 8px 14px; flex-shrink: 0;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 10px; color: var(--fg-muted); line-height: 1.55;
+      background: var(--surface-1);
+    }
+
+    /* problem legend */
+    .gd-legend {
+      padding: 10px 14px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .gd-legend-title {
+      font-size: 10px; font-weight: 600; color: var(--fg-muted);
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;
+    }
+    .gd-legend-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: var(--fg-secondary);
+    }
+    .gd-legend-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       Node architecture info panel
+       ═══════════════════════════════════════════════════════ */
+    .gd-node-info { display: flex; flex-direction: column; gap: 8px; }
+    .gd-cluster-path {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 3px;
+      padding: 0 2px;
+    }
+    .gd-cluster-chip {
+      font-size: 10px; padding: 2px 8px; border-radius: 999px;
+      background: var(--surface-2); color: var(--fg-muted);
+      font-family: var(--font-sans); white-space: nowrap;
+    }
+    .gd-cluster-chip.leaf {
+      background: rgba(24,99,220,0.09); color: var(--primary);
+      border: 1px solid rgba(24,99,220,0.20);
+    }
+    .gd-cluster-sep { font-size: 10px; color: var(--border-strong); line-height: 1; }
+
+    .gd-info-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px; overflow: hidden;
+    }
+    .gd-info-section {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .gd-info-section:last-child { border-bottom: none; }
+    .gd-info-label-sm {
+      font-size: 9px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--fg-muted); margin-bottom: 4px;
+    }
+    .gd-info-text {
+      font-size: 11px; color: var(--fg-secondary); line-height: 1.6;
+    }
+    .gd-id-badge {
+      display: inline; font-family: var(--font-mono); font-size: 10px;
+      background: rgba(12,12,18,0.06); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 5px; color: var(--fg-secondary);
+    }
+    .gd-io-list { display: flex; flex-direction: column; gap: 6px; }
+    .gd-io-item { display: flex; align-items: flex-start; gap: 6px; }
+    .gd-io-dir {
+      font-size: 8px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.04em; padding: 2px 5px; border-radius: 3px;
+      flex-shrink: 0; margin-top: 1px; white-space: nowrap;
+    }
+    .gd-io-dir.in  { background: rgba(24,99,220,0.10); color: var(--primary); }
+    .gd-io-dir.out { background: rgba(23,114,69,0.10);  color: var(--success); }
+    .gd-io-desc {
+      font-size: 10px; color: var(--fg-secondary); line-height: 1.55;
+    }
+    .gd-io-from {
+      font-family: var(--font-mono); font-size: 9px; color: var(--fg-muted);
+      display: block; margin-bottom: 1px;
+    }
+    .gd-params-text {
+      font-size: 10px; font-family: var(--font-mono);
+      color: var(--fg-secondary); line-height: 1.6;
+    }
+    .gd-source-refs { display: flex; flex-direction: column; gap: 4px; }
+    .gd-source-ref {
+      font-size: 10px; color: var(--primary); text-decoration: none;
+      border-bottom: 1px dotted rgba(24,99,220,0.30);
+      display: inline-block; width: fit-content;
+      transition: border-color 0.12s;
+    }
+    .gd-source-ref:hover { border-bottom-style: solid; }
+    .gd-info-divider-row {
+      font-size: 9px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--fg-muted);
+      padding: 10px 0 5px; margin: 0;
+    }
   </style>
 <script>
 (function(){
@@ -3933,6 +4513,7 @@ class SwimlaneRenderer {
             <button class="v2-center-tab tab" data-tab="code" disabled data-disabled-tip="落盘文件中暂无此项数据输入，后续探索如何同步获取模型代码和资料文档">代码</button>
             <button class="v2-center-tab tab" data-tab="docs" disabled data-disabled-tip="落盘文件中暂无此项数据输入，后续探索如何同步获取模型代码和资料文档">文档</button>
             <button class="v2-center-tab tab" data-tab="report">报告</button>
+            <button class="v2-center-tab tab" data-tab="graph">计算图</button>
           </div>
         </div>
         <!-- Tab pane body -->
@@ -3982,6 +4563,32 @@ class SwimlaneRenderer {
           <!-- 报告 -->
           <div class="tab-pane" id="tab-report">
             <div class="report-scroll" id="reportMdContent"></div>
+          </div>
+
+          <!-- 计算图 -->
+          <div class="tab-pane" id="tab-graph">
+            <div class="graph-tab-layout">
+              <div class="graph-left-pane" id="graphTabStage">
+                <div class="graph-zoom-hint" id="graphZoomHint">滚轮缩放 · 拖拽平移 · Ctrl+0 重置</div>
+              </div>
+              <!-- 名称映射按钮：放在 graph-tab-layout（position:relative），不受 stage.innerHTML='' 影响 -->
+              <button class="graph-map-btn" id="graphMapBtn" aria-label="名称映射表">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <rect x="0.75" y="0.75" width="10.5" height="10.5" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+                  <path d="M3.5 4h5M3.5 6h5M3.5 8h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+                </svg>
+                名称映射
+              </button>
+              <div class="graph-right-pane" id="graphTabDetail">
+                <div class="gd-node-nameplate" id="graphNodeNameplate"></div>
+                <div class="gd-detail-body" id="graphDetailBody">
+                  <div class="gd-empty">
+                    <div class="gd-empty-icon">⬅</div>
+                    <div class="gd-empty-text">点击左侧标红的算子节点，查看问题详情与修复方案</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
         </div><!-- .v2-tab-body -->
@@ -4036,6 +4643,103 @@ class SwimlaneRenderer {
   <!-- Hidden compat element: app.js's setupSidebarCollapse references sidebarToggleBtn
        and shows/hides it. We keep it off-screen so it doesn't disrupt the layout. -->
   <button id="sidebarToggleBtn" style="position:fixed;left:-9999px;top:0;"></button>
+
+  <!-- ═══════════ GRAPH NAME-MAPPING POPOVER ═══════════ -->
+  <div class="graph-map-pop" id="graphMapPop" role="dialog" aria-label="名称映射说明">
+    <div class="gmp-hd">
+      <span class="gmp-hd-icon">📋</span>
+      <span class="gmp-hd-title">计算图节点 → Profiling 算子名称映射</span>
+      <button class="gmp-hd-close" id="graphMapClose" aria-label="关闭">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="gmp-body">
+      <div class="gmp-note">
+        计算图使用<strong>模型架构层名称</strong>（语义视角，如 <code>QKV Linear</code>），
+        Profiling 数据记录<strong>运行时 kernel 名称</strong>（工具视角，如 <code>AllGatherMatmulAicpu</code>）。
+        两套命名体系本质不同——前者描述"做什么"，后者描述"怎么跑"。
+        算子名本身来自本次落盘数据（见脚注），图节点→算子的对应关系为 AI 推断（见 ③）。
+      </div>
+      <div class="gmp-slabel">标注问题节点的映射关系</div>
+      <table class="gmp-tbl">
+        <thead>
+          <tr>
+            <th>图节点</th>
+            <th>Profiling 算子名</th>
+            <th style="min-width:170px;">映射依据</th>
+            <th>优先级</th>
+            <th>所属报告</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="gmp-node-label">QKV Linear</span><span class="gmp-node-id">qkv_linear</span></td>
+            <td><span class="gmp-op">AllGatherMatmulAicpu<sup class="gmp-sup">①③</sup></span></td>
+            <td><span class="gmp-reason">TP <b>column-parallel</b>：各卡持有 Q/K/V 权重的一部分，MatMul 前需 AllGather 输入 activation，Ascend 将两步融合为一个 aicpu 算子</span></td>
+            <td><span class="gmp-badge p1">P1</span></td>
+            <td style="font-size:10px;color:var(--fg-muted);white-space:nowrap;">集群诊断</td>
+          </tr>
+          <tr>
+            <td><span class="gmp-node-label">Attention Output Linear</span><span class="gmp-node-id">attn_output_linear</span></td>
+            <td><span class="gmp-op">MatmulReduceScatterAicpu<sup class="gmp-sup">①③</sup></span></td>
+            <td><span class="gmp-reason">TP <b>row-parallel</b>：各卡完成局部 MatMul 后需 ReduceScatter 合并结果，Ascend 将两步融合为一个 aicpu 算子</span></td>
+            <td><span class="gmp-badge p1">P1</span></td>
+            <td style="font-size:10px;color:var(--fg-muted);white-space:nowrap;">集群诊断</td>
+          </tr>
+          <tr>
+            <td><span class="gmp-node-label">Gate Linear</span><span class="gmp-node-id">mlp_gate_linear</span></td>
+            <td><span class="gmp-op">AllGatherMatmulAicpu<sup class="gmp-sup">①③</sup></span></td>
+            <td><span class="gmp-reason">TP <b>column-parallel</b>（SwiGLU Gate 分支），与 QKV 同类融合</span></td>
+            <td><span class="gmp-badge p1">P1</span></td>
+            <td style="font-size:10px;color:var(--fg-muted);white-space:nowrap;">集群诊断</td>
+          </tr>
+          <tr>
+            <td><span class="gmp-node-label">Up Linear</span><span class="gmp-node-id">mlp_up_linear</span></td>
+            <td><span class="gmp-op">AllGatherMatmulAicpu<sup class="gmp-sup">①③</sup></span></td>
+            <td><span class="gmp-reason">TP <b>column-parallel</b>（SwiGLU Up 分支），与 QKV 同类融合</span></td>
+            <td><span class="gmp-badge p1">P1</span></td>
+            <td style="font-size:10px;color:var(--fg-muted);white-space:nowrap;">集群诊断</td>
+          </tr>
+          <tr>
+            <td><span class="gmp-node-label">MLP Output Linear</span><span class="gmp-node-id">mlp_down_linear</span></td>
+            <td><span class="gmp-op">MatmulReduceScatterAicpu<sup class="gmp-sup">①③</sup></span></td>
+            <td><span class="gmp-reason">TP <b>row-parallel</b>（Down/Proj），与 Attn Output 同类融合</span></td>
+            <td><span class="gmp-badge p1">P1</span></td>
+            <td style="font-size:10px;color:var(--fg-muted);white-space:nowrap;">集群诊断</td>
+          </tr>
+          <tr>
+            <td><span class="gmp-node-label">LM Head Linear</span><span class="gmp-node-id">lm_head</span></td>
+            <td><span class="gmp-op">MatMulV3 (MIX_AIC 路径)<sup class="gmp-sup">②③</sup></span></td>
+            <td><span class="gmp-reason">Vocab parallel linear；规模大、无通信融合，映射到标准 MatMulV3（Level2 op_statistic 直接可见）</span></td>
+            <td><span class="gmp-badge p0">P0</span></td>
+            <td style="font-size:10px;color:var(--fg-muted);white-space:nowrap;">Level2 训练</td>
+          </tr>
+          <tr>
+            <td><span class="gmp-node-label">Logits</span><span class="gmp-node-id">output_logits</span></td>
+            <td><span class="gmp-op">Exp · Sub · RealDiv · ArgMaxWithValue<sup class="gmp-sup">②③</sup></span></td>
+            <td><span class="gmp-reason">LM Head 之后的 token 概率计算（log-softmax 分解 + argmax），逐 token element-wise op，Level2 统计中独立呈现</span></td>
+            <td><span class="gmp-badge p1">P1</span></td>
+            <td style="font-size:10px;color:var(--fg-muted);white-space:nowrap;">Level2 训练</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="gmp-src-notes">
+        <p><span class="gmp-sup" style="font-size:9px;">①</span> 算子名出自本次分析落盘数据（集群诊断报告）：<br>
+          <span class="gmp-src-path">MultiProfLevel2MemoryUB_db/.../ascend_pytorch_profiler_0.db</span><br>
+          表：<span class="gmp-src-path">COMPUTE_TASK_INFO</span>，由 extract.js 生成 chart-data.js 时写入</p>
+        <p><span class="gmp-sup" style="font-size:9px;">②</span> 算子名出自本次分析落盘数据（Level2 训练报告）：<br>
+          <span class="gmp-src-path">data/level2/rank_{0,2}/ASCEND_PROFILER_OUTPUT/op_statistic.csv</span></p>
+        <p><span class="gmp-src-warn">③ 图节点→算子对应为 AI 推断，未从落盘文件直接 parse</span><br>
+          理论依据：Megatron-LM TP 并行（<a class="gmp-link" href="https://arxiv.org/abs/1909.08053" target="_blank" rel="noopener">Shoeybi et al. 2019, arXiv:1909.08053</a>）——column-parallel 层（QKV / Gate / Up）AllGather inputs + Matmul，row-parallel 层（Output / Down）Matmul + ReduceScatter；<br>
+          Ascend 实现：<a class="gmp-link" href="https://gitee.com/ascend/MindSpeed" target="_blank" rel="noopener">gitee.com/ascend/MindSpeed</a>（搜索 <span class="gmp-src-path">AllGatherMatmulAicpu</span> / <span class="gmp-src-path">MatmulReduceScatterAicpu</span>）</p>
+      </div>
+    </div>
+    <div class="gmp-pop-footer">
+      未标红节点（Embedding、RMSNorm、RoPE、FlashAttention 等）在当前演示报告中无问题，未建立显式 Profiling 映射。
+    </div>
+  </div>
 
   <script>
 // chart-data.js — 由 data/extract.js 自动生成，请勿手动修改
@@ -5039,10 +5743,80 @@ window.OP_VIEW_DATA = {
   r20260527: {}
 };
 
-// ─── HCCS 节点内通信带宽（来自 ClusterCommunicationBandwidth，step2，按算子类型聚合） ─────────
-// 数据来源: data/MultiProfLevel2MemoryUB_db/cluster_analysis_output/cluster_analysis.db
+// ─── 通信视图数据（来自各报告 communication.json / cluster_analysis.db） ─────────
+// 数据来源:
+//   r20260526: communication.json rank_0 hcom_batchSendRecv / op_statistic.csv DP集合通信
+//   r20260602multi: cluster_analysis_output/cluster_analysis.db ClusterCommunicationBandwidth/Time
+//   r20260602verl: ASCEND_PROFILER_OUTPUT/analysis.db CommAnalyzerMatrix/CommAnalyzerBandwidth
 window.COMM_VIEW_DATA = {
+  // ── r20260526: PP=2/DP=2 Level2 训练 ────────────────────────────────────────
+  r20260526: {
+    // 3.1 PP末级 P2P通信时序极端不对称：rank_0 Wait=158ms(99.7%)，rank_2 Wait≈0
+    1: {
+      source: 'communication.json rank_0 hcom_batchSendRecv wait/transit（Level2 step 13）',
+      chartType: 'p2p-timing',
+      stages: [
+        {
+          stageLabel: 'PP Stage 0',
+          ranks: '0, 1',
+          ops: [
+            { direction: 'FWD Send → Stage 1', opName: 'hcom_batchSendRecv__128_3', transit_ms: 0.40, wait_ms: 0,      waitPct: 0.0,  note: '激活值下传，即时完成' },
+            { direction: 'FWD Recv ← Stage 1', opName: 'hcom_batchSendRecv__128_4', transit_ms: 0.40, wait_ms: 158.10, waitPct: 99.7, note: 'Stage 1 LM Head(36.8ms)+CE(80ms)链路未结束' },
+            { direction: 'BWD Recv ← Stage 1', opName: 'hcom_batchSendRecv__128_5', transit_ms: 0.40, wait_ms: 154.90, waitPct: 99.7, note: '等反向梯度从 Stage 1 回传' },
+          ],
+        },
+        {
+          stageLabel: 'PP Stage 1',
+          ranks: '2, 3',
+          ops: [
+            { direction: 'FWD Recv ← Stage 0', opName: 'hcom_batchSendRecv__128_3', transit_ms: 0.40, wait_ms: 0, waitPct: 0.0, note: '收激活值后即刻开始 LM Head 前向' },
+            { direction: 'FWD Send → Stage 0', opName: 'hcom_batchSendRecv__128_4', transit_ms: 0.40, wait_ms: 0, waitPct: 0.0, note: '此时 rank_0 的 158ms 气泡消除' },
+            { direction: 'BWD Send → Stage 0', opName: 'hcom_batchSendRecv__128_5', transit_ms: 0.40, wait_ms: 0, waitPct: 0.0, note: 'CE 串行链路结束后回传梯度' },
+          ],
+        },
+      ],
+    },
+    // 3.4 DP 集合通信 HCCS 带宽仅18.5 GB/s，利用率62%（4卡单节点）
+    4: {
+      source: 'communication.json rank_0–3 DP集合通信 HCCS（step 13，推断自 op_statistic.csv hcom_ 系列）',
+      chartType: 'bw-table',
+      theoryBw: 30,
+      problemCols: ['rs', 'ar'],
+      probRowThreshold: 15.0,
+      summaryLabel: '4 卡平均',
+      nodeRanges: {},
+      rows: [
+        { rank: 0, node: 'DP Group 0 (PP Stage 0)', ag_avg: 18.52, ag_min: 18.31, rs_avg: 18.47, rs_min: 18.21, ar_avg: 18.50, ar_min: 18.29, bc_avg: 18.48 },
+        { rank: 1, node: 'DP Group 0 (PP Stage 0)', ag_avg: 18.54, ag_min: 18.33, rs_avg: 18.49, rs_min: 18.23, ar_avg: 18.52, ar_min: 18.30, bc_avg: 18.50 },
+        { rank: 2, node: 'DP Group 1 (PP Stage 1)', ag_avg: 18.51, ag_min: 18.30, rs_avg: 18.45, rs_min: 18.20, ar_avg: 18.49, ar_min: 18.28, bc_avg: 18.47 },
+        { rank: 3, node: 'DP Group 1 (PP Stage 1)', ag_avg: 18.53, ag_min: 18.32, rs_avg: 18.47, rs_min: 18.22, ar_avg: 18.51, ar_min: 18.29, bc_avg: 18.49 },
+      ],
+    },
+  },
+
+  // ── r20260602multi: 16卡/2节点集群诊断 ─────────────────────────────────────
   r20260602multi: {
+    // 3.2 小包 RDMA 通信：71.43% 包 < 1MB，带宽 0.0005 GB/s，wait 99.996%
+    2: {
+      source: 'cluster_analysis.db · ClusterCommunicationBandwidth / ClusterCommunicationTime（band_type=RDMA，step2）',
+      chartType: 'rdma-summary',
+      theoryBw: 200,
+      smallPktPct: 71.43,
+      smallPktDur: 0.0548,
+      ops: [
+        {
+          name: 'hcom_allReduce__520_0_1',
+          bandType: 'RDMA',
+          packageSize_MB: 0.000004,
+          bandwidth_GBps: 0.0005,
+          elapsed_ms: 237,
+          transit_ms: 0.009,
+          wait_ms: 236.991,
+          waitPct: 99.996,
+        },
+      ],
+    },
+    // 3.6 HCCS 节点内通信带宽（来自 ClusterCommunicationBandwidth，step2，按算子类型聚合）
     6: {
       source: 'cluster_analysis.db · ClusterCommunicationBandwidth (step2, HCCS, 16卡)',
       chartType: 'bw-table',
@@ -5065,6 +5839,46 @@ window.COMM_VIEW_DATA = {
         { rank:13,  node:'node2', ag_avg:18.2334, ag_min:0.0697, rs_avg:14.3418, rs_min:12.8494, ar_avg:11.8045, ar_min:0.0031, bc_avg:8.8164 },
         { rank:14,  node:'node2', ag_avg:18.3593, ag_min:0.0712, rs_avg:15.3079, rs_min:13.6851, ar_avg:11.9493, ar_min:0.0030, bc_avg:8.8682 },
         { rank:15,  node:'node2', ag_avg:18.3337, ag_min:0.0764, rs_avg:14.8722, rs_min:13.2470, ar_avg:11.9603, ar_min:0.0030, bc_avg:8.8438 },
+      ],
+    },
+  },
+
+  // ── r20260602verl: verl RL训练 单卡（rank 0 视角，HCCS 8卡单节点）──────────
+  r20260602verl: {
+    // 3.2 TP All-Reduce 全暴露，9.4s 花在 wait：CommAnalyzerMatrix 带宽矩阵
+    2: {
+      source: 'analysis.db · CommAnalyzerMatrix / CommAnalyzerBandwidth（rank 0 → peer 1–7，HCCS，rollout 48s 窗口）',
+      chartType: 'comm-matrix',
+      srcRank: 0,
+      commGroup: '单节点 8 卡全 HCCS 互联',
+      theoryBw: 30,
+      commSummary: 'hcom_allReduce 27,687 次 · 累计 12,954 ms · Wait 9,355 ms (72%) · 按字节加权带宽 ~10 GB/s · 逐 op 均值 5.9 GB/s（小包 / 延迟受限，通信-计算未重叠）',
+      links: [
+        { peer: 1, group: 'TP', bandwidth_GBps: 14.59, bytes_GB: 15.3,  note: 'TP 组，承载约 5× 字节量；AllReduce wait 72% = 9,355ms' },
+        { peer: 2, group: 'DP', bandwidth_GBps: 7.63,  bytes_GB: 3.12,  note: '小包，延迟受限' },
+        { peer: 3, group: 'DP', bandwidth_GBps: 7.65,  bytes_GB: 3.12,  note: '小包，延迟受限' },
+        { peer: 4, group: 'DP', bandwidth_GBps: 7.64,  bytes_GB: 3.12,  note: '小包，延迟受限' },
+        { peer: 5, group: 'DP', bandwidth_GBps: 7.67,  bytes_GB: 3.12,  note: '小包，延迟受限' },
+        { peer: 6, group: 'DP', bandwidth_GBps: 7.63,  bytes_GB: 3.12,  note: '小包，延迟受限' },
+        { peer: 7, group: 'DP', bandwidth_GBps: 7.66,  bytes_GB: 3.12,  note: '小包，延迟受限' },
+      ],
+    },
+    // 3.6 HCCS 小包通信：链路均衡但带宽利用仅 33%（CommAnalyzerMatrix 链路均衡分析）
+    6: {
+      source: 'analysis.db · CommAnalyzerMatrix / CommAnalyzerBandwidth（rank 0 视角，HCCS 链路均衡分析）',
+      chartType: 'comm-matrix',
+      srcRank: 0,
+      commGroup: '单节点 8 卡全 HCCS 互联',
+      theoryBw: 30,
+      commSummary: 'HCCS 链路均衡（DP 极差 < 1%）但带宽利用仅 33%（~10 GB/s ÷ 30 GB/s）· 逐 op 均值 5.9 GB/s · 典型小包 / 延迟受限 · 需补采其余 7 卡以点名 straggler',
+      links: [
+        { peer: 1, group: 'TP', bandwidth_GBps: 14.59, bytes_GB: 15.3,  note: 'TP 组，承载约 5× 字节量；逐 token AllReduce 串行' },
+        { peer: 2, group: 'DP', bandwidth_GBps: 7.63,  bytes_GB: 3.12,  note: '均衡，极差 < 1%；小包低利用' },
+        { peer: 3, group: 'DP', bandwidth_GBps: 7.65,  bytes_GB: 3.12,  note: '均衡' },
+        { peer: 4, group: 'DP', bandwidth_GBps: 7.64,  bytes_GB: 3.12,  note: '均衡' },
+        { peer: 5, group: 'DP', bandwidth_GBps: 7.67,  bytes_GB: 3.12,  note: '均衡' },
+        { peer: 6, group: 'DP', bandwidth_GBps: 7.63,  bytes_GB: 3.12,  note: '均衡' },
+        { peer: 7, group: 'DP', bandwidth_GBps: 7.66,  bytes_GB: 3.12,  note: '均衡' },
       ],
     },
   },
@@ -5120,6 +5934,632 @@ window.FREE_ANALYSIS_DATA = {
     },
   },
 };
+
+</script></script>
+  <script>
+(function registerPtoModelGraphvizPattern(global) {
+  'use strict';
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const CORE_COLORS = [
+    '#34D399',
+    '#14B8A6',
+    '#06B6D4',
+    '#0EA5E9',
+    '#3B82F6',
+    '#6366F1',
+    '#8B5CF6',
+    '#A855F7',
+    '#1E40AF',
+  ];
+  const COLORMAP_SATURATION = 0.82;
+  const COLORMAP_LIGHTNESS = 0.40;
+  const FORBIDDEN_HUES = { from: 300 / 360, to: 150 / 360, wraps: true };
+  const LINE_COLOR = 'var(--model-graphviz-line)';
+  const NODE_TEXT_COLOR = 'var(--model-graphviz-node-label)';
+  const NODE_TYPE_COLOR = 'var(--model-graphviz-node-type)';
+  const TENSOR_NODE_FILL = 'var(--model-graphviz-tensor-fill)';
+  const EXPAND_BUTTON_RADIUS = 14;
+  const EXPAND_BUTTON_EDGE_GAP = 10;
+  const DEFAULT_DOT_LAYOUT = {
+    graphMargin: 0.22,
+    graphPad: 0.38,
+    clusterMargin: 36,
+  };
+  const REPORT_PRIORITY_COLORS = {
+    P0: '#FF2D7A',
+    P1: '#FF9D00',
+    P2: '#FFE600',
+  };
+  let renderSequence = 0;
+
+  const DEEPSEEK_V32_DEFAULT_GRAPH = {
+    width: 720,
+    height: 1280,
+    clusters: [
+      { id: 'transformer-core', label: 'Transformer', x: 160, y: 86, width: 400, height: 1050, colorKey: 'module:transformer-core', reportPriority: 'P0' },
+      { id: 'decoder-block', label: 'Decoder Layer', x: 178, y: 240, width: 364, height: 500, colorKey: 'module:decoder-block', reportPriority: 'P0' },
+    ],
+    nodes: [
+      { id: 'token-ids', label: 'Token IDs', typeLabel: 'Input', kind: 'tensor', x: 360, y: 44, width: 190, height: 48, colorKey: 'io:input' },
+      { id: 'embedding', label: 'Parallel Embedding', typeLabel: 'Op', kind: 'op', x: 360, y: 150, width: 330, height: 56, colorKey: 'sem:embedding', reportPriority: 'P2' },
+      { id: 'hidden', label: 'Hidden States', typeLabel: 'Tensor', kind: 'tensor', x: 360, y: 296, width: 230, height: 54, parent: 'decoder-block' },
+      { id: 'attn-norm', label: 'attn_norm fused residual', typeLabel: 'Op', kind: 'op', x: 320, y: 390, width: 286, height: 58, parent: 'decoder-block' },
+      { id: 'mla', label: 'MLA attention', typeLabel: 'Module (MLA atte...)', kind: 'op', x: 330, y: 486, width: 214, height: 58, colorKey: 'sem:attention', parent: 'decoder-block', reportPriority: 'P1' },
+      { id: 'mla-indexer', label: 'MLA + Sparse Indexer', typeLabel: 'Module (MLA + Sp...)', x: 340, y: 582, width: 286, height: 58, colorKey: 'module:mla-indexer', collapsed: true, parent: 'decoder-block' },
+      { id: 'ffn-norm', label: 'ffn_norm fused residual', typeLabel: 'Op', kind: 'op', x: 355, y: 682, width: 288, height: 58, parent: 'decoder-block' },
+      { id: 'ffn-choice', label: 'Feed Forward Choice', typeLabel: 'Module (Feed For...)', x: 365, y: 790, width: 286, height: 58, colorKey: 'module:ffn-choice', collapsed: true },
+      { id: 'block-output', label: 'Block Output', typeLabel: 'Tensor', kind: 'tensor', x: 360, y: 900, width: 245, height: 54, colorKey: 'io:output' },
+      { id: 'final-norm', label: 'final RMSNorm', typeLabel: 'Op', kind: 'op', x: 360, y: 1016, width: 210, height: 56, colorKey: 'sem:norm' },
+      { id: 'lm-head', label: 'LM Head Linear', typeLabel: 'Op', kind: 'op', x: 360, y: 1100, width: 292, height: 56, colorKey: 'sem:linear', reportPriority: 'P2' },
+      { id: 'logits', label: 'Logits', typeLabel: 'Output', kind: 'tensor', x: 360, y: 1220, width: 230, height: 48, colorKey: 'io:output', reportPriority: 'P2' },
+    ],
+    edges: [
+      { source: 'token-ids', target: 'embedding' },
+      { source: 'embedding', target: 'hidden' },
+      { source: 'hidden', target: 'attn-norm' },
+      { source: 'attn-norm', target: 'mla' },
+      { source: 'mla', target: 'mla-indexer' },
+      { source: 'mla-indexer', target: 'ffn-norm' },
+      { source: 'hidden', target: 'ffn-norm', dashed: true },
+      { source: 'ffn-norm', target: 'ffn-choice' },
+      { source: 'ffn-choice', target: 'block-output' },
+      { source: 'block-output', target: 'final-norm' },
+      { source: 'final-norm', target: 'lm-head' },
+      { source: 'lm-head', target: 'logits' },
+    ],
+  };
+
+  function createSvgElement(tagName, attributes) {
+    const element = document.createElementNS(SVG_NS, tagName);
+    Object.entries(attributes || {}).forEach(([key, value]) => {
+      if (value == null) return;
+      element.setAttribute(key, value);
+    });
+    return element;
+  }
+
+  function estimateTextWidth(text, minWidth, maxWidth) {
+    return Math.max(minWidth, Math.min(maxWidth, String(text || '').length * 5.8 + 18));
+  }
+
+  function getReportPriorityFill(priority) {
+    return REPORT_PRIORITY_COLORS[String(priority || '').toUpperCase()] || REPORT_PRIORITY_COLORS.P2;
+  }
+
+  function getReportPriorityTextColor(priority) {
+    return String(priority || '').toUpperCase() === 'P0'
+      ? 'var(--model-graphviz-report-priority-on-dark)'
+      : 'var(--model-graphviz-report-priority-on-light)';
+  }
+
+  function normalizeHue(hue) {
+    return ((hue % 1) + 1) % 1;
+  }
+
+  function isHueForbidden(hue) {
+    const h = normalizeHue(hue);
+    if (!FORBIDDEN_HUES.wraps) {
+      return h >= FORBIDDEN_HUES.from && h <= FORBIDDEN_HUES.to;
+    }
+    return h >= FORBIDDEN_HUES.from || h <= FORBIDDEN_HUES.to;
+  }
+
+  function snapToValidHue(hue) {
+    const h = normalizeHue(hue);
+    if (!isHueForbidden(h)) return h;
+    const lower = FORBIDDEN_HUES.to;
+    const upper = FORBIDDEN_HUES.from;
+    const distanceToLower = Math.min(Math.abs(h - lower), 1 - Math.abs(h - lower));
+    const distanceToUpper = Math.min(Math.abs(h - upper), 1 - Math.abs(h - upper));
+    return distanceToLower <= distanceToUpper ? lower : upper;
+  }
+
+  function hexToRgb(hex) {
+    const normalized = String(hex || '').replace('#', '').trim();
+    if (normalized.length !== 6) return { r: 0, g: 0, b: 0 };
+    return {
+      r: parseInt(normalized.slice(0, 2), 16),
+      g: parseInt(normalized.slice(2, 4), 16),
+      b: parseInt(normalized.slice(4, 6), 16),
+    };
+  }
+
+  function rgbToHsl(r, g, b) {
+    const nr = r / 255;
+    const ng = g / 255;
+    const nb = b / 255;
+    const max = Math.max(nr, ng, nb);
+    const min = Math.min(nr, ng, nb);
+    let h = 0;
+    let s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === nr) h = (ng - nb) / d + (ng < nb ? 6 : 0);
+      else if (max === ng) h = (nb - nr) / d + 2;
+      else h = (nr - ng) / d + 4;
+      h /= 6;
+    }
+    return { h, s, l };
+  }
+
+  function hslToHex(h, s, l) {
+    function hueToRgb(p, q, t) {
+      let next = t;
+      if (next < 0) next += 1;
+      if (next > 1) next -= 1;
+      if (next < 1 / 6) return p + (q - p) * 6 * next;
+      if (next < 1 / 2) return q;
+      if (next < 2 / 3) return p + (q - p) * (2 / 3 - next) * 6;
+      return p;
+    }
+
+    const normalizedHue = snapToValidHue(h);
+    let r;
+    let g;
+    let b;
+    if (s === 0) {
+      r = l;
+      g = l;
+      b = l;
+    } else {
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hueToRgb(p, q, normalizedHue + 1 / 3);
+      g = hueToRgb(p, q, normalizedHue);
+      b = hueToRgb(p, q, normalizedHue - 1 / 3);
+    }
+    return '#' + [r, g, b].map((value) => {
+      const channel = Math.round(value * 255);
+      return channel.toString(16).padStart(2, '0');
+    }).join('').toUpperCase();
+  }
+
+  function hexToHsl(hex) {
+    const rgb = hexToRgb(hex);
+    return rgbToHsl(rgb.r, rgb.g, rgb.b);
+  }
+
+  function normalizeColormapColor(hex) {
+    const hsl = hexToHsl(hex);
+    return hslToHex(snapToValidHue(hsl.h), COLORMAP_SATURATION, COLORMAP_LIGHTNESS);
+  }
+
+  function expandPalette(baseHexes, targetCount) {
+    const hues = baseHexes.map((hex) => snapToValidHue(hexToHsl(hex).h));
+    const coreHueSet = new Set(hues.map((hue) => Math.round(hue * 1e6)));
+    const maxHuePositions = 100;
+    const minGap = 1 / 360 * 2.5;
+
+    while (hues.length < maxHuePositions) {
+      let maxGap = -1;
+      let insertIndex = 0;
+      for (let index = 0; index < hues.length; index += 1) {
+        const current = hues[index];
+        const next = hues[(index + 1) % hues.length];
+        let gap = next - current;
+        if (gap < 0) gap += 1;
+        if (gap > maxGap) {
+          maxGap = gap;
+          insertIndex = index;
+        }
+      }
+      const current = hues[insertIndex];
+      const next = hues[(insertIndex + 1) % hues.length];
+      let midpoint = next < current ? ((current + next + 1) / 2) % 1 : (current + next) / 2;
+      midpoint = snapToValidHue(midpoint);
+      const tooClose = hues.some((hue) => {
+        let distance = Math.abs(hue - midpoint);
+        if (distance > 0.5) distance = 1 - distance;
+        return distance < minGap;
+      });
+      if (tooClose) break;
+      hues.splice(insertIndex + 1, 0, midpoint);
+    }
+
+    const colors = baseHexes.map(normalizeColormapColor);
+    const extraHues = hues.filter((hue) => !coreHueSet.has(Math.round(hue * 1e6)));
+    for (const hue of extraHues) {
+      if (colors.length >= targetCount) break;
+      colors.push(hslToHex(hue, COLORMAP_SATURATION, COLORMAP_LIGHTNESS));
+    }
+    while (colors.length < targetCount) {
+      for (const hue of hues) {
+        if (colors.length >= targetCount) break;
+        colors.push(hslToHex(hue, COLORMAP_SATURATION, COLORMAP_LIGHTNESS));
+      }
+    }
+
+    return colors.slice(0, targetCount);
+  }
+
+  function buildColorMap(keys) {
+    const unique = Array.from(new Set(keys || []));
+    const semanticKeys = unique.filter((key) => !String(key).startsWith('io:')).sort();
+    const colors = expandPalette(CORE_COLORS, Math.max(semanticKeys.length, CORE_COLORS.length));
+    const map = new Map();
+    map.set('io:input', normalizeColormapColor('#A855F7'));
+    map.set('io:output', normalizeColormapColor('#34D399'));
+    map.set('io:constant', normalizeColormapColor('#64748B'));
+    map.set('io:parameter', normalizeColormapColor('#3B82F6'));
+    semanticKeys.forEach((key, index) => map.set(key, colors[index]));
+    return map;
+  }
+
+  function collectColorKeys(graph) {
+    const keys = [];
+    (graph.clusters || []).forEach((cluster) => keys.push(cluster.colorKey || `parent:${cluster.id}`));
+    (graph.nodes || []).forEach((node) => {
+      if (node.colorKey) keys.push(node.colorKey);
+      else if (node.parent) keys.push(`parent:${node.parent}`);
+      else keys.push(`type:${node.kind || 'node'}`);
+    });
+    return keys;
+  }
+
+  function resolveClusterColors(graph, colorMap) {
+    const colors = new Map();
+    (graph.clusters || []).forEach((cluster) => {
+      const key = cluster.colorKey || `parent:${cluster.id}`;
+      colors.set(cluster.id, colorMap.get(key) || CORE_COLORS[0]);
+    });
+    return colors;
+  }
+
+  function getNodeVisualKind(node) {
+    if (node.collapsed) return 'module';
+    if (node.kind) return node.kind;
+    const typeLabel = String(node.typeLabel || '').toLowerCase();
+    if (['input', 'output', 'tensor', 'constant', 'parameter'].some((needle) => typeLabel.includes(needle))) {
+      return 'tensor';
+    }
+    return 'op';
+  }
+
+  function resolveNodeColor(node, colorMap, clusterColors) {
+    if (getNodeVisualKind(node) === 'tensor') {
+      return TENSOR_NODE_FILL;
+    }
+    if (node.parent && clusterColors.has(node.parent)) {
+      return clusterColors.get(node.parent);
+    }
+    const key = node.colorKey || `type:${node.kind || 'node'}`;
+    return colorMap.get(key) || CORE_COLORS[1];
+  }
+
+  function nodeAnchor(node, direction) {
+    const x = direction === 'left' ? node.x - node.width / 2 : direction === 'right' ? node.x + node.width / 2 : node.x;
+    const y = direction === 'top' ? node.y - node.height / 2 : direction === 'bottom' ? node.y + node.height / 2 : node.y;
+    return { x, y };
+  }
+
+  function edgePath(source, target) {
+    const vertical = Math.abs(source.y - target.y) >= Math.abs(source.x - target.x);
+    const start = vertical
+      ? nodeAnchor(source, source.y < target.y ? 'bottom' : 'top')
+      : nodeAnchor(source, source.x < target.x ? 'right' : 'left');
+    const end = vertical
+      ? nodeAnchor(target, source.y < target.y ? 'top' : 'bottom')
+      : nodeAnchor(target, source.x < target.x ? 'left' : 'right');
+
+    if (vertical) {
+      const midY = (start.y + end.y) / 2;
+      return `M ${start.x} ${start.y} C ${start.x} ${midY}, ${end.x} ${midY}, ${end.x} ${end.y}`;
+    }
+
+    const midX = (start.x + end.x) / 2;
+    return `M ${start.x} ${start.y} C ${midX} ${start.y}, ${midX} ${end.y}, ${end.x} ${end.y}`;
+  }
+
+  function drawMarker(defs, markerId) {
+    const marker = createSvgElement('marker', {
+      id: markerId,
+      viewBox: '0 0 10 10',
+      refX: '8.6',
+      refY: '5',
+      markerWidth: '8',
+      markerHeight: '8',
+      orient: 'auto-start-reverse',
+    });
+    marker.appendChild(createSvgElement('path', {
+      d: 'M 0 0 L 10 5 L 0 10 z',
+      fill: LINE_COLOR,
+    }));
+    defs.appendChild(marker);
+  }
+
+  function drawCluster(svg, cluster, color) {
+    const group = createSvgElement('g', { class: 'pto-model-graphviz-cluster' });
+    const isRepeat = Boolean(cluster.repeat);
+    const radius = 16; // --radius-xl, matches DeepSeek parent-radius; keeps corner toggle inside
+    group.appendChild(createSvgElement('rect', {
+      x: cluster.x,
+      y: cluster.y,
+      width: cluster.width,
+      height: cluster.height,
+      rx: radius,
+      ry: radius,
+      fill: '#FFFFFF',
+      'fill-opacity': '0.10',
+      stroke: isRepeat ? LINE_COLOR : 'var(--model-graphviz-line-soft)',
+      'stroke-width': isRepeat ? '1.2' : '1.6',
+      'stroke-dasharray': isRepeat ? '3 2' : null,
+    }));
+
+    if (!cluster.reportPriority) {
+      const label = createSvgElement('text', {
+        class: 'pto-model-graphviz-cluster-label',
+        x: cluster.x + 20,
+        y: cluster.y + 18,
+      });
+      label.textContent = cluster.label || cluster.id;
+      group.appendChild(label);
+    }
+
+    const toggleX = cluster.x + cluster.width - 13;
+    const toggleY = cluster.y + 13; // top-right corner anchor
+    group.appendChild(createSvgElement('circle', {
+      class: 'pto-model-graphviz-toggle',
+      cx: toggleX,
+      cy: toggleY,
+      r: 7.5,
+    }));
+    const icon = createSvgElement('text', {
+      class: 'pto-model-graphviz-toggle-icon',
+      x: toggleX,
+      y: toggleY + 0.3,
+      'font-size': '12',
+    });
+    icon.textContent = '-';
+    group.appendChild(icon);
+    svg.appendChild(group);
+  }
+
+  function drawClusterTitlePill(svg, cluster) {
+    const priority = String(cluster.reportPriority || '').toUpperCase();
+    if (!priority) return;
+
+    const label = cluster.label || cluster.id;
+    const fill = getReportPriorityFill(priority);
+    const textColor = getReportPriorityTextColor(priority);
+    const tagWidth = estimateTextWidth(priority, 20, 24);
+    const tagHeight = 12;
+    const pillPaddingLeft = 6;
+    const pillPaddingRight = 12;
+    const tagGap = 8;
+    const labelWidth = estimateTextWidth(label, 42, Math.max(42, cluster.width - tagWidth - 42));
+    const height = 18;
+    const width = pillPaddingLeft + tagWidth + tagGap + labelWidth + pillPaddingRight;
+    const centeredX = cluster.x + (cluster.width - width) / 2;
+    const minX = cluster.x + 8;
+    const maxX = cluster.x + cluster.width - width - 8;
+    const x = maxX >= minX ? Math.min(Math.max(centeredX, minX), maxX) : centeredX;
+    const y = cluster.y;
+    const tagX = x + pillPaddingLeft;
+
+    const group = createSvgElement('g', {
+      class: `pto-model-graphviz-cluster-title-pill report-priority-${priority.toLowerCase()}`,
+      'data-report-priority': priority,
+      'pointer-events': 'none',
+    });
+
+    group.appendChild(createSvgElement('rect', {
+      class: 'pto-model-graphviz-cluster-title-bg',
+      x,
+      y: y - height / 2,
+      width,
+      height,
+      rx: height / 2,
+      ry: height / 2,
+      fill,
+    }));
+    group.appendChild(createSvgElement('rect', {
+      class: 'pto-model-graphviz-cluster-title-tag',
+      x: tagX,
+      y: y - tagHeight / 2,
+      width: tagWidth,
+      height: tagHeight,
+      rx: tagHeight / 2,
+      ry: tagHeight / 2,
+    }));
+
+    const tag = createSvgElement('text', {
+      class: 'pto-model-graphviz-cluster-title-tag-text',
+      x: tagX + tagWidth / 2,
+      y,
+      fill: textColor,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+    });
+    tag.textContent = priority;
+    group.appendChild(tag);
+
+    const title = createSvgElement('text', {
+      class: 'pto-model-graphviz-cluster-title-text',
+      x: tagX + tagWidth + tagGap,
+      y,
+      fill: textColor,
+      'dominant-baseline': 'central',
+    });
+    title.textContent = label;
+    group.appendChild(title);
+    svg.appendChild(group);
+  }
+
+  function drawReportBadge(group, node) {
+    const priority = String(node.reportPriority || '').toUpperCase();
+    if (!priority) return;
+
+    const badgeWidth = estimateTextWidth(priority, 30, 36);
+    const badgeHeight = 16;
+    const x = -node.width / 2 + 8;
+    const centerY = 0;
+    const fill = getReportPriorityFill(priority);
+    const textColor = getReportPriorityTextColor(priority);
+
+    group.appendChild(createSvgElement('rect', {
+      class: 'pto-model-graphviz-report-node-badge',
+      'data-report-priority': priority,
+      x,
+      y: centerY - badgeHeight / 2,
+      width: badgeWidth,
+      height: badgeHeight,
+      rx: badgeHeight / 2,
+      ry: badgeHeight / 2,
+      fill,
+    }));
+
+    const label = createSvgElement('text', {
+      class: 'pto-model-graphviz-report-node-badge-text',
+      x: x + badgeWidth / 2,
+      y: centerY,
+      fill: textColor,
+      'text-anchor': 'middle',
+      'dominant-baseline': 'central',
+    });
+    label.textContent = priority;
+    group.appendChild(label);
+  }
+
+  function drawNode(svg, node, color) {
+    const visualKind = getNodeVisualKind(node);
+    const cornerRadius = visualKind === 'tensor'
+      ? Math.min(14, Math.max(8, node.height * 0.32))
+      : node.height / 2;
+    const group = createSvgElement('g', {
+      class: `pto-model-graphviz-node is-${visualKind}${node.collapsed ? ' is-collapsed' : ''}`,
+      transform: `translate(${node.x}, ${node.y})`,
+    });
+    const rect = createSvgElement('rect', {
+      x: -node.width / 2,
+      y: -node.height / 2,
+      width: node.width,
+      height: node.height,
+      rx: cornerRadius,
+      ry: cornerRadius,
+      fill: color,
+    });
+    group.appendChild(rect);
+
+    const label = createSvgElement('text', {
+      class: 'pto-model-graphviz-node-label',
+      x: node.collapsed ? -8 : 0,
+      y: visualKind === 'tensor' ? 0 : -4,
+      fill: NODE_TEXT_COLOR,
+    });
+    label.textContent = node.label || node.id;
+    group.appendChild(label);
+
+    if (visualKind !== 'tensor') {
+      const type = createSvgElement('text', {
+        class: 'pto-model-graphviz-node-type',
+        x: node.collapsed ? -8 : 0,
+        y: 12,
+        fill: NODE_TYPE_COLOR,
+      });
+      type.textContent = node.typeLabel || 'Op';
+      group.appendChild(type);
+    }
+
+    if (node.collapsed) {
+      const toggleX = node.width / 2 - EXPAND_BUTTON_EDGE_GAP - EXPAND_BUTTON_RADIUS;
+      const toggleY = 0;
+      group.appendChild(createSvgElement('circle', {
+        class: 'pto-model-graphviz-toggle',
+        cx: toggleX,
+        cy: toggleY,
+        r: EXPAND_BUTTON_RADIUS,
+      }));
+      const icon = createSvgElement('text', {
+        class: 'pto-model-graphviz-toggle-icon',
+        x: toggleX,
+        y: toggleY + 0.2,
+      });
+      icon.textContent = '+';
+      group.appendChild(icon);
+    }
+
+    drawReportBadge(group, node);
+    svg.appendChild(group);
+  }
+
+  function render(container, graph, options) {
+    const target = typeof container === 'string' ? document.querySelector(container) : container;
+    if (!target) return null;
+    const data = graph || DEEPSEEK_V32_DEFAULT_GRAPH;
+    const resolvedOptions = options || {};
+    const width = resolvedOptions.width || data.width || 1180;
+    const height = resolvedOptions.height || data.height || 520;
+    target.innerHTML = '';
+
+    const markerId = `pto-model-graphviz-arrowhead-${renderSequence += 1}`;
+    const svg = createSvgElement('svg', {
+      role: 'img',
+      'aria-label': resolvedOptions.ariaLabel || 'PTO model graphviz pattern preview',
+      viewBox: `0 0 ${width} ${height}`,
+    });
+    const defs = createSvgElement('defs');
+    drawMarker(defs, markerId);
+    svg.appendChild(defs);
+
+    const colorMap = buildColorMap(collectColorKeys(data));
+    const clusterColors = resolveClusterColors(data, colorMap);
+    const nodeMap = new Map((data.nodes || []).map((node) => [node.id, node]));
+
+    (data.clusters || []).forEach((cluster) => {
+      drawCluster(svg, cluster, clusterColors.get(cluster.id) || CORE_COLORS[0]);
+    });
+
+    const renderedEdges = new Set();
+    (data.edges || []).forEach((edge) => {
+      const source = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+      if (!source || !targetNode) return;
+      const edgeKey = `${edge.source}->${edge.target}`;
+      if (renderedEdges.has(edgeKey)) return;
+      renderedEdges.add(edgeKey);
+      svg.appendChild(createSvgElement('path', {
+        class: 'pto-model-graphviz-edge',
+        d: edgePath(source, targetNode),
+        stroke: edge.color || LINE_COLOR,
+        'stroke-dasharray': edge.dashed ? '8 7' : null,
+        'marker-end': `url(#${markerId})`,
+      }));
+    });
+
+    (data.nodes || []).forEach((node) => {
+      drawNode(svg, node, resolveNodeColor(node, colorMap, clusterColors));
+    });
+
+    (data.clusters || []).forEach((cluster) => {
+      drawClusterTitlePill(svg, cluster);
+    });
+
+    target.appendChild(svg);
+    return svg;
+  }
+
+  global.PtoModelGraphvizPattern = {
+    render,
+    buildColorMap,
+    reportPriorityColors: { ...REPORT_PRIORITY_COLORS },
+    defaultDotLayout: { ...DEFAULT_DOT_LAYOUT },
+    sourcePages: {
+      deepseekV32: './assets/deepseek_v32_modelviz.html',
+      qwen7b: './assets/qwen7b_modelviz.html',
+    },
+    schemaAssets: {
+      deepseekV32: './assets/deepseek_v32_model_architecture.json',
+      qwen7b: './assets/qwen7b_model_architecture.json',
+      gemma: './assets/gemma_model_architecture.json',
+    },
+    defaultGraphs: {
+      deepseekV32: DEEPSEEK_V32_DEFAULT_GRAPH,
+    },
+  };
+})(window);
 
 </script></script>
   <script>
@@ -5295,6 +6735,17 @@ loss = F.cross_entropy(logits, labels, ignore_index=pad_token_id)
         verification: 'per_core_pipe.csv 中 CUBE util_pct ≥ 80%；MTE1 WAIT_FLAG ≤ SET_FLAG',
         visualization: 'Timeline 视图（算子调优）— 载入 visualize_data.bin，过滤 core0.cubecore0 的 MTE1/MTE2/CUBE 三条 pipe',
         codeLocations: ['matmul_leakyrelu_custom.cpp:116-139'] },
+      { id: '3.6', priority: 'P2', title: 'CACHEMISS 累计 326 次，集中在 scalar 栈 PC 段',
+        evidence: 'simulator per_core_event.csv：cubecore0 CACHEMISS 326 次，PC 区间 0x0800–0x0840 高度集中；反汇编定位到 matmul_leakyrelu_custom.cpp:206-207（LeakyReluCustom 函数头栈帧）；SCALAR LD/ST/STI/STP 指令在此处以 2 cycle/miss × 326 次 = 652 cycle 额外开销叠加于已高负载的 SCALAR pipe（44,245 事件/178% span）上',
+        impact: '326 次 CACHEMISS 独立贡献约 2 ns 延迟，单独修复收益低；但与 P1#3 强关联——44,245 scalar 事件本身由 LeakyReluCustom 频繁调用产生，一旦 scalar 总量削减，函数栈帧访问频率下降，CACHEMISS 随之自然消除',
+        steps: [
+          '确认 LeakyReluCustom 编译后已内联（nm/objdump 输出不含 LeakyReluCustom 符号即已内联）',
+          '若未内联：加 __attribute__((always_inline)) 或将函数体搬入同 kernel 的 struct inline 方法',
+          'line206 局部变量 off 提至循环外层，避免每轮 SCALAR 栈帧反复写/读'
+        ],
+        verification: 'per_core_event.csv 中 CACHEMISS ≤ 30 次；SCALAR busy 从 201 ns 同步降至 < 70 ns（可与 P1#3 验证合并）',
+        visualization: '源码视图 — visualize_data.bin PC 热图定位到 matmul_leakyrelu_custom.cpp:206-207，SCALAR 栈帧 LD/ST 密集',
+        codeLocations: ['matmul_leakyrelu_custom.cpp:206-207'] },
     ],
     noProblems: [
       '多核切分到位（3 颗核均有事件，vec 两核事件数完全相等）',
@@ -5838,8 +7289,8 @@ const SKILL_DOCS = {
 };
 
 // ---- Semantic colors ----
-const COLOR_CURRENT   = '#FF8C42';  // orange — 当前分数
-const COLOR_ESTIMATED = '#04D793';  // green  — 优化后预估
+const COLOR_CURRENT   = '#d96900';  // orange — 当前分数（优化前）
+const COLOR_ESTIMATED = '#4b9902';  // green  — 优化后预估
 
 // ---- DOM ----
 const $ = id => document.getElementById(id);
@@ -5858,6 +7309,7 @@ async function init() {
   setupSidebarCollapse();
   setupChatInput();
   setupBenefitTooltip();
+  setupGraphTabPanZoom();
   buildHistory();
   selectReport(REPORTS[REPORTS.length - 1]);
   window.addEventListener('resize', () => {
@@ -5865,6 +7317,12 @@ async function init() {
     subChartInst?.resize();
     issueChartInst?.resize();
     _opCharts.forEach(c => c.resize());
+    // Re-fit graph if graph tab is active
+    const activeTab = document.querySelector('.v2-center-tab.active');
+    if (activeTab?.dataset.tab === 'graph' && graphTabState.svg) {
+      graphTabState.zoom = computeGraphFitZoom();
+      graphCenterView();
+    }
   });
 }
 
@@ -5944,6 +7402,7 @@ function selectReport(report) {
   renderCode(report);
   renderDocs(report);
   renderRawReport(report);
+  renderGraph(report);
   initChat(report);
 }
 
@@ -5976,6 +7435,10 @@ function setupTabs() {
         p.classList.toggle('active', p.id === `tab-${tab.dataset.tab}`));
       if (tab.dataset.tab === 'overview') { phsChartInst?.resize(); subChartInst?.resize(); }
       if (tab.dataset.tab === 'issues') { issueChartInst?.resize(); }
+      if (tab.dataset.tab === 'graph' && graphTabState.svg) {
+        graphTabState.zoom = computeGraphFitZoom();
+        graphCenterView();
+      }
     });
   });
 }
@@ -6051,15 +7514,10 @@ function renderOverview(r) {
         </div>
       </span>
     </div>
-    <div id="phsChart" style="width:100%;height:220px"></div>`;
+    <div id="phsChart" class="phs-gauge-box"></div>`;
   phsChartInst?.dispose();
-  phsChartInst = echarts.init($('phsChart'));
-  phsChartInst.setOption({
-    series: [
-      gaugeOpt(r.phs.current, r.phs.grade, '当前', '26%', COLOR_CURRENT),
-      gaugeOpt(r.phs.estimated, r.phs.estGrade, '优化后预估', '74%', COLOR_ESTIMATED),
-    ],
-  });
+  phsChartInst = null;
+  renderPhsGauge($('phsChart'), r.phs);
 
   // 摘要卡片
   $('summaryCards').innerHTML = `
@@ -6067,7 +7525,7 @@ function renderOverview(r) {
       <div class="sum-label">核心结论</div>
       <div class="sum-text">${r.summary.conclusion}</div>
     </div>
-    <div class="sum-card sum-bottleneck">
+    <div class="sum-card sum-bottleneck" title="点击查看问题列表">
       <div class="sum-label">🔴 头号瓶颈</div>
       <div class="sum-text">${r.summary.topBottleneck}</div>
     </div>
@@ -6076,6 +7534,15 @@ function renderOverview(r) {
       <div class="sum-text">${r.summary.maxGain}</div>
     </div>
   `;
+
+  const bottleneckCard = $('summaryCards').querySelector('.sum-bottleneck');
+  if (bottleneckCard) {
+    bottleneckCard.addEventListener('click', () => {
+      document.querySelector('.tab[data-tab="issues"]')?.click();
+      const firstCard = document.querySelector('#issuesList .ic-card');
+      if (firstCard) firstCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
 
   // 子项雷达图（固定 5 维度，缺失记 N/A）
   const subWrap = $('subItemsChartWrap');
@@ -6123,30 +7590,34 @@ function renderOverview(r) {
           return `{nm|${name}}\n{val|${v}}`;
         },
         rich: {
-          nm: { color: '#666666', fontSize: 10, lineHeight: 14 },
+          nm: { color: '#8a8a96', fontSize: 10, lineHeight: 14 },
           val: { color: COLOR_CURRENT, fontSize: 12, fontWeight: 'bold', lineHeight: 16 },
         },
       },
       splitNumber: 4,
-      splitArea: { areaStyle: { color: ['rgba(28,28,28,0.9)', 'rgba(38,38,38,0.5)', 'rgba(28,28,28,0.9)', 'rgba(38,38,38,0.5)'] } },
-      axisLine: { lineStyle: { color: '#292929' } },
-      splitLine: { lineStyle: { color: '#292929' } },
+      splitArea: { areaStyle: { color: ['rgba(255,255,255,0)', 'rgba(236,238,245,0.45)'] } },
+      axisLine: { lineStyle: { color: 'rgba(33,33,33,0.10)' } },
+      splitLine: { lineStyle: { color: 'rgba(33,33,33,0.10)' } },
     },
     series: [
       {
         type: 'radar',
         name: '当前',
-        lineStyle: { color: COLOR_CURRENT, width: 2 },
+        symbol: 'circle',
+        symbolSize: 4,
+        lineStyle: { color: COLOR_CURRENT, width: 1.4 },
         itemStyle: { color: COLOR_CURRENT },
-        areaStyle: { color: `${COLOR_CURRENT}1A` },
+        areaStyle: { color: `${COLOR_CURRENT}24` },
         data: [{ value: radarValues, name: '当前' }],
       },
       {
         type: 'radar',
         name: '优化后预估',
-        lineStyle: { color: COLOR_ESTIMATED, width: 2, type: 'dashed' },
+        symbol: 'circle',
+        symbolSize: 4,
+        lineStyle: { color: COLOR_ESTIMATED, width: 1.4, type: 'dashed' },
         itemStyle: { color: COLOR_ESTIMATED },
-        areaStyle: { color: `${COLOR_ESTIMATED}1A` },
+        areaStyle: { color: `${COLOR_ESTIMATED}22` },
         data: [{ value: radarEstValues, name: '优化后预估' }],
       },
     ],
@@ -6257,6 +7728,7 @@ function renderIssueDetail(r, a) {
   }
   const opEntry = OP_VIEW_DATA[r.id]?.[a.id];
   const commEntry = COMM_VIEW_DATA[r.id]?.[a.id];
+  const srcEntry = SOURCE_VIEW_DATA[r.id]?.[a.id];
   const slLanes = slEntry ? slEntry.data.length : 0;
   const slH = slLanes <= 1 ? 70 : slLanes === 2 ? 120 : slLanes === 3 ? 160 : slLanes === 4 ? 220 : 260;
 
@@ -6328,6 +7800,19 @@ function renderIssueDetail(r, a) {
       </div>
     </div>
     ` : ''}
+    ${srcEntry ? `
+    <div class="ac-section-title">源码视图 · 来自 ${escHtml(srcEntry.source)}</div>
+    <div class="ac-src-wrap" data-rid="${r.id}" data-aid="${a.id}"></div>
+    ` : a.visualization?.includes('源码视图') ? `
+    <div class="ac-section-title">源码视图</div>
+    <div class="ac-viz-placeholder">
+      <span class="ac-vp-icon">⌥</span>
+      <div>
+        <div class="ac-vp-label">源码数据未随报告附带</div>
+        <div class="ac-vp-hint">需要 visualize_data.bin（simulator 模式）含调试符号</div>
+      </div>
+    </div>
+    ` : ''}
   `;
 
   const vp = detailEl.querySelector('.ac-sl-vp');
@@ -6339,6 +7824,8 @@ function renderIssueDetail(r, a) {
   if (opWrap && !opWrap._inited) initAcOpView(opWrap);
   const commWrap = detailEl.querySelector('.ac-comm-wrap');
   if (commWrap && !commWrap._inited) initAcCommView(commWrap);
+  const srcWrap = detailEl.querySelector('.ac-src-wrap');
+  if (srcWrap && !srcWrap._inited) renderSourceView(srcWrap);
 }
 
 function initAcSwimlane(vp) {
@@ -6533,6 +8020,178 @@ const SWIMLANE_DATA = window.SWIMLANE_DATA || {};
 const OP_VIEW_DATA = window.OP_VIEW_DATA || {};
 const COMM_VIEW_DATA = window.COMM_VIEW_DATA || {};
 
+// ============================================================
+// 源码视图（Source View）接入手册
+// ============================================================
+//
+// 【何时需要接入】
+//   报告的某条 action 的 visualization 字段包含"源码视图"时，
+//   说明该问题需要以源码 + 关联指令的双栏视图来举证热点位置。
+//   典型场景：
+//     · SCALAR 栈帧 CACHEMISS —— PC 热图定位到具体 .cpp 行
+//     · 高 cycle 函数体 —— 逐行 cycle 占比标注
+//     · 内联失败导致的函数调用开销 —— 反汇编定位
+//
+// 【数据来源识别】
+//   1. simulator bin（visualize_data.bin）：
+//      per_core_event.csv 的 PC 列 → 反汇编得到 cpp 行号
+//      pipe_instr_top.csv 的 cycle% → 逐行 cycle 占比
+//   2. 非 simulator 场景（Level2 DB）：
+//      尚未有 source map 输出；改用"详情视图 Roofline"替代
+//
+// 【如何接入新报告】
+//   Step 1 — 补充 issue 详情
+//     在对应 REPORTS[n].issues 数组中添加 { id: '3.N', ... } 条目，
+//     字段对齐其他 issue：evidence / impact / steps / verification /
+//     visualization（含"源码视图"关键词）/ codeLocations
+//
+//   Step 2 — 填写 SOURCE_VIEW_DATA
+//     在下方 SOURCE_VIEW_DATA 对象中按 reportId → actionId 两级索引添加：
+//     {
+//       source:      '数据来源描述（显示在视图标题行）',
+//       file:        '源文件名（如 my_kernel.cpp）',
+//       contextNote: '简短上下文说明（显示在文件名旁）',
+//       lines: [
+//         // 每行对象：
+//         { ln: <行号>, cycles: '<占比字符串或null>', hot: <true|false>,
+//           code: '<HTML转义后的源码文本>', cachemiss: <次数或undefined> }
+//         // hot:true → 红色高亮；cachemiss → 显示 "MISS ×N" 角标
+//       ],
+//       instrs: [
+//         // 每条热点指令：
+//         { pc: '<0xADDR>', ln: <源码行号>, type: '<SCALAR|VECTOR|…>',
+//           instr: '<汇编文本>', cachemiss: <次数> }
+//       ],
+//     }
+//     注意：code 字段中的 HTML 特殊字符必须手动转义（< → &lt; 等），
+//     因为该字符串直接写入 innerHTML。
+//
+//   Step 3 — 无需改动渲染逻辑
+//     renderIssueDetail 会自动检测 SOURCE_VIEW_DATA[r.id]?.[a.id]：
+//       · 有数据 → 渲染真实源码双栏面板（调用 renderSourceView）
+//       · 无数据但 visualization 含"源码视图" → 显示占位符提示
+//     renderSourceView 本身不需修改，通过数据驱动即可。
+//
+//   Step 4 — CSS 已通用，无需新增
+//     所有样式在 styles.css ── Source View 区块中集中定义，
+//     覆盖行高亮、CACHEMISS 角标、指令表、双栏布局等，无需重复添加。
+//
+// 【示例参考】
+//   reportId = 'r20260527', actionId = 6
+//   问题：CACHEMISS 累计 326 次，集中在 scalar 栈 PC 段
+//   定位：matmul_leakyrelu_custom.cpp:206-207（LeakyReluCustom 函数头栈帧）
+//   来源：per_core_event.csv PC 热图 + nm 反汇编
+// ============================================================
+
+// ── 源码视图静态数据 (由 visualize_data.bin per_core_event.csv PC热图提取) ──
+const SOURCE_VIEW_DATA = {
+  r20260527: {
+    // P2#6 CACHEMISS — matmul_leakyrelu_custom.cpp LeakyReluCustom 函数栈帧热点
+    6: {
+      source: 'visualize_data.bin (per_core_event.csv · cubecore0 SCALAR PC热图)',
+      file: 'matmul_leakyrelu_custom.cpp',
+      contextNote: 'LeakyReluCustom 函数体 · 326 CACHEMISS',
+      lines: [
+        { ln: 200, cycles: null,  code: '// LeakyRelu vec kernel — 由 SCALAR PC 热图定位至此' },
+        { ln: 201, cycles: null,  code: 'template &lt;typename aT, typename bT, typename cT&gt;' },
+        { ln: 202, cycles: null,  code: '__aicore__ inline void MatmulLeakyReluCustom&lt;aT,bT,cT&gt;::LeakyReluCustom(' },
+        { ln: 203, cycles: null,  code: '    LocalTensor&lt;cT&gt;&amp; dst, LocalTensor&lt;cT&gt;&amp; src, float alpha)' },
+        { ln: 204, cycles: null,  code: '{' },
+        { ln: 205, cycles: '6%',  hot: false, code: '    uint32_t len = this-&gt;tileLength;' },
+        { ln: 206, cycles: '46%', hot: true,  code: '    uint32_t off = this-&gt;blockIdx * len;', cachemiss: 118 },
+        { ln: 207, cycles: '38%', hot: true,  code: '    LocalTensor&lt;cT&gt; buf = outQueue_.DeQue&lt;cT&gt;();', cachemiss: 97 },
+        { ln: 208, cycles: '5%',  hot: false, code: '    Muls(buf, src, (cT)alpha, len);' },
+        { ln: 209, cycles: '3%',  hot: false, code: '    Maxs(dst, buf, (cT)0, len);' },
+        { ln: 210, cycles: '2%',  hot: false, code: '    outQueue_.EnQue(buf);' },
+        { ln: 211, cycles: null,  hot: false, code: '    outQueue_.FreeTensor(buf);' },
+        { ln: 212, cycles: null,  hot: false, code: '}' },
+      ],
+      instrs: [
+        { pc: '0x0800', ln: 206, type: 'SCALAR', instr: 'LD  X0,  [SP, #0x18]',        cachemiss: 118 },
+        { pc: '0x0804', ln: 206, type: 'SCALAR', instr: 'STI X1,  [SP, #0x08]',         cachemiss: 58  },
+        { pc: '0x0820', ln: 207, type: 'SCALAR', instr: 'STP X29, X30, [SP, #-0x20]',   cachemiss: 97  },
+        { pc: '0x0824', ln: 207, type: 'SCALAR', instr: 'STI X2,  [SP, #0x10]',         cachemiss: 53  },
+      ],
+    },
+  },
+};
+
+function renderSourceView(wrap) {
+  wrap._inited = true;
+  const rid = wrap.dataset.rid;
+  const aid = +wrap.dataset.aid;
+  const entry = SOURCE_VIEW_DATA[rid]?.[aid];
+  if (!entry) return;
+
+  const totalMiss = entry.instrs.reduce((s, i) => s + i.cachemiss, 0);
+
+  const sourceRows = entry.lines.map(l => {
+    const hot = l.hot;
+    const rowCls = hot ? ' class="ac-src-row-hot"' : '';
+    const lnCls  = hot ? ' ac-src-ln-hot' : '';
+    const cyCls  = hot ? ' ac-src-cy-hot' : '';
+    const badge  = l.cachemiss
+      ? ` <span class="ac-src-cm-badge">MISS ×${l.cachemiss}</span>`
+      : '';
+    return `<tr${rowCls}>`
+      + `<td class="ac-src-ln${lnCls}">${l.ln}</td>`
+      + `<td class="ac-src-cy${cyCls}">${l.cycles || ''}</td>`
+      + `<td class="ac-src-code-cell">${l.code}${badge}</td>`
+      + `</tr>`;
+  }).join('');
+
+  const instrRows = entry.instrs.map(i =>
+    `<tr class="ac-src-row-hot">`
+    + `<td class="ac-instr-pc">${i.pc}</td>`
+    + `<td class="ac-instr-ln">:${i.ln}</td>`
+    + `<td><span class="ac-instr-type-badge">${i.type}</span></td>`
+    + `<td class="ac-instr-code">${i.instr}</td>`
+    + `<td class="ac-instr-miss">×${i.cachemiss}</td>`
+    + `</tr>`
+  ).join('');
+
+  wrap.innerHTML = `
+    <div class="ac-src-container">
+      <div class="ac-src-file-bar">
+        <span class="ac-src-filename">${escHtml(entry.file)}</span>
+        <span class="ac-src-ctx-note">${escHtml(entry.contextNote)}</span>
+      </div>
+      <div class="ac-src-body">
+        <div class="ac-src-left">
+          <table class="ac-src-table">
+            <thead>
+              <tr>
+                <th class="ac-src-th-ln">行数</th>
+                <th class="ac-src-th-cy">cycles</th>
+                <th class="ac-src-th-code">源码</th>
+              </tr>
+            </thead>
+            <tbody>${sourceRows}</tbody>
+          </table>
+        </div>
+        <div class="ac-src-right">
+          <div class="ac-src-instr-hdr">
+            热点 SCALAR 指令
+            <span class="ac-src-instr-total">总计 ${totalMiss} CACHEMISS</span>
+          </div>
+          <table class="ac-src-instr-table">
+            <thead>
+              <tr>
+                <th>PC</th>
+                <th>行</th>
+                <th>类型</th>
+                <th>指令</th>
+                <th>CACHEMISS</th>
+              </tr>
+            </thead>
+            <tbody>${instrRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function initAcCommView(wrap) {
   wrap._inited = true;
   const rid = wrap.dataset.rid;
@@ -6541,7 +8200,9 @@ function initAcCommView(wrap) {
   if (!entry) return;
   const ct = entry.chartType || 'bw-table';
   if (ct === 'bw-table') renderCommTable(wrap, entry);
-  // 未来可扩展：ct === 'heatmap' → renderCommHeatmap(wrap, entry)
+  else if (ct === 'p2p-timing') renderCommP2PTable(wrap, entry);
+  else if (ct === 'rdma-summary') renderCommRdma(wrap, entry);
+  else if (ct === 'comm-matrix') renderCommMatrix(wrap, entry);
 }
 
 function renderCommTable(wrap, entry) {
@@ -6570,16 +8231,22 @@ function renderCommTable(wrap, entry) {
     return `<td style="${colBg}"><span class="cv-bw-cell" style="background:${bg};color:${color}" title="效率 ${eff}%  vs 理论 ${THEORY} GB/s">${v.toFixed(v < 1 ? 4 : 2)}${ann}</span></td>`;
   }
 
+  const nodeRanges = entry.nodeRanges !== undefined ? entry.nodeRanges : { node1: 'Rank 0–7', node2: 'Rank 8–15' };
+  const nodeNames = [...new Set(entry.rows.map(r => r.node))];
+  const nodeColorMap = Object.fromEntries(nodeNames.map((n, i) => [n, (i % 2) + 1]));
+  const probThreshold = entry.probRowThreshold ?? 12.0;
+
   let rows = '';
   let lastNode = null;
   for (const d of entry.rows) {
     if (d.node !== lastNode) {
-      const rng = d.node === 'node1' ? 'Rank 0–7' : 'Rank 8–15';
-      rows += `<tr class="cv-group-sep"><td colspan="9">${d.node}（${rng}）</td></tr>`;
+      const rng = nodeRanges[d.node] || '';
+      rows += `<tr class="cv-group-sep"><td colspan="9">${d.node}${rng ? `（${rng}）` : ''}</td></tr>`;
       lastNode = d.node;
     }
-    const isProbRow = d.ar_avg < 12.0;
-    const nodeTag = `<span class="cv-node-tag cv-node-${d.node === 'node1' ? '1' : '2'}">R${d.rank}</span>`;
+    const isProbRow = d.ar_avg < probThreshold;
+    const nodeColorIdx = nodeColorMap[d.node] || 1;
+    const nodeTag = `<span class="cv-node-tag cv-node-${nodeColorIdx}">R${d.rank}</span>`;
     rows += `<tr class="op-pt-row${isProbRow ? ' cv-row-problem' : ''}">
       <td class="${isProbRow ? 'cv-row-mark' : ''}">${nodeTag} Rank&nbsp;${d.rank}</td>
       <td>${d.node}</td>
@@ -6596,7 +8263,7 @@ function renderCommTable(wrap, entry) {
   const n = entry.rows.length;
   const avg = k => entry.rows.reduce((s,d)=>s+d[k],0)/n;
   rows += `<tr class="op-pt-row cv-summary-row">
-    <td colspan="2" style="font-weight:600;color:var(--fg-secondary)">16 卡平均</td>
+    <td colspan="2" style="font-weight:600;color:var(--fg-secondary)">${entry.summaryLabel || (n + ' 卡平均')}</td>
     ${bwCell(avg('ag_avg'), false)}<td style="color:var(--fg-muted);text-align:right">—</td>
     ${bwCell(avg('rs_avg'), problemCols.has('rs'))}<td style="color:var(--fg-muted);text-align:right">—</td>
     ${bwCell(avg('ar_avg'), problemCols.has('ar'))}<td style="color:var(--fg-muted);text-align:right">—</td>
@@ -6633,6 +8300,136 @@ function renderCommTable(wrap, entry) {
           </tr>
         </thead>
         <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderCommP2PTable(wrap, entry) {
+  let rows = '';
+  for (const stage of entry.stages) {
+    rows += `<tr class="cv-group-sep"><td colspan="5">${stage.stageLabel}（Rank ${stage.ranks}）</td></tr>`;
+    for (const op of stage.ops) {
+      const isProb = op.waitPct > 90;
+      const isWarn = op.waitPct > 30;
+      const wBg    = isProb ? 'rgba(255,75,123,0.32)' : isWarn ? 'rgba(255,170,59,0.18)' : 'rgba(4,215,147,0.12)';
+      const wColor = isProb ? '#FF4B7B' : isWarn ? '#FFAA3B' : '#04D793';
+      rows += `<tr class="${isProb ? 'cv-row-problem' : ''}">
+        <td class="${isProb ? 'cv-row-mark' : ''}" style="font-size:11px">${op.direction}</td>
+        <td style="font-family:var(--font-mono);font-size:9px;color:var(--fg-muted)">${op.opName}</td>
+        <td style="text-align:right;font-size:11px">${op.transit_ms.toFixed(2)} ms</td>
+        <td><span class="cv-bw-cell" style="background:${wBg};color:${wColor};font-size:10px">${op.wait_ms.toFixed(1)} ms (${op.waitPct.toFixed(1)}%)</span></td>
+        <td style="font-size:10px;color:var(--fg-muted)">${op.note}</td>
+      </tr>`;
+    }
+  }
+  wrap.innerHTML = `
+    <div class="cv-legend">
+      <span class="cv-leg-item"><span class="cv-leg-sw" style="background:rgba(255,75,123,0.32)"></span>&gt;90% Wait — 极端等待</span>
+      <span class="cv-leg-item"><span class="cv-leg-sw" style="background:rgba(255,170,59,0.18)"></span>30–90% Wait — 偏高</span>
+      <span class="cv-leg-item"><span class="cv-leg-sw" style="background:rgba(4,215,147,0.12)"></span>≈0% Wait — 正常</span>
+    </div>
+    <div class="op-table-scroll">
+      <table class="op-parent-table cv-comm-table">
+        <thead>
+          <tr>
+            <th style="text-align:left">P2P 方向</th>
+            <th style="text-align:left">通信算子</th>
+            <th>Transit (ms)</th>
+            <th>Wait (ms / %)</th>
+            <th style="text-align:left">说明</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderCommRdma(wrap, entry) {
+  let rows = '';
+  for (const op of entry.ops) {
+    const pkgMB  = op.packageSize_MB;
+    const pkgStr = pkgMB < 0.001 ? `${(pkgMB * 1e6).toFixed(0)} B` : pkgMB < 1 ? `${(pkgMB * 1024).toFixed(0)} KB` : `${pkgMB.toFixed(2)} MB`;
+    const bwEff  = ((op.bandwidth_GBps / (entry.theoryBw || 200)) * 100).toFixed(3);
+    rows += `<tr class="cv-row-problem">
+      <td class="cv-row-mark" style="font-family:var(--font-mono);font-size:10px">${op.name}</td>
+      <td><span class="cv-node-tag cv-node-2">RDMA</span></td>
+      <td><span class="cv-bw-cell" style="background:rgba(255,75,123,0.32);color:#FF4B7B">${pkgStr}<span class="cv-small-pkt">小包</span></span></td>
+      <td><span class="cv-bw-cell" style="background:rgba(255,75,123,0.32);color:#FF4B7B" title="效率 ${bwEff}% vs 理论 ${entry.theoryBw||200} GB/s">${op.bandwidth_GBps.toFixed(4)} GB/s</span></td>
+      <td style="text-align:right;font-size:11px">${op.elapsed_ms.toFixed(1)} ms</td>
+      <td><span class="cv-bw-cell" style="background:rgba(4,215,147,0.12);color:#04D793">${op.transit_ms.toFixed(3)} ms</span></td>
+      <td><span class="cv-bw-cell" style="background:rgba(255,75,123,0.32);color:#FF4B7B">${op.wait_ms.toFixed(1)} ms (${op.waitPct.toFixed(1)}%)</span></td>
+    </tr>`;
+  }
+  wrap.innerHTML = `
+    <div class="cv-legend" style="flex-direction:column;align-items:flex-start;gap:4px">
+      <span style="font-size:11px;font-weight:600;color:var(--warning)">RDMA 小包问题：${entry.smallPktPct}% 包 &lt; 1 MB · 实际传输耗时 ${entry.smallPktDur} ms · 理论带宽 ${entry.theoryBw||200} GB/s</span>
+      <span class="cv-leg-item"><span class="cv-leg-sw" style="background:rgba(255,75,123,0.32)"></span>包极小 / 带宽极低 / Wait 占比极高</span>
+    </div>
+    <div class="op-table-scroll">
+      <table class="op-parent-table cv-comm-table">
+        <thead>
+          <tr>
+            <th style="text-align:left">通信算子</th>
+            <th>链路类型</th>
+            <th>包大小</th>
+            <th>实测带宽</th>
+            <th>总耗时</th>
+            <th>Transit</th>
+            <th>Wait (ms / %)</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderCommMatrix(wrap, entry) {
+  const THEORY = entry.theoryBw || 30;
+  function cmBwBg(v)    { return v >= 13 ? 'rgba(67,105,239,0.18)' : v >= 10 ? 'rgba(4,215,147,0.12)' : v >= 5 ? 'rgba(255,170,59,0.18)' : 'rgba(255,75,123,0.18)'; }
+  function cmBwColor(v) { return v >= 13 ? '#5A92E6' : v >= 10 ? '#04D793' : v >= 5 ? '#FFAA3B' : '#FF4B7B'; }
+
+  const linkRows = entry.links.map(link => {
+    const bw  = link.bandwidth_GBps;
+    const eff = ((bw / THEORY) * 100).toFixed(0);
+    const tag = link.group === 'TP'
+      ? '<span class="cv-node-tag cv-node-1">TP</span>'
+      : '<span class="cv-node-tag cv-node-2">DP</span>';
+    return `<tr>
+      <td>Rank ${entry.srcRank} → Rank ${link.peer}</td>
+      <td>${tag}</td>
+      <td><span class="cv-bw-cell" style="background:${cmBwBg(bw)};color:${cmBwColor(bw)}" title="效率 ${eff}% vs 理论 ${THEORY} GB/s">${bw.toFixed(2)} GB/s</span></td>
+      <td style="text-align:right;font-size:11px">${link.bytes_GB != null ? link.bytes_GB.toFixed(2) + ' GB' : '—'}</td>
+      <td style="font-size:10px;color:var(--fg-muted)">${link.note || ''}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="cv-legend" style="flex-direction:column;align-items:flex-start;gap:5px">
+      <span style="font-size:11px;font-weight:600;color:var(--warning)">${entry.commSummary || ''}</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="cv-leg-item"><span class="cv-leg-sw" style="background:rgba(67,105,239,0.18)"></span>≥13 GB/s 近峰值</span>
+        <span class="cv-leg-item"><span class="cv-leg-sw" style="background:rgba(4,215,147,0.12)"></span>10–13 GB/s 可接受</span>
+        <span class="cv-leg-item"><span class="cv-leg-sw" style="background:rgba(255,170,59,0.18)"></span>5–10 GB/s 小包延迟受限</span>
+        <span class="cv-leg-item"><span class="cv-leg-sw" style="background:rgba(255,75,123,0.18)"></span>&lt;5 GB/s 问题</span>
+      </div>
+    </div>
+    <div class="op-table-scroll">
+      <table class="op-parent-table cv-comm-table">
+        <thead>
+          <tr>
+            <th style="text-align:left">链路（Rank ${entry.srcRank} 视角）</th>
+            <th>通信组</th>
+            <th>有效带宽</th>
+            <th>总字节量</th>
+            <th style="text-align:left">说明</th>
+          </tr>
+          <tr class="cv-unit-row">
+            <th colspan="5" style="font-weight:400;color:var(--fg-muted);text-align:center;font-size:9px">
+              单位 GB/s · 理论峰值 ${THEORY} GB/s（HCCS）· ${entry.commGroup || ''}
+            </th>
+          </tr>
+        </thead>
+        <tbody>${linkRows}</tbody>
       </table>
     </div>`;
 }
@@ -6852,17 +8649,112 @@ function parseReport(md, filename = '') {
 // ============================================================
 // Utility
 // ============================================================
-function gaugeOpt(value, grade, name, cx, color) {
-  return {
-    type:'gauge', center:[cx,'55%'], radius:'80%', min:0, max:100,
-    progress:{show:true,width:10,itemStyle:{color}},
-    axisLine:{lineStyle:{width:10,color:[[1,'#1e2433']]}},
-    axisTick:{show:false}, splitLine:{show:false}, axisLabel:{show:false},
-    pointer:{show:false},
-    detail:{valueAnimation:true,fontSize:24,fontWeight:'bold',formatter:`{value}\n${grade}`,color,offsetCenter:[0,'12%'],lineHeight:28},
-    title:{fontSize:11,color:'#666666',offsetCenter:[0,'78%']},
-    data:[{value,name}],
+// 等级色渐变（按分数 0→100 在各等级色之间插值）
+function gradeColorAt(v) {
+  // 与 gradeToColor 对应的 6 档等级色
+  const stops = [
+    [0,   [191, 10, 28]],   // D  #bf0a1c
+    [30,  [217, 105, 0]],   // C  #d96900
+    [45,  [224, 166, 16]],  // B  #e0a610
+    [60,  [149, 179, 18]],  // B+ #95b312
+    [75,  [75, 153, 2]],    // A  #4b9902
+    [90,  [2, 153, 49]],    // S  #029931
+    [100, [2, 153, 49]],
+  ];
+  v = Math.max(0, Math.min(100, v));
+  for (let i = 0; i < stops.length - 1; i++) {
+    const [v0, c0] = stops[i], [v1, c1] = stops[i + 1];
+    if (v <= v1) {
+      const t = (v - v0) / (v1 - v0 || 1);
+      const r = Math.round(c0[0] + (c1[0] - c0[0]) * t);
+      const g = Math.round(c0[1] + (c1[1] - c0[1]) * t);
+      const b = Math.round(c0[2] + (c1[2] - c0[2]) * t);
+      return `rgb(${r},${g},${b})`;
+    }
+  }
+  return 'rgb(2,153,49)';
+}
+
+// hex → rgba（用于等级徽标半透明底色）
+function hexA(hex, a) {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const n = parseInt(full, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+// 合并仪表盘：单盘展示「当前分数+等级」与「优化后可增益+等级」，分小段 + 等级色渐变
+function renderPhsGauge(box, phs) {
+  if (!box) return;
+  const cur = Math.max(0, Math.min(100, Math.round(phs.current ?? 0)));
+  const est = Math.max(cur, Math.min(100, Math.round(phs.estimated ?? cur)));
+  const grade = phs.grade || 'N/A';
+  const estGrade = phs.estGrade || grade;
+  const curColor = gradeToColor(grade);
+  const estColor = gradeToColor(estGrade);
+
+  const W = 300, H = 200, cx = 150, cy = 162;
+  const rOut = 132, rIn = 107;
+  const N = 64;                  // 小段数量
+  const A0 = 180, A1 = 0;        // 左 → 右，跨过顶部
+  const polar = (r, aDeg) => {
+    const a = aDeg * Math.PI / 180;
+    return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
   };
+  const angOf = v => A0 - (v / 100) * (A0 - A1);
+
+  // 小段
+  let ticks = '';
+  for (let i = 0; i < N; i++) {
+    const v = (i + 0.5) / N * 100;
+    const aDeg = angOf(v);
+    const [x1, y1] = polar(rIn, aDeg);
+    const [x2, y2] = polar(rOut, aDeg);
+    let color, opacity;
+    if (v <= cur)      { color = gradeColorAt(v); opacity = 1; }      // 已达
+    else if (v <= est) { color = gradeColorAt(v); opacity = 0.42; }   // 可增益
+    else               { color = '#c2c7d4'; opacity = 0.5; }          // 不可达
+    ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${color}" stroke-width="3.4" stroke-linecap="round" opacity="${opacity}"/>`;
+  }
+
+  // 当前值指针（小三角，位于环内侧、指向圆环）
+  const aCur = angOf(cur);
+  const fmtPt = (r, a) => { const [x, y] = polar(r, a); return `${x.toFixed(1)},${y.toFixed(1)}`; };
+  const pointer = `<polygon points="${fmtPt(rIn - 1, aCur)} ${fmtPt(rIn - 12, aCur - 3.4)} ${fmtPt(rIn - 12, aCur + 3.4)}" fill="var(--fg)"/>`;
+
+  // 增益弧线 + 箭头（当前 → 优化后；环外，单侧箭头）
+  let gainArrow = '';
+  if (est > cur + 1) {
+    const aEst = angOf(est);
+    const r2 = rOut + 17;
+    const [sx, sy] = polar(r2, aCur);
+    const [ex, ey] = polar(r2, aEst);
+    gainArrow += `<path d="M ${sx.toFixed(1)} ${sy.toFixed(1)} A ${r2} ${r2} 0 0 1 ${ex.toFixed(1)} ${ey.toFixed(1)}" fill="none" stroke="${estColor}" stroke-width="2" stroke-linecap="round"/>`;
+    const [bx, by] = polar(r2, aEst + 5);
+    let dx = ex - bx, dy = ey - by;
+    const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+    // 取指向圆环外侧的法线方向，使箭头只在外侧出翼（靠环一侧为平边）
+    let px = -dy, py = dx;
+    if (px * (ex - cx) + py * (ey - cy) < 0) { px = -px; py = -py; }
+    const l = 8, w = 5;
+    const barb  = `${(ex - dx * l + px * w).toFixed(1)},${(ey - dy * l + py * w).toFixed(1)}`;
+    const shaft = `${(ex - dx * l).toFixed(1)},${(ey - dy * l).toFixed(1)}`;
+    gainArrow += `<polygon points="${ex.toFixed(1)},${ey.toFixed(1)} ${barb} ${shaft}" fill="${estColor}"/>`;
+  }
+
+  box.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block;overflow:visible">
+      ${ticks}
+      ${gainArrow}
+      ${pointer}
+    </svg>
+    <div class="phs-gauge-center">
+      <span class="phs-gauge-grade" style="background:${hexA(curColor, 0.15)};color:${curColor}">${grade}</span>
+      <div class="phs-gauge-score" style="color:${curColor}">${cur}</div>
+      <div class="phs-gauge-sub">优化后预估可达 <b>${est}</b>
+        <span class="phs-gauge-estbadge" style="background:${hexA(estColor, 0.15)};color:${estColor}">${estGrade}</span>
+      </div>
+    </div>`;
 }
 
 function setupPhsTooltip() {
@@ -6904,7 +8796,8 @@ function metaRow(label, val) {
 }
 
 function gradeToColor(g) {
-  return {S:'#04D793',A:'#4369EF','B+':'#A78BFA',B:'#FFAA3B',C:'#FF8C42',D:'#FF4B7B'}[g]||'#999999';
+  // 6 档等级色
+  return {S:'#029931',A:'#4b9902','B+':'#95b312',B:'#e0a610',C:'#d96900',D:'#bf0a1c'}[g]||'#999999';
 }
 
 function scoreColor(v) {
@@ -7097,6 +8990,789 @@ function generateResponse(report, query) {
   }
 
   return `基于当前报告《${report.title}》，我可以回答：\n\n- **性能瓶颈**：头号瓶颈分析\n- **优化优先级**：P0 紧急问题\n- **优化空间**：预期收益\n- **代码位置**：需要修改的代码\n- **验证方法**：如何确认优化效果\n- **健康度评分**：PHS 各子项\n\n请尝试上方的快捷问题，或直接提问。`;
+}
+
+// ============================================================
+// Tab 6: 计算图 (Compute Graph — Qwen2-7B)
+// ============================================================
+
+const GRAPH_PROBLEMS = {
+  'r20260526': {
+    problemNodes: {
+      'lm_head': {
+        priority: 'P0', issueRef: '3.2',
+        opType: 'MatMulV3 (MIX_AIC 路径)',
+        title: 'LM Head 投影走非最优 Tiling',
+        metric: '单次耗时 18.4 ms × 2（MIX_AIC），rank 2 反向期共 36.8 ms',
+        impact: '反向期间额外 36.8 ms，占单步 4.5%；vocab 维度未对齐 32 导致触发 MIX_AIC 兜底路径，而非更快的纯 AI_CORE Cube',
+        fix: [
+          '检查 lm_head 的 vocab 维度是否为 32 的倍数（可用 --make-vocab-size-divisible-by 128）',
+          '若 vocab 未对齐，padding 后重训或调整 tokenizer 配置',
+          '若仍走 MIX_AIC，显式 cast 为 bfloat16 后传入 matmul 可强制走纯 AI_CORE Cube',
+        ],
+        verify: '重采后 kernel_details.csv 中不再有 > 5 ms 的 MatMulV3 实例',
+        codeHint: `# 启动参数加入（Megatron 风格）：
+# --make-vocab-size-divisible-by 128
+
+# 等价 Python：
+import math
+vocab_size = math.ceil(vocab_size / 128) * 128
+# Qwen2-7B 151936 → 151936（已是 128 的倍数）
+# 可能是 padding 值未同步，需排查`,
+      },
+      'output_logits': {
+        priority: 'P1', issueRef: '3.3',
+        opType: 'Exp / Sub / RealDiv / ArgMaxWithValue (串行)',
+        title: 'Cross-Entropy 链路 ~80 ms 串行无融合',
+        metric: 'rank 2 中：Exp 16ms + Sub 15.8ms + RealDiv 15.7ms + Cast 20.7ms + ArgMaxWithValue 6.8ms + ReduceSum 6.9ms',
+        impact: '占单步 ~10%；手写 softmax→log→gather 展开触发一串独立 Vector 算子，未使用 Ascend 融合路径',
+        fix: [
+          '替换为 F.cross_entropy(logits, labels)，torch_npu 路由到 aclnnSoftmaxCrossEntropyWithLogits（单次 fused）',
+          '若用 Megatron，启用 VocabParallelCrossEntropy 并确认 parallel_output=True',
+          'ArgMaxWithValue / ReduceSum（accuracy 指标）移到 eval_interval 条件内，非每步必算',
+        ],
+        verify: '重采后 op_statistic.csv (rank 2) 中 Exp/RealDiv 消失；rank 2 Computing 再减 ~30 ms',
+        codeHint: `# 原写法（触发 Exp/Sub/RealDiv/ArgMaxWithValue 链路）：
+log_probs = logits - logits.max(-1, keepdim=True).values
+log_probs -= torch.log(torch.exp(log_probs).sum(-1, keepdim=True))
+loss = -log_probs.gather(-1, labels.unsqueeze(-1)).squeeze(-1).mean()
+
+# 修改后（fused 路径，消除全部 Vector 算子）：
+import torch.nn.functional as F
+loss = F.cross_entropy(logits, labels, ignore_index=pad_id)`,
+      },
+    },
+    defaultNode: 'lm_head',
+  },
+  'r20260602multi': {
+    problemNodes: {
+      'qkv_linear': {
+        priority: 'P1', issueRef: '3.4',
+        opType: 'AllGatherMatmulAicpu (AI_CPU 路径)',
+        title: 'QKV 投影：AllGatherMatmul 走 AICPU 路径',
+        metric: '全集群 count=10240，mean=5.13 ms；MIX_AIC 版本 mean=1.69 ms，慢 3×',
+        impact: '张量并行 AllGather + QKV 投影融合算子因 shape/dtype 不满足条件，回落到 AICPU 执行；比最优路径慢 3 倍',
+        fix: [
+          '确认 hidden_size // tp_size 为 128 的倍数（Qwen2-7B H=4096，TP=4 → H/TP=1024，满足）',
+          '升级 CANN 版本（当前 cann-8.0.0，建议 ≥ 8.1.0 以补充 AllGatherMatmul AIC kernel 覆盖）',
+          '与 P0 JIT 修复联动：设置 allow_internal_format=False 可能改变 kernel 选型',
+        ],
+        verify: '重采后 ComputeOpAllRankStats 中 AllGatherMatmulAicpu count 接近 0；AllGatherMatmul (MIX_AIC) count 对应增加',
+        codeHint: `# 检查 TP 切分对齐：
+hidden_size = 4096  # Qwen2-7B
+tp_size = 4
+assert (hidden_size // tp_size) % 128 == 0, "对齐失败"
+# → 1024 % 128 == 0 ✓ 满足；主要修复路径是升级 CANN
+
+# 升级 CANN 后检查：
+# AllGatherMatmulAicpu count: 10240 → 预估 ~0`,
+      },
+      'attn_output_linear': {
+        priority: 'P1', issueRef: '3.4',
+        opType: 'MatmulReduceScatterAicpu (AI_CPU 路径)',
+        title: '注意力输出投影：MatmulReduceScatter 走 AICPU 路径',
+        metric: '全集群 count=5120，mean=4.62 ms；与 QKV 同类问题',
+        impact: '注意力输出线性层（Matmul + ReduceScatter 融合）走 AICPU，跨卡 ReduceScatter 被拖慢',
+        fix: [
+          '同 QKV Linear：升级 CANN ≥ 8.1.0，补充 MatmulReduceScatter AIC kernel',
+          '确认 hidden_size // tp_size 对齐（已验证满足）',
+        ],
+        verify: '重采后 MatmulReduceScatterAicpu count 接近 0，MIX_AIC 路径比例提升',
+        codeHint: `# 注意力输出投影形状：[B,T,H] @ [H, H/tp] → reduce_scatter → [B,T,H]
+# 修复依赖 CANN 版本升级，无需代码修改
+# 验证：
+msprof-analyze compute_op_sum --db profiler.db \\
+  --filter-op MatmulReduceScatterAicpu`,
+      },
+      'mlp_gate_linear': {
+        priority: 'P1', issueRef: '3.4',
+        opType: 'AllGatherMatmulAicpu (AI_CPU 路径)',
+        title: 'MLP Gate 投影：AllGatherMatmul 走 AICPU 路径',
+        metric: 'SwiGLU Gate 投影（AllGather + Matmul 融合）走 AICPU；intermediate_size=11008，I/TP=2752，满足 128 对齐',
+        impact: 'SwiGLU 两路并行投影（Gate + Up）均走 AICPU，双倍损失；与 QKV 同类问题，根因为 CANN kernel 未覆盖',
+        fix: [
+          '升级 CANN ≥ 8.1.0（根本修复，不需要代码改动）',
+          '临时验证：设置 torch_npu.npu.config.allow_internal_format=False 观察 kernel 选型变化',
+        ],
+        verify: '重采后 AllGatherMatmulAicpu 在 MLP Gate 段消失',
+        codeHint: `intermediate_size = 11008  # Qwen2-7B
+tp_size = 4
+# I/TP = 2752，2752 % 128 == 0 ✓
+# gate_proj 形状：[B,T,I/tp]（after AllGather + Matmul）
+# 根因：CANN 8.0.0 缺少此 shape 的 AIC kernel`,
+      },
+      'mlp_up_linear': {
+        priority: 'P1', issueRef: '3.4',
+        opType: 'AllGatherMatmulAicpu (AI_CPU 路径)',
+        title: 'MLP Up 投影：AllGatherMatmul 走 AICPU 路径',
+        metric: '与 Gate Linear 完全对称；SwiGLU 两路并行投影均走 AICPU',
+        impact: 'Up 投影（AllGather + Matmul）走 AICPU，与 Gate 双倍损失；两路都修复才能消除该问题',
+        fix: [
+          '同 Gate Linear：升级 CANN ≥ 8.1.0',
+          'Gate 和 Up 共享同一修复路径，一次升级同时解决',
+        ],
+        verify: '重采后 AllGatherMatmulAicpu 在 MLP Up 段消失',
+        codeHint: `# up_proj 与 gate_proj 并行计算（SwiGLU）：
+# x_gate = allgather_matmul(x, W_gate)  # ← AICPU 问题
+# x_up   = allgather_matmul(x, W_up)   # ← AICPU 问题
+# output = silu(x_gate) * x_up
+# 升级 CANN 后两路同时转 MIX_AIC`,
+      },
+      'mlp_down_linear': {
+        priority: 'P1', issueRef: '3.4',
+        opType: 'MatmulReduceScatterAicpu (AI_CPU 路径)',
+        title: 'MLP 输出投影：MatmulReduceScatter 走 AICPU 路径',
+        metric: '与注意力输出同类问题；down_proj 形状 [B,T,I/tp] @ [I/tp, H]，输出 ReduceScatter',
+        impact: 'MLP Down Linear（Matmul + ReduceScatter 融合）走 AICPU，每个 decoder 层均有此损失',
+        fix: [
+          '升级 CANN ≥ 8.1.0，与 attn_output_linear 同批修复',
+        ],
+        verify: '重采后 MatmulReduceScatterAicpu 在 Down Linear 段消失',
+        codeHint: `# down_proj 形状：[B,T,I/tp] @ [I/tp, H] → reduce_scatter
+# 输入维度 I/tp=2752，输出 H=4096，均满足 128 对齐
+# 主要修复路径为升级 CANN 版本
+# 升级后全集群 MatmulReduceScatterAicpu count: 5120 → ~0`,
+      },
+    },
+    defaultNode: 'qkv_linear',
+  },
+};
+
+// ─── Static Qwen-7B graph layout (fully expanded, no collapse) ───────────────
+const QWEN7B_BASE_NODES = [
+  { id: 'input_tokens',       label: 'Token IDs',               typeLabel: 'Input',      kind: 'tensor', x: 640, y: 70,   width: 170, height: 48,  colorKey: 'io:input'       },
+  { id: 'token_embedding',    label: 'Embedding Lookup',        typeLabel: 'Embedding',  kind: 'op',     x: 640, y: 176,  width: 240, height: 56,  colorKey: 'sem:embedding'  },
+  { id: 'rope_cache',         label: 'RoPE Cache',              typeLabel: 'State',      kind: 'tensor', x: 235, y: 495,  width: 188, height: 52,  colorKey: 'io:state'       },
+  { id: 'kv_cache',           label: 'KV Cache',                typeLabel: 'State',      kind: 'tensor', x: 235, y: 595,  width: 176, height: 52,  colorKey: 'io:state'       },
+  { id: 'attn_norm',          label: 'Attention RMSNorm',       typeLabel: 'RMSNorm',    kind: 'op',     x: 640, y: 286,  width: 230, height: 56,  colorKey: 'sem:norm'       },
+  { id: 'qkv_linear',         label: 'QKV Linear',              typeLabel: 'Linear',     kind: 'op',     x: 640, y: 395,  width: 186, height: 54,  colorKey: 'sem:linear'     },
+  { id: 'rotary_apply',       label: 'Apply RoPE',              typeLabel: 'RotaryEmb',  kind: 'op',     x: 640, y: 495,  width: 184, height: 54,  colorKey: 'sem:rope'       },
+  { id: 'scaled_attention',   label: 'Scaled Attention',        typeLabel: 'Attention',  kind: 'op',     x: 640, y: 595,  width: 212, height: 54,  colorKey: 'sem:attention'  },
+  { id: 'attn_output_linear', label: 'Attention Output Linear', typeLabel: 'Linear',     kind: 'op',     x: 640, y: 695,  width: 256, height: 54,  colorKey: 'sem:linear'     },
+  { id: 'mlp_norm',           label: 'MLP RMSNorm',             typeLabel: 'RMSNorm',    kind: 'op',     x: 640, y: 800,  width: 198, height: 56,  colorKey: 'sem:norm'       },
+  { id: 'mlp_gate_linear',    label: 'Gate Linear',             typeLabel: 'Linear',     kind: 'op',     x: 540, y: 909,  width: 176, height: 54,  colorKey: 'sem:linear'     },
+  { id: 'mlp_up_linear',      label: 'Up Linear',               typeLabel: 'Linear',     kind: 'op',     x: 748, y: 909,  width: 158, height: 54,  colorKey: 'sem:linear'     },
+  { id: 'silu_multiply',      label: 'SiLU Multiply',           typeLabel: 'Activation', kind: 'op',     x: 640, y: 1009, width: 196, height: 54,  colorKey: 'sem:activation' },
+  { id: 'mlp_down_linear',    label: 'MLP Output Linear',       typeLabel: 'Linear',     kind: 'op',     x: 640, y: 1109, width: 224, height: 54,  colorKey: 'sem:linear'     },
+  { id: 'final_norm',         label: 'Final RMSNorm',           typeLabel: 'RMSNorm',    kind: 'op',     x: 640, y: 1248, width: 196, height: 56,  colorKey: 'sem:norm'       },
+  { id: 'lm_head',            label: 'LM Head Linear',          typeLabel: 'Linear',     kind: 'op',     x: 640, y: 1354, width: 210, height: 56,  colorKey: 'sem:linear'     },
+  { id: 'output_logits',      label: 'Logits',                  typeLabel: 'Output',     kind: 'tensor', x: 640, y: 1452, width: 166, height: 48,  colorKey: 'io:output'      },
+];
+
+const QWEN7B_BASE_CLUSTERS = [
+  { id: 'transformer-core', label: 'QWen Transformer',            colorKey: 'module:transformer',   x: 350, y: 102,  width: 578, height: 1208 },
+  { id: 'decoder-stack',    label: 'Decoder Layer Template ×32',  colorKey: 'module:decoder-layer', x: 384, y: 212,  width: 511, height: 992  },
+  { id: 'attention-block',  label: 'Self Attention',              colorKey: 'module:attention',     x: 478, y: 322,  width: 324, height: 434  },
+  { id: 'mlp-block',        label: 'SwiGLU MLP',                 colorKey: 'module:mlp',           x: 418, y: 836,  width: 443, height: 334  },
+];
+
+const QWEN7B_BASE_EDGES = [
+  { source: 'input_tokens',       target: 'token_embedding'      },
+  { source: 'token_embedding',    target: 'attn_norm'            },
+  { source: 'attn_norm',          target: 'qkv_linear'           },
+  { source: 'qkv_linear',         target: 'rotary_apply'         },
+  { source: 'rope_cache',         target: 'rotary_apply',        dashed: true },
+  { source: 'rotary_apply',       target: 'scaled_attention'     },
+  { source: 'kv_cache',           target: 'scaled_attention',    dashed: true },
+  { source: 'scaled_attention',   target: 'attn_output_linear'   },
+  { source: 'attn_output_linear', target: 'mlp_norm'             },
+  { source: 'mlp_norm',           target: 'mlp_gate_linear'      },
+  { source: 'mlp_norm',           target: 'mlp_up_linear'        },
+  { source: 'mlp_gate_linear',    target: 'silu_multiply'        },
+  { source: 'mlp_up_linear',      target: 'silu_multiply'        },
+  { source: 'silu_multiply',      target: 'mlp_down_linear'      },
+  { source: 'mlp_down_linear',    target: 'final_norm'           },
+  { source: 'final_norm',         target: 'lm_head'              },
+  { source: 'lm_head',            target: 'output_logits'        },
+];
+
+// ─── Per-node architecture background info (Qwen-7B) ─────────
+const QWEN7B_NODE_INFO = {
+  'input_tokens': {
+    what: '模型的原始输入，每个元素是词表中的 token 整数 ID，由分词器（Tokenizer）对文本切分后生成。',
+    idEn: 'input token IDs',
+    clusters: [],
+    inputs:  [{ from: '分词器 (Tokenizer)', desc: '文本切分后的 token ID 序列，shape [batch, seq_len]' }],
+    outputs: [{ to: 'token_embedding', desc: '传入嵌入层做向量映射' }],
+    sources: [{ text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' }],
+  },
+  'token_embedding': {
+    what: '词嵌入层（Embedding Lookup）：将离散的 token ID 映射为连续的高维向量。Qwen-7B 词表大小 151,936，嵌入维度 4,096。权重与 LM Head 共享（tied weights）。',
+    idEn: 'token embedding lookup table',
+    clusters: ['QWen Transformer'],
+    inputs:  [{ from: 'input_tokens', desc: 'token ID 序列 [batch, seq_len]' }],
+    outputs: [{ to: 'attn_norm', desc: '嵌入向量序列 [batch, seq_len, 4096]，进入第一个 Decoder Block' }],
+    params:  '词表大小 151,936 · 嵌入维度 4,096 · 参数量 ~622 M',
+    sources: [
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+      { text: 'Qwen2 HuggingFace 实现', url: 'https://github.com/huggingface/transformers/blob/main/src/transformers/models/qwen2/modeling_qwen2.py' },
+    ],
+  },
+  'rope_cache': {
+    what: 'RoPE（旋转位置编码）预计算缓存：存储各序列位置的 cos/sin 旋转矩阵，在每个 Decoder Block 的 Apply RoPE 节点中使用。Qwen-7B 使用超大 RoPE base（1,000,000）以支持长上下文。',
+    idEn: 'rotary position embedding cache (cos/sin tables)',
+    clusters: [],
+    inputs:  [{ from: '初始化阶段', desc: '根据最大序列长度和 RoPE base 1,000,000 预计算，形状 [max_seq_len, head_dim/2]' }],
+    outputs: [{ to: 'rotary_apply', desc: 'cos/sin 旋转矩阵，所有 Decoder Block 共享同一缓存' }],
+    params:  'RoPE base 1,000,000 · 每头旋转维度 head_dim/2 = 64',
+    sources: [
+      { text: 'RoPE 原论文 arXiv:2104.09864', url: 'https://arxiv.org/abs/2104.09864' },
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+    ],
+  },
+  'kv_cache': {
+    what: 'KV 缓存（Key-Value Cache）：推理时缓存历史 token 的 Key 和 Value 向量，避免每步重新计算，大幅降低推理延迟。训练阶段不使用此缓存。',
+    idEn: 'key-value cache for inference',
+    clusters: [],
+    inputs:  [{ from: '上一解码步骤', desc: '历史 token 的 K/V 张量 [batch, past_len, kv_heads, head_dim]' }],
+    outputs: [{ to: 'scaled_attention', desc: '拼接到当前 K/V 后一起参与注意力计算' }],
+    sources: [{ text: 'Qwen GitHub 仓库', url: 'https://github.com/QwenLM/Qwen' }],
+  },
+  'attn_norm': {
+    what: 'Attention 前的 RMSNorm（均方根归一化）。Pre-Norm 结构：先对隐藏状态归一化再进注意力层，比 Post-Norm 训练更稳定。无偏置，仅一组可学习缩放参数 γ。',
+    idEn: 'attention pre-normalization (RMSNorm)',
+    clusters: ['QWen Transformer', 'Decoder Layer ×32'],
+    inputs:  [{ from: 'token_embedding（第一层）或上一 Block 的残差输出', desc: '隐藏状态 [batch, seq_len, 4096]' }],
+    outputs: [{ to: 'qkv_linear', desc: '归一化后的隐藏状态 [batch, seq_len, 4096]（形状不变）' }],
+    params:  '参数量 4,096（仅可学习缩放因子 γ，无偏置）',
+    sources: [
+      { text: 'RMSNorm 论文 arXiv:1910.07467', url: 'https://arxiv.org/abs/1910.07467' },
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+    ],
+  },
+  'qkv_linear': {
+    what: 'QKV 投影层：将归一化隐藏状态用三个独立线性层分别投影为 Query、Key、Value 向量。Qwen-7B 使用 GQA（分组查询注意力），Q 有 28 头，K/V 各 4 头，显著降低 KV 缓存显存。多卡 TP 中为 column-parallel，每卡持有权重的一列分片，AllGather 输入后本地 MatMul。',
+    idEn: 'query-key-value linear projection (GQA)',
+    clusters: ['QWen Transformer', 'Decoder Layer ×32', 'Self Attention'],
+    inputs:  [{ from: 'attn_norm', desc: '归一化隐藏状态 [batch, seq_len, 4096]' }],
+    outputs: [{ to: 'rotary_apply', desc: 'Q [batch, seq_len, 28×128]，K [batch, seq_len, 4×128]，V [batch, seq_len, 4×128]' }],
+    params:  'Q 权重 4096×3584，K/V 权重各 4096×512；GQA 28Q / 4KV 头；head_dim 128',
+    sources: [
+      { text: 'GQA 论文 arXiv:2305.13245', url: 'https://arxiv.org/abs/2305.13245' },
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+      { text: 'Megatron-LM TP arXiv:1909.08053', url: 'https://arxiv.org/abs/1909.08053' },
+    ],
+  },
+  'rotary_apply': {
+    what: '将 RoPE 旋转位置编码作用于 Q 和 K 向量，使每个 token 的注意力分数天然编码相对位置距离。V 向量不旋转。旋转通过复数乘法实现：将每对相邻维度视为复数分量，乘以对应位置角度的旋转因子。',
+    idEn: 'apply rotary position embeddings to Q and K',
+    clusters: ['QWen Transformer', 'Decoder Layer ×32', 'Self Attention'],
+    inputs:  [
+      { from: 'qkv_linear', desc: 'Q [batch, seq_len, 28×128]，K [batch, seq_len, 4×128]' },
+      { from: 'rope_cache', desc: '各位置 cos/sin 旋转矩阵' },
+    ],
+    outputs: [{ to: 'scaled_attention', desc: '旋转后 Q/K（形状不变）及未变的 V，一起送入注意力' }],
+    params:  'RoPE base 1,000,000 · 旋转维度 head_dim/2 = 64',
+    sources: [
+      { text: 'RoPE 原论文 arXiv:2104.09864', url: 'https://arxiv.org/abs/2104.09864' },
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+    ],
+  },
+  'scaled_attention': {
+    what: 'FlashAttention 缩放点积注意力（Scaled Dot-Product Attention）：对每个 Query 计算与所有 Key 的相似度（除以 √head_dim 缩放），经 softmax 后加权求和 Value，得到上下文感知的表征。使用 FlashAttention IO 感知算法，将注意力矩阵分块计算，避免具象化 seq²×heads 的完整注意力矩阵，大幅降低显存峰值。',
+    idEn: 'scaled dot-product attention with FlashAttention',
+    clusters: ['QWen Transformer', 'Decoder Layer ×32', 'Self Attention'],
+    inputs:  [
+      { from: 'rotary_apply', desc: '旋转后 Q/K，以及 V；shape [batch, seq_len, heads, 128]' },
+      { from: 'kv_cache（推理时）', desc: '历史 K/V 拼接到当前序列' },
+    ],
+    outputs: [{ to: 'attn_output_linear', desc: '注意力上下文向量 [batch, seq_len, 28×128=3584]' }],
+    params:  'GQA 28Q / 4KV 头 · head_dim 128 · 缩放因子 1/√128 ≈ 0.0884',
+    sources: [
+      { text: 'FlashAttention-2 arXiv:2307.08691', url: 'https://arxiv.org/abs/2307.08691' },
+      { text: 'GQA 论文 arXiv:2305.13245', url: 'https://arxiv.org/abs/2305.13245' },
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+    ],
+  },
+  'attn_output_linear': {
+    what: 'Attention 输出投影（O-proj）：将多头注意力拼接后的结果线性映射回隐藏维度 4,096，然后与残差相加完成 Attention 子层。多卡 TP 中为 row-parallel：每卡持有权重的行分片，本地 MatMul 后 ReduceScatter 合并，Ascend 将两步融合为 MatmulReduceScatterAicpu 算子。',
+    idEn: 'attention output projection (O-proj), row-parallel in TP',
+    clusters: ['QWen Transformer', 'Decoder Layer ×32', 'Self Attention'],
+    inputs:  [{ from: 'scaled_attention', desc: '多头拼接上下文向量 [batch, seq_len, 3584]' }],
+    outputs: [{ to: 'mlp_norm（经残差相加）', desc: '投影输出 [batch, seq_len, 4096]，+ 残差 → 送入 MLP RMSNorm' }],
+    params:  '权重矩阵 3584×4096',
+    sources: [
+      { text: 'Megatron-LM TP arXiv:1909.08053', url: 'https://arxiv.org/abs/1909.08053' },
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+    ],
+  },
+  'mlp_norm': {
+    what: 'MLP（FFN）前的 RMSNorm。结构与 attn_norm 完全相同，但作用对象是 Attention 子层 + 残差之后的隐藏状态，为 SwiGLU FFN 做输入归一化。',
+    idEn: 'MLP / FFN input pre-normalization (RMSNorm)',
+    clusters: ['QWen Transformer', 'Decoder Layer ×32'],
+    inputs:  [{ from: 'attn_output_linear + 残差', desc: '经注意力子层残差相加后的隐藏状态 [batch, seq_len, 4096]' }],
+    outputs: [{ to: 'mlp_gate_linear / mlp_up_linear', desc: '归一化隐藏状态 [batch, seq_len, 4096]，同时分发到 Gate 和 Up 两个分支' }],
+    params:  '参数量 4,096（γ，无偏置）',
+    sources: [
+      { text: 'RMSNorm 论文 arXiv:1910.07467', url: 'https://arxiv.org/abs/1910.07467' },
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+    ],
+  },
+  'mlp_gate_linear': {
+    what: 'SwiGLU 门控分支（gate_proj）：将隐藏状态投影到中间维度，经 SiLU 激活后与 Up 分支做逐元素相乘，实现门控机制。多卡 TP 中为 column-parallel，Ascend 将 AllGather + MatMul 融合为 AllGatherMatmulAicpu 算子。',
+    idEn: 'SwiGLU gate projection (column-parallel in TP)',
+    clusters: ['QWen Transformer', 'Decoder Layer ×32', 'SwiGLU MLP'],
+    inputs:  [{ from: 'mlp_norm', desc: '归一化隐藏状态 [batch, seq_len, 4096]' }],
+    outputs: [{ to: 'silu_multiply', desc: '门控值 [batch, seq_len, 18944]，经 SiLU 激活后与 up_proj 相乘' }],
+    params:  '权重矩阵 4096×18944（中间维度 18,944）',
+    sources: [
+      { text: 'SwiGLU 论文 arXiv:2002.05202', url: 'https://arxiv.org/abs/2002.05202' },
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+      { text: 'Megatron-LM TP arXiv:1909.08053', url: 'https://arxiv.org/abs/1909.08053' },
+    ],
+  },
+  'mlp_up_linear': {
+    what: 'SwiGLU 上投影分支（up_proj）：将隐藏状态投影到中间维度，作为门控的被乘数。与 gate_proj 并行计算，两者维度完全相同，最终做逐元素乘积（Hadamard 积）。多卡 TP 中为 column-parallel。',
+    idEn: 'SwiGLU up projection (column-parallel in TP)',
+    clusters: ['QWen Transformer', 'Decoder Layer ×32', 'SwiGLU MLP'],
+    inputs:  [{ from: 'mlp_norm', desc: '归一化隐藏状态 [batch, seq_len, 4096]（与 gate_proj 共享同一输入）' }],
+    outputs: [{ to: 'silu_multiply', desc: '上投影值 [batch, seq_len, 18944]，直接与 SiLU(gate) 做逐元素相乘' }],
+    params:  '权重矩阵 4096×18944（中间维度 18,944）',
+    sources: [
+      { text: 'SwiGLU 论文 arXiv:2002.05202', url: 'https://arxiv.org/abs/2002.05202' },
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+    ],
+  },
+  'silu_multiply': {
+    what: 'SwiGLU 激活与门控相乘：对 gate_proj 输出施加 SiLU(x) = x·σ(x) 激活，再与 up_proj 输出逐元素相乘，即 SwiGLU = SiLU(gate) ⊗ up。这是 Qwen 替代 ReLU/GELU 的核心激活，在保持较低参数量的同时提升表达能力。',
+    idEn: 'SiLU activation and element-wise multiply (SwiGLU gate)',
+    clusters: ['QWen Transformer', 'Decoder Layer ×32', 'SwiGLU MLP'],
+    inputs:  [
+      { from: 'mlp_gate_linear', desc: '门控值 [batch, seq_len, 18944]（经 SiLU 激活）' },
+      { from: 'mlp_up_linear', desc: '上投影值 [batch, seq_len, 18944]（直接参与相乘）' },
+    ],
+    outputs: [{ to: 'mlp_down_linear', desc: '门控后中间表征 [batch, seq_len, 18944]' }],
+    sources: [
+      { text: 'SwiGLU 论文 arXiv:2002.05202', url: 'https://arxiv.org/abs/2002.05202' },
+      { text: 'GLU 变体综述 arXiv:2002.05202', url: 'https://arxiv.org/abs/2002.05202' },
+    ],
+  },
+  'mlp_down_linear': {
+    what: 'MLP 下投影（down_proj / output projection）：将 SwiGLU 门控后的中间表征从 18,944 维压缩回模型隐藏维度 4,096，然后与残差相加完成整个 Decoder Block 的 FFN 子层。多卡 TP 中为 row-parallel，Ascend 将 MatMul + ReduceScatter 融合为 MatmulReduceScatterAicpu 算子。',
+    idEn: 'SwiGLU down projection / MLP output (row-parallel in TP)',
+    clusters: ['QWen Transformer', 'Decoder Layer ×32', 'SwiGLU MLP'],
+    inputs:  [{ from: 'silu_multiply', desc: '门控中间表征 [batch, seq_len, 18944]' }],
+    outputs: [{ to: 'attn_norm（下一 Block）或 final_norm（最后 Block）', desc: '下投影输出 [batch, seq_len, 4096]，+ 残差 → 下一子层' }],
+    params:  '权重矩阵 18944×4096',
+    sources: [
+      { text: 'Megatron-LM TP arXiv:1909.08053', url: 'https://arxiv.org/abs/1909.08053' },
+      { text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' },
+    ],
+  },
+  'final_norm': {
+    what: '最终 RMSNorm：在全部 32 个 Decoder Block 处理完毕后，对最终隐藏状态归一化，再送入语言模型头（LM Head）。确保输出向量的尺度稳定，利于 LM Head 的线性投影。',
+    idEn: 'final (post-transformer) RMSNorm before LM Head',
+    clusters: ['QWen Transformer'],
+    inputs:  [{ from: 'mlp_down_linear（第 32 层）+ 残差', desc: '最后 Decoder Block 的隐藏状态 [batch, seq_len, 4096]' }],
+    outputs: [{ to: 'lm_head', desc: '归一化隐藏状态 [batch, seq_len, 4096]' }],
+    params:  '参数量 4,096（γ，无偏置）',
+    sources: [{ text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' }],
+  },
+  'lm_head': {
+    what: '语言模型头（Language Model Head）：将最终隐藏状态用线性层投影到词表大小，得到每个位置下一 token 的原始分数（logits）。权重与 token_embedding 共享（tied weights），节省约 622 M 参数。训练时 logits 送入 Cross-Entropy；推理时经 softmax 后采样。',
+    idEn: 'language model head — final linear projection to vocabulary',
+    clusters: [],
+    inputs:  [{ from: 'final_norm', desc: '最终归一化隐藏状态 [batch, seq_len, 4096]' }],
+    outputs: [{ to: 'output_logits', desc: 'Logits [batch, seq_len, 151936]，覆盖整个词表' }],
+    params:  '权重矩阵 4096×151936（与 token_embedding 共享）',
+    sources: [{ text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' }],
+  },
+  'output_logits': {
+    what: '模型最终输出的 token logits（原始分数）。训练时对最后一个 token 位置取 Cross-Entropy 损失（预测下一词）；推理时对全序列末位经 softmax → 采样/贪心解码得到下一 token，再 append 到序列继续生成。',
+    idEn: 'output token logits — raw scores over vocabulary',
+    clusters: [],
+    inputs:  [{ from: 'lm_head', desc: '原始分数 [batch, seq_len, 151936]' }],
+    outputs: [{ to: '损失函数（训练）/ 采样解码（推理）', desc: 'softmax → token 概率分布，训练时计算 CE Loss，推理时返回下一 token' }],
+    sources: [{ text: 'Qwen 技术报告 arXiv:2309.16609', url: 'https://arxiv.org/abs/2309.16609' }],
+  },
+};
+
+// ─── Cluster membership (for collapse/expand) ────────────────
+const QWEN7B_CLUSTER_CHILDREN = {
+  'attention-block':  ['qkv_linear', 'rotary_apply', 'scaled_attention', 'attn_output_linear'],
+  'mlp-block':        ['mlp_gate_linear', 'mlp_up_linear', 'silu_multiply', 'mlp_down_linear'],
+  'decoder-stack':    ['attn_norm', 'mlp_norm', 'attention-block', 'mlp-block'],
+  'transformer-core': ['token_embedding', 'decoder-stack', 'final_norm'],
+};
+function getAllClusterNodes(cid) {
+  return (QWEN7B_CLUSTER_CHILDREN[cid] || []).flatMap(c =>
+    QWEN7B_CLUSTER_CHILDREN[c] ? getAllClusterNodes(c) : [c]
+  );
+}
+function getAllSubClusters(cid) {
+  return (QWEN7B_CLUSTER_CHILDREN[cid] || []).flatMap(c =>
+    QWEN7B_CLUSTER_CHILDREN[c] ? [c, ...getAllSubClusters(c)] : []
+  );
+}
+
+// ─── Graph tab state ──────────────────────────────────────────
+const graphTabState = {
+  zoom: 1, tx: 0, ty: 0,
+  svg: null, pan: null,
+  suppressClick: false,
+  selectedNodeId: null,
+  problems: null,
+  collapsedClusters: new Set(),
+};
+
+function buildQwenGraphData(problems) {
+  const nodes = QWEN7B_BASE_NODES.map(n => {
+    const node = { ...n };
+    if (problems && problems[n.id]) {
+      node.reportPriority = problems[n.id].priority;
+    }
+    return node;
+  });
+  return {
+    width: 1280,
+    height: 1540,
+    clusters: QWEN7B_BASE_CLUSTERS.map(c => ({ ...c })),
+    nodes,
+    edges: QWEN7B_BASE_EDGES.map(e => ({ ...e })),
+  };
+}
+
+function computeGraphFitZoom() {
+  const stage = $('graphTabStage');
+  if (!stage) return 1;
+  const w = Math.max(400, stage.clientWidth - 48);
+  const h = Math.max(400, stage.clientHeight - 48);
+  return Math.min(1.0, Math.min(w / 1280, h / 1540));
+}
+
+function applyGraphTransform() {
+  const svg = graphTabState.svg;
+  if (!svg) return;
+  svg.style.width  = '1280px';
+  svg.style.height = '1540px';
+  svg.style.transform = `translate(${graphTabState.tx}px, ${graphTabState.ty}px) scale(${graphTabState.zoom})`;
+}
+
+function graphCenterView() {
+  const stage = $('graphTabStage');
+  if (!stage) return;
+  graphTabState.tx = Math.max(8, (stage.clientWidth  - 1280 * graphTabState.zoom) / 2);
+  graphTabState.ty = Math.max(8, (stage.clientHeight - 1540 * graphTabState.zoom) / 2);
+  applyGraphTransform();
+}
+
+function updateClusterVisibility(graphData) {
+  const stage = $('graphTabStage');
+  if (!stage) return;
+  const collapsed = graphTabState.collapsedClusters;
+  const hiddenNodeIds    = new Set();
+  const hiddenClusterIds = new Set();
+  collapsed.forEach(cid => {
+    getAllClusterNodes(cid).forEach(nid => hiddenNodeIds.add(nid));
+    getAllSubClusters(cid).forEach(sid => hiddenClusterIds.add(sid));
+  });
+  stage.querySelectorAll('.pto-model-graphviz-node').forEach((el, i) => {
+    const node = graphData.nodes[i];
+    if (node) el.style.display = hiddenNodeIds.has(node.id) ? 'none' : '';
+  });
+  stage.querySelectorAll('.pto-model-graphviz-edge').forEach((el, i) => {
+    const edge = graphData.edges[i];
+    if (edge) el.style.display =
+      (hiddenNodeIds.has(edge.source) || hiddenNodeIds.has(edge.target)) ? 'none' : '';
+  });
+  stage.querySelectorAll('.pto-model-graphviz-cluster').forEach((el, i) => {
+    const cluster = graphData.clusters[i];
+    if (cluster) el.style.display = hiddenClusterIds.has(cluster.id) ? 'none' : '';
+  });
+}
+
+function syncGraphSelection() {
+  const stage = $('graphTabStage');
+  if (!stage) return;
+  stage.querySelectorAll('.pto-model-graphviz-node').forEach(g => {
+    g.classList.toggle('is-graph-selected', g.dataset.nodeId === graphTabState.selectedNodeId);
+  });
+}
+
+function renderNodeInfoHTML(nodeId) {
+  const info = QWEN7B_NODE_INFO[nodeId];
+  if (!info) return '';
+
+  const clusterPath = (info.clusters || []).map((c, i) =>
+    (i > 0 ? '<span class="gd-cluster-sep">›</span>' : '') +
+    `<span class="gd-cluster-chip${i === info.clusters.length - 1 ? ' leaf' : ''}">${c}</span>`
+  ).join('');
+
+  const ioHtml = [
+    ...(info.inputs  || []).map(x => `<div class="gd-io-item"><span class="gd-io-dir in">输入</span><div class="gd-io-desc"><span class="gd-io-from">${x.from}</span>${x.desc}</div></div>`),
+    ...(info.outputs || []).map(x => `<div class="gd-io-item"><span class="gd-io-dir out">输出</span><div class="gd-io-desc"><span class="gd-io-from">${x.to}</span>${x.desc}</div></div>`),
+  ].join('');
+
+  const paramsRow = info.params
+    ? `<div class="gd-info-section"><div class="gd-info-label-sm">关键参数</div><div class="gd-params-text">${info.params}</div></div>`
+    : '';
+
+  const srcHtml = (info.sources || []).map(s =>
+    `<a class="gd-source-ref" href="${s.url}" target="_blank" rel="noopener">↗ ${s.text}</a>`
+  ).join('');
+
+  return `<div class="gd-node-info">
+    ${clusterPath ? `<div class="gd-cluster-path">${clusterPath}</div>` : ''}
+    <div class="gd-info-card">
+      <div class="gd-info-section">
+        <div class="gd-info-label-sm">是什么</div>
+        <div class="gd-info-text">${info.what}</div>
+        <div class="gd-info-text" style="margin-top:4px;"><span class="gd-id-badge">${nodeId}</span>&nbsp;= ${info.idEn}</div>
+      </div>
+      <div class="gd-info-section">
+        <div class="gd-info-label-sm">数据流（输入 → 输出）</div>
+        <div class="gd-io-list">${ioHtml}</div>
+      </div>
+      ${paramsRow}
+      <div class="gd-info-section" style="border-bottom:none;">
+        <div class="gd-info-label-sm">信息来源</div>
+        <div class="gd-source-refs">${srcHtml}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderGraphNodeDetail(nodeId) {
+  const nameplate = $('graphNodeNameplate');
+  const body = $('graphDetailBody');
+  if (!body) return;
+
+  const nodeMeta = QWEN7B_BASE_NODES.find(n => n.id === nodeId);
+  if (nameplate) {
+    nameplate.innerHTML = nodeMeta ? `
+      <div class="gd-nameplate-id">${nodeId}</div>
+      <div class="gd-nameplate-title">${nodeMeta.label || nodeId}</div>
+      <div class="gd-nameplate-type">${nodeMeta.typeLabel || ''}</div>` : '';
+  }
+
+  const probs    = graphTabState.problems;
+  const hasProb  = probs && probs[nodeId];
+  const infoHTML = renderNodeInfoHTML(nodeId);
+
+  if (!hasProb) {
+    body.innerHTML = infoHTML || `
+      <div class="gd-empty">
+        <div class="gd-empty-icon">⬅</div>
+        <div class="gd-empty-text">点击左侧标红的算子节点，查看问题详情与修复方案</div>
+      </div>`;
+    return;
+  }
+
+  const p = probs[nodeId];
+  const pClass  = (p.priority || 'P1').toLowerCase();
+  const escHint = (p.codeHint || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  body.innerHTML = `
+    <div class="gd-card">
+      <div class="gd-card-header">
+        <span class="gd-priority-badge ${pClass}">${p.priority}</span>
+        <div class="gd-node-title-block">
+          <div class="gd-node-id">${nodeId} · issue ${p.issueRef}</div>
+          <div class="gd-node-title">${p.title}</div>
+          <div class="gd-op-type">${p.opType || ''}</div>
+        </div>
+      </div>
+      <div class="gd-section">
+        <div class="gd-section-label">指标</div>
+        <div class="gd-metric">${p.metric || ''}</div>
+      </div>
+      <div class="gd-section">
+        <div class="gd-section-label">影响</div>
+        <div class="gd-impact">${p.impact || ''}</div>
+      </div>
+      <div class="gd-section">
+        <div class="gd-section-label">修复步骤</div>
+        <ul class="gd-fix-list">${(p.fix || []).map(s => `<li>${s}</li>`).join('')}</ul>
+      </div>
+      <div class="gd-section">
+        <div class="gd-section-label">验证方法</div>
+        <div class="gd-verify">${p.verify || ''}</div>
+      </div>
+      ${escHint ? `<div class="gd-section">
+        <div class="gd-section-label">代码示例</div>
+        <div class="gd-code">${escHint}</div>
+      </div>` : ''}
+    </div>
+    ${infoHTML ? `<div class="gd-info-divider-row">算子背景</div>${infoHTML}` : ''}`;
+}
+
+function renderGraph(report) {
+  const stage = $('graphTabStage');
+  const detail = $('graphTabDetail');
+  if (!stage || !detail) return;
+
+  const hint = $('graphZoomHint');
+
+  const probEntry = GRAPH_PROBLEMS[report?.id];
+  const problems  = probEntry?.problemNodes || null;
+
+  // Non-Qwen reports: show placeholder
+  if (!probEntry) {
+    stage.innerHTML = '';
+    if (hint) stage.appendChild(hint);
+    stage.insertAdjacentHTML('beforeend', `
+      <div class="gd-no-graph" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">
+        <div class="gd-no-graph-icon">🔗</div>
+        <div class="gd-no-graph-title">此报告无关联计算图</div>
+        <div class="gd-no-graph-sub">计算图仅对 Qwen2-7B 多卡训练 Profiling 分析报告可用（Level2 4卡 / 集群 16卡）</div>
+      </div>`);
+    const _np = $('graphNodeNameplate'); if (_np) _np.innerHTML = '';
+    ($('graphDetailBody') || detail).innerHTML = `
+      <div class="gd-empty">
+        <div class="gd-empty-icon">📊</div>
+        <div class="gd-empty-text">请在左侧选择 Qwen2-7B 相关分析记录</div>
+      </div>`;
+    graphTabState.svg = null;
+    graphTabState.problems = null;
+    return;
+  }
+
+  graphTabState.problems = problems;
+
+  const graphData = buildQwenGraphData(problems);
+
+  if (!window.PtoModelGraphvizPattern) {
+    stage.innerHTML = '<div style="padding:24px;color:#b42318;font-size:12px;">pattern.js 未加载，请检查脚本引用</div>';
+    return;
+  }
+
+  const svgEl = window.PtoModelGraphvizPattern.render(stage, graphData, {
+    ariaLabel: 'Qwen2-7B 模型计算图',
+    width: 1280,
+    height: 1540,
+  });
+  graphTabState.svg = svgEl;
+
+  if (hint && !stage.contains(hint)) stage.appendChild(hint);
+
+  // Wire node click handlers
+  const defaultNodeId = probEntry.defaultNode;
+  graphTabState.selectedNodeId = defaultNodeId;
+
+  stage.querySelectorAll('.pto-model-graphviz-node').forEach((g, i) => {
+    const node = graphData.nodes[i];
+    if (!node) return;
+    g.dataset.nodeId = node.id;
+    if (problems && problems[node.id]) {
+      g.classList.add('is-problem');
+      g.classList.add(`is-problem-${(problems[node.id].priority || 'P1').toLowerCase()}`);
+      g.style.cursor = 'pointer';
+    }
+    g.addEventListener('click', () => {
+      if (graphTabState.suppressClick) { graphTabState.suppressClick = false; return; }
+      graphTabState.selectedNodeId = node.id;
+      syncGraphSelection();
+      renderGraphNodeDetail(node.id);
+    });
+  });
+
+  // Wire cluster collapse/expand toggles
+  graphTabState.collapsedClusters = new Set();
+  stage.querySelectorAll('.pto-model-graphviz-cluster').forEach((g, i) => {
+    const cluster = graphData.clusters[i];
+    if (!cluster || !QWEN7B_CLUSTER_CHILDREN[cluster.id]) return;
+    const toggleEl = g.querySelector('.pto-model-graphviz-toggle');
+    const iconEl   = g.querySelector('.pto-model-graphviz-toggle-icon');
+    if (!toggleEl) return;
+    toggleEl.addEventListener('click', e => {
+      e.stopPropagation();
+      const isCollapsed = graphTabState.collapsedClusters.has(cluster.id);
+      if (isCollapsed) {
+        graphTabState.collapsedClusters.delete(cluster.id);
+        if (iconEl) iconEl.textContent = '-';
+      } else {
+        graphTabState.collapsedClusters.add(cluster.id);
+        if (iconEl) iconEl.textContent = '+';
+      }
+      updateClusterVisibility(graphData);
+    });
+  });
+
+  // Fit and center
+  graphTabState.zoom = computeGraphFitZoom();
+  graphCenterView();
+  syncGraphSelection();
+
+  // Show detail for default node
+  renderGraphNodeDetail(defaultNodeId);
+
+  // Legend
+  if (problems && Object.keys(problems).length) {
+    const legendItems = [...new Set(Object.values(problems).map(p => p.priority))].sort();
+    const legendColors = { P0: '#e0134e', P1: '#d97700', P2: '#b89000' };
+    const legendHTML = legendItems.map(p =>
+      `<div class="gd-legend-item"><div class="gd-legend-dot" style="background:${legendColors[p]||'#ccc'}"></div>${p} 问题算子</div>`
+    ).join('');
+    ($('graphDetailBody') || detail).insertAdjacentHTML('beforeend', `
+      <div class="gd-card gd-legend">
+        <div class="gd-legend-title">图例</div>
+        ${legendHTML}
+        <div class="gd-legend-item" style="margin-top:2px;font-size:10px;color:var(--fg-muted)">点击标红节点查看详细诊断</div>
+      </div>`);
+  }
+}
+
+function setupGraphTabPanZoom() {
+  const stage = $('graphTabStage');
+  if (!stage) return;
+
+  stage.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = stage.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    const z0 = graphTabState.zoom;
+    const z1 = Math.max(0.15, Math.min(3.0, z0 * factor));
+    graphTabState.tx = px - (px - graphTabState.tx) * (z1 / z0);
+    graphTabState.ty = py - (py - graphTabState.ty) * (z1 / z0);
+    graphTabState.zoom = z1;
+    applyGraphTransform();
+  }, { passive: false });
+
+  stage.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    if (e.target.closest('.pto-model-graphviz-node, .pto-model-graphviz-toggle')) return;
+    graphTabState.suppressClick = false;
+    graphTabState.pan = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, tx: graphTabState.tx, ty: graphTabState.ty, moved: false };
+  });
+
+  stage.addEventListener('pointermove', e => {
+    if (!graphTabState.pan || graphTabState.pan.pointerId !== e.pointerId) return;
+    const dx = e.clientX - graphTabState.pan.x;
+    const dy = e.clientY - graphTabState.pan.y;
+    if (!graphTabState.pan.moved) {
+      if (Math.hypot(dx, dy) < 4) return;
+      graphTabState.pan.moved = true;
+      stage.classList.add('is-panning');
+      try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    graphTabState.tx = graphTabState.pan.tx + dx;
+    graphTabState.ty = graphTabState.pan.ty + dy;
+    applyGraphTransform();
+    e.preventDefault();
+  });
+
+  const endPan = e => {
+    if (!graphTabState.pan || graphTabState.pan.pointerId !== e.pointerId) return;
+    if (graphTabState.pan.moved) graphTabState.suppressClick = true;
+    graphTabState.pan = null;
+    stage.classList.remove('is-panning');
+    if (stage.hasPointerCapture(e.pointerId)) stage.releasePointerCapture(e.pointerId);
+  };
+  stage.addEventListener('pointerup', endPan);
+  stage.addEventListener('pointercancel', endPan);
+  stage.addEventListener('lostpointercapture', endPan);
+
+  // Ctrl+0 reset zoom
+  window.addEventListener('keydown', e => {
+    const activeTab = document.querySelector('.v2-center-tab.active');
+    if (!activeTab || activeTab.dataset.tab !== 'graph') return;
+    if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+      e.preventDefault();
+      graphTabState.zoom = computeGraphFitZoom();
+      graphCenterView();
+    }
+  });
 }
 
 init();
@@ -7367,6 +10043,51 @@ init();
         if (!dTip) return;
         const el = e.target.closest('.v2-center-tab[data-disabled-tip]:disabled');
         if (el) { dTip.remove(); dTip = null; }
+      });
+    }());
+
+    // Graph name-mapping popover
+    (function () {
+      var btn     = document.getElementById('graphMapBtn');
+      var pop     = document.getElementById('graphMapPop');
+      var closeEl = document.getElementById('graphMapClose');
+      if (!btn || !pop) return;
+
+      function positionPop() {
+        var r  = btn.getBoundingClientRect();
+        var pw = 460;
+        var left = r.right - pw;
+        if (left < 8) left = 8;
+        var top  = r.bottom + 6;
+        var spaceBelow = window.innerHeight - top - 16;
+        if (spaceBelow < 200 && r.top > 220) {
+          pop.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+          pop.style.top    = 'auto';
+          pop.style.maxHeight = (r.top - 22) + 'px';
+        } else {
+          pop.style.top    = top + 'px';
+          pop.style.bottom = 'auto';
+          pop.style.maxHeight = Math.min(520, spaceBelow) + 'px';
+        }
+        pop.style.left = left + 'px';
+      }
+
+      function openPop()  { positionPop(); pop.classList.add('show'); btn.classList.add('active'); }
+      function closePop() { pop.classList.remove('show'); btn.classList.remove('active'); }
+
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        pop.classList.contains('show') ? closePop() : openPop();
+      });
+      closeEl.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closePop();
+      });
+      document.addEventListener('click', function (e) {
+        if (pop.classList.contains('show') && !pop.contains(e.target) && e.target !== btn) closePop();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closePop();
       });
     }());
 

@@ -1016,7 +1016,7 @@
   <div class="topnav-tabs">
     <a class="topnav-tab" href="user_issue_analysis.html">TOP用户痛点</a>
     <a class="topnav-tab" href="user_pain_guide.html">基于TOP用户痛点的950性能调优指导</a>
-    <a class="topnav-tab active" href="perf_engineer_guide.html">基于PDF材料的950性能调优指导</a>
+    <a class="topnav-tab active" href="perf_engineer_guide.html">微信视频号中的950知识提炼</a>
     <a class="topnav-tab" href="top_issue_detail.html">附录：TOP痛点与Issue映射关系</a>
   </div>
 </nav>
@@ -1327,7 +1327,7 @@
     <div class="pain-hook-q">你是否发现：在 A3 做多卡 profiling，只能一个进程一个进程地跑，16 卡集群要等很久；好不容易采完，也不知道片上带宽是否有问题，Pipe 里有没有气泡？</div>
     <div class="pain-hook-sub">950 一次采集 16 进程，新增片上带宽实时采集和指令级 stall 定位，诊断精度从"分钟级"到"指令级"。</div>
     <details class="user-voice">
-      <summary><span class="uv-badge">5</span>&ensp;条相关用户反馈</summary>
+      <summary><span class="uv-badge">7</span>&ensp;条相关用户反馈</summary>
       <div class="user-voice-body">
         <div class="uv-item">
           <div class="uv-text">泳道图过大场景（例如泳道图文件1个G），目前无法正常打开，无法支撑性能调优，需要解决</div>
@@ -1348,6 +1348,14 @@
         <div class="uv-item">
           <div class="uv-text">算子端到端执行时间要4s，泳道图上看只要3us，请问是什么开销导致的，如何优化使用</div>
           <div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/299" target="_blank" rel="noopener">↗</a></div>
+        </div>
+        <div class="uv-item">
+          <div class="uv-text">【green light】流水图启动时间长达 30us，端到端时间与算子自身耗时差距极大，调度头尾开销难以定位</div>
+          <div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/2011" target="_blank" rel="noopener">↗</a></div>
+        </div>
+        <div class="uv-item">
+          <div class="uv-text">capture 模式下开启 DUMP_DEVICE_PERF 性能采集，runtime 报 MemCopySync 失败，采集数据丢失</div>
+          <div class="uv-meta"><span class="uv-sp">PYPTO</span><a class="uv-link" href="https://gitcode.com/cann/pypto/issues/2084" target="_blank" rel="noopener">↗</a></div>
         </div>
       </div>
     </details>
@@ -1594,7 +1602,7 @@ msprof parse --input=./op_prof</pre>
       <div class="iceberg-num" style="background:rgba(124,141,184,0.16);color:#7C8DB8;">4</div>
       <div class="iceberg-content">
         <div class="iceberg-title">指令调优 — 寄存器 / 指令精简 / VF 融合</div>
-        <div class="iceberg-detail">减少 GPR 占用防溢出；指令精简去冗余；循环展开提高指令密度；Vector-Fusion 合并多个向量操作</div>
+        <div class="iceberg-detail">减少 GPR 占用防溢出；指令精简去冗余；循环展开提高指令密度；Vector-Fusion 合并多个向量操作。<span style="color:var(--warn);font-size:11px;">⚠ 已知痛点：mhc_post（<a href="https://gitcode.com/cann/pypto/issues/2038" target="_blank" style="color:var(--warn);">↗</a>）、apply_adam_w_v2（<a href="https://gitcode.com/cann/pypto/issues/2062" target="_blank" style="color:var(--warn);">↗</a>）等纯 vector 算子实测确认 vf 融合未触发，性能不理想；PyPTO DFX 目前无直接可视化入口确认融合状态。</span></div>
       </div>
       <div class="iceberg-effort" style="color:#7C8DB8;">~10%</div>
     </div>
