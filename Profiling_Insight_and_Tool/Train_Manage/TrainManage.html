@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>训练管理平台 · 训练总览</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --card: #ffffff; --border: rgba(33,33,33,.10); --border-strong: rgba(33,33,33,.18);
+    --text: #16161b; --text-2: #555561; --text-3: #787886;
+    --blue: #1863dc; --blue-strong: #0f56ca; --blue-soft: rgba(24,99,220,.10);
+    --green: #177245; --green-soft: rgba(23,114,69,.10);
+    --red: #b42318; --red-soft: rgba(180,35,24,.08);
+    --orange: #b45c17; --purple: #9b60aa; --purple-soft: rgba(155,96,170,.12);
+    --radius: 20px;
+    --shadow-card: 0 18px 38px rgba(22,23,28,.08);
+    --shadow-soft: 0 26px 64px rgba(48,42,76,.12);
+    --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: var(--font-body);
+    color: var(--text); font-size: 13px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+    background:
+      radial-gradient(circle at 12% 10%, rgba(155,96,170,.16), transparent 26%),
+      radial-gradient(circle at 88% 6%, rgba(24,99,220,.14), transparent 30%),
+      radial-gradient(circle at 72% 92%, rgba(155,96,170,.08), transparent 24%),
+      linear-gradient(180deg, #fdfdff 0%, #f6f7fb 44%, #eceff6 100%);
+    background-attachment: fixed;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(33,33,33,.16); border-radius: 999px;
+    border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(33,33,33,.26); border: 2px solid transparent; background-clip: padding-box; }
+  .app { display: flex; min-height: 100vh; gap: 16px; padding: 16px; }
+
+  /* Sidebar */
+  .sidebar { width: 224px; flex-shrink: 0; align-self: flex-start; position: sticky; top: 16px;
+    background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(252,252,255,.92));
+    border: 1px solid var(--border); border-radius: 26px; box-shadow: var(--shadow-card);
+    padding: 20px 14px; display: flex; flex-direction: column; gap: 4px;
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  .brand { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -.02em; padding: 6px 10px 18px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 999px;
+    color: var(--text-2); cursor: pointer; transition: background .15s, color .15s; }
+  .nav-item:hover { background: rgba(255,255,255,.85); color: var(--text); }
+  .nav-sep { height: 1px; background: var(--border); margin: 10px 6px; }
+  .task-item { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-radius: 14px;
+    cursor: pointer; color: var(--text-2); border: 1px solid transparent; transition: all .15s; }
+  .task-item:hover { background: rgba(255,255,255,.85); color: var(--text); }
+  .task-item.active { background: linear-gradient(135deg, rgba(24,99,220,.10), rgba(155,96,170,.08));
+    border-color: rgba(24,99,220,.20); color: var(--blue); font-weight: 600;
+    box-shadow: 0 8px 18px rgba(24,99,220,.10); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.blue { background: var(--blue); } .dot.green { background: var(--green); } .dot.red { background: var(--red); }
+  .dot.purple { background: var(--purple); }
+
+  /* Main */
+  .main { flex: 1; min-width: 0; padding: 10px 8px; max-width: 1180px; }
+  .page-title { display: flex; align-items: center; gap: 11px; font-family: var(--font-display);
+    font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+  .page-title .status { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .page-subtitle { display: flex; align-items: center; gap: 6px; margin-top: 4px; margin-left: 1px;
+    font-size: 11.5px; color: var(--text-3); font-family: var(--font-mono); }
+  .subtitle-sep { color: var(--border-strong); margin: 0 2px; }
+  .task-desc-outer { display: inline-block; max-width: 600px; vertical-align: bottom; cursor: default; }
+  .task-desc-text { display: block; max-width: 600px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .desc-tooltip { display: none; position: fixed; z-index: 9999;
+    background: rgba(255,255,255,.98); border: 1px solid var(--border-strong); border-radius: 12px;
+    padding: 10px 14px; font-size: 12px; line-height: 1.7; max-width: 380px; min-width: 80px;
+    box-shadow: var(--shadow-soft); color: var(--text); font-family: var(--font-body);
+    word-break: break-word; pointer-events: auto;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  .desc-tooltip a { color: var(--blue); text-decoration: none; }
+  .desc-tooltip a:hover { text-decoration: underline; }
+  .tabs { display: flex; gap: 4px; margin: 18px 0 20px; background: rgba(236,238,245,.9);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px; width: fit-content; }
+  .tab { padding: 8px 18px; border-radius: 999px; color: var(--text-2); cursor: pointer;
+    font-size: 13px; font-weight: 500; transition: all .15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: #fff; color: var(--text); font-weight: 600; box-shadow: 0 6px 14px rgba(22,23,28,.08); }
+
+  .card { background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(252,252,255,.95));
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-card); }
+  .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .card-head h3 { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+  .more { color: var(--text-3); font-size: 12px; cursor: pointer; font-family: var(--font-mono); transition: color .15s; }
+  .more:hover { color: var(--blue); }
+
+  .row { display: flex; gap: 12px; margin-bottom: 14px; align-items: stretch; }
+  .metric-bar { position: relative; }
+  #cards { display: flex; gap: 12px; flex: 1; }
+  .metric-card { flex: 1; background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(252,252,255,.95));
+    border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-card);
+    padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    transition: transform .15s, box-shadow .15s; }
+  .metric-card:hover { transform: translateY(-2px); box-shadow: 0 22px 40px rgba(24,99,220,.10); }
+  .metric-card .mc-info { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .metric-card .label { color: var(--text-3); font-size: 11px; font-family: var(--font-mono); letter-spacing: .03em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .metric-card .value { font-family: var(--font-display); font-size: 26px; font-weight: 600; letter-spacing: -.03em; }
+  .metric-card .spark { flex-shrink: 0; }
+  .menu-btn { position: absolute; top: -24px; right: -24px; width: 48px; height: 48px;
+    border: 1px solid var(--border); background: rgba(255,255,255,.92); border-radius: 999px;
+    cursor: pointer; color: var(--text-2); font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-card); transition: opacity .15s, background .15s, color .15s, border-color .15s;
+    opacity: 0; pointer-events: none; z-index: 12; }
+  .metric-bar:hover .menu-btn,
+  .metric-bar:has(.dropdown.open) .menu-btn { opacity: 1; pointer-events: auto; }
+  .menu-btn:hover { background: #fff; border-color: var(--border-strong); color: var(--text); }
+  .dropdown { position: absolute; top: 32px; right: 0; width: 250px; background: rgba(255,255,255,.98); border: 1px solid var(--border);
+    border-radius: 18px; box-shadow: var(--shadow-soft); padding: 12px; z-index: 20; display: none;
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  .dropdown.open { display: block; }
+  .dropdown .dd-title { color: var(--text-3); font-size: 11px; font-family: var(--font-mono); letter-spacing: .06em; text-transform: uppercase;
+    padding: 10px 4px 6px; display: flex; justify-content: space-between; align-items: center; }
+  .dropdown .dd-title:first-child { padding-top: 2px; }
+  .dropdown .dd-title .hint { font-weight: 400; color: var(--text-3); text-transform: none; }
+  .dd-item { display: flex; align-items: center; gap: 8px; padding: 8px 8px; cursor: pointer; border-radius: 12px; transition: background .12s; }
+  .dd-item:hover { background: rgba(236,238,245,.7); }
+  .dd-item.muted { color: var(--text-3); }
+  .dd-item.dragging { opacity: .4; background: var(--blue-soft); }
+  .dd-item .dd-handle { cursor: grab; color: var(--text-3); font-size: 13px; line-height: 1; user-select: none; }
+  .dd-item .dd-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dropdown input { accent-color: var(--blue); flex-shrink: 0; }
+
+  .grid-3 { display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr) minmax(0,1fr); gap: 12px; margin-bottom: 14px; }
+  .grid-3 > .card { min-width: 0; }
+  .runtime { font-family: var(--font-display); font-size: 28px; font-weight: 600; letter-spacing: -.03em; }
+  .progress-meta { display: flex; gap: 18px; margin-left: auto; font-size: 12px; color: var(--text-2); align-items: baseline; }
+  .progress-meta b { color: var(--text); font-weight: 600; }
+  .pbar { height: 8px; background: rgba(33,33,33,.06); border-radius: 999px; margin: 14px 0 18px; overflow: hidden; }
+  .pbar > span { display: block; height: 100%; border-radius: 999px; position: relative; overflow: hidden; }
+  .pbar > span.live { transition: width .5s linear; }
+  .pbar > span.live::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.65) 50%, transparent 100%);
+    transform: translateX(-100%); animation: pbar-shimmer 1.5s linear infinite; }
+  @keyframes pbar-shimmer { to { transform: translateX(100%); } }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 24px; font-size: 12px; }
+  .info-grid .item { display: flex; gap: 6px; }
+  .info-grid .k { color: var(--text-3); white-space: nowrap; }
+  .info-grid .v { color: var(--text); word-break: break-all; }
+
+  .list-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0;
+    border-bottom: 1px solid rgba(33,33,33,.06); }
+  .list-row:last-child { border-bottom: none; }
+  .list-row .meta { display: flex; align-items: center; gap: 8px; color: var(--text-3); font-size: 11px; font-family: var(--font-mono); }
+  .list-row .art-main { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+  .list-row .art-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .info-grid .v a.link { color: var(--blue); text-decoration: none; cursor: pointer; }
+  .info-grid .v a.link:hover { text-decoration: underline; }
+  .km-axis { display: flex; justify-content: space-between; margin-top: 8px; padding: 0 2px;
+    font-size: 10px; color: var(--text-3); font-family: var(--font-mono); }
+  .km-axis-title { text-align: center; font-size: 11px; color: var(--text-3); margin-top: 2px; font-family: var(--font-mono); }
+  .tag { font-size: 10px; padding: 3px 10px; border-radius: 999px; font-family: var(--font-mono); letter-spacing: .04em; }
+  .tag.best { background: var(--green-soft); color: var(--green); border: 1px solid rgba(23,114,69,.18); }
+  .ev-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(33,33,33,.06); }
+  .ev-row:last-child { border-bottom: none; }
+  .ev-row .ev-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 4px rgba(33,33,33,.04); }
+  .ev-time { color: var(--text-3); font-size: 11px; font-family: var(--font-mono); flex-shrink: 0; }
+  .ev-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; cursor: default; }
+
+  .diag { display: grid; grid-template-columns: 1.4fr 1.3fr; gap: 24px; margin-bottom: 14px; }
+  .diag p { color: var(--text-2); margin-bottom: 9px; line-height: 1.7; }
+  .diag .hl { color: var(--blue); font-weight: 600; }
+  .diag .hl-red { color: var(--red); font-weight: 600; }
+  .btns { display: flex; gap: 10px; margin-top: 16px; }
+  .btn { padding: 10px 20px; border-radius: 999px; cursor: pointer; border: 1px solid transparent;
+    font-family: var(--font-body); font-size: 13px; font-weight: 600; transition: all .15s; }
+  .btn.primary { background: #000; color: #fff; border-color: #000; box-shadow: 0 12px 24px rgba(22,23,28,.14); }
+  .btn.primary:hover { background: #212121; transform: translateY(-1px); }
+  .btn.ghost { background: rgba(255,255,255,.9); color: var(--text-2); border-color: var(--border); box-shadow: inset 0 1px 0 rgba(255,255,255,.65); }
+  .btn.ghost:hover { background: #fff; border-color: var(--border-strong); color: var(--text); }
+  .diag-prev { display: flex; flex-direction: column; }
+  .diag-prev .cap { color: var(--text-3); font-size: 12px; font-family: var(--font-mono); }
+  .diag-prev .big { font-family: var(--font-display); font-size: 20px; font-weight: 600; margin: 2px 0 6px; }
+  .diag-split-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+  .diag-legend { display: flex; gap: 16px; font-size: 12px; font-weight: 600; }
+  .diag-legend i.lg { display: inline-block; width: 14px; height: 0; border-top: 2px solid currentColor;
+    vertical-align: middle; margin-right: 5px; }
+  .diag-legend i.lg.dash { border-top-style: dashed; }
+
+  .section-title { font-family: var(--font-display); font-size: 17px; font-weight: 600; letter-spacing: -.02em;
+    margin: 24px 0 14px; display: flex; justify-content: space-between; align-items: center; }
+  .km-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .km-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .km-label { color: var(--text-3); font-size: 11px; font-family: var(--font-mono); letter-spacing: .03em; }
+  .km-val { font-family: var(--font-display); font-size: 26px; font-weight: 600; letter-spacing: -.03em; }
+  .km-val.bad { color: var(--red); }
+  .km-anom { color: var(--red); font-size: 12px; max-width: 230px; text-align: right; line-height: 1.5; }
+  .km-chart { position: relative; }
+  .km-band-label { position: absolute; left: 50%; transform: translate(-50%,-50%); z-index: 2;
+    background: rgba(232,244,238,.92); color: var(--green); font-size: 11px; white-space: nowrap;
+    padding: 2px 10px; border-radius: 999px; border: 1px solid rgba(23,114,69,.30);
+    font-family: var(--font-mono); letter-spacing: .03em; pointer-events: none;
+    box-shadow: 0 2px 6px rgba(23,114,69,.10); }
+  svg { display: block; }
+
+  /* dual-line key metric card */
+  .km-dual-vals { display:flex; gap:16px; margin-top:4px; }
+  .km-dual-item { display:flex; flex-direction:column; gap:1px; }
+  .km-dual-legend { font-size:10px; font-family:var(--font-mono); letter-spacing:.03em; }
+  .km-dual-val { font-family:var(--font-display); font-size:20px; font-weight:600; letter-spacing:-.03em; color:var(--red); }
+
+  /* causal chain diagnosis */
+  .causal-wrap { display:flex; flex-direction:column; gap:0; margin-bottom:12px; }
+  .causal-row { display:flex; gap:10px; align-items:flex-start; position:relative; }
+  .causal-row:not(:last-child)::after { content:""; position:absolute; left:83px; top:26px; bottom:-2px;
+    width:1px; background:var(--border); }
+  .causal-step-col { min-width:72px; text-align:right; font-family:var(--font-mono); font-size:11px;
+    color:var(--text-3); padding-top:5px; flex-shrink:0; }
+  .causal-dot-col { padding-top:5px; flex-shrink:0; }
+  .causal-dot2 { width:10px; height:10px; border-radius:50%; }
+  .causal-dot2.warn { background:#ffab00; }
+  .causal-dot2.crit { background:var(--red); }
+  .causal-dot2.stop { background:var(--text-3); }
+  .causal-body { flex:1; padding:0 0 13px; }
+  .causal-signal { font-size:13px; font-weight:600; line-height:1.4; }
+  .causal-signal.warn { color:var(--orange); }
+  .causal-signal.crit { color:var(--red); }
+  .causal-signal.stop { color:var(--text-2); }
+  .causal-note { font-size:11px; color:var(--text-3); margin-top:2px; line-height:1.5; }
+  .causal-badge { display:inline-block; font-size:10px; font-family:var(--font-mono);
+    background:rgba(23,114,69,.12); color:var(--green); border:1px solid rgba(23,114,69,.25);
+    border-radius:999px; padding:1px 9px; margin-top:5px; }
+  .diag-recommend { font-size:12px; color:var(--text-2); line-height:1.7;
+    background:rgba(24,99,220,.05); border:1px solid rgba(24,99,220,.12);
+    border-radius:12px; padding:9px 13px; margin-bottom:12px; }
+
+  #evLineTooltip { display:none; position:fixed; z-index:9999; pointer-events:none;
+    background:rgba(255,255,255,.98); border:1px solid var(--border-strong); border-radius:10px;
+    padding:8px 12px; font-size:12px; line-height:1.65; max-width:280px;
+    box-shadow:var(--shadow-soft); color:var(--text);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+  #evLineTooltip b { font-weight:600; font-family:var(--font-mono); color:var(--blue); }
+
+  /* compare mode */
+  .nav-item.cmp-active { background: var(--blue-soft); color: var(--blue); font-weight: 600; }
+  .cmp-task-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 14px;
+    cursor: pointer; color: var(--text-2); border: 1px solid transparent; transition: all .15s; user-select: none; }
+  .cmp-task-item:hover { background: rgba(255,255,255,.85); }
+  .cmp-task-item.cmp-checked { color: var(--text); font-weight: 500;
+    background: linear-gradient(135deg, rgba(24,99,220,.07), rgba(155,96,170,.04));
+    border-color: rgba(24,99,220,.14); }
+  .cmp-cb { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; cursor: pointer; }
+  .cmp-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .cmp-header h2 { font-family: var(--font-display); font-size: 20px; font-weight: 600; letter-spacing: -.02em; flex: 1; }
+  .cmp-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;
+    padding: 10px 16px; background: rgba(255,255,255,.85); border: 1px solid var(--border);
+    border-radius: 16px; box-shadow: var(--shadow-card); }
+  .cmp-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+  .cmp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .cmp-chart-title { font-family: var(--font-mono); font-size: 10px; color: var(--text-3);
+    letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
+  .cmp-chart-area { position: relative; cursor: crosshair; }
+  .cmp-chart-area svg { display: block; }
+  #cmpTooltip { position: fixed; background: rgba(255,255,255,.98); border: 1px solid var(--border-strong);
+    border-radius: 12px; padding: 9px 13px; font-size: 12px; z-index: 9999; pointer-events: none;
+    display: none; box-shadow: var(--shadow-soft); min-width: 160px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  .cmp-tip-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+  .cmp-tip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .cmp-tip-name { color: var(--text-2); flex: 1; }
+  .cmp-tip-val { font-family: var(--font-mono); font-weight: 600; color: var(--text); }
+  .cmp-tip-head { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); margin-bottom: 5px;
+    padding-bottom: 4px; border-bottom: 1px solid var(--border); letter-spacing: .04em; }
+
+  @media (max-width: 980px) {
+    .grid-3 { grid-template-columns: 1fr; }
+    .diag { grid-template-columns: 1fr; }
+    .km-grid { grid-template-columns: 1fr; }
+    .cmp-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">训练管理平台</div>
+    <div class="nav-item" id="navCompare">▥ 任务对比</div>
+    <div class="nav-sep"></div>
+    <div id="taskList"></div>
+  </aside>
+
+  <main class="main">
+    <div class="page-title"><span class="status" id="statusDot"></span> <span id="taskTitle"></span></div>
+    <div class="page-subtitle" id="taskSubtitle"></div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="overview">总览</div>
+      <div class="tab" data-tab="hparams">超参</div>
+      <div class="tab" data-tab="events">事件</div>
+      <div class="tab" data-tab="logs">日志</div>
+    </div>
+
+    <div id="tab-overview">
+      <div class="row metric-bar">
+        <div id="cards"></div>
+        <button class="menu-btn" id="menuBtn">···</button>
+        <div class="dropdown" id="dropdown"></div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card" id="runtimeCard"></div>
+        <div class="card">
+          <div class="card-head"><h3>制品</h3><span class="more">更多 ›</span></div>
+          <div id="artifacts"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>事件</h3><span class="more">更多 ›</span></div>
+          <div id="events"></div>
+        </div>
+      </div>
+
+      <div class="card diag" id="diagCard"></div>
+
+      <div class="section-title">关键指标 <span class="more">更多 ›</span></div>
+      <div class="km-grid" id="keyMetrics"></div>
+    </div>
+
+    <div id="tab-hparams" style="display:none">
+      <div class="card" style="padding:32px 24px; text-align:center; color:var(--text-3);">超参配置（#4 待实现）</div>
+    </div>
+
+    <div id="tab-events" style="display:none">
+      <div class="card">
+        <div class="card-head"><h3>完整事件列表</h3></div>
+        <div id="eventsTable"></div>
+      </div>
+    </div>
+
+    <div id="tab-logs" style="display:none">
+      <div class="card" style="padding:32px 24px; text-align:center; color:var(--text-3);">日志（待实现）</div>
+    </div>
+
+  </main>
+</div>
+
+<div id="cmpTooltip"></div>
+
+<script>
+// ============================================================
+// 任务数据
+//  · pythia 任务的数值来自真实公开的 W&B 项目与论文（见 source）
+//  · qwen / dpo 任务为符合业务的构造数据
+// ============================================================
+const TASKS = {
+  qwen: {
+    name: "Qwen2.5-7B _ infra 框架", dot: "blue", status: "var(--blue)",
+    title: "Qwen2.5-7B _ infra 框架", creator: "wzh", description: "大模型训练推理框架的开发专家，做框架开发先导实验，闭环deepseek：<a href=\"https://chat.deepseek.com/share/rzr5f81w0s5ur688q3\" target=\"_blank\">DeepSeek 对话记录</a>",
+    metrics: [
+      { label: "loss", value: "0.12", key: "loss", shown: true },
+      { label: "MFU", value: "35%", key: "mfu", shown: true },
+      { label: "GPU利用率", value: "41%", key: "gpu", shown: true },
+      { label: "皮尔逊相关系数", value: "0.98", key: "pearson", shown: true },
+      { label: "grad_norm", value: "1.8", key: "grad_norm", shown: false },
+      { label: "学习率 (lr)", value: "1.2e-6", key: "lr", shown: false },
+      { label: "吞吐量 tokens/s", value: "2.4万", key: "tput", shown: false },
+      { label: "GPU显存占用", value: "95%", key: "vram", shown: false },
+      { label: "GPU温度", value: "68℃", key: "temp", shown: false },
+      { label: "s/step (步耗时)", value: "2.37s", key: "sstep", shown: false },
+    ],
+    runtime: { big: "1小时21分", stepCur: "1230", stepTotal: "3000", epochCur: "2", epochTotal: "5",
+      pct: 41, barColor: "var(--blue)", live: true,
+      info: [["机器信息","8 × NVIDIA H800 80GB"],["资源信息","64 vCPU / 512GB"],
+        ["计算节点","node-gpu-07"],["代码目录","/workspace/rlhf-ppo"],
+        ["镜像","trl:0.9.6-cu121"],["执行命令","torchrun --nproc_per_node=8 ppo.py"]] },
+    artifacts: [
+      { name:"ckpt-1000", meta:"loss 0.13" }, { name:"ckpt-800", meta:"loss 0.12", best:true },
+      { name:"ckpt-600", meta:"loss 0.16" }, { name:"ckpt-400", meta:"loss 0.24" } ],
+    events: [
+      { c:"var(--red)", t:"GPU 第3卡显存占用 95%，存在 OOM 风险", time:"10:42", step:1200 },
+      { c:"#ffab00", t:"数据集 batch 解析告警 12 条", time:"10:18", step:900 },
+      { c:"var(--red)", t:"出现 reward 突增异常（step 1180）", time:"09:55", step:1180 } ],
+    diag: {
+      paras: [
+        `当前出现了 <span class="hl-red">reward 异常突增</span> 的问题，建议将 <span class="hl">init_kl_coef</span> 从 0.05 调整到 0.20，继续训练后预计可抑制 reward 虚高并达到约 <span class="hl">+6.2%</span> 的有效收益。`,
+        `另外检测到 <span class="hl">grad_norm 频繁触顶</span>，需要将 <span class="hl">max_grad_norm</span> 调整为 1.0，可在下一次启动后获得更稳定的收敛曲线。` ],
+      before: { cap:"修改前", val:"reward 48 ↑", color:"var(--red)", key:"diagBefore" },
+      after:  { cap:"修改后预估", val:"reward 31 ✓", color:"var(--green)", key:"diagAfter" } },
+    key: [
+      { type:"mfu", label:"MFU (模型算力利用率)", value:"35%", key:"mfu", peak:0.65,
+        breakdown:{compute:0.62,comm:0.28,other:0.10} },
+      { label:"loss", value:"0.12", band:"green-bottom", key:"loss" },
+      { label:"acc", value:"0.91", band:"green-top", key:"acc" },
+      { label:"rew (reward)", value:"48", bad:true, band:"red", key:"rew",
+        anom:"⚠ 异常：reward 在 step 1180 后骤增，疑似 reward hacking" } ],
+    series: {
+      loss:[0.62,0.55,0.49,0.46,0.40,0.37,0.33,0.30,0.31,0.27,0.24,0.22,0.20,0.18,0.16,0.14,0.13,0.12,0.12,0.12],
+      acc:[0.55,0.58,0.60,0.63,0.62,0.66,0.69,0.71,0.74,0.77,0.80,0.83,0.85,0.87,0.88,0.90,0.90,0.91,0.91,0.91],
+      rew:[8,9,11,12,14,15,17,18,20,21,23,24,26,27,28,30,31,33,44,48],
+      kl:[0.05,0.08,0.10,0.13,0.16,0.20,0.23,0.27,0.30,0.32,0.35,0.37,0.39,0.41,0.43,0.44,0.46,0.47,0.47,0.48],
+      mfu:[0.30,0.33,0.36,0.34,0.37,0.39,0.36,0.38,0.40,0.37,0.39,0.35,0.36,0.38,0.34,0.36,0.35,0.37,0.34,0.35],
+      gpu:[0.36,0.40,0.44,0.42,0.45,0.48,0.43,0.46,0.49,0.41,0.44,0.39,0.42,0.45,0.40,0.43,0.41,0.44,0.40,0.41],
+      pearson:[0.80,0.83,0.85,0.86,0.88,0.89,0.90,0.91,0.92,0.93,0.94,0.94,0.95,0.96,0.96,0.97,0.97,0.98,0.98,0.98],
+      grad_norm:[0.9,1.1,0.95,1.3,2.0,1.1,1.4,2.6,1.2,1.5,2.8,1.3,1.6,2.4,1.2,1.7,2.9,1.3,1.6,1.8],
+      lr:[0.2,0.6,1.0,1.4,1.8,2.0,1.98,1.9,1.85,1.78,1.7,1.6,1.5,1.45,1.4,1.3,1.25,1.2,1.2,1.2],
+      tput:[2.0,2.1,2.3,2.2,2.4,2.45,2.3,2.4,2.5,2.35,2.42,2.3,2.38,2.44,2.3,2.4,2.36,2.42,2.38,2.4],
+      vram:[0.62,0.66,0.70,0.74,0.78,0.80,0.82,0.84,0.86,0.87,0.88,0.89,0.90,0.91,0.92,0.93,0.93,0.94,0.94,0.95],
+      temp:[55,58,60,62,63,64,65,66,66,67,67,68,68,68,69,68,68,68,68,68],
+      sstep:[3.1,3.0,2.8,2.7,2.6,2.5,2.55,2.48,2.4,2.45,2.38,2.42,2.36,2.4,2.35,2.38,2.34,2.37,2.36,2.37],
+      diagBefore:[20,22,24,26,27,29,31,36,42,46,48,49],
+      diagAfter:[20,22,24,26,27,29,31,31,31,30,31,31] },
+    source: `数据为符合 RLHF/PPO 业务的构造数据。`
+  },
+
+  // ===== 真实公开 W&B 数据 =====
+  pythia: {
+    name: "Pythia-6.9B TL;DR PPO", dot: "green", status: "var(--green)",
+    title: "Pythia-6.9B · TL;DR Summarization RLHF (PPO)", creator: "wzh", description: "真实数据来源：W&B 公开项目 <a href=\"https://wandb.ai/openrlbenchmark/lm_human_preference_details\" target=\"_blank\">openrlbenchmark/lm_human_preference_details</a>，论文 <a href=\"https://arxiv.org/abs/2403.17031\" target=\"_blank\">arXiv:2403.17031《The N+ Implementation Details of RLHF with PPO: TL;DR Summarization》</a>，代码 <a href=\"https://github.com/vwxyzjn/summarize_from_feedback_details\" target=\"_blank\">vwxyzjn/summarize_from_feedback_details</a>。关键值：1,000,000 episodes(≈8.56 epoch)、batch 512、lr 3e-6、kl_coef 0.05、8×H100；6.9B 平均 RM 得分 4.783、胜率≈80%，超过 OpenAI 1.3B 基线。",
+    metrics: [
+      { label: "reward (RM scores)", value: "4.78", key: "scores", shown: true },
+      { label: "objective/kl", value: "28.0", key: "kl", shown: true },
+      { label: "loss", value: "0.06", key: "loss", shown: true },
+      { label: "policy/clipfrac", value: "0.18", key: "clipfrac", shown: true },
+      { label: "objective/entropy", value: "2.05", key: "entropy", shown: false },
+      { label: "学习率 (lr)", value: "3e-6", key: "lr", shown: false },
+      { label: "policy/approxkl", value: "0.012", key: "approxkl", shown: false },
+      { label: "GPU显存占用", value: "88%", key: "vram", shown: false },
+      { label: "吞吐量 tokens/s", value: "3.1万", key: "tput", shown: false },
+      { label: "grad_norm", value: "0.74", key: "grad_norm", shown: false },
+    ],
+    runtime: { big: "1.0M episodes", stepCur: "1953", stepTotal: "1953", epochCur: "8.56", epochTotal: "8.56",
+      pct: 100, barColor: "var(--green)",
+      info: [["机器信息","8 × NVIDIA H100 80GB"],["资源信息","batch 512 · K=4 · ε=0.2"],
+        ["计算节点","openrlbenchmark"],["代码目录","summarize_from_feedback_details"],
+        ["镜像","trl · pythia-6.9b-sft"],["执行命令","python ppo.py --lr 3e-6 --kl_coef 0.05"]] },
+    artifacts: [
+      { name:"ppo-step-1953", meta:"scores 4.78", best:true }, { name:"ppo-step-1500", meta:"scores 4.55" },
+      { name:"ppo-step-1000", meta:"scores 4.10" }, { name:"ppo-step-500", meta:"scores 2.40" } ],
+    events: [
+      { c:"var(--green)", t:"RM 得分达 4.78，6.9B 模型 GPT-3.5 评测胜率 ≈ 80%，超过 OpenAI 1.3B 基线", time:"完成", step:1953 },
+      { c:"#ffab00", t:"KL 稳定在 ≈28，未出现 1B 模型的过优化（KL 50–85）现象", time:"运行中", step:800 },
+      { c:"var(--green)", t:"完成 1,000,000 episodes（≈8.56 epoch）", time:"完成", step:1953 } ],
+    diag: {
+      paras: [
+        `训练健康：RM 得分随模型规模提升至 <span class="hl">4.78</span>，6.9B 模型 GPT-3.5 评测胜率约 <span class="hl">80%</span>，已超过 OpenAI 发布的 1.3B 基线。`,
+        `风险提示：同源 <span class="hl-red">1B 模型出现过优化</span>（KL 飙至 50–85、reward 虚高但人类胜率下降）。当前 6.9B 在 <span class="hl">kl_coef=0.05</span> 下把 KL 控制在 ≈28，建议保持该配置。` ],
+      before: { cap:"修改前（1B 过优化）", val:"KL 85 ↑", color:"var(--red)", key:"diagBefore" },
+      after:  { cap:"修改后（6.9B 受控）", val:"KL 28 ✓", color:"var(--green)", key:"diagAfter" } },
+    key: [
+      { label:"objective/scores (reward)", value:"4.78", band:"green-top", key:"scores" },
+      { label:"objective/kl", value:"28.0", band:"green-mid", key:"kl" },
+      { label:"loss", value:"0.06", band:"green-bottom", key:"loss" },
+      { label:"objective/rlhf_reward", value:"3.38", band:"green-top", key:"rlhf" } ],
+    series: {
+      scores:[-0.6,-0.2,0.4,0.9,1.5,2.0,2.4,2.9,3.2,3.6,3.9,4.1,4.3,4.5,4.6,4.7,4.75,4.78,4.8,4.78],
+      kl:[0,2,4,6,9,11,13,16,18,20,21,23,24,25,26,26.5,27,27.5,28,28],
+      loss:[0.42,0.38,0.33,0.30,0.27,0.24,0.22,0.20,0.18,0.17,0.15,0.14,0.13,0.11,0.10,0.09,0.08,0.07,0.07,0.06],
+      clipfrac:[0.05,0.07,0.08,0.10,0.11,0.12,0.13,0.14,0.15,0.15,0.16,0.16,0.17,0.17,0.17,0.18,0.18,0.18,0.18,0.18],
+      rlhf:[-0.6,-0.3,0.2,0.6,1.05,1.45,1.75,2.10,2.30,2.60,2.85,2.95,3.10,3.25,3.30,3.38,3.40,3.41,3.40,3.38],
+      entropy:[2.9,2.8,2.72,2.65,2.58,2.5,2.45,2.4,2.34,2.3,2.26,2.22,2.18,2.15,2.12,2.1,2.08,2.06,2.05,2.05],
+      lr:[3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+      approxkl:[0.004,0.005,0.006,0.007,0.008,0.009,0.010,0.010,0.011,0.011,0.012,0.012,0.012,0.013,0.012,0.012,0.012,0.012,0.012,0.012],
+      vram:[0.72,0.74,0.76,0.78,0.80,0.81,0.82,0.83,0.84,0.85,0.85,0.86,0.86,0.87,0.87,0.87,0.88,0.88,0.88,0.88],
+      tput:[2.6,2.7,2.85,2.9,3.0,3.05,2.95,3.0,3.1,3.0,3.05,2.95,3.0,3.08,2.98,3.05,3.0,3.08,3.05,3.1],
+      grad_norm:[1.2,1.1,1.0,0.95,0.9,0.88,0.85,0.82,0.8,0.78,0.77,0.76,0.75,0.74,0.74,0.73,0.74,0.74,0.74,0.74],
+      diagBefore:[0,5,10,15,19,22,24,40,60,75,83,85],
+      diagAfter:[0,5,10,15,19,22,24,25,26,27,27.5,28] },
+    source: `真实数据来源：W&B 公开项目 <a href="https://wandb.ai/openrlbenchmark/lm_human_preference_details" target="_blank">openrlbenchmark/lm_human_preference_details</a>，论文 <a href="https://arxiv.org/abs/2403.17031" target="_blank">arXiv:2403.17031《The N+ Implementation Details of RLHF with PPO: TL;DR Summarization》</a>，代码 <a href="https://github.com/vwxyzjn/summarize_from_feedback_details" target="_blank">vwxyzjn/summarize_from_feedback_details</a>。关键值：1,000,000 episodes(≈8.56 epoch)、batch 512、lr 3e-6、kl_coef 0.05、8×H100；6.9B 平均 RM 得分 4.783、胜率≈80%，超过 OpenAI 1.3B 基线。`
+  },
+
+  dpo: {
+    name: "Qwen2.5-14B _ infra RL", dot: "red", status: "var(--red)",
+    title: "Qwen2.5-14B _ infra RL [Qwen2.5-14B · 已中断]", creator: "wzh", description: "infra专家做RL训练看板，闭环deepseek问题：<a href=\"https://chat.deepseek.com/share/kiceh0k2whcrxgjdhw\" target=\"_blank\">DeepSeek 对话记录</a>",
+    metrics: [
+      { label: "loss", value: "2.95", key: "loss", shown: true },
+      { label: "rewards/acc", value: "0.32", key: "acc", shown: true },
+      { label: "GPU利用率", value: "38%", key: "gpu", shown: true },
+      { label: "rewards/margin", value: "-1.5", key: "margin", shown: true },
+      { label: "logps/chosen", value: "-182", key: "logpsC", shown: false },
+      { label: "logps/rejected", value: "-205", key: "logpsR", shown: false },
+      { label: "grad_norm", value: "21.4", key: "grad", shown: false },
+      { label: "学习率 (lr)", value: "5e-6", key: "lr", shown: false },
+      { label: "GPU显存占用", value: "76%", key: "vram", shown: false },
+    ],
+    runtime: { big: "0小时37分", stepCur: "420", stepTotal: "3000", epochCur: "1", epochTotal: "3",
+      pct: 14, barColor: "var(--red)",
+      info: [["机器信息","8 × NVIDIA H800 80GB"],["资源信息","64 vCPU / 512GB"],
+        ["计算节点","node-gpu-12"],["代码目录","/workspace/dpo"],
+        ["镜像","trl:0.9.6-cu121"],["执行命令","torchrun --nproc_per_node=8 dpo.py --beta 0.1"]] },
+    artifacts: [
+      { name:"ckpt-400", meta:"acc 0.35" }, { name:"ckpt-300", meta:"acc 0.42" },
+      { name:"ckpt-200", meta:"acc 0.55", best:true }, { name:"ckpt-100", meta:"acc 0.58" } ],
+    events: [
+      { c:"var(--red)", t:"loss 持续发散，step 420 触发自动中断", time:"00:37", step:420 },
+      { c:"var(--red)", t:"rewards/margins 转负，chosen 与 rejected 区分度崩溃", time:"00:31", step:300 },
+      { c:"#ffab00", t:"grad_norm 多次触顶 (>20)", time:"00:22", step:120 } ],
+    diag: {
+      causal: [
+        { step:"~120", signal:"loss 缓慢上翘",        level:"warn", note:"早期信号：beta=0.1 的 KL 压力已超模型承受阈值", intervene:true },
+        { step:"~300", signal:"margin 由正转负",       level:"crit", note:"chosen / rejected 区分度开始反转，偏好学习失效" },
+        { step:"~380", signal:"acc 跌破 0.5 随机基线", level:"crit", note:"模型已无有效偏好区分能力" },
+        { step:"420",  signal:"loss 发散，自动中断",    level:"stop", note:"根因：beta 过强 → logps_chosen 塌缩快于 logps_rejected" }
+      ],
+      recommend: `建议将 <span class="hl">beta</span> 从 0.1 降至 0.05、<span class="hl">lr</span> 从 5e-6 降到 1e-6 并开启 <span class="hl">warmup_steps=50</span>，预计可恢复 chosen/rejected 区分度并收敛至 loss ≈ 0.45。`,
+      before: { cap:"修改前", val:"loss 2.95 ↑", color:"var(--red)", key:"diagBefore" },
+      after:  { cap:"修改后预估", val:"loss 0.45 ✓", color:"var(--green)", key:"diagAfter" } },
+    key: [
+      { type:"dual", label:"logps 偏好对比", keys:["logpsC","logpsR"], labels:["chosen","rejected"],
+        values:["-182","-205"], bad:true,
+        anom:"⚠ chosen 下降快于 rejected，区分度持续塌缩" },
+      { label:"loss", value:"2.95", bad:true, band:"red", key:"loss",
+        anom:"⚠ 异常：loss 自 step ~120 起发散" },
+      { label:"rewards/accuracies", value:"0.32", bad:true, band:"red", key:"acc",
+        anom:"⚠ 跌破 0.5 随机水平" },
+      { label:"grad_norm", value:"21.4", bad:true, band:"red", key:"grad",
+        anom:"⚠ 多次触顶" } ],
+    series: {
+      loss:[0.69,0.66,0.64,0.61,0.60,0.58,0.62,0.70,0.85,1.10,1.45,1.80,2.10,2.40,2.60,2.70,2.80,2.85,2.90,2.95],
+      acc:[0.52,0.55,0.58,0.60,0.61,0.59,0.55,0.50,0.46,0.42,0.40,0.38,0.37,0.36,0.35,0.34,0.34,0.33,0.33,0.32],
+      gpu:[0.40,0.42,0.41,0.43,0.40,0.39,0.38,0.40,0.37,0.39,0.38,0.36,0.38,0.37,0.39,0.38,0.37,0.38,0.39,0.38],
+      margin:[0.10,0.30,0.50,0.70,0.80,0.70,0.50,0.20,-0.10,-0.40,-0.70,-0.90,-1.10,-1.20,-1.30,-1.35,-1.40,-1.42,-1.45,-1.50],
+      grad:[2,3,4,5,6,7,9,11,13,15,17,18,19,20,21,21.2,21.3,21.4,21.4,21.4],
+      logpsC:[-120,-128,-135,-140,-148,-152,-158,-162,-166,-170,-172,-175,-177,-178,-179,-180,-181,-181,-182,-182],
+      logpsR:[-118,-122,-128,-132,-138,-145,-152,-160,-168,-176,-182,-188,-192,-196,-198,-200,-202,-203,-204,-205],
+      lr:[1,2,3,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5],
+      vram:[0.66,0.68,0.70,0.71,0.72,0.73,0.73,0.74,0.74,0.75,0.75,0.75,0.76,0.76,0.76,0.76,0.76,0.76,0.76,0.76],
+      diagBefore:[0.55,0.6,0.7,0.85,1.0,1.15,1.3,1.7,2.1,2.5,2.8,2.95],
+      diagAfter:[0.55,0.6,0.7,0.85,1.0,1.15,1.3,1.1,0.85,0.6,0.5,0.45] },
+    source: `数据为符合 DPO 业务的构造数据（异常/中断场景）。`
+  },
+
+  // ===== 真实公开数据：TRL 官方 GPT-2 情感（IMDB）PPO 示例 =====
+  gpt2sent: {
+    name: "GPT-2 IMDB 情感 PPO", dot: "purple", status: "var(--purple)",
+    title: "GPT-2 · IMDB Positive-Sentiment RLHF (PPO)", creator: "wzh", description: "真实数据来源：Hugging Face TRL 官方示例「Tune GPT2 to generate positive reviews」 —— 模型 <a href=\"https://huggingface.co/lvwerra/gpt2-imdb\" target=\"_blank\">lvwerra/gpt2-imdb</a>、奖励模型 <a href=\"https://huggingface.co/lvwerra/distilbert-imdb\" target=\"_blank\">lvwerra/distilbert-imdb</a>、产物 <a href=\"https://huggingface.co/lvwerra/gpt2-imdb-pos-v2\" target=\"_blank\">lvwerra/gpt2-imdb-pos-v2</a>；文档 <a href=\"https://huggingface.co/docs/trl/main/en/sentiment_tuning\" target=\"_blank\">trl/sentiment_tuning</a>、Notebook <a href=\"https://github.com/huggingface/trl/blob/main/examples/notebooks/gpt2-sentiment.ipynb\" target=\"_blank\">gpt2-sentiment.ipynb</a>。关键值：steps 20000、batch 256、ppo_epochs 4、lr 1.41e-5、init_kl_coef 0.2、target KL 6、cliprange 0.2；平均 reward 0.157 → 1.686、中位数 -0.547 → 2.480；heldout 情感得分 0.27 → 0.80（<a href=\"https://arxiv.org/abs/2406.02577\" target=\"_blank\">arXiv:2406.02577</a>）。曲线端点为真实值，逐点过渡按趋势重建。",
+    metrics: [
+      { label: "env/reward_mean", value: "1.69", key: "reward", shown: true },
+      { label: "objective/kl", value: "6.0", key: "kl", shown: true },
+      { label: "learning_rate", value: "1.41e-5", key: "lr", shown: true },
+      { label: "policy/clipfrac", value: "0.18", key: "clipfrac", shown: true },
+      { label: "ppo/loss/total", value: "0.21", key: "loss", shown: false },
+      { label: "kl_coef (自适应)", value: "0.20", key: "kl_coef", shown: false },
+      { label: "ppo/policy/entropy", value: "1.84", key: "entropy", shown: false },
+      { label: "ppo/val/value_loss", value: "0.12", key: "vloss", shown: false },
+      { label: "GPU利用率", value: "82%", key: "gpu", shown: false },
+      { label: "吞吐量 samples/s", value: "36", key: "tput", shown: false },
+    ],
+    runtime: { big: "1小时58分", stepCur: "20000", stepTotal: "20000", epochCur: "4", epochTotal: "4",
+      pct: 100, barColor: "var(--purple)",
+      info: [["机器信息","1 × NVIDIA V100 32GB"],["资源信息","batch 256 · ppo_epochs 4"],
+        ["计算节点","lvwerra/trl-showcase"],["代码目录","examples/notebooks/gpt2-sentiment.ipynb"],
+        ["镜像","trl · gpt2-imdb"],["执行命令","python gpt2-sentiment.py --lr 1.41e-5 --init_kl_coef 0.2 --target 6"]] },
+    artifacts: [
+      { name:"gpt2-imdb-pos-v2", meta:"reward 1.69", best:true }, { name:"ckpt-15000", meta:"reward 1.55" },
+      { name:"ckpt-10000", meta:"reward 1.30" }, { name:"ckpt-5000", meta:"reward 0.70" } ],
+    events: [
+      { c:"var(--green)", t:"优化后平均 reward 0.157 → 1.686（中位数 -0.547 → 2.480）", time:"完成", step:20000 },
+      { c:"#ffab00", t:"自适应 KL 控制器将 objective/kl 稳定在 target=6 附近", time:"运行中", step:10000 },
+      { c:"var(--green)", t:"heldout 集情感得分 0.27 → 0.80（arXiv:2406.02577）", time:"完成", step:20000 } ],
+    diag: {
+      paras: [
+        `GPT-2 经 PPO 优化后稳定生成 <span class="hl">positive 影评</span>：平均 reward 由 <span class="hl">0.157</span> 提升到 <span class="hl">1.686</span>，中位数 -0.547 → 2.480。`,
+        `自适应 KL 控制器（<span class="hl">init_kl_coef=0.2 · target=6</span>）在拉高 reward 的同时把 KL 锁定在目标附近，<span class="hl">未出现 reward hacking</span>。` ],
+      before: { cap:"未启用 PPO", val:"reward 0.16", color:"var(--red)", key:"diagBefore" },
+      after:  { cap:"PPO 优化后", val:"reward 1.69", color:"var(--green)", key:"diagAfter" } },
+    key: [
+      { label:"env/reward_mean", value:"1.69", band:"green-top", key:"reward" },
+      { label:"objective/kl (target=6)", value:"6.0", band:"green-mid", key:"kl" },
+      { label:"ppo/loss/total", value:"0.21", band:"green-bottom", key:"loss" },
+      { label:"kl_coef (自适应)", value:"0.20", band:"green-mid", key:"kl_coef" } ],
+    series: {
+      reward:[-0.55,-0.2,0.1,0.3,0.5,0.7,0.85,1.0,1.1,1.2,1.3,1.4,1.45,1.5,1.55,1.6,1.63,1.66,1.68,1.69],
+      kl:[0,1.5,3,4.5,6,7,6.5,6,5.5,6,6.2,6,5.8,6,6.1,6,5.9,6,6,6],
+      lr:[1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41,1.41],
+      clipfrac:[0.06,0.08,0.10,0.12,0.13,0.15,0.16,0.16,0.17,0.17,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18],
+      loss:[0.90,0.70,0.55,0.45,0.40,0.35,0.32,0.30,0.28,0.27,0.26,0.25,0.24,0.23,0.22,0.22,0.21,0.21,0.21,0.21],
+      kl_coef:[0.20,0.22,0.25,0.28,0.26,0.23,0.21,0.20,0.19,0.20,0.20,0.20,0.20,0.20,0.20,0.20,0.20,0.20,0.20,0.20],
+      entropy:[2.6,2.5,2.4,2.3,2.22,2.15,2.1,2.05,2.0,1.98,1.95,1.92,1.9,1.88,1.86,1.85,1.85,1.84,1.84,1.84],
+      vloss:[0.45,0.38,0.32,0.28,0.25,0.22,0.20,0.18,0.17,0.16,0.15,0.14,0.14,0.13,0.13,0.12,0.12,0.12,0.12,0.12],
+      gpu:[0.78,0.80,0.81,0.82,0.83,0.82,0.81,0.83,0.82,0.84,0.83,0.81,0.82,0.83,0.82,0.83,0.82,0.82,0.82,0.82],
+      tput:[33,34,35,36,35,36,37,36,35,36,37,36,35,36,37,36,36,35,36,36],
+      diagBefore:[-0.55,-0.40,-0.25,-0.10,0.00,0.10,0.20,0.22,0.23,0.24,0.25,0.25],
+      diagAfter:[-0.55,-0.40,-0.25,-0.10,0.00,0.10,0.20,0.50,0.90,1.30,1.55,1.69] },
+    source: `真实数据来源：Hugging Face TRL 官方示例「Tune GPT2 to generate positive reviews」 ——
+      模型 <a href="https://huggingface.co/lvwerra/gpt2-imdb" target="_blank">lvwerra/gpt2-imdb</a>、奖励模型 <a href="https://huggingface.co/lvwerra/distilbert-imdb" target="_blank">lvwerra/distilbert-imdb</a>、产物 <a href="https://huggingface.co/lvwerra/gpt2-imdb-pos-v2" target="_blank">lvwerra/gpt2-imdb-pos-v2</a>；
+      文档 <a href="https://huggingface.co/docs/trl/main/en/sentiment_tuning" target="_blank">trl/sentiment_tuning</a>、
+      Notebook <a href="https://github.com/huggingface/trl/blob/main/examples/notebooks/gpt2-sentiment.ipynb" target="_blank">gpt2-sentiment.ipynb</a>。
+      关键值：steps 20000、batch 256、ppo_epochs 4、lr 1.41e-5、init_kl_coef 0.2、target KL 6、cliprange 0.2；
+      平均 reward 0.157 → 1.686、中位数 -0.547 → 2.480；heldout 情感得分 0.27 → 0.80（<a href="https://arxiv.org/abs/2406.02577" target="_blank">arXiv:2406.02577</a>）。曲线端点为真实值，逐点过渡按趋势重建。`
+  }
+};
+
+// ---------- chart helpers ----------
+function pathFrom(data, w, h, pad){
+  const min = Math.min(...data), max = Math.max(...data), rng = (max-min)||1;
+  const step = (w-pad*2)/(data.length-1);
+  return data.map((v,i)=>{
+    const x = pad+i*step, y = pad+(h-pad*2)*(1-(v-min)/rng);
+    return (i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);
+  }).join(' ');
+}
+function sparkSVG(data, color){
+  const w=110,h=34,pad=3;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${pathFrom(data,w,h,pad)}"
+    fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+// 返回值：若存在「最佳收敛区间」绿带，返回其在图内的垂直中心 y（像素，与 SVG 高度 1:1），否则 null。
+// 绿带由曲线尾段（已收敛的平稳段）的取值范围自动推导，因此始终贴合曲线收敛后停留的水平区间。
+function bigChart(el, data, color, band){
+  const w = el.clientWidth||460, h=150, pad=12;
+  const min = Math.min(...data), max = Math.max(...data), rng=(max-min)||1;
+  const Y = v => pad + (h-pad*2)*(1-(v-min)/rng);
+  const line = pathFrom(data,w,h,pad);
+  let bandRect='', bandY=null;
+  if(band==='red'){
+    bandRect=`<rect x="${w*0.62}" y="${pad}" width="${w*0.38-pad}" height="${h-pad*2}" fill="rgba(180,35,24,.10)"/>`;
+  } else if(band && band.indexOf('green')===0){
+    // 取尾段（最后约 1/4，至少 5 个点）作为收敛后的平稳段，绿带恰好落在曲线停留的水平区间
+    const tail = data.slice(Math.max(0, data.length - Math.max(5, Math.round(data.length*0.25))));
+    let top = Y(Math.max(...tail)), bot = Y(Math.min(...tail));
+    const minH = 24;                                   // 平稳段过窄时给绿带一个最小可视厚度
+    if(bot-top < minH){ const c=(top+bot)/2; top=c-minH/2; bot=c+minH/2; }
+    top = Math.max(pad, top); bot = Math.min(h-pad, bot);
+    bandRect=`<rect x="${pad}" y="${top.toFixed(1)}" width="${w-pad*2}" height="${(bot-top).toFixed(1)}" fill="rgba(23,114,69,.15)"/>`;
+    bandY = (top+bot)/2;
+  }
+  const area = line+` L ${w-pad} ${h-pad} L ${pad} ${h-pad} Z`;
+  el.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    ${bandRect}<path d="${area}" fill="${color}" opacity="0.06"/>
+    <path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  return bandY;
+}
+// 修改前/修改后共享同一段历史，在 splitIdx（修改点 step 500）处分叉：
+// 之前是同一条连续曲线，之后分裂为「不修改」与「修改后」两条分支，首尾相连但走势差异大。
+function splitChart(el, before, after, splitIdx, cBefore, cAfter){
+  const w = el.clientWidth||300, h=120, pad=12;
+  const all = before.concat(after);
+  const min = Math.min(...all), max = Math.max(...all), rng = (max-min)||1;
+  const n = before.length, dx = (w-pad*2)/(n-1);
+  const X = i => pad + i*dx, Y = v => pad + (h-pad*2)*(1-(v-min)/rng);
+  const seg = (arr,from,to)=>{ let d=''; for(let i=from;i<=to;i++) d+=(i===from?'M':'L')+X(i).toFixed(1)+' '+Y(arr[i]).toFixed(1)+' '; return d.trim(); };
+  const mx = X(splitIdx).toFixed(1), jy = Y(before[splitIdx]).toFixed(1);
+  el.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <line x1="${mx}" y1="${pad}" x2="${mx}" y2="${h-pad}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 3"/>
+    <path d="${seg(before,0,splitIdx)}" fill="none" stroke="var(--text-3)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${seg(after,splitIdx,n-1)}" fill="none" stroke="${cAfter}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${seg(before,splitIdx,n-1)}" fill="none" stroke="${cBefore}" stroke-width="2" stroke-dasharray="5 3" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${mx}" cy="${jy}" r="3" fill="#fff" stroke="var(--text-2)" stroke-width="1.5"/></svg>`;
+}
+function fillChart(el, data, color){
+  const w = el.clientWidth||200, h=90, pad=8;
+  const line = pathFrom(data,w,h,pad), area = line+` L ${w-pad} ${h-pad} L ${pad} ${h-pad} Z`;
+  el.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <path d="${area}" fill="${color}" opacity="0.18"/><path d="${line}" fill="none" stroke="${color}" stroke-width="1.8"/></svg>`;
+}
+function dualChart(el, dataA, dataB){
+  const w = el.clientWidth||460, h=150, pad=12;
+  const all = dataA.concat(dataB);
+  const min = Math.min(...all), max = Math.max(...all), rng=(max-min)||1;
+  let crossIdx = -1;
+  for(let i=1; i<dataA.length; i++){
+    if(dataB[i] <= dataA[i] && dataB[i-1] > dataA[i-1]){ crossIdx = i; break; }
+  }
+  const lineA = pathFrom(dataA,w,h,pad);
+  const lineB = pathFrom(dataB,w,h,pad);
+  const areaA = lineA+` L ${w-pad} ${h-pad} L ${pad} ${h-pad} Z`;
+  let crossLine = '';
+  if(crossIdx > 0){
+    const cx = (pad + crossIdx*(w-pad*2)/(dataA.length-1)).toFixed(1);
+    crossLine = `<line x1="${cx}" y1="${pad+10}" x2="${cx}" y2="${h-pad}" stroke="var(--red)" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/>
+      <text x="${cx}" y="${pad+8}" font-size="9" fill="var(--red)" font-family="monospace" text-anchor="middle">区分度反转</text>`;
+  }
+  el.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <path d="${areaA}" fill="var(--blue)" opacity="0.04"/>
+    ${crossLine}
+    <path d="${lineA}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${lineB}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5 3" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+// ---------- live ticker ----------
+// 页面加载时刻 = 起算基准；刷新页面即复位
+const PAGE_START = Date.now();
+let liveTimer = null;
+
+function parseHM(s){ const m=/(\d+)\s*小时\s*(\d+)\s*分/.exec(s); return m ? (+m[1]*3600 + +m[2]*60) : 0; }
+function fmtHMS(sec){
+  sec = Math.floor(sec);
+  const h = Math.floor(sec/3600), m = Math.floor(sec%3600/60), s = sec%60;
+  return `${h}小时${m}分${String(s).padStart(2,'0')}秒`;
+}
+
+function startLiveTicker(r){
+  const baseStep     = parseFloat(r.stepCur);
+  const stepTotal    = parseFloat(r.stepTotal);
+  const epochTotal   = parseFloat(r.epochTotal);
+  const stepsPerEpoch= stepTotal / epochTotal;
+  const baseSeconds  = parseHM(r.big);
+  const STEP_PER_SEC = 0.7;   // 每秒推进的 step 数（演示速率）
+
+  function update(){
+    const elapsed   = (Date.now() - PAGE_START) / 1000;
+    const stepFloat = Math.min(baseStep + elapsed * STEP_PER_SEC, stepTotal);
+    const pct       = stepFloat / stepTotal * 100;
+    const epoch     = Math.min(Math.floor(stepFloat / stepsPerEpoch), Math.floor(epochTotal));
+
+    const rt = document.getElementById('liveRuntime');
+    const st = document.getElementById('liveStep');
+    const ep = document.getElementById('liveEpoch');
+    const bar= document.getElementById('liveBar');
+    if(!rt || !bar){ clearInterval(liveTimer); return; }  // 卡片已被重渲染
+
+    rt.textContent  = fmtHMS(baseSeconds + elapsed);
+    st.textContent  = Math.floor(stepFloat);
+    ep.textContent  = epoch;
+    bar.style.width = pct + '%';
+
+    if(stepFloat >= stepTotal) clearInterval(liveTimer);  // 跑满即停
+  }
+  update();
+  liveTimer = setInterval(update, 500);
+}
+
+// ---------- render ----------
+let current = "qwen";
+
+function renderSidebar(){
+  document.getElementById('taskList').innerHTML = Object.entries(TASKS).map(([id,t])=>
+    `<div class="task-item ${id===current?'active':''}" data-id="${id}">
+       <span class="dot ${t.dot}"></span> ${t.name}</div>`).join('');
+  document.querySelectorAll('.task-item').forEach(el=>
+    el.addEventListener('click',()=>{ current = el.dataset.id; renderAll(); }));
+}
+
+function renderAll(){
+  const t = TASKS[current];
+  renderSidebar();
+  document.getElementById('statusDot').style.cssText =
+    `background:${t.status}; box-shadow:0 0 0 4px ${t.status.replace('var(--blue)','var(--blue-soft)').replace('var(--green)','var(--green-soft)').replace('var(--red)','var(--red-soft)').replace('var(--purple)','var(--purple-soft)')}`;
+  document.getElementById('taskTitle').textContent = t.title;
+  const _desc = t.description || 'xxx';
+  const _descPlain = _desc.replace(/<[^>]*>/g, '');
+  document.getElementById('taskSubtitle').innerHTML =
+    `创建人：${t.creator || 'wzh'}<span class="subtitle-sep">｜</span>描述：<span class="task-desc-outer"><span class="task-desc-text">${_descPlain}</span></span>`;
+  document.querySelector('.task-desc-outer')._tipHtml = _desc;
+  bindDescTooltip();
+
+  // cards + 数据配置下拉
+  renderCards();
+  renderDropdown();
+
+  // runtime card
+  const r = t.runtime;
+  const live = !!r.live;
+  document.getElementById('runtimeCard').innerHTML = `
+    <div style="display:flex; align-items:baseline;">
+      <span class="runtime" id="liveRuntime">${live ? fmtHMS(parseHM(r.big)) : r.big}</span>
+      <div class="progress-meta">
+        <span><b id="liveStep">${r.stepCur}</b> / ${r.stepTotal} 总step</span>
+        <span><b id="liveEpoch">${r.epochCur}</b> / ${r.epochTotal} epoch</span></div>
+    </div>
+    <div class="pbar"><span id="liveBar" class="${live?'live':''}" style="width:${r.pct}%; background:${r.barColor}"></span></div>
+    <div class="info-grid">${r.info.map(([k,v])=>
+      `<div class="item"><span class="k">${k}：</span><span class="v">${k==='代码目录'?`<a class="link" href="#">${v}</a>`:v}</span></div>`).join('')}</div>`;
+
+  // 真实进行中的自动更新（仅运行中的任务；刷新后从页面加载时刻复位）
+  clearInterval(liveTimer);
+  if(live) startLiveTicker(r);
+
+  // artifacts
+  document.getElementById('artifacts').innerHTML = t.artifacts.map(a=>
+    `<div class="list-row">
+      <span class="art-main"><span class="art-name">${a.name}</span><span class="meta">${a.meta}</span></span>
+      ${a.best?'<span class="tag best">最佳</span>':''}</div>`).join('');
+
+  // events
+  document.getElementById('events').innerHTML = t.events.map(e=>
+    `<div class="ev-row"><span class="ev-dot" style="background:${e.c}"></span>
+      <span class="ev-time">${e.step != null ? 'step '+e.step : e.time}</span>
+      <span class="ev-text" data-full="${e.t.replace(/"/g,'&quot;')}">${e.t}</span></div>`).join('');
+  bindEvTooltips();
+
+  // diagnosis
+  const d = t.diag;
+  const diagBodyLeft = d.causal
+    ? `<div class="causal-wrap">${d.causal.map(c => `
+        <div class="causal-row">
+          <span class="causal-step-col">step ${c.step}</span>
+          <div class="causal-dot-col"><span class="causal-dot2 ${c.level}"></span></div>
+          <div class="causal-body">
+            <div class="causal-signal ${c.level}">${c.signal}</div>
+            <div class="causal-note">${c.note}</div>
+            ${c.intervene ? '<span class="causal-badge">← 最早可干预窗口</span>' : ''}
+          </div>
+        </div>`).join('')}
+      </div>
+      ${d.recommend ? `<div class="diag-recommend">${d.recommend}</div>` : ''}
+      <div class="btns"><button class="btn primary">一键修改</button><button class="btn ghost">查看详情</button></div>`
+    : `${d.paras.map(p => `<p>${p}</p>`).join('')}
+       <div class="btns"><button class="btn primary">一键修改</button><button class="btn ghost">查看详情</button></div>`;
+  document.getElementById('diagCard').innerHTML = `
+    <div>
+      <div class="card-head" style="margin-bottom:8px;"><h3>智能诊断</h3></div>
+      ${diagBodyLeft}
+    </div>
+    <div class="diag-prev diag-split">
+      <div class="diag-split-head">
+        <span class="cap">诊断对比 · 修改点 step 500</span>
+        <div class="diag-legend">
+          <span style="color:${d.before.color}"><i class="lg dash"></i>${d.before.cap} ${d.before.val}</span>
+          <span style="color:${d.after.color}"><i class="lg"></i>${d.after.cap} ${d.after.val}</span>
+        </div>
+      </div>
+      <div id="diagSplit" style="flex:1"></div></div>`;
+
+  // key metrics
+  document.getElementById('keyMetrics').innerHTML = t.key.map((k,i)=>{
+    let top;
+    if(k.type === 'dual'){
+      top = `<div class="km-top">
+        <div>
+          <div class="km-label">${k.label}</div>
+          <div class="km-dual-vals">
+            ${k.keys.map((key,j) => `<div class="km-dual-item">
+              <div class="km-dual-legend" style="color:${j===0?'var(--blue)':'var(--orange)'}">${k.labels[j]}</div>
+              <div class="km-dual-val">${k.values[j]}</div>
+            </div>`).join('')}
+          </div>
+        </div>
+        ${k.anom ? `<span class="km-anom">${k.anom}</span>` : ''}
+      </div>`;
+    } else if(k.type === 'mfu'){
+      const cur = parseFloat(k.value)/100;
+      const gap = ((k.peak - cur)*100).toFixed(0);
+      const fillPct = (cur/k.peak*100).toFixed(1);
+      const bd = k.breakdown;
+      top = `<div class="km-top" style="flex-direction:column;align-items:flex-start;gap:0;">
+        <div class="km-label">${k.label}</div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-top:4px;margin-bottom:10px;">
+          <div class="km-val">${k.value}</div>
+          <span style="font-size:11px;color:var(--red);font-family:var(--font-mono)">↑ 还差 ${gap}pp</span>
+        </div>
+        <div style="width:100%;">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);font-family:var(--font-mono);margin-bottom:4px;">
+            <span>当前 ${k.value}</span><span>H800 BF16 峰值 ${(k.peak*100).toFixed(0)}%</span>
+          </div>
+          <div style="height:6px;background:rgba(33,33,33,.08);border-radius:999px;overflow:hidden;">
+            <div style="height:100%;width:${fillPct}%;background:var(--blue);border-radius:999px;"></div>
+          </div>
+        </div>
+        <div style="width:100%;margin-top:12px;">
+          <div style="font-size:10px;color:var(--text-3);font-family:var(--font-mono);margin-bottom:5px;letter-spacing:.03em;">时间分配</div>
+          <div style="height:8px;border-radius:999px;overflow:hidden;display:flex;">
+            <div style="flex:${bd.compute};background:var(--blue);"></div>
+            <div style="flex:${bd.comm};background:var(--red);"></div>
+            <div style="flex:${bd.other};background:rgba(33,33,33,.18);"></div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:5px;font-size:10px;font-family:var(--font-mono);">
+            <span style="color:var(--blue)">▪ 计算 ${(bd.compute*100).toFixed(0)}%</span>
+            <span style="color:var(--red)">▪ 通信 ${(bd.comm*100).toFixed(0)}%</span>
+            <span style="color:var(--text-3)">▪ 其他 ${(bd.other*100).toFixed(0)}%</span>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      top = `<div class="km-top"><div><div class="km-label">${k.label}</div>
+          <div class="km-val${k.bad?' bad':''}">${k.value}</div></div>
+          ${k.anom?`<span class="km-anom">${k.anom}</span>`:''}</div>`;
+    }
+    return `<div class="card">${top}
+      <div class="km-chart" id="km${i}"></div>
+      <div class="km-axis" id="kmAxis${i}"></div>
+      <div class="km-axis-title">step</div></div>`;
+  }).join('');
+
+  // source note
+
+  drawCharts();
+  renderEventsTab();
+}
+
+// ---------- 指标卡片 + 数据配置 ----------
+function renderCards(){
+  const t = TASKS[current];
+  const shown = t.metrics.filter(m=>m.shown);
+  document.getElementById('cards').innerHTML = shown.length ? shown.map(c=>
+    `<div class="metric-card">
+       <div class="mc-info"><span class="label">${c.label}</span><span class="value">${c.value}</span></div>
+       <div class="spark">${sparkSVG(t.series[c.key],'#1863dc')}</div></div>`).join('')
+    : `<div class="metric-card" style="justify-content:center;color:var(--text-3)">未选择任何指标</div>`;
+}
+
+function renderDropdown(){
+  const t = TASKS[current];
+  const dd = document.getElementById('dropdown');
+  const shown = t.metrics.filter(m=>m.shown);
+  const hidden = t.metrics.filter(m=>!m.shown);
+  dd.innerHTML =
+    `<div class="dd-title">已显示 <span class="hint">拖动排序</span></div>` +
+    `<div id="ddShown">` + shown.map(c=>
+      `<div class="dd-item" draggable="true" data-key="${c.key}">
+         <span class="dd-handle">⠿</span>
+         <span class="dd-label">${c.label}</span>
+         <input type="checkbox" checked data-key="${c.key}"></div>`).join('') + `</div>` +
+    `<div class="dd-title">未显示 <span class="hint">常见观测参数</span></div>` +
+    hidden.map(c=>
+      `<div class="dd-item muted" data-key="${c.key}">
+         <span class="dd-handle" style="visibility:hidden">⠿</span>
+         <span class="dd-label">${c.label}</span>
+         <input type="checkbox" data-key="${c.key}"></div>`).join('');
+  bindDropdown();
+}
+
+function bindDropdown(){
+  const t = TASKS[current];
+  // 勾选切换：显示 / 隐藏
+  document.querySelectorAll('#dropdown input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', e=>{
+      e.stopPropagation();
+      const m = t.metrics.find(x=>x.key===cb.dataset.key);
+      if(!m) return;
+      if(cb.checked){               // 隐藏 → 显示：移到已显示末尾
+        m.shown = true;
+        t.metrics.splice(t.metrics.indexOf(m),1);
+        t.metrics.push(m);
+      } else {
+        m.shown = false;
+      }
+      renderCards();
+      renderDropdown();
+    });
+  });
+  // 拖动排序（仅已显示区）
+  const container = document.getElementById('ddShown');
+  if(!container) return;
+  let dragEl = null;
+  container.querySelectorAll('.dd-item').forEach(item=>{
+    item.addEventListener('dragstart', ()=>{ dragEl = item; item.classList.add('dragging'); });
+    item.addEventListener('dragend', ()=>{
+      item.classList.remove('dragging');
+      const order = [...container.querySelectorAll('.dd-item')].map(el=>el.dataset.key);
+      applyShownOrder(order);
+    });
+  });
+  container.addEventListener('dragover', e=>{
+    e.preventDefault();
+    if(!dragEl) return;
+    const after = afterElement(container, e.clientY);
+    if(after == null) container.appendChild(dragEl);
+    else container.insertBefore(dragEl, after);
+  });
+}
+
+function afterElement(container, y){
+  const items = [...container.querySelectorAll('.dd-item:not(.dragging)')];
+  let closest = { dist: -Infinity, el: null };
+  for(const el of items){
+    const box = el.getBoundingClientRect();
+    const offset = y - box.top - box.height/2;
+    if(offset < 0 && offset > closest.dist) closest = { dist: offset, el };
+  }
+  return closest.el;
+}
+
+function applyShownOrder(order){
+  const t = TASKS[current];
+  const rank = {};
+  order.forEach((k,i)=> rank[k]=i);
+  // 已显示按拖动后顺序排列；未显示保持相对顺序并整体置后
+  t.metrics.sort((a,b)=>{
+    if(a.shown && b.shown) return rank[a.key]-rank[b.key];
+    if(a.shown) return -1;
+    if(b.shown) return 1;
+    return 0;
+  });
+  renderCards();
+}
+
+function dualChart(el, dataA, dataB, labels){
+  const w = el.clientWidth||460, h=150, pad=12;
+  const all = dataA.concat(dataB);
+  const min = Math.min(...all), max = Math.max(...all), rng=(max-min)||1;
+  const lineA = pathFrom(dataA,w,h,pad);
+  const lineB = pathFrom(dataB,w,h,pad);
+  let crossX = null;
+  for(let i=1;i<dataA.length;i++){
+    const d0=dataA[i-1]-dataB[i-1], d1=dataA[i]-dataB[i];
+    if(d0*d1<=0){ crossX=pad+(i-0.5)*(w-pad*2)/(dataA.length-1); break; }
+  }
+  const crossLine = crossX!=null
+    ? `<line x1="${crossX.toFixed(1)}" y1="${pad}" x2="${crossX.toFixed(1)}" y2="${h-pad}" stroke="rgba(180,35,24,.35)" stroke-width="1" stroke-dasharray="3 3"/>`
+    : '';
+  const labA = labels?.[0]||'A', labB = labels?.[1]||'B';
+  el.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    ${crossLine}
+    <path d="${lineA}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${lineB}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5 3" stroke-linejoin="round" stroke-linecap="round"/>
+    <text x="${pad+4}" y="${pad+11}" font-size="9" fill="var(--blue)" font-family="monospace">${labA}</text>
+    <text x="${pad+4}" y="${pad+22}" font-size="9" fill="var(--orange)" font-family="monospace">${labB}</text>
+  </svg>`;
+}
+
+function mfuChart(el, data, peak){
+  const w = el.clientWidth||460, h=150, pad=12;
+  const maxV = peak * 1.08;
+  const Y = v => pad + (h-pad*2)*(1 - v/maxV);
+  const stepX = (w-pad*2)/(data.length-1);
+  const line = data.map((v,i)=>(i?'L':'M')+(pad+i*stepX).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
+  const area = line+` L ${w-pad} ${h-pad} L ${pad} ${h-pad} Z`;
+  const py = Y(peak).toFixed(1);
+  el.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <line x1="${pad}" y1="${py}" x2="${w-pad}" y2="${py}" stroke="var(--green)" stroke-width="1" stroke-dasharray="4 3" opacity=".75"/>
+    <text x="${w-pad-4}" y="${(+py-3).toFixed(1)}" font-size="9" fill="var(--green)" font-family="monospace" text-anchor="end">H800 BF16 峰值 ${(peak*100).toFixed(0)}%</text>
+    <path d="${area}" fill="var(--blue)" opacity="0.06"/>
+    <path d="${line}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function drawCharts(){
+  const t = TASKS[current];
+  splitChart(document.getElementById('diagSplit'),
+    t.series[t.diag.before.key], t.series[t.diag.after.key], 6,
+    t.diag.before.color.includes('red')?'#b42318':'#177245',
+    t.diag.after.color.includes('red')?'#b42318':'#177245');
+  const firstKeyed = t.key.find(k=>k.key);
+  const stepMax = Math.round(parseFloat(t.runtime.stepCur)) || (firstKeyed ? t.series[firstKeyed.key].length : 20);
+  t.key.forEach((k,i)=>{
+    const el = document.getElementById('km'+i);
+    if(k.type === 'dual'){
+      dualChart(el, t.series[k.keys[0]], t.series[k.keys[1]], k.labels);
+    } else if(k.type === 'mfu'){
+      mfuChart(el, t.series[k.key], k.peak);
+    } else {
+      const bandY = bigChart(el, t.series[k.key], '#1863dc', k.band);
+      if(!k.anom && bandY!=null)
+        el.insertAdjacentHTML('beforeend',
+          `<span class="km-band-label" style="top:${bandY.toFixed(1)}px">最佳收敛区间</span>`);
+    }
+    overlayEventLines(el, t.events, stepMax);
+    const ax = document.getElementById('kmAxis'+i);
+    if(ax){
+      const ticks = 4;
+      ax.innerHTML = Array.from({length: ticks+1}, (_,j)=>
+        `<span>${Math.round(stepMax*j/ticks)}</span>`).join('');
+    }
+  });
+}
+
+// ---------- description tooltip ----------
+const _tip = document.createElement('div');
+_tip.id = 'descTooltip';
+_tip.className = 'desc-tooltip';
+document.body.appendChild(_tip);
+
+// shared tooltip for event vertical lines
+const _evTip = document.createElement('div');
+_evTip.id = 'evLineTooltip';
+document.body.appendChild(_evTip);
+
+let _tipHideTimer = null;
+
+function bindDescTooltip(){
+  const outer = document.querySelector('.task-desc-outer');
+  if(!outer) return;
+  outer.addEventListener('mouseenter', function(){
+    clearTimeout(_tipHideTimer);
+    _tip.innerHTML = this._tipHtml || '';
+    _tip.style.display = 'block';
+    const rect = this.getBoundingClientRect();
+    _tip.style.left = rect.left + 'px';
+    _tip.style.top = '';
+    const tipH = _tip.offsetHeight;
+    const topPos = rect.top - tipH - 8;
+    _tip.style.top = (topPos < 8 ? rect.bottom + 8 : topPos) + 'px';
+  });
+  outer.addEventListener('mouseleave', ()=>{
+    _tipHideTimer = setTimeout(()=>{ _tip.style.display = 'none'; }, 150);
+  });
+}
+_tip.addEventListener('mouseenter', ()=> clearTimeout(_tipHideTimer));
+_tip.addEventListener('mouseleave', ()=>{
+  _tipHideTimer = setTimeout(()=>{ _tip.style.display = 'none'; }, 150);
+});
+
+function bindEvTooltips(){
+  document.querySelectorAll('#events .ev-text').forEach(el=>{
+    el.addEventListener('mouseenter', function(){
+      if(this.scrollWidth <= this.clientWidth) return;
+      clearTimeout(_tipHideTimer);
+      _tip.textContent = this.dataset.full;
+      _tip.style.display = 'block';
+      const rect = this.getBoundingClientRect();
+      _tip.style.left = rect.left + 'px';
+      const tipH = _tip.offsetHeight;
+      const topPos = rect.top - tipH - 8;
+      _tip.style.top = (topPos < 8 ? rect.bottom + 8 : topPos) + 'px';
+    });
+    el.addEventListener('mouseleave', ()=>{
+      _tipHideTimer = setTimeout(()=>{ _tip.style.display = 'none'; }, 150);
+    });
+  });
+}
+
+// ---------- tab switching ----------
+function initTabs(){
+  document.querySelectorAll('.tab[data-tab]').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('[id^="tab-"]').forEach(p=>{ p.style.display='none'; });
+      tab.classList.add('active');
+      const panel = document.getElementById('tab-'+tab.dataset.tab);
+      if(panel) panel.style.display='';
+      if(tab.dataset.tab==='overview') drawCharts();
+    });
+  });
+}
+
+// ---------- overlay event vertical lines on km charts ----------
+function overlayEventLines(el, events, stepMax){
+  if(!el||!events||!events.length||!stepMax) return;
+  const svg = el.querySelector('svg');
+  if(!svg) return;
+  const vb = svg.viewBox.baseVal;
+  const w = vb.width||460, h = vb.height||150, pad = 12;
+  events.forEach(ev=>{
+    if(ev.step==null) return;
+    const x = pad + (ev.step/stepMax)*(w-pad*2);
+    const col = ev.c.includes('red') ? 'rgba(180,35,24,.55)'
+      : ev.c.includes('#ffab00') ? 'rgba(180,92,23,.55)'
+      : 'rgba(23,114,69,.55)';
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x.toFixed(1)); line.setAttribute('y1',String(pad));
+    line.setAttribute('x2',x.toFixed(1)); line.setAttribute('y2',String(h-pad));
+    line.setAttribute('stroke',col); line.setAttribute('stroke-width','1');
+    line.setAttribute('stroke-dasharray','3 3');
+    svg.appendChild(line);
+    const hit = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    hit.setAttribute('x', String(x-5)); hit.setAttribute('y', String(pad));
+    hit.setAttribute('width','10'); hit.setAttribute('height', String(h-pad*2));
+    hit.setAttribute('fill','transparent'); hit.style.cursor='default';
+    hit.addEventListener('mouseover',()=>{
+      _evTip.innerHTML = `<b>step ${ev.step}</b><br>${ev.t}`;
+      _evTip.style.display='block';
+    });
+    hit.addEventListener('mousemove',e=>{
+      _evTip.style.left=(e.clientX+14)+'px';
+      _evTip.style.top=(e.clientY-42)+'px';
+    });
+    hit.addEventListener('mouseout',()=>{ _evTip.style.display='none'; });
+    svg.appendChild(hit);
+  });
+}
+
+// ---------- render events tab ----------
+function renderEventsTab(){
+  const t = TASKS[current];
+  const el = document.getElementById('eventsTable');
+  if(!el) return;
+  const typeOf = c=>{
+    if(c.includes('red')) return {label:'错误',bg:'var(--red-soft)',fg:'var(--red)'};
+    if(c.includes('#ffab00')) return {label:'警告',bg:'rgba(255,171,0,.12)',fg:'#b45c17'};
+    return {label:'信息',bg:'var(--green-soft)',fg:'var(--green)'};
+  };
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;">
+    <thead><tr style="font-size:11px;color:var(--text-3);font-family:var(--font-mono);text-align:left;">
+      <th style="padding:6px 20px 10px 0;width:80px;border-bottom:1px solid rgba(33,33,33,.08)">Step</th>
+      <th style="padding:6px 20px 10px;width:95px;border-bottom:1px solid rgba(33,33,33,.08)">时间</th>
+      <th style="padding:6px 20px 10px;width:66px;border-bottom:1px solid rgba(33,33,33,.08)">类型</th>
+      <th style="padding:6px 0 10px;border-bottom:1px solid rgba(33,33,33,.08)">描述</th>
+    </tr></thead>
+    <tbody>${[...t.events].reverse().map(e=>{
+      const tp=typeOf(e.c);
+      return `<tr>
+        <td style="padding:10px 20px 10px 0;font-family:var(--font-mono);font-size:12px;color:var(--text-3);border-bottom:1px solid rgba(33,33,33,.05);vertical-align:top">${e.step!=null?e.step:'—'}</td>
+        <td style="padding:10px 20px;font-family:var(--font-mono);font-size:11px;color:var(--text-3);border-bottom:1px solid rgba(33,33,33,.05);vertical-align:top">${e.time}</td>
+        <td style="padding:10px 20px;border-bottom:1px solid rgba(33,33,33,.05);vertical-align:top">
+          <span style="font-size:10px;padding:2px 8px;border-radius:999px;font-family:var(--font-mono);white-space:nowrap;background:${tp.bg};color:${tp.fg}">${tp.label}</span>
+        </td>
+        <td style="padding:10px 0;font-size:12.5px;border-bottom:1px solid rgba(33,33,33,.05);vertical-align:top;line-height:1.6">${e.t}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+initTabs();
+renderAll();
+window.addEventListener('resize', drawCharts);
+
+const menuBtn = document.getElementById('menuBtn'), dropdown = document.getElementById('dropdown');
+menuBtn.addEventListener('click', e=>{ e.stopPropagation(); dropdown.classList.toggle('open'); });
+document.addEventListener('click', ()=> dropdown.classList.remove('open'));
+dropdown.addEventListener('click', e=> e.stopPropagation());
+</script>
+</body>
+</html>
