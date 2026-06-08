@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "0.1",
+  "modelId": "qwen2-7b",
+  "reportId": "r20260526",
+  "sourceFiles": ["MindStudioNext.html#GRAPH_PROBLEMS"],
+  "generatedAt": "2026-05-26T00:00:00Z",
+  "defaultNode": "lm_head",
+  "problemNodes": {
+    "lm_head": {
+      "priority": "P0",
+      "issueId": "ISSUE-r20260526-3.2",
+      "issueRef": "3.2",
+      "opType": "MatMulV3 (MIX_AIC 路径)",
+      "title": "LM Head 投影走非最优 Tiling",
+      "metric": "单次耗时 18.4 ms × 2（MIX_AIC），rank 2 反向期共 36.8 ms",
+      "impact": "反向期间额外 36.8 ms，占单步 4.5%；vocab 维度未对齐 32 导致触发 MIX_AIC 兜底路径，而非更快的纯 AI_CORE Cube",
+      "fix": [
+        "检查 lm_head 的 vocab 维度是否为 32 的倍数（可用 --make-vocab-size-divisible-by 128）",
+        "若 vocab 未对齐，padding 后重训或调整 tokenizer 配置",
+        "若仍走 MIX_AIC，显式 cast 为 bfloat16 后传入 matmul 可强制走纯 AI_CORE Cube"
+      ],
+      "verify": "重采后 kernel_details.csv 中不再有 > 5 ms 的 MatMulV3 实例",
+      "codeHint": "# 启动参数加入（Megatron 风格）：\n# --make-vocab-size-divisible-by 128\n\n# 等价 Python：\nimport math\nvocab_size = math.ceil(vocab_size / 128) * 128\n# Qwen2-7B 151936 → 151936（已是 128 的倍数）\n# 可能是 padding 值未同步，需排查",
+      "runtimeOpName": "MatMulV3",
+      "streamId": 47,
+      "stepId": 11
+    },
+    "output_logits": {
+      "priority": "P1",
+      "issueId": "ISSUE-r20260526-3.3",
+      "issueRef": "3.3",
+      "opType": "Exp / Sub / RealDiv / ArgMaxWithValue (串行)",
+      "title": "Cross-Entropy 链路 ~80 ms 串行无融合",
+      "metric": "rank 2 中：Exp 16ms + Sub 15.8ms + RealDiv 15.7ms + Cast 20.7ms + ArgMaxWithValue 6.8ms + ReduceSum 6.9ms",
+      "impact": "占单步 ~10%；手写 softmax→log→gather 展开触发一串独立 Vector 算子，未使用 Ascend 融合路径",
+      "fix": [
+        "替换为 F.cross_entropy(logits, labels)，torch_npu 路由到 aclnnSoftmaxCrossEntropyWithLogits（单次 fused）",
+        "若用 Megatron，启用 VocabParallelCrossEntropy 并确认 parallel_output=True",
+        "ArgMaxWithValue / ReduceSum（accuracy 指标）移到 eval_interval 条件内，非每步必算"
+      ],
+      "verify": "重采后 op_statistic.csv (rank 2) 中 Exp/RealDiv 消失；rank 2 Computing 再减 ~30 ms",
+      "codeHint": "# 原写法（触发 Exp/Sub/RealDiv/ArgMaxWithValue 链路）：\nlog_probs = logits - logits.max(-1, keepdim=True).values\nlog_probs -= torch.log(torch.exp(log_probs).sum(-1, keepdim=True))\nloss = -log_probs.gather(-1, labels.unsqueeze(-1)).squeeze(-1).mean()\n\n# 修改后（fused 路径，消除全部 Vector 算子）：\nimport torch.nn.functional as F\nloss = F.cross_entropy(logits, labels, ignore_index=pad_id)",
+      "runtimeOpName": "Exp",
+      "runtimeOpNames": ["Sub", "Exp", "ReduceSum", "RealDiv", "Cast", "ArgMaxWithValue"],
+      "streamId": 179,
+      "stepId": 12
+    }
+  }
+}

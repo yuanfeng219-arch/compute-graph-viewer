@@ -1,0 +1,206 @@
+{
+  "schemaVersion": "0.1",
+  "modelId": "qwen2-7b",
+  "reportId": "r20260526",
+  "sourceFiles": ["MindStudioNext.html#QWEN7B_NODE_INFO"],
+  "generatedAt": "2026-05-26T00:00:00Z",
+  "nodeInfo": {
+    "input_tokens": {
+      "what": "模型的原始输入，每个元素是词表中的 token 整数 ID，由分词器（Tokenizer）对文本切分后生成。",
+      "idEn": "input token IDs",
+      "clusters": [],
+      "inputs": [{ "from": "分词器 (Tokenizer)", "desc": "文本切分后的 token ID 序列，shape [batch, seq_len]" }],
+      "outputs": [{ "to": "token_embedding", "desc": "传入嵌入层做向量映射" }],
+      "sources": [{ "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }]
+    },
+    "token_embedding": {
+      "what": "词嵌入层（Embedding Lookup）：将离散的 token ID 映射为连续的高维向量。Qwen-7B 词表大小 151,936，嵌入维度 4,096。权重与 LM Head 共享（tied weights）。",
+      "idEn": "token embedding lookup table",
+      "clusters": ["QWen Transformer"],
+      "inputs": [{ "from": "input_tokens", "desc": "token ID 序列 [batch, seq_len]" }],
+      "outputs": [{ "to": "attn_norm", "desc": "嵌入向量序列 [batch, seq_len, 4096]，进入第一个 Decoder Block" }],
+      "params": "词表大小 151,936 · 嵌入维度 4,096 · 参数量 ~622 M",
+      "sources": [
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" },
+        { "text": "Qwen2 HuggingFace 实现", "url": "https://github.com/huggingface/transformers/blob/main/src/transformers/models/qwen2/modeling_qwen2.py" }
+      ]
+    },
+    "rope_cache": {
+      "what": "RoPE（旋转位置编码）预计算缓存：存储各序列位置的 cos/sin 旋转矩阵，在每个 Decoder Block 的 Apply RoPE 节点中使用。Qwen-7B 使用超大 RoPE base（1,000,000）以支持长上下文。",
+      "idEn": "rotary position embedding cache (cos/sin tables)",
+      "clusters": [],
+      "inputs": [{ "from": "初始化阶段", "desc": "根据最大序列长度和 RoPE base 1,000,000 预计算，形状 [max_seq_len, head_dim/2]" }],
+      "outputs": [{ "to": "rotary_apply", "desc": "cos/sin 旋转矩阵，所有 Decoder Block 共享同一缓存" }],
+      "params": "RoPE base 1,000,000 · 每头旋转维度 head_dim/2 = 64",
+      "sources": [
+        { "text": "RoPE 原论文 arXiv:2104.09864", "url": "https://arxiv.org/abs/2104.09864" },
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }
+      ]
+    },
+    "kv_cache": {
+      "what": "KV 缓存（Key-Value Cache）：推理时缓存历史 token 的 Key 和 Value 向量，避免每步重新计算，大幅降低推理延迟。训练阶段不使用此缓存。",
+      "idEn": "key-value cache for inference",
+      "clusters": [],
+      "inputs": [{ "from": "上一解码步骤", "desc": "历史 token 的 K/V 张量 [batch, past_len, kv_heads, head_dim]" }],
+      "outputs": [{ "to": "scaled_attention", "desc": "拼接到当前 K/V 后一起参与注意力计算" }],
+      "sources": [{ "text": "Qwen GitHub 仓库", "url": "https://github.com/QwenLM/Qwen" }]
+    },
+    "attn_norm": {
+      "what": "Attention 前的 RMSNorm（均方根归一化）。Pre-Norm 结构：先对隐藏状态归一化再进注意力层，比 Post-Norm 训练更稳定。无偏置，仅一组可学习缩放参数 γ。",
+      "idEn": "attention pre-normalization (RMSNorm)",
+      "clusters": ["QWen Transformer", "Decoder Layer ×32"],
+      "inputs": [{ "from": "token_embedding（第一层）或上一 Block 的残差输出", "desc": "隐藏状态 [batch, seq_len, 4096]" }],
+      "outputs": [{ "to": "qkv_linear", "desc": "归一化后的隐藏状态 [batch, seq_len, 4096]（形状不变）" }],
+      "params": "参数量 4,096（仅可学习缩放因子 γ，无偏置）",
+      "sources": [
+        { "text": "RMSNorm 论文 arXiv:1910.07467", "url": "https://arxiv.org/abs/1910.07467" },
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }
+      ]
+    },
+    "qkv_linear": {
+      "what": "QKV 投影层：将归一化隐藏状态用三个独立线性层分别投影为 Query、Key、Value 向量。Qwen-7B 使用 GQA（分组查询注意力），Q 有 28 头，K/V 各 4 头，显著降低 KV 缓存显存。多卡 TP 中为 column-parallel，每卡持有权重的一列分片，AllGather 输入后本地 MatMul。",
+      "idEn": "query-key-value linear projection (GQA)",
+      "clusters": ["QWen Transformer", "Decoder Layer ×32", "Self Attention"],
+      "inputs": [{ "from": "attn_norm", "desc": "归一化隐藏状态 [batch, seq_len, 4096]" }],
+      "outputs": [{ "to": "rotary_apply", "desc": "Q [batch, seq_len, 28×128]，K [batch, seq_len, 4×128]，V [batch, seq_len, 4×128]" }],
+      "params": "Q 权重 4096×3584，K/V 权重各 4096×512；GQA 28Q / 4KV 头；head_dim 128",
+      "sources": [
+        { "text": "GQA 论文 arXiv:2305.13245", "url": "https://arxiv.org/abs/2305.13245" },
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" },
+        { "text": "Megatron-LM TP arXiv:1909.08053", "url": "https://arxiv.org/abs/1909.08053" }
+      ]
+    },
+    "rotary_apply": {
+      "what": "将 RoPE 旋转位置编码作用于 Q 和 K 向量，使每个 token 的注意力分数天然编码相对位置距离。V 向量不旋转。旋转通过复数乘法实现：将每对相邻维度视为复数分量，乘以对应位置角度的旋转因子。",
+      "idEn": "apply rotary position embeddings to Q and K",
+      "clusters": ["QWen Transformer", "Decoder Layer ×32", "Self Attention"],
+      "inputs": [
+        { "from": "qkv_linear", "desc": "Q [batch, seq_len, 28×128]，K [batch, seq_len, 4×128]" },
+        { "from": "rope_cache", "desc": "各位置 cos/sin 旋转矩阵" }
+      ],
+      "outputs": [{ "to": "scaled_attention", "desc": "旋转后 Q/K（形状不变）及未变的 V，一起送入注意力" }],
+      "params": "RoPE base 1,000,000 · 旋转维度 head_dim/2 = 64",
+      "sources": [
+        { "text": "RoPE 原论文 arXiv:2104.09864", "url": "https://arxiv.org/abs/2104.09864" },
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }
+      ]
+    },
+    "scaled_attention": {
+      "what": "FlashAttention 缩放点积注意力（Scaled Dot-Product Attention）：对每个 Query 计算与所有 Key 的相似度（除以 √head_dim 缩放），经 softmax 后加权求和 Value，得到上下文感知的表征。使用 FlashAttention IO 感知算法，将注意力矩阵分块计算，避免具象化 seq²×heads 的完整注意力矩阵，大幅降低显存峰值。",
+      "idEn": "scaled dot-product attention with FlashAttention",
+      "clusters": ["QWen Transformer", "Decoder Layer ×32", "Self Attention"],
+      "inputs": [
+        { "from": "rotary_apply", "desc": "旋转后 Q/K，以及 V；shape [batch, seq_len, heads, 128]" },
+        { "from": "kv_cache（推理时）", "desc": "历史 K/V 拼接到当前序列" }
+      ],
+      "outputs": [{ "to": "attn_output_linear", "desc": "注意力上下文向量 [batch, seq_len, 28×128=3584]" }],
+      "params": "GQA 28Q / 4KV 头 · head_dim 128 · 缩放因子 1/√128 ≈ 0.0884",
+      "sources": [
+        { "text": "FlashAttention-2 arXiv:2307.08691", "url": "https://arxiv.org/abs/2307.08691" },
+        { "text": "GQA 论文 arXiv:2305.13245", "url": "https://arxiv.org/abs/2305.13245" },
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }
+      ]
+    },
+    "attn_output_linear": {
+      "what": "Attention 输出投影（O-proj）：将多头注意力拼接后的结果线性映射回隐藏维度 4,096，然后与残差相加完成 Attention 子层。多卡 TP 中为 row-parallel：每卡持有权重的行分片，本地 MatMul 后 ReduceScatter 合并，Ascend 将两步融合为 MatmulReduceScatterAicpu 算子。",
+      "idEn": "attention output projection (O-proj), row-parallel in TP",
+      "clusters": ["QWen Transformer", "Decoder Layer ×32", "Self Attention"],
+      "inputs": [{ "from": "scaled_attention", "desc": "多头拼接上下文向量 [batch, seq_len, 3584]" }],
+      "outputs": [{ "to": "mlp_norm（经残差相加）", "desc": "投影输出 [batch, seq_len, 4096]，+ 残差 → 送入 MLP RMSNorm" }],
+      "params": "权重矩阵 3584×4096",
+      "sources": [
+        { "text": "Megatron-LM TP arXiv:1909.08053", "url": "https://arxiv.org/abs/1909.08053" },
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }
+      ]
+    },
+    "mlp_norm": {
+      "what": "MLP（FFN）前的 RMSNorm。结构与 attn_norm 完全相同，但作用对象是 Attention 子层 + 残差之后的隐藏状态，为 SwiGLU FFN 做输入归一化。",
+      "idEn": "MLP / FFN input pre-normalization (RMSNorm)",
+      "clusters": ["QWen Transformer", "Decoder Layer ×32"],
+      "inputs": [{ "from": "attn_output_linear + 残差", "desc": "经注意力子层残差相加后的隐藏状态 [batch, seq_len, 4096]" }],
+      "outputs": [{ "to": "mlp_gate_linear / mlp_up_linear", "desc": "归一化隐藏状态 [batch, seq_len, 4096]，同时分发到 Gate 和 Up 两个分支" }],
+      "params": "参数量 4,096（γ，无偏置）",
+      "sources": [
+        { "text": "RMSNorm 论文 arXiv:1910.07467", "url": "https://arxiv.org/abs/1910.07467" },
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }
+      ]
+    },
+    "mlp_gate_linear": {
+      "what": "SwiGLU 门控分支（gate_proj）：将隐藏状态投影到中间维度，经 SiLU 激活后与 Up 分支做逐元素相乘，实现门控机制。多卡 TP 中为 column-parallel，Ascend 将 AllGather + MatMul 融合为 AllGatherMatmulAicpu 算子。",
+      "idEn": "SwiGLU gate projection (column-parallel in TP)",
+      "clusters": ["QWen Transformer", "Decoder Layer ×32", "SwiGLU MLP"],
+      "inputs": [{ "from": "mlp_norm", "desc": "归一化隐藏状态 [batch, seq_len, 4096]" }],
+      "outputs": [{ "to": "silu_multiply", "desc": "门控值 [batch, seq_len, 18944]，经 SiLU 激活后与 up_proj 相乘" }],
+      "params": "权重矩阵 4096×18944（中间维度 18,944）",
+      "sources": [
+        { "text": "SwiGLU 论文 arXiv:2002.05202", "url": "https://arxiv.org/abs/2002.05202" },
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" },
+        { "text": "Megatron-LM TP arXiv:1909.08053", "url": "https://arxiv.org/abs/1909.08053" }
+      ]
+    },
+    "mlp_up_linear": {
+      "what": "SwiGLU 上投影分支（up_proj）：将隐藏状态投影到中间维度，作为门控的被乘数。与 gate_proj 并行计算，两者维度完全相同，最终做逐元素乘积（Hadamard 积）。多卡 TP 中为 column-parallel。",
+      "idEn": "SwiGLU up projection (column-parallel in TP)",
+      "clusters": ["QWen Transformer", "Decoder Layer ×32", "SwiGLU MLP"],
+      "inputs": [{ "from": "mlp_norm", "desc": "归一化隐藏状态 [batch, seq_len, 4096]（与 gate_proj 共享同一输入）" }],
+      "outputs": [{ "to": "silu_multiply", "desc": "上投影值 [batch, seq_len, 18944]，直接与 SiLU(gate) 做逐元素相乘" }],
+      "params": "权重矩阵 4096×18944（中间维度 18,944）",
+      "sources": [
+        { "text": "SwiGLU 论文 arXiv:2002.05202", "url": "https://arxiv.org/abs/2002.05202" },
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }
+      ]
+    },
+    "silu_multiply": {
+      "what": "SwiGLU 激活与门控相乘：对 gate_proj 输出施加 SiLU(x) = x·σ(x) 激活，再与 up_proj 输出逐元素相乘，即 SwiGLU = SiLU(gate) ⊗ up。这是 Qwen 替代 ReLU/GELU 的核心激活，在保持较低参数量的同时提升表达能力。",
+      "idEn": "SiLU activation and element-wise multiply (SwiGLU gate)",
+      "clusters": ["QWen Transformer", "Decoder Layer ×32", "SwiGLU MLP"],
+      "inputs": [
+        { "from": "mlp_gate_linear", "desc": "门控值 [batch, seq_len, 18944]（经 SiLU 激活）" },
+        { "from": "mlp_up_linear", "desc": "上投影值 [batch, seq_len, 18944]（直接参与相乘）" }
+      ],
+      "outputs": [{ "to": "mlp_down_linear", "desc": "门控后中间表征 [batch, seq_len, 18944]" }],
+      "sources": [
+        { "text": "SwiGLU 论文 arXiv:2002.05202", "url": "https://arxiv.org/abs/2002.05202" },
+        { "text": "GLU 变体综述 arXiv:2002.05202", "url": "https://arxiv.org/abs/2002.05202" }
+      ]
+    },
+    "mlp_down_linear": {
+      "what": "MLP 下投影（down_proj / output projection）：将 SwiGLU 门控后的中间表征从 18,944 维压缩回模型隐藏维度 4,096，然后与残差相加完成整个 Decoder Block 的 FFN 子层。多卡 TP 中为 row-parallel，Ascend 将 MatMul + ReduceScatter 融合为 MatmulReduceScatterAicpu 算子。",
+      "idEn": "SwiGLU down projection / MLP output (row-parallel in TP)",
+      "clusters": ["QWen Transformer", "Decoder Layer ×32", "SwiGLU MLP"],
+      "inputs": [{ "from": "silu_multiply", "desc": "门控中间表征 [batch, seq_len, 18944]" }],
+      "outputs": [{ "to": "attn_norm（下一 Block）或 final_norm（最后 Block）", "desc": "下投影输出 [batch, seq_len, 4096]，+ 残差 → 下一子层" }],
+      "params": "权重矩阵 18944×4096",
+      "sources": [
+        { "text": "Megatron-LM TP arXiv:1909.08053", "url": "https://arxiv.org/abs/1909.08053" },
+        { "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }
+      ]
+    },
+    "final_norm": {
+      "what": "最终 RMSNorm：在全部 32 个 Decoder Block 处理完毕后，对最终隐藏状态归一化，再送入语言模型头（LM Head）。确保输出向量的尺度稳定，利于 LM Head 的线性投影。",
+      "idEn": "final (post-transformer) RMSNorm before LM Head",
+      "clusters": ["QWen Transformer"],
+      "inputs": [{ "from": "mlp_down_linear（第 32 层）+ 残差", "desc": "最后 Decoder Block 的隐藏状态 [batch, seq_len, 4096]" }],
+      "outputs": [{ "to": "lm_head", "desc": "归一化隐藏状态 [batch, seq_len, 4096]" }],
+      "params": "参数量 4,096（γ，无偏置）",
+      "sources": [{ "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }]
+    },
+    "lm_head": {
+      "what": "语言模型头（Language Model Head）：将最终隐藏状态用线性层投影到词表大小，得到每个位置下一 token 的原始分数（logits）。权重与 token_embedding 共享（tied weights），节省约 622 M 参数。训练时 logits 送入 Cross-Entropy；推理时经 softmax 后采样。",
+      "idEn": "language model head — final linear projection to vocabulary",
+      "clusters": [],
+      "inputs": [{ "from": "final_norm", "desc": "最终归一化隐藏状态 [batch, seq_len, 4096]" }],
+      "outputs": [{ "to": "output_logits", "desc": "Logits [batch, seq_len, 151936]，覆盖整个词表" }],
+      "params": "权重矩阵 4096×151936（与 token_embedding 共享）",
+      "sources": [{ "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }]
+    },
+    "output_logits": {
+      "what": "模型最终输出的 token logits（原始分数）。训练时对最后一个 token 位置取 Cross-Entropy 损失（预测下一词）；推理时对全序列末位经 softmax → 采样/贪心解码得到下一 token，再 append 到序列继续生成。",
+      "idEn": "output token logits — raw scores over vocabulary",
+      "clusters": [],
+      "inputs": [{ "from": "lm_head", "desc": "原始分数 [batch, seq_len, 151936]" }],
+      "outputs": [{ "to": "损失函数（训练）/ 采样解码（推理）", "desc": "softmax → token 概率分布，训练时计算 CE Loss，推理时返回下一 token" }],
+      "sources": [{ "text": "Qwen 技术报告 arXiv:2309.16609", "url": "https://arxiv.org/abs/2309.16609" }]
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "0.1",
+  "modelId": "qwen2-7b",
+  "reportId": "r20260526",
+  "sourceFiles": ["MindStudioNext.html#QWEN7B_BASE_NODES", "MindStudioNext.html#QWEN7B_BASE_CLUSTERS", "MindStudioNext.html#QWEN7B_BASE_EDGES", "MindStudioNext.html#QWEN7B_CLUSTER_CHILDREN"],
+  "generatedAt": "2026-05-26T00:00:00Z",
+  "graph": {
+    "width": 1280,
+    "height": 1540,
+    "clusters": [
+      { "id": "transformer-core", "label": "QWen Transformer", "colorKey": "module:transformer", "x": 350, "y": 102, "width": 578, "height": 1208 },
+      { "id": "decoder-stack", "label": "Decoder Layer Template ×32", "colorKey": "module:decoder-layer", "x": 384, "y": 212, "width": 511, "height": 992 },
+      { "id": "attention-block", "label": "Self Attention", "colorKey": "module:attention", "x": 478, "y": 322, "width": 324, "height": 434 },
+      { "id": "mlp-block", "label": "SwiGLU MLP", "colorKey": "module:mlp", "x": 418, "y": 836, "width": 443, "height": 334 }
+    ],
+    "clusterChildren": {
+      "attention-block": ["qkv_linear", "rotary_apply", "scaled_attention", "attn_output_linear"],
+      "mlp-block": ["mlp_gate_linear", "mlp_up_linear", "silu_multiply", "mlp_down_linear"],
+      "decoder-stack": ["attn_norm", "mlp_norm", "attention-block", "mlp-block"],
+      "transformer-core": ["token_embedding", "decoder-stack", "final_norm"]
+    },
+    "nodes": [
+      { "id": "input_tokens", "label": "Token IDs", "typeLabel": "Input", "kind": "tensor", "x": 640, "y": 70, "width": 170, "height": 48, "colorKey": "io:input" },
+      { "id": "token_embedding", "label": "Embedding Lookup", "typeLabel": "Embedding", "kind": "op", "x": 640, "y": 176, "width": 240, "height": 56, "colorKey": "sem:embedding" },
+      { "id": "rope_cache", "label": "RoPE Cache", "typeLabel": "State", "kind": "tensor", "x": 235, "y": 495, "width": 188, "height": 52, "colorKey": "io:state" },
+      { "id": "kv_cache", "label": "KV Cache", "typeLabel": "State", "kind": "tensor", "x": 235, "y": 595, "width": 176, "height": 52, "colorKey": "io:state" },
+      { "id": "attn_norm", "label": "Attention RMSNorm", "typeLabel": "RMSNorm", "kind": "op", "x": 640, "y": 286, "width": 230, "height": 56, "colorKey": "sem:norm" },
+      { "id": "qkv_linear", "label": "QKV Linear", "typeLabel": "Linear", "kind": "op", "x": 640, "y": 395, "width": 186, "height": 54, "colorKey": "sem:linear" },
+      { "id": "rotary_apply", "label": "Apply RoPE", "typeLabel": "RotaryEmb", "kind": "op", "x": 640, "y": 495, "width": 184, "height": 54, "colorKey": "sem:rope" },
+      { "id": "scaled_attention", "label": "Scaled Attention", "typeLabel": "Attention", "kind": "op", "x": 640, "y": 595, "width": 212, "height": 54, "colorKey": "sem:attention" },
+      { "id": "attn_output_linear", "label": "Attention Output Linear", "typeLabel": "Linear", "kind": "op", "x": 640, "y": 695, "width": 256, "height": 54, "colorKey": "sem:linear" },
+      { "id": "mlp_norm", "label": "MLP RMSNorm", "typeLabel": "RMSNorm", "kind": "op", "x": 640, "y": 800, "width": 198, "height": 56, "colorKey": "sem:norm" },
+      { "id": "mlp_gate_linear", "label": "Gate Linear", "typeLabel": "Linear", "kind": "op", "x": 540, "y": 909, "width": 176, "height": 54, "colorKey": "sem:linear" },
+      { "id": "mlp_up_linear", "label": "Up Linear", "typeLabel": "Linear", "kind": "op", "x": 748, "y": 909, "width": 158, "height": 54, "colorKey": "sem:linear" },
+      { "id": "silu_multiply", "label": "SiLU Multiply", "typeLabel": "Activation", "kind": "op", "x": 640, "y": 1009, "width": 196, "height": 54, "colorKey": "sem:activation" },
+      { "id": "mlp_down_linear", "label": "MLP Output Linear", "typeLabel": "Linear", "kind": "op", "x": 640, "y": 1109, "width": 224, "height": 54, "colorKey": "sem:linear" },
+      { "id": "final_norm", "label": "Final RMSNorm", "typeLabel": "RMSNorm", "kind": "op", "x": 640, "y": 1248, "width": 196, "height": 56, "colorKey": "sem:norm" },
+      { "id": "lm_head", "label": "LM Head Linear", "typeLabel": "Linear", "kind": "op", "x": 640, "y": 1354, "width": 210, "height": 56, "colorKey": "sem:linear" },
+      { "id": "output_logits", "label": "Logits", "typeLabel": "Output", "kind": "tensor", "x": 640, "y": 1452, "width": 166, "height": 48, "colorKey": "io:output" }
+    ],
+    "edges": [
+      { "source": "input_tokens", "target": "token_embedding" },
+      { "source": "token_embedding", "target": "attn_norm" },
+      { "source": "attn_norm", "target": "qkv_linear" },
+      { "source": "qkv_linear", "target": "rotary_apply" },
+      { "source": "rope_cache", "target": "rotary_apply", "dashed": true },
+      { "source": "rotary_apply", "target": "scaled_attention" },
+      { "source": "kv_cache", "target": "scaled_attention", "dashed": true },
+      { "source": "scaled_attention", "target": "attn_output_linear" },
+      { "source": "attn_output_linear", "target": "mlp_norm" },
+      { "source": "mlp_norm", "target": "mlp_gate_linear" },
+      { "source": "mlp_norm", "target": "mlp_up_linear" },
+      { "source": "mlp_gate_linear", "target": "silu_multiply" },
+      { "source": "mlp_up_linear", "target": "silu_multiply" },
+      { "source": "silu_multiply", "target": "mlp_down_linear" },
+      { "source": "mlp_down_linear", "target": "final_norm" },
+      { "source": "final_norm", "target": "lm_head" },
+      { "source": "lm_head", "target": "output_logits" }
+    ]
+  }
+}

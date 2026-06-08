@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "0.1",
+  "modelId": "qwen2-7b",
+  "reportId": "r20260526",
+  "sourceFiles": ["qwen2-7b.demo.trace_view.json"],
+  "generatedAt": "2026-05-26T00:00:00Z",
+  "note": "Regression fixture only. Expected LaneModel summary the parser GEW.traceParser.parse should yield from qwen2-7b.demo.trace_view.json. Not a render source.",
+  "expected": {
+    "stepIds": [10, 11, 12],
+    "streamIds": [43, 47, 179, 186],
+    "laneCounts": {
+      "step": 3,
+      "stream": 4,
+      "communication": 2
+    },
+    "totalTasks": 191,
+    "communicationTasks": 9,
+    "communicationWaitPresent": true,
+    "sampleTaskByNode": {
+      "lm_head": "1085",
+      "output_logits": "1088"
+    },
+    "linkage": {
+      "lm_head": { "runtimeOpName": "MatMulV3", "streamId": 47, "stepId": 11, "instanceCount": 2 },
+      "output_logits": { "runtimeOpName": "Exp", "streamId": 179, "stepId": 12, "chainOps": ["Sub", "Exp", "ReduceSum", "RealDiv", "Cast", "ArgMaxWithValue"] }
+    },
+    "communicationStreams": ["HCCL", "hcom"]
+  }
+}

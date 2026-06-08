@@ -1,0 +1,3221 @@
+{
+  "schemaVersion": "0.1",
+  "modelId": "qwen2-7b",
+  "reportId": "r20260526",
+  "sourceFiles": [
+    "trace_view.json"
+  ],
+  "generatedAt": "2026-05-26T00:00:00Z",
+  "traceEvents": [
+    {
+      "ph": "M",
+      "name": "process_name",
+      "pid": 1,
+      "args": {
+        "name": "python"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "process_sort_index",
+      "pid": 1,
+      "args": {
+        "sort_index": 1
+      }
+    },
+    {
+      "ph": "M",
+      "name": "process_name",
+      "pid": 2,
+      "args": {
+        "name": "CANN"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "process_sort_index",
+      "pid": 2,
+      "args": {
+        "sort_index": 2
+      }
+    },
+    {
+      "ph": "M",
+      "name": "process_name",
+      "pid": 3,
+      "args": {
+        "name": "Ascend Hardware"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "process_sort_index",
+      "pid": 3,
+      "args": {
+        "sort_index": 3
+      }
+    },
+    {
+      "ph": "M",
+      "name": "process_name",
+      "pid": 4,
+      "args": {
+        "name": "Communication"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "process_sort_index",
+      "pid": 4,
+      "args": {
+        "sort_index": 4
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "pid": 1,
+      "tid": 10,
+      "args": {
+        "name": "python_pid"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "pid": 2,
+      "tid": 20,
+      "args": {
+        "name": "AscendCL"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "pid": 2,
+      "tid": 21,
+      "args": {
+        "name": "GE"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "pid": 2,
+      "tid": 22,
+      "args": {
+        "name": "Runtime"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "pid": 3,
+      "tid": 47,
+      "args": {
+        "name": "Stream 47"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "pid": 3,
+      "tid": 179,
+      "args": {
+        "name": "Stream 179"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "pid": 3,
+      "tid": 186,
+      "args": {
+        "name": "Stream 186"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "pid": 3,
+      "tid": 43,
+      "args": {
+        "name": "Stream 43"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "pid": 4,
+      "tid": 90,
+      "args": {
+        "name": "HCCL"
+      }
+    },
+    {
+      "ph": "M",
+      "name": "thread_name",
+      "pid": 4,
+      "tid": 91,
+      "args": {
+        "name": "hcom"
+      }
+    },
+    {
+      "ph": "X",
+      "name": "ProfilerStep#10",
+      "pid": 1,
+      "tid": 10,
+      "ts": 1773295060000000.0,
+      "dur": 815000.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 0,
+        "Task Id": 1001,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "",
+        "Connection Id": -1
+      }
+    },
+    {
+      "ph": "X",
+      "name": "aclnnMatmul",
+      "pid": 2,
+      "tid": 20,
+      "ts": 1773295060000100.0,
+      "dur": 30.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 0,
+        "Task Id": 1002,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096;4096",
+        "Connection Id": 100
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Launch Kernel",
+      "pid": 2,
+      "tid": 21,
+      "ts": 1773295060000140.0,
+      "dur": 22.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 0,
+        "Task Id": 1003,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "",
+        "Connection Id": 100
+      }
+    },
+    {
+      "ph": "X",
+      "name": "rtKernelLaunch",
+      "pid": 2,
+      "tid": 22,
+      "ts": 1773295060000165.0,
+      "dur": 18.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 0,
+        "Task Id": 1004,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "",
+        "Connection Id": 100
+      }
+    },
+    {
+      "ph": "X",
+      "name": "ProfilerStep#11",
+      "pid": 1,
+      "tid": 10,
+      "ts": 1773295060815000.0,
+      "dur": 818000.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 0,
+        "Task Id": 1005,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "",
+        "Connection Id": -1
+      }
+    },
+    {
+      "ph": "X",
+      "name": "aclnnMatmul",
+      "pid": 2,
+      "tid": 20,
+      "ts": 1773295060815100.0,
+      "dur": 30.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 0,
+        "Task Id": 1006,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096;4096",
+        "Connection Id": 110
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Launch Kernel",
+      "pid": 2,
+      "tid": 21,
+      "ts": 1773295060815140.0,
+      "dur": 22.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 0,
+        "Task Id": 1007,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "",
+        "Connection Id": 110
+      }
+    },
+    {
+      "ph": "X",
+      "name": "rtKernelLaunch",
+      "pid": 2,
+      "tid": 22,
+      "ts": 1773295060815165.0,
+      "dur": 18.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 0,
+        "Task Id": 1008,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "",
+        "Connection Id": 110
+      }
+    },
+    {
+      "ph": "X",
+      "name": "ProfilerStep#12",
+      "pid": 1,
+      "tid": 10,
+      "ts": 1773295061633000.0,
+      "dur": 819000.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 0,
+        "Task Id": 1009,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "",
+        "Connection Id": -1
+      }
+    },
+    {
+      "ph": "X",
+      "name": "aclnnMatmul",
+      "pid": 2,
+      "tid": 20,
+      "ts": 1773295061633100.0,
+      "dur": 30.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 0,
+        "Task Id": 1010,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096;4096",
+        "Connection Id": 120
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Launch Kernel",
+      "pid": 2,
+      "tid": 21,
+      "ts": 1773295061633140.0,
+      "dur": 22.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 0,
+        "Task Id": 1011,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "",
+        "Connection Id": 120
+      }
+    },
+    {
+      "ph": "X",
+      "name": "rtKernelLaunch",
+      "pid": 2,
+      "tid": 22,
+      "ts": 1773295061633165.0,
+      "dur": 18.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 0,
+        "Task Id": 1012,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "",
+        "Connection Id": 120
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060000200.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1013,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1000
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060002400.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1014,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1001
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060004600.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1015,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1002
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060006800.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1016,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 1003
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060009000.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1017,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 1004
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060011200.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1018,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1005
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060013400.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1019,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1006
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060015600.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1020,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1007
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060017800.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1021,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1008
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060020000.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1022,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1009
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060022200.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1023,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 1010
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060024400.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1024,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 1011
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060026600.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1025,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1012
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060028800.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1026,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1013
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060031000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1027,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1014
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060033200.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1028,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1015
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060035400.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1029,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1016
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060037600.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1030,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 1017
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060039800.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1031,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 1018
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060042000.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1032,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1019
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060044200.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1033,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1020
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060046400.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1034,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1021
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060048600.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1035,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1022
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060050800.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1036,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1023
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060815200.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1037,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1100
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060817400.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1038,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1101
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060819600.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1039,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1102
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060821800.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1040,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 1103
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060824000.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1041,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 1104
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060826200.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1042,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1105
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060828400.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1043,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1106
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060830600.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1044,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1107
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060832800.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1045,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1108
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060835000.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1046,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1109
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060837200.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1047,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 1110
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060839400.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1048,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 1111
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060841600.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1049,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1112
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060843800.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1050,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1113
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060846000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1051,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1114
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060848200.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1052,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1115
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060850400.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1053,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1116
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060852600.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1054,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 1117
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060854800.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1055,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 1118
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060857000.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1056,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1119
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060859200.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1057,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1120
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060861400.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1058,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1121
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060863600.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1059,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1122
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060865800.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1060,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1123
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061633200.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1061,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1200
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061635400.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1062,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1201
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061637600.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1063,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1202
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061639800.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1064,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 1203
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061642000.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1065,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 1204
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061644200.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1066,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1205
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061646400.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1067,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1206
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061648600.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1068,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1207
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061650800.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1069,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1208
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061653000.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1070,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1209
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061655200.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1071,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 1210
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061657400.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1072,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 1211
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061659600.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1073,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1212
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061661800.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1074,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1213
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061664000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1075,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1214
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061666200.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1076,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1215
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061668400.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1077,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1216
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061670600.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1078,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 1217
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061672800.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1079,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 1218
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061675000.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1080,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1219
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061677200.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1081,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1220
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061679400.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1082,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 1221
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061681600.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1083,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 1222
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061683800.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1084,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 1223
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatMulV3",
+      "pid": 3,
+      "tid": 47,
+      "ts": 1773295061355000.0,
+      "dur": 18400.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 47,
+        "Task Id": 1085,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096;151936",
+        "Connection Id": 4711
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatMulV3",
+      "pid": 3,
+      "tid": 47,
+      "ts": 1773295061415000.0,
+      "dur": 18400.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 47,
+        "Task Id": 1086,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096;151936",
+        "Connection Id": 4712
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Sub",
+      "pid": 3,
+      "tid": 179,
+      "ts": 1773295062233000.0,
+      "dur": 15800.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 179,
+        "Task Id": 1087,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "1x4096x151936",
+        "Connection Id": 12790
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Exp",
+      "pid": 3,
+      "tid": 179,
+      "ts": 1773295062248850.0,
+      "dur": 16000.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 179,
+        "Task Id": 1088,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "1x4096x151936",
+        "Connection Id": 12790
+      }
+    },
+    {
+      "ph": "X",
+      "name": "ReduceSum",
+      "pid": 3,
+      "tid": 179,
+      "ts": 1773295062264900.0,
+      "dur": 6900.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 179,
+        "Task Id": 1089,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "1x4096x151936",
+        "Connection Id": 12790
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RealDiv",
+      "pid": 3,
+      "tid": 179,
+      "ts": 1773295062271850.0,
+      "dur": 15700.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 179,
+        "Task Id": 1090,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "1x4096x151936",
+        "Connection Id": 12790
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 179,
+      "ts": 1773295062287600.0,
+      "dur": 20700.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 179,
+        "Task Id": 1091,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "1x4096x151936",
+        "Connection Id": 12790
+      }
+    },
+    {
+      "ph": "X",
+      "name": "ArgMaxWithValue",
+      "pid": 3,
+      "tid": 179,
+      "ts": 1773295062308350.0,
+      "dur": 6800.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 179,
+        "Task Id": 1092,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "1x4096x151936",
+        "Connection Id": 12790
+      }
+    },
+    {
+      "ph": "X",
+      "name": "hcom_allGather_step10",
+      "pid": 4,
+      "tid": 90,
+      "ts": 1773295060300000.0,
+      "dur": 2400.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 0,
+        "Task Id": 1093,
+        "Wait Time(us)": 1157.6,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 10000
+      }
+    },
+    {
+      "ph": "X",
+      "name": "hcom_reduceScatter_step10",
+      "pid": 4,
+      "tid": 91,
+      "ts": 1773295060305000.0,
+      "dur": 2100.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 0,
+        "Task Id": 1094,
+        "Wait Time(us)": 880.4,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 10001
+      }
+    },
+    {
+      "ph": "X",
+      "name": "hcom_allReduce_step10",
+      "pid": 4,
+      "tid": 90,
+      "ts": 1773295060310000.0,
+      "dur": 1800.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 0,
+        "Task Id": 1095,
+        "Wait Time(us)": 612.3,
+        "Input Shapes": "4096",
+        "Connection Id": 10002
+      }
+    },
+    {
+      "ph": "X",
+      "name": "hcom_allGather_step11",
+      "pid": 4,
+      "tid": 90,
+      "ts": 1773295061115000.0,
+      "dur": 2400.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 0,
+        "Task Id": 1096,
+        "Wait Time(us)": 1157.6,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 11000
+      }
+    },
+    {
+      "ph": "X",
+      "name": "hcom_reduceScatter_step11",
+      "pid": 4,
+      "tid": 91,
+      "ts": 1773295061120000.0,
+      "dur": 2100.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 0,
+        "Task Id": 1097,
+        "Wait Time(us)": 880.4,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 11001
+      }
+    },
+    {
+      "ph": "X",
+      "name": "hcom_allReduce_step11",
+      "pid": 4,
+      "tid": 90,
+      "ts": 1773295061125000.0,
+      "dur": 1800.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 0,
+        "Task Id": 1098,
+        "Wait Time(us)": 612.3,
+        "Input Shapes": "4096",
+        "Connection Id": 11002
+      }
+    },
+    {
+      "ph": "X",
+      "name": "hcom_allGather_step12",
+      "pid": 4,
+      "tid": 90,
+      "ts": 1773295061933000.0,
+      "dur": 2400.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 0,
+        "Task Id": 1099,
+        "Wait Time(us)": 1157.6,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 12000
+      }
+    },
+    {
+      "ph": "X",
+      "name": "hcom_reduceScatter_step12",
+      "pid": 4,
+      "tid": 91,
+      "ts": 1773295061938000.0,
+      "dur": 2100.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 0,
+        "Task Id": 1100,
+        "Wait Time(us)": 880.4,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 12001
+      }
+    },
+    {
+      "ph": "X",
+      "name": "hcom_allReduce_step12",
+      "pid": 4,
+      "tid": 90,
+      "ts": 1773295061943000.0,
+      "dur": 1800.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 0,
+        "Task Id": 1101,
+        "Wait Time(us)": 612.3,
+        "Input Shapes": "4096",
+        "Connection Id": 12002
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060700000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1102,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2000
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060701500.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1103,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2001
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060703000.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1104,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2002
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060704500.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1105,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2003
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060706000.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1106,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2004
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060707500.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1107,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2005
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060709000.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1108,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2006
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060710500.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1109,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2007
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060712000.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1110,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2008
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060713500.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1111,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2009
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060715000.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1112,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2010
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060716500.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1113,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2011
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060718000.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1114,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2012
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060719500.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1115,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2013
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060721000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1116,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2014
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060722500.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1117,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2015
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060724000.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1118,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2016
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060725500.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1119,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2017
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060727000.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1120,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2018
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060728500.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1121,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2019
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060730000.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1122,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2020
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060731500.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1123,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2021
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060733000.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1124,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2022
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060734500.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1125,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2023
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060736000.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1126,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2024
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060737500.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1127,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2025
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060739000.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1128,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2026
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060740500.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1129,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2027
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295060742000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 186,
+        "Task Id": 1130,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2028
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295060743500.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 10,
+        "Stream Id": 43,
+        "Task Id": 1131,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2029
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061515000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1132,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2200
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061516500.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1133,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2201
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061518000.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1134,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2202
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061519500.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1135,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2203
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061521000.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1136,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2204
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061522500.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1137,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2205
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061524000.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1138,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2206
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061525500.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1139,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2207
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061527000.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1140,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2208
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061528500.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1141,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2209
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061530000.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1142,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2210
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061531500.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1143,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2211
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061533000.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1144,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2212
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061534500.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1145,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2213
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061536000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1146,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2214
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061537500.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1147,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2215
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061539000.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1148,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2216
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061540500.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1149,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2217
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061542000.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1150,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2218
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061543500.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1151,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2219
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061545000.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1152,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2220
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061546500.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1153,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2221
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061548000.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1154,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2222
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061549500.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1155,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2223
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061551000.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1156,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2224
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061552500.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1157,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2225
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061554000.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1158,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2226
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061555500.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1159,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2227
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295061557000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 186,
+        "Task Id": 1160,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2228
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295061558500.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 11,
+        "Stream Id": 43,
+        "Task Id": 1161,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2229
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062333000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1162,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2400
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062334500.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1163,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2401
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062336000.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1164,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2402
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062337500.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1165,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2403
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062339000.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1166,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2404
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062340500.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1167,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2405
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062342000.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1168,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2406
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062343500.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1169,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2407
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062345000.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1170,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2408
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062346500.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1171,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2409
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062348000.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1172,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2410
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062349500.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1173,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2411
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062351000.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1174,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2412
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062352500.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1175,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2413
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062354000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1176,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2414
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062355500.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1177,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2415
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062357000.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1178,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2416
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062358500.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1179,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2417
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062360000.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1180,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2418
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062361500.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1181,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2419
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062363000.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1182,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2420
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062364500.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1183,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2421
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062366000.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1184,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2422
+      }
+    },
+    {
+      "ph": "X",
+      "name": "FlashAttentionScore",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062367500.0,
+      "dur": 980.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1185,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "28x4096x128",
+        "Connection Id": 2423
+      }
+    },
+    {
+      "ph": "X",
+      "name": "MatmulReduceScatter",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062369000.0,
+      "dur": 1520.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1186,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "3584x4096",
+        "Connection Id": 2424
+      }
+    },
+    {
+      "ph": "X",
+      "name": "SwiGLU",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062370500.0,
+      "dur": 640.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1187,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x18944",
+        "Connection Id": 2425
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Add",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062372000.0,
+      "dur": 60.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1188,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2426
+      }
+    },
+    {
+      "ph": "X",
+      "name": "Cast",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062373500.0,
+      "dur": 90.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1189,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2427
+      }
+    },
+    {
+      "ph": "X",
+      "name": "RmsNorm",
+      "pid": 3,
+      "tid": 186,
+      "ts": 1773295062375000.0,
+      "dur": 120.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 186,
+        "Task Id": 1190,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x4096",
+        "Connection Id": 2428
+      }
+    },
+    {
+      "ph": "X",
+      "name": "AllGatherMatmul",
+      "pid": 3,
+      "tid": 43,
+      "ts": 1773295062376500.0,
+      "dur": 1690.0,
+      "args": {
+        "Step Id": 12,
+        "Stream Id": 43,
+        "Task Id": 1191,
+        "Wait Time(us)": 0.0,
+        "Input Shapes": "4096x1024",
+        "Connection Id": 2429
+      }
+    }
+  ]
+}

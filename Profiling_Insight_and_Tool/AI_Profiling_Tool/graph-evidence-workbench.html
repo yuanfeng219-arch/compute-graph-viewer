@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计算图 Profiling 证据工作台 · Qwen2-7B</title>
+
+<!-- PTO design system: tokens + base -->
+<link rel="stylesheet" href="../../vendor/pto-design-system/tokens/foundation.css">
+<link rel="stylesheet" href="../../vendor/pto-design-system/tokens/semantic.css">
+<link rel="stylesheet" href="../../vendor/pto-design-system/tokens/components.css">
+<link rel="stylesheet" href="../../vendor/pto-design-system/css/style.css">
+<!-- Patterns -->
+<link rel="stylesheet" href="../../vendor/pto-design-system/patterns/model-graphviz/pattern.css">
+<link rel="stylesheet" href="../../vendor/pto-design-system/patterns/swimlane-task/pattern.css">
+
+<style>
+	/* ---- page frame (light mode); consume tokens, no new visual system ---- */
+	html, body { height: 100%; margin: 0; }
+	body {
+	  display: block;            /* override design-system body{display:flex} so the app is full-bleed */
+	  width: 100%;
+	  background: var(--surface-1, #f4f5f7);
+	  color: var(--foreground, #1b1d22);
+  font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-size: 13px;
+}
+	/* #gew-root carries the model-graphviz pattern-page class (defines --model-graphviz-* vars +
+	   light-theme overrides for badges/clusters/strokes). id selector keeps our own bg/min-height. */
+	#gew-root {
+	  --gew-header-h: 52px;
+	  --gew-inspector-w: 400px;
+	  --gew-swimlane-h: 300px;
+	  --gew-panel-gap: var(--space-3, 12px);
+	  --gew-panel-bg: #f0f1f3;
+	  --gew-panel-fill: #F8F8F8;
+	  --gew-dot-grid: rgba(17, 24, 39, 0.16);
+	  --model-graphviz-line: rgba(0, 0, 0, 0.56);
+	  --model-graphviz-line-soft: rgba(0, 0, 0, 0.30);
+	  --model-graphviz-node-label: rgba(0, 0, 0, 0.94);
+	  --model-graphviz-node-type: rgba(0, 0, 0, 0.66);
+	  --model-graphviz-cluster-label: rgba(0, 0, 0, 0.88);
+	  --model-graphviz-tensor-fill: #f1f2f4;
+	  --model-graphviz-tensor-stroke: rgba(0, 0, 0, 0.30);
+	  --model-graphviz-report-p0: #e0134e;
+	  --model-graphviz-report-p1: #d97700;
+	  --model-graphviz-report-p2: #b89000;
+	  --model-graphviz-report-p3: #64748b;
+	  position: relative;
+	  height: 100vh;
+	  min-height: 100vh;
+	  width: 100%;
+	  overflow: hidden;
+	  background: var(--surface-1, #f4f5f7);
+	}
+	
+	/* header */
+	#gew-header {
+	  position: absolute; z-index: var(--z-overlay, 200);
+	  top: var(--space-3, 12px); left: var(--space-3, 12px);
+	  right: calc(var(--gew-inspector-w) + var(--space-5, 20px) + var(--gew-panel-gap));
+	  display: flex; align-items: center; gap: var(--space-3, 12px);
+	  height: var(--gew-header-h); padding: 0;
+	  background: transparent;
+	  border-bottom: 0;
+	  pointer-events: none;
+	}
+	#gew-header > * { pointer-events: auto; }
+	#gew-header .gew-brand { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+	#gew-report-name { font-weight: 600; font-size: 14px; white-space: nowrap; }
+	#gew-header .gew-spacer { flex: 1 1 auto; }
+	#gew-header .gew-actions { display: flex; align-items: center; gap: var(--space-2, 8px); }
+	
+	/* main row: graph + inspector */
+	#gew-main { position: absolute; inset: 0; min-height: 0; }
+	#gew-graph-shell {
+	  position: absolute; inset: 0; min-width: 0; overflow: hidden;
+	  background:
+	    radial-gradient(circle, var(--gew-dot-grid) 1px, transparent 1.35px) 0 0 / 24px 24px,
+	    var(--surface-1, #f4f5f7);
+	}
+	#gew-graph-stage { position: absolute; inset: 0; }
+	#gew-graph-stage > svg { transform-origin: 0 0; will-change: transform; }
+	#gew-graph-stage .pto-model-graphviz-node,
+	#gew-graph-stage .pto-model-graphviz-edge { transition: opacity var(--duration-fast, 100ms) var(--easing-default, ease); }
+	#gew-graph-stage .pto-model-graphviz-node.is-graph-selected rect {
+	  stroke: var(--primary, #4369ef);
+	  stroke-width: 2.2px;
+	}
+	#gew-graph-stage .pto-model-graphviz-node-label {
+	  fill: var(--model-graphviz-node-label);
+	  font-weight: var(--font-weight-bold, 700);
+	  font-size: 15px;
+	  dominant-baseline: middle;
+	}
+	#gew-graph-stage .pto-model-graphviz-node-type {
+	  display: none;
+	}
+	#gew-graph-stage .pto-model-graphviz-cluster-label {
+	  fill: var(--model-graphviz-cluster-label);
+	}
+	#gew-graph-stage .pto-model-graphviz-report-node-badge[data-report-priority='P3'],
+	#gew-graph-stage .pto-model-graphviz-cluster-title-pill[data-report-priority='P3'] .pto-model-graphviz-cluster-title-bg {
+	  fill: var(--model-graphviz-report-p3);
+	}
+	#gew-graph-stage .pto-model-graphviz-node.is-problem-p0 rect {
+	  stroke: var(--model-graphviz-report-p0);
+	  stroke-width: 3px;
+	}
+	#gew-graph-stage .pto-model-graphviz-node.is-problem-p1 rect {
+	  stroke: var(--model-graphviz-report-p1);
+	  stroke-width: 3px;
+	}
+	#gew-graph-stage .pto-model-graphviz-node.is-problem-p2 rect {
+	  stroke: var(--model-graphviz-report-p2);
+	  stroke-width: 3px;
+	}
+	#gew-graph-stage .pto-model-graphviz-node.is-problem-p3 rect {
+	  stroke: var(--model-graphviz-report-p3);
+	  stroke-width: 3px;
+	}
+	#gew-graph-stage .pto-model-graphviz-node.is-graph-selected rect {
+	  stroke: var(--primary, #4369ef);
+	  stroke-width: 3.4px;
+	}
+	#gew-graph-toolbar {
+	  position: absolute; left: 12px; bottom: calc(var(--gew-swimlane-h) + var(--gew-panel-gap) + 14px); z-index: 4;
+	  display: flex; gap: 6px;
+	}
+	.gew-node-hover-panel {
+	  position: absolute;
+	  z-index: calc(var(--z-overlay, 200) + 4);
+	  width: min(360px, calc(100vw - var(--gew-inspector-w) - 80px));
+	  max-width: 360px;
+	  display: none;
+	  flex-direction: column;
+	  gap: 8px;
+	  padding: 12px;
+	  border: 1px solid rgba(17, 24, 39, 0.14);
+	  border-radius: var(--radius-lg);
+	  background: rgba(255, 255, 255, 0.96);
+	  box-shadow: 0 10px 28px rgba(17, 24, 39, 0.14);
+	  color: #111827;
+	  pointer-events: none;
+	  backdrop-filter: blur(10px);
+	}
+	.gew-node-hover-panel.is-visible { display: flex; }
+	.gew-hover-title {
+	  display: flex;
+	  align-items: flex-start;
+	  gap: 8px;
+	  min-width: 0;
+	}
+	.gew-hover-title-main { flex: 1 1 auto; min-width: 0; }
+	.gew-hover-kicker {
+	  font: var(--text-mono);
+	  color: #667085;
+	  white-space: nowrap;
+	  overflow: hidden;
+	  text-overflow: ellipsis;
+	}
+	.gew-hover-name {
+	  margin-top: 2px;
+	  font: var(--text-body);
+	  font-weight: 700;
+	  color: #101828;
+	}
+	.gew-hover-body {
+	  font: var(--text-body-sm);
+	  line-height: 1.55;
+	  color: #344054;
+	}
+	.gew-hover-chip-row {
+	  display: flex;
+	  gap: 6px;
+	  align-items: center;
+	  flex-wrap: wrap;
+	}
+	.gew-priority-tag {
+	  display: inline-flex;
+	  align-items: center;
+	  justify-content: center;
+	  min-height: 18px;
+	  padding: 0 7px;
+	  border-radius: var(--radius-pill);
+	  font: var(--text-label);
+	  font-weight: 800;
+	  letter-spacing: 0;
+	  border: 1px solid transparent;
+	  white-space: nowrap;
+	}
+	.gew-priority-tag.p0 { background: #ffd6e4; color: #b01040; border-color: #f9a8c4; }
+	.gew-priority-tag.p1 { background: #ffeac0; color: #8a4f00; border-color: #f8c46b; }
+	.gew-priority-tag.p2 { background: #fff8c0; color: #6b5c00; border-color: #e8d76a; }
+	.gew-priority-tag.p3 { background: #e5e7eb; color: #334155; border-color: #cbd5e1; }
+	.gew-hover-meta-chip {
+	  display: inline-flex;
+	  align-items: center;
+	  min-height: 18px;
+	  padding: 0 7px;
+	  border: 1px solid #e4e7ec;
+	  border-radius: var(--radius-pill);
+	  background: #f8fafc;
+	  color: #475467;
+	  font: var(--text-label);
+	  letter-spacing: 0;
+	  text-transform: none;
+	}
+	.gew-hover-io {
+	  display: grid;
+	  grid-template-columns: 38px 1fr;
+	  gap: 4px 8px;
+	  padding-top: 2px;
+	  font: var(--text-body-sm);
+	  color: #475467;
+	}
+	.gew-hover-io-label {
+	  font: var(--text-label);
+	  font-weight: 700;
+	  color: #667085;
+	}
+	.gew-action-card {
+	  width: 100%;
+	  display: flex;
+	  flex-direction: column;
+	  gap: var(--space-2);
+	  padding: var(--space-2);
+	  border: 1px solid transparent;
+	  border-radius: var(--radius-md);
+	  background: var(--gew-panel-fill, var(--surface-1));
+	  color: var(--foreground);
+	  font: inherit;
+	  text-align: left;
+	  cursor: pointer;
+	  transition: background var(--duration-fast, 100ms) var(--easing-default, ease),
+	    border-color var(--duration-fast, 100ms) var(--easing-default, ease),
+	    box-shadow var(--duration-fast, 100ms) var(--easing-default, ease);
+	}
+	.gew-report-issue-card {
+	  width: 100%;
+	  display: flex;
+	  flex-direction: column;
+	  gap: var(--space-2);
+	  padding: var(--space-2);
+	  border: 1px solid transparent;
+	  border-radius: var(--radius-md);
+	  background: var(--gew-panel-fill, var(--surface-1));
+	  color: var(--foreground);
+	  font: inherit;
+	  text-align: left;
+	  cursor: pointer;
+	  transition: background var(--duration-fast, 100ms) var(--easing-default, ease),
+	    border-color var(--duration-fast, 100ms) var(--easing-default, ease),
+	    box-shadow var(--duration-fast, 100ms) var(--easing-default, ease);
+	}
+	.gew-action-card:hover {
+	  border-color: color-mix(in srgb, var(--primary) 26%, transparent);
+	  background: #fff;
+	}
+	.gew-report-issue-card:hover {
+	  border-color: color-mix(in srgb, var(--primary) 26%, transparent);
+	  background: #fff;
+	}
+	.gew-action-card.is-node-related {
+	  background: color-mix(in srgb, var(--primary) 7%, var(--gew-panel-fill, var(--surface-1)));
+	  border-color: color-mix(in srgb, var(--primary) 24%, transparent);
+	}
+	.gew-action-card.is-selected {
+	  border-color: var(--primary);
+	  box-shadow: inset 0 0 0 1px var(--primary);
+	}
+	.gew-report-issue-card.is-selected {
+	  border-color: var(--primary);
+	  box-shadow: inset 0 0 0 1px var(--primary);
+	}
+	.gew-action-card-title {
+	  color: var(--foreground);
+	  font: var(--text-body);
+	  font-weight: 600;
+	  line-height: 1.45;
+	}
+	.gew-action-card-meta {
+	  display: flex;
+	  gap: var(--space-2);
+	  align-items: center;
+	  flex-wrap: wrap;
+	}
+	.gew-action-link-state {
+	  font: var(--text-label);
+	  color: var(--foreground-secondary);
+	}
+#gew-graph-empty {
+  position: absolute; inset: 0; display: none;
+  align-items: center; justify-content: center; text-align: center;
+  color: var(--foreground-secondary, #6b7280); padding: 24px;
+}
+#gew-graph-empty.is-visible { display: flex; }
+
+	/* inspector */
+	#gew-inspector {
+	  position: absolute; z-index: var(--z-overlay, 200);
+	  top: var(--gew-panel-gap); right: var(--gew-panel-gap); bottom: var(--gew-panel-gap);
+	  width: var(--gew-inspector-w); display: flex; flex-direction: column; min-height: 0;
+	  background: var(--gew-panel-bg);
+	  border: 0;
+	  border-radius: var(--workbench-pane-radius, var(--radius-xl));
+	  box-shadow: none;
+	  backdrop-filter: none;
+	}
+	#gew-inspector-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--space-3, 12px); }
+	#gew-inspector .stat-chip,
+	#gew-inspector .node-tag,
+	#gew-inspector .io-chip {
+	  border-color: transparent;
+	  background: var(--gew-panel-fill);
+	}
+	
+	/* swimlane */
+	#gew-swimlane {
+	  position: absolute; z-index: calc(var(--z-overlay, 200) - 1);
+	  left: var(--gew-panel-gap); right: calc(var(--gew-inspector-w) + var(--space-5, 20px)); bottom: var(--gew-panel-gap);
+	  height: var(--gew-swimlane-h); display: flex; flex-direction: column; min-height: 0;
+	  background: var(--gew-panel-bg);
+	  border: 0;
+	  border-radius: var(--workbench-pane-radius, var(--radius-xl));
+	  overflow: hidden;
+	  box-shadow: none;
+	}
+	#gew-swimlane-resize {
+	  flex: 0 0 8px;
+	  height: 8px;
+	  cursor: ns-resize;
+	  background: transparent;
+	  position: relative;
+	}
+	#gew-swimlane-resize::before {
+	  content: "";
+	  position: absolute;
+	  left: 50%;
+	  top: 3px;
+	  width: 48px;
+	  height: 2px;
+	  border-radius: var(--radius-pill);
+	  transform: translateX(-50%);
+	  background: var(--border-strong);
+	  opacity: 0.72;
+	}
+	#gew-swimlane-head {
+	  display: flex; align-items: center; gap: var(--space-3, 12px);
+	  padding: 4px var(--space-4, 16px) 8px; border-bottom: 0;
+	}
+#gew-swimlane-body { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; background: var(--gew-panel-bg); }
+#gew-swimlane-empty {
+  position: absolute; inset: 0; display: none;
+  align-items: center; justify-content: center; text-align: center;
+  color: var(--foreground-secondary, #6b7280); padding: 24px;
+}
+#gew-swimlane-empty.is-visible { display: flex; }
+
+/* loading veil */
+#gew-loading {
+  position: fixed; inset: 0; z-index: 50; display: flex;
+  align-items: center; justify-content: center;
+  background: var(--surface-1, #f4f5f7); color: var(--foreground-secondary, #6b7280);
+}
+#gew-loading.is-done { display: none; }
+
+	@media (max-width: 980px) {
+	  #gew-root { --gew-inspector-w: 320px; --gew-swimlane-h: 260px; }
+	  #gew-header { right: var(--space-3, 12px); }
+	  #gew-inspector { top: auto; left: 0; width: auto; height: 280px; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+	  #gew-swimlane { right: 0; bottom: 280px; }
+	}
+	</style>
+</head>
+<body>
+<div id="gew-root" class="pto-model-graphviz-pattern-page">
+
+	  <header id="gew-header">
+	    <button id="gew-home" class="btn btn-ghost" type="button" title="返回">Home</button>
+	    <div class="gew-brand">
+	      <span id="gew-report-name">计算图 Profiling 证据工作台</span>
+	    </div>
+	    <div class="gew-spacer"></div>
+	    <div id="gew-filter" class="segmented-control segmented-control-muted" role="tablist" aria-label="优先级过滤">
+	      <button class="btn btn-sm is-selected" data-priority="all" type="button">All</button>
+	      <button class="btn btn-sm" data-priority="P0" type="button">P0</button>
+	      <button class="btn btn-sm" data-priority="P1" type="button">P1</button>
+	      <button class="btn btn-sm" data-priority="P2" type="button">P2</button>
+	      <button class="btn btn-sm" data-priority="P3" type="button">P3</button>
+	      <button class="btn btn-sm" data-priority="off" type="button">Off</button>
+	    </div>
+	    <div class="gew-actions">
+	      <button id="gew-copy" class="btn btn-ghost" type="button">复制证据</button>
+	      <button id="gew-export" class="btn btn-solid" type="button">导出快照</button>
+	    </div>
+	  </header>
+
+  <div id="gew-main">
+    <div id="gew-graph-shell">
+      <div id="gew-graph-stage" aria-label="Qwen2-7B 模型计算图"></div>
+      <div id="gew-graph-empty">
+        <div>
+          <p>该报告未关联可渲染的计算图。</p>
+          <p>MVP 当前仅支持 <strong>Qwen2-7B</strong>。</p>
+        </div>
+      </div>
+      <div id="gew-graph-toolbar">
+        <button class="btn btn-ghost" data-graph-action="fit" type="button" title="适配视图">适配</button>
+        <button class="btn btn-ghost" data-graph-action="zoom-in" type="button" title="放大">＋</button>
+        <button class="btn btn-ghost" data-graph-action="zoom-out" type="button" title="缩小">－</button>
+      </div>
+    </div>
+
+    <aside id="gew-inspector" class="panel-shell">
+      <div id="gew-inspector-body"><!-- inspector.render() fills this --></div>
+    </aside>
+  </div>
+	
+	  <section id="gew-swimlane">
+	    <div id="gew-swimlane-resize" role="separator" aria-orientation="horizontal" title="拖拽调整泳道高度"></div>
+	    <div id="gew-swimlane-head">
+	      <div id="gew-swimlane-tabs" class="segmented-control segmented-control-muted" role="tablist" aria-label="证据泳道">
+	        <button class="btn btn-sm is-selected" data-lane="step" type="button">Step</button>
+	        <button class="btn btn-sm" data-lane="stream" type="button">Stream</button>
+	        <button class="btn btn-sm" data-lane="communication" type="button">Communication</button>
+	        <button class="btn btn-sm" data-lane="overlap" type="button">Overlap</button>
+	        <button class="btn btn-sm" data-lane="coverage" type="button">Coverage</button>
+	      </div>
+	    </div>
+    <div id="gew-swimlane-body">
+      <div id="gew-swimlane-empty"><div>缺少 trace 数据，无法生成该泳道证据。</div></div>
+    </div>
+  </section>
+
+</div>
+
+<div id="gew-loading">正在加载 Qwen2-7B demo 数据…</div>
+
+<!-- patterns -->
+<script src="../../vendor/pto-design-system/patterns/model-graphviz/pattern.js?v=20260608-0551"></script>
+<script src="../../vendor/pto-design-system/patterns/swimlane-task/pattern.js"></script>
+<!-- app modules (load order matters; core first) -->
+<script src="js/graph-evidence/core.js?v=20260608-0551"></script>
+<script src="js/graph-evidence/trace-parser.js?v=20260608-0551"></script>
+<script src="js/graph-evidence/loader.js?v=20260608-0551"></script>
+<script src="js/graph-evidence/inspector.js?v=20260608-0551"></script>
+<script src="js/graph-evidence/graph-stage.js?v=20260608-0551"></script>
+<script src="js/graph-evidence/swimlane-stage.js?v=20260608-0551"></script>
+<script src="js/graph-evidence/app.js?v=20260608-0551"></script>
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    if (window.GEW && GEW.app && typeof GEW.app.start === 'function') {
+      GEW.app.start();
+    } else {
+      console.error('[GEW] app not ready');
+    }
+  });
+</script>
+</body>
+</html>
