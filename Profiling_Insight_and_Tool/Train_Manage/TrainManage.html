@@ -273,6 +273,18 @@
   .cmp-tip-head { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); margin-bottom: 5px;
     padding-bottom: 4px; border-bottom: 1px solid var(--border); letter-spacing: .04em; }
 
+  .disteff-blocks { display: flex; gap: 10px; width: 100%; margin-top: 8px; }
+  .disteff-block { flex: 1; background: rgba(33,33,33,.04); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .disteff-label { font-size: 11px; color: var(--text-2); font-family: var(--font-mono); letter-spacing: .03em; line-height: 1.3; }
+  .disteff-bar-wrap { position: relative; height: 22px; }
+  .disteff-bar-track { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); height: 8px; background: rgba(33,33,33,.08); border-radius: 999px; overflow: visible; }
+  .disteff-bar-fill { height: 100%; border-radius: 999px; transition: width .3s; }
+  .disteff-target-line { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--green); border-radius: 1px; z-index: 2; }
+  .disteff-meta { display: flex; justify-content: space-between; align-items: center; }
+  .disteff-val { font-family: var(--font-display); font-size: 16px; font-weight: 600; }
+  .disteff-target-label { font-size: 9px; font-family: var(--font-mono); white-space: nowrap; }
+  .disteff-chart { margin-top: 4px; min-height: 70px; }
+
   @media (max-width: 980px) {
     .grid-3 { grid-template-columns: 1fr; }
     .diag { grid-template-columns: 1fr; }
@@ -871,32 +883,31 @@ function renderAll(){
         </div>
       </div>`;
     } else if(k.type === 'disteff'){
-      const gaugeArc = (v, col, tgt) => {
-        const cx=40, cy=38, r=28, p=Math.min(v,0.9999);
-        const ex=(cx-r*Math.cos(p*Math.PI)).toFixed(2), ey=(cy-r*Math.sin(p*Math.PI)).toFixed(2);
-        const laf=p>0.5?1:0;
-        const tx=(cx-r*Math.cos(tgt*Math.PI)).toFixed(2), ty2=(cy-r*Math.sin(tgt*Math.PI)).toFixed(2);
-        const ox=(cx-(r+7)*Math.cos(tgt*Math.PI)).toFixed(2), oy=(cy-(r+7)*Math.sin(tgt*Math.PI)).toFixed(2);
-        return `<path d="M ${cx-r} ${cy} A ${r} ${r} 0 0 0 ${cx+r} ${cy}" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="6" stroke-linecap="round"/>` +
-          (p>0.001?`<path d="M ${cx-r} ${cy} A ${r} ${r} 0 ${laf} 0 ${ex} ${ey}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round"/>`:'') +
-          `<line x1="${tx}" y1="${ty2}" x2="${ox}" y2="${oy}" stroke="var(--green)" stroke-width="2"/>`;
-      };
       const gs = k.gauges.map(gi=>{
         const v=parseFloat(gi.value)/100;
         const good=gi.lte?v<=gi.target:v>=gi.target;
         const col=good?'var(--green)':gi.lte?'var(--red)':'var(--orange)';
-        return `<div style="flex:1;text-align:center;">
-          <svg width="80" height="48" viewBox="0 8 80 42" style="overflow:visible">
-            ${gaugeArc(v,col,gi.target)}
-            <text x="40" y="36" font-size="12" font-weight="700" fill="${col}" font-family="monospace" text-anchor="middle">${gi.value}</text>
-          </svg>
-          <div style="font-size:9px;color:var(--text-3);font-family:var(--font-mono);line-height:1.4;">${gi.label}</div>
-          <div style="font-size:9px;font-family:var(--font-mono);color:${col};">${gi.lte?'目标<':'目标>'}${(gi.target*100).toFixed(0)}% ${good?'✓':'✗'}</div>
+        const barPct = Math.min(v*100, 100).toFixed(0);
+        const targetPct = (gi.target*100).toFixed(0);
+        const cmp = gi.lte ? '<' : '>';
+        return `<div class="disteff-block">
+          <div class="disteff-label">${gi.label}</div>
+          <div class="disteff-bar-wrap">
+            <div class="disteff-bar-track">
+              <div class="disteff-bar-fill" style="width:${barPct}%;background:${col};"></div>
+            </div>
+            <div class="disteff-target-line" style="left:${targetPct}%;" title="目标 ${cmp}${targetPct}%"></div>
+          </div>
+          <div class="disteff-meta">
+            <span class="disteff-val" style="color:${col}">${gi.value}</span>
+            <span class="disteff-target-label" style="color:var(--green)">目标 ${cmp}${targetPct}% ${good?'✓':'✗'}</span>
+          </div>
+          <div class="disteff-chart"></div>
         </div>`;
       }).join('');
       top = `<div class="km-top" style="flex-direction:column;align-items:flex-start;gap:0;">
         <div class="km-label">${k.label}</div>
-        <div style="display:flex;width:100%;margin-top:4px;">${gs}</div>
+        <div class="disteff-blocks">${gs}</div>
       </div>`;
     } else if(k.type === 'gpuutil'){
       const bd = k.stepBreakdown;
@@ -1096,28 +1107,35 @@ function gpuutilChart(el, data){
 }
 
 function disteffChart(el, gauges, series){
-  const w = el.clientWidth||460, h=150, pad=6;
-  const n = gauges.length, pw = (w - pad*(n+1)) / n;
-  const panels = gauges.map((g,pi) => {
-    const data = series[g.key]||[];
-    if(!data.length) return '';
-    const x0 = pad + pi*(pw+pad);
+  const card = el.closest('.card');
+  const charts = card.querySelectorAll('.disteff-chart');
+  el.style.display = 'none';
+  const axis = card.querySelector('.km-axis');
+  const title = card.querySelector('.km-axis-title');
+  if(axis) axis.style.display = 'none';
+  if(title) title.style.display = 'none';
+  gauges.forEach((g, pi) => {
+    const chartEl = charts[pi];
+    if(!chartEl) return;
+    const data = series[g.key] || [];
+    if(!data.length){ chartEl.style.display = 'none'; return; }
+    const w = chartEl.clientWidth || 140, h = 80, pad = 8;
     const allV = [...data, g.target];
-    const minV = Math.min(...allV)*0.85, maxV = Math.max(...allV)*1.15;
-    const bh = h-16;
-    const Y = v => pad + (bh-pad*2)*(1-(v-minV)/(maxV-minV));
-    const sx = pw/(data.length-1);
-    const pts = data.map((v,i)=>(i?'L':'M')+(x0+i*sx).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
+    const minV = Math.min(...allV) * 0.85, maxV = Math.max(...allV) * 1.15;
+    const rng = (maxV - minV) || 1;
+    const Y = v => pad + (h - pad * 2) * (1 - (v - minV) / rng);
+    const sx = (w - pad * 2) / (data.length - 1);
+    const pts = data.map((v, i) => (i ? 'L' : 'M') + (pad + i * sx).toFixed(1) + ' ' + Y(v).toFixed(1)).join(' ');
     const ty = Y(g.target).toFixed(1);
-    const lastV = data[data.length-1];
-    const good = g.lte ? lastV<=g.target : lastV>=g.target;
+    const lastV = data[data.length - 1];
+    const good = g.lte ? lastV <= g.target : lastV >= g.target;
     const col = good ? 'var(--green)' : g.lte ? 'var(--red)' : 'var(--orange)';
-    return `<line x1="${x0.toFixed(1)}" y1="${ty}" x2="${(x0+pw).toFixed(1)}" y2="${ty}" stroke="var(--green)" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>
+    chartEl.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <line x1="${pad}" y1="${ty}" x2="${(w - pad).toFixed(1)}" y2="${ty}" stroke="var(--green)" stroke-width="1" stroke-dasharray="3 2" opacity=".5"/>
       <path d="${pts}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-      <circle cx="${(x0+(data.length-1)*sx).toFixed(1)}" cy="${Y(lastV).toFixed(1)}" r="2.5" fill="${col}"/>
-      <text x="${(x0+pw/2).toFixed(1)}" y="${h-2}" font-size="9" fill="var(--text-3)" font-family="monospace" text-anchor="middle">${g.label}</text>`;
-  }).join('');
-  el.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${panels}</svg>`;
+      <circle cx="${(pad + (data.length - 1) * sx).toFixed(1)}" cy="${Y(lastV).toFixed(1)}" r="2.5" fill="${col}"/>
+    </svg>`;
+  });
 }
 
 function drawCharts(){
@@ -1138,6 +1156,7 @@ function drawCharts(){
       gpuutilChart(el, t.series[k.key]);
     } else if(k.type === 'disteff'){
       disteffChart(el, k.gauges, t.series);
+      return;
     } else {
       const bandY = bigChart(el, t.series[k.key], '#1863dc', k.band);
       if(!k.anom && bandY!=null)
