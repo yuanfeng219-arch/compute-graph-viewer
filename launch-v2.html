@@ -33,14 +33,37 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   display: block;
+  position: relative;
+  isolation: isolate;
+  background: #ffffff;
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: url("assets/bg.png") left top / auto 100vh no-repeat;
+  opacity: 0.15;
+  transform: scaleX(-1);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   background:
     radial-gradient(circle at 12% 6%, rgba(247, 183, 219, 0.41) 0, rgba(247, 183, 219, 0) 34%),
     radial-gradient(circle at 88% 8%, rgba(247, 191, 132, 0.34) 0, rgba(247, 191, 132, 0) 30%),
     radial-gradient(circle at 46% 0%, rgba(189, 169, 232, 0.32) 0, rgba(189, 169, 232, 0) 34%),
     linear-gradient(180deg, #f8efff 0%, #eef4ff 47%, #e9eef8 100%);
-  background-attachment: fixed;
-  color: var(--foreground);
-  font-family: var(--font-sans);
+  opacity: 0.2;
 }
 
 a {
@@ -67,6 +90,8 @@ select {
 }
 
 .cann-app {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -76,7 +101,7 @@ select {
   position: sticky;
   top: 0;
   z-index: var(--z-modal);
-  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  background: rgba(255, 255, 255, 0.5);
   border-bottom: 1px solid var(--border-subtle);
   backdrop-filter: blur(16px);
 }
@@ -137,38 +162,19 @@ select {
 }
 
 .cann-logo {
-  width: 32px;
+  width: 84px;
   height: 32px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--surface-1);
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--foreground);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: -0.8px;
-  position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.cann-logo::before {
-  content: "";
-  position: absolute;
-  top: 5px;
-  left: 6px;
-  width: 17px;
-  height: 5px;
-  border-radius: 99px;
-  background: var(--danger);
-  transform: skewX(-18deg);
-  opacity: 0.9;
-}
-
-.cann-logo span {
-  position: relative;
-  z-index: 1;
+.cann-logo img {
+  width: 84px;
+  height: 32px;
+  display: block;
 }
 
 .cann-name {
@@ -466,14 +472,13 @@ body.is-header-collapsed .side-nav {
   flex-direction: column;
   cursor: pointer;
   overflow: hidden;
+  border: 0;
   transition:
-    border-color var(--duration-fast) var(--easing-default),
     transform var(--duration-fast) var(--easing-default),
     box-shadow var(--duration-fast) var(--easing-default);
 }
 
 .launch-card:hover {
-  border-color: var(--card-hover-border);
   transform: translateY(-2px);
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.09);
 }
@@ -481,7 +486,7 @@ body.is-header-collapsed .side-nav {
 .card-preview {
   margin: 10px 10px 0;
   aspect-ratio: 16 / 9;
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: var(--radius-md);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--surface-2) 70%, white), var(--surface-1));
@@ -624,7 +629,7 @@ body.is-header-collapsed .side-nav {
   align-items: center;
   justify-content: flex-start;
   gap: var(--space-2);
-  border-top: 1px solid var(--border-subtle);
+  border-top: 0;
 }
 
 .launch-card:not(.has-variants) .card-demo-header {
@@ -804,6 +809,7 @@ body.is-header-collapsed .side-nav {
     <symbol id="icon-git-pull-request" viewBox="0 0 24 24"><circle cx="6" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v6"/><path d="M18 15v-3a6 6 0 0 0-6-6H9"/></symbol>
     <symbol id="icon-columns-3" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></symbol>
     <symbol id="icon-users-round" viewBox="0 0 24 24"><path d="M18 21a6 6 0 0 0-12 0"/><circle cx="12" cy="11" r="4"/><path d="M22 21a5 5 0 0 0-3-4.6"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/><path d="M2 21a5 5 0 0 1 3-4.6"/><path d="M8 3.1a4 4 0 0 0 0 7.8"/></symbol>
+    <symbol id="icon-toolbox" viewBox="0 0 24 24"><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M4 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><path d="M2 13h20"/><path d="M12 13v3"/></symbol>
     <symbol id="icon-layout-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></symbol>
     <symbol id="icon-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="10" y="10" width="4" height="4"/><path d="M4 10H2"/><path d="M4 14H2"/><path d="M22 10h-2"/><path d="M22 14h-2"/><path d="M10 4V2"/><path d="M14 4V2"/><path d="M10 22v-2"/><path d="M14 22v-2"/></symbol>
     <symbol id="icon-network" viewBox="0 0 24 24"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M12 8v3"/></symbol>
@@ -819,7 +825,9 @@ body.is-header-collapsed .side-nav {
         <button class="cann-menu" type="button" aria-label="打开主菜单">
           <svg class="svg-icon"><use href="#icon-menu"></use></svg>
         </button>
-        <a class="cann-logo" href="launch.html" aria-label="返回 PTO 启动页"><span>CANN</span></a>
+        <a class="cann-logo" href="launch.html" aria-label="返回 PTO 启动页">
+          <img src="assets/logo-cann.svg" alt="CANN">
+        </a>
         <strong class="cann-name">CANN</strong>
         <span class="follow-pill">已关注</span>
       </div>
@@ -849,7 +857,7 @@ body.is-header-collapsed .side-nav {
         <a class="cann-nav-link" href="#grid"><svg class="svg-icon nav-icon" aria-hidden="true"><use href="#icon-circle-dot"></use></svg>Issues</a>
         <a class="cann-nav-link" href="#grid"><svg class="svg-icon nav-icon" aria-hidden="true"><use href="#icon-git-pull-request"></use></svg>Pull Requests</a>
         <a class="cann-nav-link" href="#grid"><svg class="svg-icon nav-icon" aria-hidden="true"><use href="#icon-columns-3"></use></svg>看板</a>
-        <a class="cann-nav-link is-active" href="#grid" aria-current="page"><svg class="svg-icon nav-icon" aria-hidden="true"><use href="#icon-users-round"></use></svg>社区</a>
+        <a class="cann-nav-link is-active" href="#grid" aria-current="page"><svg class="svg-icon nav-icon" aria-hidden="true"><use href="#icon-toolbox"></use></svg>工具</a>
       </div>
     </nav>
   </header>
@@ -864,7 +872,6 @@ body.is-header-collapsed .side-nav {
       <div class="section-head">
         <div>
           <h2 class="section-title" id="activeTitle">全部项目</h2>
-          <p class="section-subtitle">一行 3 个的浅色卡片宫格，保留各模块预览和主要入口。</p>
         </div>
         <div class="result-count" id="resultCount"></div>
       </div>
@@ -894,7 +901,11 @@ const launchItems = [
     href: "tiling/index.html",
     preview: "assets/ascend-tiling-viz-workbench.png",
     fit: "contain",
-    tags: ["Tiling", "3D Tensor", "Memory"]
+    tags: ["Tiling", "3D Tensor", "Memory"],
+    variants: [
+      { label: "Explain", href: "tiling/matmul-tiling.html" },
+      { label: "Trace", href: "tiling/index.html" }
+    ]
   },
   {
     title: "Kernel 指令可视化工作台",
@@ -949,20 +960,6 @@ const launchItems = [
     preview: "assets/A5-pmu-诊断工作台.png",
     fit: "contain",
     tags: ["PMU", "Swimlane"]
-  },
-  {
-    title: "模型算子层级架构图",
-    group: "模型图与 IR",
-    status: "hi-fi",
-    desc: "DeepSeek、Qwen 等模型从 L1 到 L4 的多层级折叠图。",
-    href: "model-architecture/index.html",
-    preview: "assets/card1_deepseekv3.svg",
-    fit: "contain",
-    tags: ["Graph", "Architecture"],
-    variants: [
-      { label: "主视图", href: "model-architecture/index.html" },
-      { label: "Graphviz", href: "graphviz/torchvista_graphviz_deepseek_v4.html" }
-    ]
   },
   {
     title: "DeepSeek V3.2 报告叠加图",
@@ -1088,19 +1085,13 @@ const launchItems = [
     tags: ["Design", "Token", "Pattern"]
   },
   {
-    title: "PTO 白皮书总稿",
-    group: "白皮书与系统",
-    status: "doc",
-    desc: "PTO 项目总白皮书和研究叙述入口。",
-    href: "whitepaper.md",
-    tags: ["Whitepaper", "PTO"]
-  },
-  {
     title: "硬件原生系统白皮书",
     group: "白皮书与系统",
     status: "doc",
     desc: "面向 Ascend NPU 的 AI 编译运行时栈白皮书页面。",
     href: "hw-native-sys/index.html",
+    preview: "assets/whitepaper-previews/hw-native-lingqu.svg",
+    fit: "contain",
     tags: ["Whitepaper", "Runtime"]
   },
   {
@@ -1109,6 +1100,8 @@ const launchItems = [
     status: "doc",
     desc: "分层导航小世界图与向量检索工程白皮书。",
     href: "HNSW/HNSW-whitepaper.html",
+    preview: "assets/whitepaper-previews/hnsw-skip-list.svg",
+    fit: "contain",
     tags: ["HNSW", "Vector"]
   },
   {
@@ -1117,7 +1110,29 @@ const launchItems = [
     status: "doc",
     desc: "VLSI 布局算法、H-Anchor 和 PycPlacer 相关白皮书入口。",
     href: "vlsi-placement-whitepaper/index.html",
+    preview: "assets/whitepaper-previews/vlsi-placement-pipeline.svg",
+    fit: "contain",
     tags: ["VLSI", "Layout"]
+  },
+  {
+    title: "Ascend Tiling 可视化白皮书",
+    group: "白皮书与系统",
+    status: "doc",
+    desc: "解释 GM 线性地址、逻辑 tile、trace event 与 CopyIn/Compute/CopyOut 队列如何驱动 tiling 可视化。",
+    href: "tiling/tiling-whitepaper.html",
+    preview: "assets/whitepaper-previews/tiling-gm-logical.svg",
+    fit: "contain",
+    tags: ["Tiling", "Trace", "Memory"]
+  },
+  {
+    title: "真实算子 Tiling 流程白皮书",
+    group: "白皮书与系统",
+    status: "doc",
+    desc: "从真实算子开发调研整理运行期 tiling、动态 shape、tiling key 和硬件约束。",
+    href: "tiling/real-operator-workflow-whitepaper.html",
+    preview: "assets/whitepaper-previews/tiling-runtime-flow.svg",
+    fit: "contain",
+    tags: ["Tiling", "Dynamic Shape", "Operator"]
   }
 ];
 
