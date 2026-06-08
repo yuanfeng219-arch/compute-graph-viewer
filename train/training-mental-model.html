@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>昇腾模型训练开发心智模型</title>
+  <link rel="stylesheet" href="../../pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../../pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../../pto-design-system/tokens/components.css">
+  <link rel="stylesheet" href="../../pto-design-system/css/style.css">
+  <link rel="stylesheet" href="../../pto-design-system/patterns/model-graphviz/pattern.css">
+  <link rel="stylesheet" href="./training-mental-model.css">
+</head>
+<body class="pto-train-mental-page" data-active-visual="ecosystem">
+  <header class="mental-topbar">
+    <div class="mental-title-block">
+      <span class="mental-kicker">PTO Train · Ascend Training Developer Experience</span>
+      <h1>昇腾模型训练开发心智模型</h1>
+      <p>以训练开发流程为主线，把真实 Qwen 与 DeepSeek 案例、模型架构图、并行拓扑和脚本证据放到同一个左右分屏工作台。</p>
+    </div>
+    <div class="mental-actions">
+      <a class="btn btn-ghost" href="./index.html">入门科普页</a>
+      <a class="btn btn-ghost" href="../../gitcode/ascend-training-developer-experience.md">原始文档</a>
+    </div>
+  </header>
+
+  <main class="mental-shell">
+    <article class="panel-shell mental-reader" aria-label="训练开发心智模型主线">
+      <div class="panel-shell-header mental-pane-header">
+        <div>
+          <div class="panel-shell-title">主线章节</div>
+          <div class="panel-shell-meta">滚动或点击章节，右侧同步模型架构图与训练证据</div>
+        </div>
+      </div>
+
+      <nav class="mental-nav" aria-label="章节导航">
+        <button class="btn btn-sm is-selected" type="button" data-visual-target="ecosystem" data-section-target="section-ecosystem">生态</button>
+        <button class="btn btn-sm" type="button" data-visual-target="levels" data-section-target="section-levels">分层</button>
+        <button class="btn btn-sm" type="button" data-visual-target="journey" data-section-target="section-journey">旅程</button>
+        <button class="btn btn-sm" type="button" data-visual-target="qwen3" data-section-target="section-qwen3">Qwen3</button>
+        <button class="btn btn-sm" type="button" data-visual-target="qwen3moe" data-section-target="section-qwen3moe">MoE</button>
+        <button class="btn btn-sm" type="button" data-visual-target="deepseek" data-section-target="section-deepseek">DeepSeek</button>
+        <button class="btn btn-sm" type="button" data-visual-target="rlhf" data-section-target="section-rlhf">GRPO</button>
+        <button class="btn btn-sm" type="button" data-visual-target="breakpoints" data-section-target="section-breakpoints">断点</button>
+        <button class="btn btn-sm" type="button" data-visual-target="mvp" data-section-target="section-mvp">MVP</button>
+      </nav>
+
+      <div class="mental-reader-scroll" id="readerScroll">
+        <section class="mental-section is-active" id="section-ecosystem" data-visual-section="ecosystem">
+          <p class="mental-section-kicker">1 · 生态分层心智模型</p>
+          <h2>先把训练生态看成一条任务链，而不是一堆仓库</h2>
+          <p>
+            模型训练开发者真正面对的是一条链路：硬件与运行时决定能不能跑，MindSpeed Core 提供并行、显存、通信和融合算子能力，MindSpeed-LLM 把模型、任务、脚本和数据处理装配起来，msTT 负责迁移、精度和性能诊断闭环。
+          </p>
+          <div class="mental-grid mental-grid-3">
+            <div><strong>初学者问题</strong><span>我的卡、镜像、脚本和模型能不能匹配？</span></div>
+            <div><strong>进阶问题</strong><span>权重、数据、loss、checkpoint 是否一致？</span></div>
+            <div><strong>专家问题</strong><span>TP/PP/EP/CP 和通信瓶颈如何解释？</span></div>
+          </div>
+        </section>
+
+        <section class="mental-section" id="section-levels" data-visual-section="levels">
+          <p class="mental-section-kicker">2 · 开发者分层</p>
+          <h2>同一套仓库，不同 level 的开发者看到的是不同复杂度</h2>
+          <p>
+            初学者需要一条低决策路径，适合从 Qwen3-8B 这样的 dense 模型开始；进阶开发者需要理解 MoE、DPO、数据格式和长上下文；专家才需要直接面对 DeepSeek-V3.2 671B 这类超大 MoE 的并行策略和性能证据链。
+          </p>
+          <table class="mental-table">
+            <thead><tr><th>开发者</th><th>推荐案例</th><th>应该先看什么</th><th>产品机会</th></tr></thead>
+            <tbody>
+              <tr><td>初学者</td><td>Qwen3-8B</td><td>Embedding、Decoder、Attention、MLP、LM Head</td><td>训练任务向导</td></tr>
+              <tr><td>进阶</td><td>Qwen3-MoE 30B-A3B</td><td>Router、TopK、Expert、DPO pairwise</td><td>脚本体检器</td></tr>
+              <tr><td>专家</td><td>DeepSeek-V3.2 671B</td><td>MLA、MoE、MTP、TP/PP/EP/CP</td><td>性能解释器</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="mental-section" id="section-journey" data-visual-section="journey">
+          <p class="mental-section-kicker">3 · 端到端训练旅程</p>
+          <h2>从模型权重到首个 step，关键不是按钮，而是约束显性化</h2>
+          <p>
+            MindSpeed-LLM 的真实训练流程通常包括下载 HF 权重、转换成 Mcore 或 FSDP2 可用格式、预处理数据、修改路径与并行参数、启动训练、验证 checkpoint 和推理评估。每一步都和模型架构有关系。
+          </p>
+          <div class="mental-flow-list">
+            <span>选模型</span>
+            <span>选后端</span>
+            <span>转权重</span>
+            <span>转数据</span>
+            <span>配并行</span>
+            <span>启动训练</span>
+            <span>诊断优化</span>
+          </div>
+          <p>
+            产品体验的关键是告诉用户：哪些字段来自模型结构，哪些字段来自硬件规模，哪些字段来自训练任务，哪些字段必须和权重转换保持一致。
+          </p>
+        </section>
+
+        <section class="mental-section" id="section-qwen3" data-visual-section="qwen3">
+          <p class="mental-section-kicker">4 · 真实案例：Qwen3-8B</p>
+          <h2>初学者黄金路径：用 dense decoder 建立训练心智</h2>
+          <p>
+            Qwen3-8B 适合做第一张训练地图。它的结构主干清晰：Token IDs 进入 Embedding，经过重复 Decoder Layer，Attention 与 MLP 交替加工，最后由 LM Head 输出 logits。训练脚本里可以看到序列长度、TP/PP、batch 和 fused op 开关如何落到实际命令。
+          </p>
+          <table class="mental-table">
+            <tbody>
+              <tr><th>仓库脚本</th><td><code>examples/mcore/qwen3/pretrain_qwen3_8b_4K_ptd_A3.sh</code></td></tr>
+              <tr><th>架构参数</th><td>36 layers、hidden size 4096、32 attention heads、GQA、RMSNorm、SwiGLU</td></tr>
+              <tr><th>训练参数</th><td>SEQ_LENGTH 4096、TP 2、PP 1、MBS 1、GBS 128</td></tr>
+              <tr><th>体验重点</th><td>权重路径、tokenizer 路径、DATA_PATH 前缀、TP/PP 与转换一致性</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="mental-section" id="section-qwen3moe" data-visual-section="qwen3moe">
+          <p class="mental-section-kicker">5 · 真实案例：Qwen3-MoE 30B-A3B</p>
+          <h2>进阶路径：MoE 让“模型架构”和“并行策略”绑定在一起</h2>
+          <p>
+            Qwen3-MoE 30B-A3B 把开发者带到第二层复杂度。Router、TopK、Expert、all-to-all dispatcher、EP 参数不再是性能细节，而是训练能否跑通、loss 是否稳定、通信是否可接受的核心。
+          </p>
+          <p>
+            同一个模型还覆盖预训练、DPO、长上下文和 FSDP2/A5 量化示例，因此适合做“进阶训练任务向导”的样板。
+          </p>
+          <table class="mental-table">
+            <tbody>
+              <tr><th>预训练脚本</th><td><code>examples/mcore/qwen3_moe/pretrain_qwen3_30b_a3b_4K_ptd.sh</code></td></tr>
+              <tr><th>DPO 脚本</th><td><code>examples/mcore/qwen3_moe/dpo_qwen3_30b_a3b_16K_A3_ptd.sh</code></td></tr>
+              <tr><th>MoE 参数</th><td>128 experts、top-k 8、EP 8 或 DPO 场景下 PP 8 / TP 2</td></tr>
+              <tr><th>体验重点</th><td>pairwise 数据、router 负载、专家并行、长上下文显存</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="mental-section" id="section-deepseek" data-visual-section="deepseek">
+          <p class="mental-section-kicker">6 · 真实案例：DeepSeek-V3.2 671B</p>
+          <h2>专家路径：超大 MoE 训练需要证据链，而不是只看参数表</h2>
+          <p>
+            DeepSeek-V3.2 是专家级案例。它把 MLA、Sparse Indexer、MoE、MTP、长上下文 RoPE、swap optimizer、recompute、TP/PP/EP/CP 放在同一个训练脚本里。开发者真正需要的是一张能把架构、并行、显存和通信联系起来的图。
+          </p>
+          <table class="mental-table">
+            <tbody>
+              <tr><th>仓库脚本</th><td><code>examples/mcore/deepseek32/pretrain_deepseek32_671b_4k_A3_ptd.sh</code></td></tr>
+              <tr><th>规模</th><td>671B、A3、32 nodes x 16 NPUs</td></tr>
+              <tr><th>并行</th><td>TP 4、PP 8、EP 64、CP 1、GBS 7680</td></tr>
+              <tr><th>体验重点</th><td>通信等待、专家路由、MLA/DSA 开关、recompute 与 optimizer swap</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="mental-section" id="section-rlhf" data-visual-section="rlhf">
+          <p class="mental-section-kicker">7 · 真实案例：Qwen2.5-7B GRPO</p>
+          <h2>后训练路径：RLHF/GRPO 是训练系统架构，不只是模型结构</h2>
+          <p>
+            GRPO 的复杂度来自训练系统：Ray 集群、policy rollout、reference 或 reward 侧信号、advantage 计算、训练器更新。这里的右图不画一个纯 decoder，而画后训练闭环，帮助开发者理解为什么 RLHF 不是把 SFT 脚本换个入口就完事。
+          </p>
+          <table class="mental-table">
+            <tbody>
+              <tr><th>仓库脚本</th><td><code>examples/rlhf/grpo/grpo_qwen25_7b_A3.sh</code></td></tr>
+              <tr><th>启动方式</th><td>Ray head/worker，默认配置名 <code>grpo_qwen25_7b_A3</code></td></tr>
+              <tr><th>硬件参数</th><td>NNODES 1、NPUS_PER_NODE 16</td></tr>
+              <tr><th>体验重点</th><td>Ray 资源、主节点 IP、网卡、rollout/训练日志和错误归因</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="mental-section" id="section-breakpoints" data-visual-section="breakpoints">
+          <p class="mental-section-kicker">8 · 关键体验断点</p>
+          <h2>用户出错不是因为不努力，而是约束散落在脚本、文档和架构之间</h2>
+          <p>
+            后端选择、权重转换、数据前缀、TP/PP/EP/CP、rank/IP/端口、loss 异常和 OOM 不是孤立问题。好的产品应该在用户启动前做脚本体检，在运行中解释日志，在失败时把错误定位回架构、数据、环境或并行。
+          </p>
+          <div class="mental-grid mental-grid-2">
+            <div><strong>P0</strong><span>训练任务向导、脚本体检器、权重转换一致性检查。</span></div>
+            <div><strong>P1</strong><span>数据处理结果可视化、并行拓扑图、训练日志解释器。</span></div>
+          </div>
+        </section>
+
+        <section class="mental-section" id="section-mvp" data-visual-section="mvp">
+          <p class="mental-section-kicker">9 · 产品 MVP</p>
+          <h2>第一版不要做“大而全平台”，先做三件能降低失败率的事</h2>
+          <p>
+            MVP 应该围绕真实案例闭环：输入卡型、模型、任务和节点数，输出推荐脚本、参数体检、启动前检查和运行解释。模型架构图不是装饰，而是把训练参数为什么这样配讲清楚。
+          </p>
+          <table class="mental-table">
+            <thead><tr><th>模块</th><th>输入</th><th>输出</th></tr></thead>
+            <tbody>
+              <tr><td>训练任务向导</td><td>模型、任务、卡型、节点数</td><td>推荐后端、脚本、数据/权重准备清单</td></tr>
+              <tr><td>脚本体检器</td><td>shell/yaml</td><td>路径、TP/PP/EP/CP、rank、数据前缀、风险提示</td></tr>
+              <tr><td>运行解释器</td><td>日志、profiler、msTT 输出</td><td>阶段判断、异常解释、下一步建议</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </article>
+
+    <aside class="panel-shell mental-visual" aria-label="模型架构与训练证据">
+      <div class="panel-shell-header mental-pane-header mental-visual-header">
+        <div>
+          <div class="panel-shell-title" id="visualTitle">生态分层图</div>
+          <div class="panel-shell-meta" id="visualMeta">硬件与运行时 -> MindSpeed Core -> MindSpeed-LLM -> 训练任务 -> msTT</div>
+        </div>
+        <span class="mental-visual-chip" id="visualChip">主线</span>
+      </div>
+
+      <div class="mental-visual-body">
+        <div class="mental-graph-stage pto-model-graphviz-stage" id="graphStage" aria-label="模型架构图"></div>
+        <div class="mental-node-tooltip" id="nodeTooltip" role="tooltip" hidden></div>
+        <div class="mental-insight" id="visualInsight" hidden></div>
+        <div class="mental-evidence-grid" id="evidenceGrid" hidden></div>
+        <div class="mental-source-list" id="sourceList" hidden></div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="../../pto-design-system/patterns/model-graphviz/pattern.js"></script>
+  <script src="./training-mental-model.js"></script>
+</body>
+</html>

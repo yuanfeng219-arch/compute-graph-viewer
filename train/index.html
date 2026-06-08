@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>大模型训练与推理入门</title>
+  <link rel="stylesheet" href="../../pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../../pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../../pto-design-system/tokens/components.css">
+  <link rel="stylesheet" href="../../pto-design-system/css/style.css">
+  <link rel="stylesheet" href="../../pto-design-system/patterns/model-graphviz/pattern.css">
+  <link rel="stylesheet" href="./train.css">
+</head>
+<body class="train-page is-beginner" data-model="deepseek" data-mode="single" data-focus="overview">
+  <header class="train-topbar">
+    <div class="train-title-block">
+      <span class="train-kicker">PTO Train · Model Architecture Learning</span>
+      <h1>AI 大模型开发、训练与推理入门</h1>
+    </div>
+    <div class="train-controls" aria-label="学习控制">
+      <div class="segmented-control segmented-control-muted train-segment" aria-label="模型切换">
+        <button class="btn is-selected" type="button" data-model-button="deepseek">DeepSeek V3.2</button>
+        <button class="btn" type="button" data-model-button="qwen">Qwen7B</button>
+      </div>
+      <div class="segmented-control segmented-control-muted train-segment" aria-label="对照模式">
+        <button class="btn is-selected" type="button" data-mode-button="single">单图</button>
+        <button class="btn" type="button" data-mode-button="compare">双图</button>
+      </div>
+      <button class="btn btn-solid train-beginner-toggle" type="button" id="beginnerToggle" aria-pressed="true">初学者</button>
+    </div>
+  </header>
+
+  <main class="train-shell">
+    <article class="panel-shell train-reader-pane" aria-label="学习文档">
+      <div class="panel-shell-header train-pane-header">
+        <div>
+          <div class="panel-shell-title">阅读文档</div>
+          <div class="panel-shell-meta">点击章节、术语或表格项同步右侧架构焦点</div>
+        </div>
+      </div>
+
+      <nav class="train-lesson-nav" aria-label="章节">
+        <button class="btn btn-sm is-selected" type="button" data-section-target="section-overview" data-focus-button="overview">地图</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-four" data-focus-button="four">结构/权重</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-layer" data-focus-button="layer">层</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-training" data-focus-button="training">训练</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-inference" data-focus-button="inference">推理</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-qwen" data-focus-button="attention" data-model-target="qwen">Qwen</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-deepseek" data-focus-button="moe" data-model-target="deepseek">DeepSeek</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-parallel" data-focus-button="parallel">并行</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-split" data-focus-button="split">拆分</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-route" data-focus-button="route">路线</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-script" data-focus-button="script">脚本</button>
+      </nav>
+
+      <div class="train-reader-scroll" id="readerScroll">
+        <section class="train-doc-section is-active" id="section-overview" data-focus-section="overview" data-model-target="deepseek">
+          <p class="train-section-kicker">0 · 学习地图</p>
+          <h2>先记住三句话</h2>
+          <p>
+            大模型不是神秘黑盒，它是一套“把文字切成 token，再用大量矩阵计算预测下一个 token”的系统。
+            <span class="beginner-note">做饭类比：文字先被切成小食材，后厨流水线每一步都加工一点，最后判断下一道该上什么。</span>
+          </p>
+          <p>
+            训练是在更新参数，推理是在使用已有参数。训练像反复试菜并修改菜谱，推理像按已经定稿的菜谱正式出餐。
+            <span class="beginner-note">做饭类比：训练时厨师会改配方；推理时厨师不改配方，只按配方做菜。</span>
+          </p>
+          <p>
+            真正的大模型工程不只会调用 <code>model.generate()</code>，还要理解 tokenizer、权重格式、数据预处理、并行策略、KV Cache、量化和部署配置。
+            <span class="beginner-note">做饭类比：会按菜谱做一道菜还不够，开中央厨房还要懂采购、切配、分工、库存、设备和出餐速度。</span>
+          </p>
+          <div class="train-source-note">
+            <strong>本页依据：</strong>
+            <span>本地 <code>/Users/yin/gitcode</code> 内的 MindSpeed-LLM、cann-recipes-infer、Qwen7B source 资料，以及 <code>patterns/model-graphviz</code> 中的 Qwen7B / DeepSeek V3.2 架构图。</span>
+          </div>
+        </section>
+
+<section class="train-doc-section" id="section-terms" data-focus-section="overview">
+          <p class="train-section-kicker">1 · 术语 vs 做饭类比</p>
+          <h2>先用类比降低门槛，再记住准确术语</h2>
+          <p>
+            类比只是入口，真正写代码和读文档时要回到准确术语。下面的表可以当作第一天的速查表。
+            <span class="beginner-note">做饭类比：先用厨房理解概念，但进真实厨房后还是要会说灶台、刀工、火候和出餐节奏。</span>
+          </p>
+          <table class="train-compare-table train-term-table">
+            <thead>
+              <tr><th>术语</th><th>做饭类比</th><th>准确定义</th></tr>
+            </thead>
+            <tbody>
+              <tr data-focus-row="tokenizer"><td><button type="button" class="train-inline-term" data-focus-button="tokenizer" data-section-target="section-tokenizer">Token</button></td><td>切好的菜丁</td><td>模型处理文本的最小单位，可能是字、词、子词、符号或数字片段。</td></tr>
+              <tr data-focus-row="tokenizer"><td><button type="button" class="train-inline-term" data-focus-button="tokenizer" data-section-target="section-tokenizer">Tokenizer</button></td><td>切菜规则和刀具</td><td>把文本编码成 token id，也能把 token id 解码回文本。不同模型的 tokenizer 通常不能混用。</td></tr>
+              <tr data-focus-row="embedding"><td><button type="button" class="train-inline-term" data-focus-button="embedding" data-section-target="section-layer">Embedding</button></td><td>把编号换成食材向量</td><td>将 token id 转成连续向量，供神经网络计算。</td></tr>
+              <tr data-focus-row="layer"><td><button type="button" class="train-inline-term" data-focus-button="layer" data-section-target="section-layer">Layer / 层</button></td><td>后厨加工工位</td><td>模型中一组按固定顺序执行的计算模块。LLM 里的“32 层”通常指 32 个 Transformer Block。</td></tr>
+              <tr data-focus-row="attention"><td><button type="button" class="train-inline-term" data-focus-button="attention" data-section-target="section-qwen" data-model-target="qwen">Attention</button></td><td>看订单挑重点</td><td>计算当前 token 应该关注上下文里的哪些 token。</td></tr>
+              <tr data-focus-row="mlp"><td><button type="button" class="train-inline-term" data-focus-button="mlp" data-section-target="section-layer">MLP / FFN</button></td><td>调味和二次加工</td><td>Transformer 层里的前馈网络，对每个 token 的表示做非线性变换。</td></tr>
+              <tr data-focus-row="lmhead"><td><button type="button" class="train-inline-term" data-focus-button="lmhead" data-section-target="section-layer">LM Head</button></td><td>出菜口</td><td>把最后隐藏状态映射到词表概率，用来选择下一个 token。</td></tr>
+              <tr data-focus-row="moe"><td><button type="button" class="train-inline-term" data-focus-button="moe" data-section-target="section-deepseek" data-model-target="deepseek">MoE</button></td><td>多个专家厨师</td><td>Mixture of Experts。每个 token 只路由到部分 expert，扩大总参数量但控制单次计算量。</td></tr>
+              <tr data-focus-row="dsa"><td><button type="button" class="train-inline-term" data-focus-button="dsa" data-section-target="section-deepseek" data-model-target="deepseek">DSA</button></td><td>先筛重点菜单项</td><td>DeepSeek Sparse Attention，用 Lightning Indexer 选择相关 token，再做稀疏注意力。</td></tr>
+              <tr data-focus-row="inference"><td><button type="button" class="train-inline-term" data-focus-button="inference" data-section-target="section-inference">KV Cache</button></td><td>保温盒</td><td>缓存 Attention 的 Key/Value，避免生成下一个 token 时重复计算所有历史。</td></tr>
+              <tr data-focus-row="parallel"><td><button type="button" class="train-inline-term" data-focus-button="parallel" data-section-target="section-parallel">TP / PP / DP / EP / CP</button></td><td>中央厨房分工</td><td>分布式训练和推理的多种并行方式，分别拆矩阵、层、数据、专家或上下文。</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+<section class="train-doc-section" id="section-four" data-focus-section="four">
+          <p class="train-section-kicker">2 · 模型基础对象</p>
+          <h2>结构、权重、数据、框架的区别</h2>
+          <p>
+            初学大模型时，最容易把“模型”这个词混成一团。模型结构、模型权重、训练数据和运行框架分别解决不同问题。
+            <span class="beginner-note">做饭类比：不要把厨房平面图、菜谱克数、食材和厨具混为一谈；它们都重要，但职责不同。</span>
+          </p>
+          <table class="train-compare-table">
+            <thead><tr><th>对象</th><th>准确含义</th><th>第一天要会看什么</th><th>做饭类比</th></tr></thead>
+            <tbody>
+              <tr data-focus-row="layer"><td>模型结构</td><td>层数、hidden size、attention heads、MLP/MoE 等模块连接方式。</td><td><code>config.json</code>、架构图、<code>modeling_*.py</code></td><td>厨房布局和工位顺序</td></tr>
+              <tr data-focus-row="weight"><td>模型权重</td><td>训练得到的参数数值，决定模型具体能力和输出风格。</td><td><code>.safetensors</code>、权重索引、checkpoint</td><td>每道菜的具体配方克数</td></tr>
+              <tr data-focus-row="data"><td>数据</td><td>训练或微调用的文本、指令对话、领域语料，以及预处理后的 token 文件。</td><td>JSON/JSONL、prompt 模板、<code>.bin</code>/<code>.idx</code></td><td>食材和已经切好的备菜</td></tr>
+              <tr data-focus-row="inference"><td>运行框架</td><td>负责加载权重、调度设备、执行训练或推理的工具链。</td><td>MindSpeed-LLM、Transformers、cann-recipes-infer、YAML 配置</td><td>炉灶、锅具、排班系统和出餐流程</td></tr>
+            </tbody>
+          </table>
+          <p>
+            Qwen7B 适合先建立结构、权重、数据、框架之间的对应关系：它的结构相对标准，文件也更容易对应。DeepSeek V3.2 则能看到这些概念在 MoE、并行和长上下文工程里怎样放大。
+            <span class="beginner-note">做饭类比：先在标准厨房分清图纸、配方、食材和工具，再去看大型中央厨房才不会迷路。</span>
+          </p>
+        </section>
+
+<section class="train-doc-section" id="section-tokenizer" data-focus-section="tokenizer">
+          <p class="train-section-kicker">3 · 文本怎么进入模型</p>
+          <h2>Tokenizer、词表与 token id</h2>
+          <p>
+            模型不能直接吃中文、英文或代码字符串。第一步必须由 tokenizer 把文本切成 token，再把 token 映射成整数 id。
+            <span class="beginner-note">做饭类比：客人说的是自然语言菜单，厨房先要把它拆成标准菜品编号和备菜单。</span>
+          </p>
+          <p>
+            词表是 tokenizer 能识别的 token 集合。Qwen7B 使用约 15 万级大词表，本地 README 写 151851，本地 <code>config.json</code> 的 <code>vocab_size</code> 是 151936，常见原因是工程配置里会包含补齐或特殊 token。
+            <span class="beginner-note">做饭类比：词表像厨房编码表，真实系统里会给特殊菜品、空位和内部标记也留编号。</span>
+          </p>
+          <p>
+            tokenizer 和权重必须匹配。换 tokenizer 相当于把同一串数字解释成另一套餐品编号，模型会读不懂。
+            <span class="beginner-note">做饭类比：同样的 151643，在 A 厨房可能是结束标记，在 B 厨房可能是别的菜，不能混用。</span>
+          </p>
+        </section>
+
+<section class="train-doc-section" id="section-layer" data-focus-section="layer">
+          <p class="train-section-kicker">4 · 模型结构</p>
+          <h2>模型的“层”是什么？</h2>
+          <p>
+            层是一组按固定顺序执行的计算模块。输入文本先被 tokenizer 变成 token id，再进入 Embedding 层变成向量；随后向量依次经过很多个 Transformer Block；最后进入 LM Head，变成“下一个 token 是谁”的概率。
+            <span class="beginner-note">做饭类比：先把菜单切成编号，再把编号变成食材，经过很多加工工位，最后从出菜口决定下一道菜。</span>
+          </p>
+          <p>
+            平时说 Qwen7B 有 <code>num_hidden_layers: 32</code>，通常指 32 个 Transformer Block。这个数字一般不把最前面的 Embedding 和最后的 LM Head 算进去。
+            <span class="beginner-note">做饭类比：32 层不是 32 本菜谱，而是同一道菜连续经过 32 个加工工位。</span>
+          </p>
+          <p>
+            一个 Transformer Block 不是单个矩阵，而是 Norm、Attention、残差连接、MLP/FFN 等小模块的组合。Attention 让 token 看上下文重点，MLP 对每个 token 的表示做进一步加工，Norm 稳定数值，残差连接保留原信息并叠加新变化。
+            <span class="beginner-note">做饭类比：一个工位不是只有一口锅，还包含称重、看订单、翻炒、保留原味和校准火候。</span>
+          </p>
+          <table class="train-compare-table">
+            <thead><tr><th>模块</th><th>做什么</th><th>类比</th></tr></thead>
+            <tbody>
+              <tr><td>Embedding</td><td>把 token id 变成向量</td><td>把菜名编号换成真实食材</td></tr>
+              <tr><td>Attention</td><td>让当前 token 关注上下文重点</td><td>看整张订单，找关键备注</td></tr>
+              <tr><td>MLP / FFN</td><td>对 token 表示做非线性加工</td><td>调味、翻炒、让味道更复杂</td></tr>
+              <tr><td>Norm</td><td>稳定数值范围</td><td>校准火候和称重</td></tr>
+              <tr><td>Residual</td><td>把输入绕路加回输出</td><td>保留原味，再叠加新调味</td></tr>
+              <tr><td>LM Head</td><td>映射到词表概率</td><td>根据半成品判断下一道该出什么</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+<section class="train-doc-section" id="section-training" data-focus-section="training">
+          <p class="train-section-kicker">5 · 训练在训练什么</p>
+          <h2>预训练、SFT、LoRA 与 checkpoint</h2>
+          <p>
+            预训练最常见目标是 next token prediction：给模型一段前文，让它预测下一个 token。训练时计算预测分布和真实目标之间的 loss，再通过反向传播更新参数。
+            <span class="beginner-note">做饭类比：模型先猜下一步怎么做，猜错就调整菜谱里的比例，反复很多次后厨艺变稳。</span>
+          </p>
+          <p>
+            指令微调 SFT 让模型学会“看到指令后按任务回答”。MindSpeed-LLM 文档里覆盖单样本微调、多样本 pack 微调和多轮对话微调。
+            <span class="beginner-note">做饭类比：预训练是学通用厨艺，SFT 是学会看客人点单并按指定格式出餐。</span>
+          </p>
+          <p>
+            LoRA 会冻结大部分原始权重，只训练少量低秩矩阵。它不是从零训练新模型，而是在已有模型旁边加一组可学习的小模块。
+            <span class="beginner-note">做饭类比：不重写整本菜谱，只在关键页贴便签，便签很小但能改变口味和出餐格式。</span>
+          </p>
+        </section>
+
+<section class="train-doc-section" id="section-inference" data-focus-section="inference">
+          <p class="train-section-kicker">6 · 推理在推什么</p>
+          <h2>Prefill、Decode、KV Cache 与生成参数</h2>
+          <p>
+            推理不会更新权重。它的目标是加载已有权重，根据 prompt 生成输出。整个过程通常分为 Prefill 和 Decode 两个阶段。
+            <span class="beginner-note">做饭类比：推理时厨师不改菜谱，只看订单并正式做菜。</span>
+          </p>
+          <p>
+            Prefill 阶段一次性处理完整 prompt，建立上下文状态和 KV Cache。Decode 阶段基于已有上下文，每一步生成一个或少量新 token。
+            <span class="beginner-note">做饭类比：Prefill 是先完整读菜单和备注，Decode 是一道一道继续出菜。</span>
+          </p>
+          <p>
+            KV Cache 缓存 Attention 中的 Key/Value，避免每生成一个 token 都重新计算所有历史。长上下文、多并发推理时，KV Cache 的显存管理会直接影响速度和可服务请求数量。
+            <span class="beginner-note">做饭类比：把已经处理好的中间材料放保温盒，下一步直接复用，不用每次从洗菜开始。</span>
+          </p>
+          <table class="train-compare-table">
+            <thead><tr><th>参数 / 指标</th><th>含义</th><th>类比</th></tr></thead>
+            <tbody>
+              <tr><td><code>max_new_tokens</code></td><td>最多生成多少新 token</td><td>最多出几道菜</td></tr>
+              <tr><td><code>top_k</code></td><td>只在概率最高的 k 个候选里选</td><td>只从前 k 个热门菜里选</td></tr>
+              <tr><td><code>top_p</code></td><td>选累计概率达到 p 的候选集合</td><td>只从足够可能的菜里选</td></tr>
+              <tr><td><code>temperature</code></td><td>控制随机性</td><td>温度高更敢创新，低更保守</td></tr>
+              <tr><td>TTFT</td><td>Time To First Token，首 token 延迟</td><td>第一道菜多久上桌</td></tr>
+              <tr><td>TPOT</td><td>Time Per Output Token，每个 token 耗时</td><td>后续每道菜的出餐间隔</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+<section class="train-doc-section" id="section-qwen" data-focus-section="attention" data-model-target="qwen">
+          <p class="train-section-kicker">7 · 案例一：Dense Transformer</p>
+          <h2>Qwen7B：适合第一阶段学习的标准样例</h2>
+          <p>
+            Qwen7B 是 70 亿参数规模的 Dense Transformer。它适合用来学习模型目录、配置文件、tokenizer、基础推理和 Dense Transformer 的主干结构。
+            <span class="beginner-note">做饭类比：Qwen7B 像标准厨房，所有订单基本都走同一条完整流水线，结构比大型中央厨房更容易入门。</span>
+          </p>
+          <p>
+            本地 <code>qwen7b-source/config.json</code> 里的关键结构包括：32 个 hidden layers、4096 hidden size、32 个 attention heads、22016 intermediate size、8192 基础序列长度，以及更长的 <code>max_position_embeddings</code> 配置。
+            <span class="beginner-note">做饭类比：这相当于厨房有 32 个加工工位，每个工位的工作台宽度是 4096，调味台更宽到 22016。</span>
+          </p>
+          <p>
+            Qwen7B README 和配置里能看到 RoPE、SwiGLU、RMSNorm、Flash Attention 等现代 LLM 常见组件。第一天不用把数学细节推完，但要知道它们分别属于位置编码、MLP 激活、归一化和高效注意力计算。
+            <span class="beginner-note">做饭类比：先知道这些是定位菜品、调味方式、校准火候和高效锅具，后面再研究每个工具的细节。</span>
+          </p>
+          <table class="train-compare-table">
+            <tbody>
+              <tr><th>本地目录</th><td><code>/Users/yin/gitcode/qwen7b-source/</code></td></tr>
+              <tr><th>核心文件</th><td><code>README.md</code>、<code>config.json</code>、<code>generation_config.json</code>、<code>tokenization_qwen.py</code>、<code>model.safetensors.index.json</code></td></tr>
+              <tr><th>入门顺序</th><td>先读 README，再看 config，再看 generation config，最后看权重索引。</td></tr>
+              <tr><th>注意事项</th><td>本地 safetensors 分片如果只是 Git LFS pointer，需要拉取真实权重后才能加载。</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+<section class="train-doc-section" id="section-deepseek" data-focus-section="moe" data-model-target="deepseek">
+          <p class="train-section-kicker">8 · 案例二：MoE + DSA</p>
+          <h2>DeepSeek V3.2：适合学习大规模工程复杂度</h2>
+          <p>
+            本页将 dpsk 3.2 对应为本地 DeepSeek-V3.2-Exp 资料。它是 671B 级别 MoE 模型，适合学习 MoE、MLA、DSA、MTP、TP、PP、EP、CP、量化和长上下文推理。
+            <span class="beginner-note">做饭类比：DeepSeek V3.2 像大型中央厨房，不只是一条流水线，而是有分菜员、专家厨师、长菜单处理和多节点协作。</span>
+          </p>
+          <p>
+            它不适合作为初学者第一天直接全量训练的对象，不是因为不能训练，而是因为完整训练需要大规模硬件、分布式通信、权重切分、数据管线和稳定性工程。
+            <span class="beginner-note">做饭类比：第一天学厨不应该直接承包万人宴席，但可以先研究万人宴席的厨房平面图和分工制度。</span>
+          </p>
+          <p>
+            本地 MindSpeed-LLM 的 DeepSeek 3.2 训练脚本能看到真实工程参数：<code>num-experts 256</code>、<code>moe-router-topk 8</code>、<code>TP=4</code>、<code>PP=8</code>、<code>EP=64</code>、<code>enable-dsa-indexer</code>、<code>use-sparse-flash-attn</code> 等。
+            <span class="beginner-note">做饭类比：256 位专家厨师不代表每道菜都让 256 人同时做，而是由分菜员挑 TopK 专家参与。</span>
+          </p>
+          <table class="train-compare-table">
+            <thead><tr><th>模块</th><th>DeepSeek V3.2 里要看的点</th></tr></thead>
+            <tbody>
+              <tr><td>MoE</td><td>大量 expert + router，每个 token 只激活部分 expert。</td></tr>
+              <tr><td>MLA</td><td>Multi-head Latent Attention，围绕注意力的工程优化。</td></tr>
+              <tr><td>DSA</td><td>Lightning Indexer 先选 TopK 相关 token，再做 Sparse Flash Attention。</td></tr>
+              <tr><td>MTP</td><td>Multi-Token Prediction，一次预测多个后续 token 的训练/推理优化思路。</td></tr>
+              <tr><td>量化</td><td>BF16、W8A8C16、W8A8C8、W4A8C8 等推理权重路径。</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+<section class="train-doc-section" id="section-weight" data-focus-section="weight">
+          <p class="train-section-kicker">9 · 权重与格式转换</p>
+          <h2>为什么同一个模型还要转权重</h2>
+          <p>
+            模型结构回答“厨房长什么样”，模型权重回答“每个参数具体是多少”。同样结构配上不同权重，能力和输出风格会完全不同。
+            <span class="beginner-note">做饭类比：厨房平面图相同，不代表菜谱配方相同；调料克数不同，味道就不同。</span>
+          </p>
+          <p>
+            HuggingFace 权重是通用生态常见格式，Megatron-Mcore 权重适合 MindSpeed-LLM 分布式训练，推理框架权重可能还会按并行、量化或设备要求重新切分和重排。
+            <span class="beginner-note">做饭类比：公开菜谱、大厨房内部菜谱、压缩版出餐菜谱，内容相关但格式不同。</span>
+          </p>
+          <p>
+            权重转换最容易出错的是并行参数不一致、tokenizer 路径不匹配、base/chat 模型混用、LoRA 权重没有和 base 权重一起正确加载。
+            <span class="beginner-note">做饭类比：菜谱、菜品编号、厨房设备和便签必须对应，错一个就可能出错菜。</span>
+          </p>
+        </section>
+
+<section class="train-doc-section" id="section-data" data-focus-section="data">
+          <p class="train-section-kicker">10 · 数据预处理</p>
+          <h2>为什么要生成 .bin 和 .idx</h2>
+          <p>
+            训练时直接反复读取 JSON、CSV 或 Parquet 并实时 tokenize 会慢。MindSpeed-LLM 的流程会提前把原始数据 tokenize，生成 <code>.bin</code> 保存 token 内容，生成 <code>.idx</code> 保存索引和样本边界。
+            <span class="beginner-note">做饭类比：营业前先洗菜、切菜、分盒编号，出餐时直接拿盒子，不要每单都重新切。</span>
+          </p>
+          <p>
+            预训练数据常见字段是 <code>text</code>；指令微调会把 instruction、input、response、system、history 等字段映射成模型需要的 prompt 和 labels。
+            <span class="beginner-note">做饭类比：预训练像读大量菜谱文本，指令微调像一张张“客人点单和标准答复”的训练单。</span>
+          </p>
+          <p>
+            <code>DATA_PATH</code> 通常填输出前缀，而不是随便某个 <code>.bin</code> 文件。这个细节是很多初学者第一次跑训练脚本时会踩的坑。
+            <span class="beginner-note">做饭类比：交给厨房的是“这一批菜盒的编号前缀”，不是只拿其中一个盒子。</span>
+          </p>
+        </section>
+
+<section class="train-doc-section" id="section-parallel" data-focus-section="parallel">
+          <p class="train-section-kicker">11 · 大模型为什么要并行</p>
+          <h2>DP、TP、PP、CP、EP 怎么分工</h2>
+          <p>
+            大模型太大，单卡通常放不下或算不快，所以训练和推理会把计算、参数、层、数据、上下文或专家拆到多张卡、多节点上协作。
+            <span class="beginner-note">做饭类比：一桌万人宴席不可能一个人完成，需要采购、切配、热厨、冷菜、甜品和传菜一起协作。</span>
+          </p>
+          <table class="train-compare-table">
+            <thead><tr><th>并行方式</th><th>拆什么</th><th>做饭类比</th></tr></thead>
+            <tbody>
+              <tr><td>DP</td><td>多份模型副本处理不同 batch，再同步梯度</td><td>多个厨师做不同订单后同步经验</td></tr>
+              <tr><td>TP</td><td>把大矩阵乘法按维度切到多卡</td><td>一口大锅分成几口锅同时炒</td></tr>
+              <tr><td>PP</td><td>把不同模型层放到不同设备</td><td>前菜、主菜、甜点按流水线传递</td></tr>
+              <tr><td>CP</td><td>长序列上下文按 token 维度分片</td><td>超长菜单分给多人读</td></tr>
+              <tr><td>EP</td><td>MoE 的 expert 分布到不同设备</td><td>不同菜系专家分布在不同厨房</td></tr>
+              <tr><td>ZeRO / FSDP</td><td>参数、梯度、优化器状态分片保存</td><td>菜谱、笔记和库存分散保管</td></tr>
+            </tbody>
+          </table>
+          <p>
+            DeepSeek V3.2 这类 MoE 模型会组合使用多种并行方式。比如 TP 拆矩阵，PP 拆层，EP 拆专家，CP 面向长上下文；这些都属于协同训练或协同推理。
+            <span class="beginner-note">做饭类比：同一道菜可以跨多个工位完成，但所有工位仍然围绕同一张订单工作。</span>
+          </p>
+        </section>
+
+<section class="train-doc-section" id="section-split" data-focus-section="split">
+          <p class="train-section-kicker">12 · 拆分训练</p>
+          <h2>模型可以拆分训练吗？</h2>
+          <p>
+            工程上可以拆分。TP、PP、DP、EP、CP、ZeRO/FSDP 都是在把一个大模型拆到多设备上共同训练，它们仍然处于同一个模型、同一个 loss、同一次反向传播里。
+            <span class="beginner-note">做饭类比：中央厨房把一道菜分给多个工位协作，但最后仍然按同一张订单和同一套质检标准出菜。</span>
+          </p>
+          <p>
+            语义上不能随便拆。不能简单地把前 10 层和后 10 层各自单独训练，再拼起来期待效果稳定。后面的层依赖前面的表示，前面的层也要根据最终 loss 反向传播回来的梯度调整。
+            <span class="beginner-note">做饭类比：不能让一个人只练切菜，另一个人只练调味，最后随机拼班就保证整道菜好吃。</span>
+          </p>
+          <p>
+            合理的“局部训练”包括继续预训练、全参微调、冻结部分层、LoRA/Adapter、QLoRA、蒸馏、MoE 专家和路由优化。它们不是随意拆层拼接，而是在明确训练目标和约束下进行。
+            <span class="beginner-note">做饭类比：可以只训练甜品组或给原菜谱贴便签，但仍要用最终菜品质量来验收。</span>
+          </p>
+          <table class="train-compare-table">
+            <thead><tr><th>方式</th><th>训练什么</th><th>适合情况</th></tr></thead>
+            <tbody>
+              <tr><td>全量预训练</td><td>从头训练全部参数</td><td>海量数据和大规模集群，成本最高</td></tr>
+              <tr><td>继续预训练</td><td>已有模型上继续学习新语料</td><td>行业语料、代码、法律、医学等领域增强</td></tr>
+              <tr><td>全参微调</td><td>让全部参数参与微调</td><td>资源较多、任务变化较大</td></tr>
+              <tr><td>冻结部分层</td><td>固定一部分参数，只训练部分层</td><td>低成本实验，但能力上限有限</td></tr>
+              <tr><td>LoRA / Adapter</td><td>冻结 base，只训练小模块</td><td>初学者和业务微调最常见</td></tr>
+              <tr><td>蒸馏</td><td>用大模型输出教小模型</td><td>想部署更小、更快模型</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+<section class="train-doc-section" id="section-compare" data-focus-section="compare">
+          <p class="train-section-kicker">13 · 两个案例怎么对照学</p>
+          <h2>Qwen7B 与 DeepSeek V3.2 的学习价值不同</h2>
+          <p>
+            Qwen7B 更适合建立第一层认知：模型目录、config、tokenizer、Dense Transformer、基础推理。DeepSeek V3.2 更适合学习现代大规模工程：MoE、长上下文、稀疏注意力、并行和量化。
+            <span class="beginner-note">做饭类比：先在标准厨房学会基本流程，再看中央厨房如何扩大规模和提升出餐效率。</span>
+          </p>
+          <table class="train-compare-table">
+            <thead><tr><th>维度</th><th>Qwen7B</th><th>DeepSeek V3.2</th></tr></thead>
+            <tbody>
+              <tr><td>规模</td><td>7B</td><td>671B 级别</td></tr>
+              <tr><td>结构重点</td><td>Dense Transformer</td><td>MoE、MLA、DSA、MTP</td></tr>
+              <tr><td>初学者用途</td><td>看懂模型文件和基础推理</td><td>看懂大规模训练/推理脚本</td></tr>
+              <tr><td>训练门槛</td><td>仍需显存，但概念更直观</td><td>全量训练需要大规模集群</td></tr>
+              <tr><td>推理重点</td><td><code>generate()</code>、KV Cache、上下文长度</td><td>Prefill/Decode、CP/EP、量化、DSA</td></tr>
+              <tr><td>建议顺序</td><td>第一阶段先学</td><td>第二阶段读脚本和架构图</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+<section class="train-doc-section" id="section-route" data-focus-section="route">
+          <p class="train-section-kicker">14 · 第一天到第五阶段</p>
+          <h2>初学者学习路线</h2>
+          <p>
+            第 1 阶段只学会看懂模型目录：README、config、tokenizer、generation_config、权重索引分别做什么。目标是能解释 Qwen7B 的层数、隐藏维度、头数、词表和上下文长度。
+            <span class="beginner-note">做饭类比：先看厨房地图、菜谱封面、食材编码表和出餐规则，不急着开火。</span>
+          </p>
+          <p>
+            第 2 阶段学一次基础推理：理解 <code>AutoTokenizer</code>、<code>AutoModelForCausalLM</code>、<code>generate()</code>、<code>max_new_tokens</code>、<code>top_p</code>、<code>temperature</code>。
+            <span class="beginner-note">做饭类比：先按已有菜谱做一道小菜，观察第一道多久上、后面出餐是否稳定。</span>
+          </p>
+          <p>
+            第 3 阶段学训练流程，但先不追求跑 671B：环境准备、权重转换、数据预处理、预训练、SFT、LoRA、checkpoint 保存和最小推理验证。
+            <span class="beginner-note">做饭类比：先练小规模试菜流程，不要第一天就承接万人宴席。</span>
+          </p>
+          <p>
+            第 4 阶段学并行和 DeepSeek V3.2 脚本：看懂 TP、PP、DP、CP、EP、num-experts、router topk、DSA、Lightning Indexer、Sparse Flash Attention。
+            <span class="beginner-note">做饭类比：开始研究中央厨房怎样把一道复杂订单分给多个工位和专家组。</span>
+          </p>
+          <p>
+            第 5 阶段学推理部署与性能优化：区分 BF16、FP8、INT8、W8A8C8，理解 TTFT、TPOT、吞吐、KV Cache、Paged Attention 和 YAML 配置。
+            <span class="beginner-note">做饭类比：不只要做得对，还要上菜快、占用少、多人点餐时不乱。</span>
+          </p>
+        </section>
+
+<section class="train-doc-section" id="section-script" data-focus-section="script">
+          <p class="train-section-kicker">15 · 读脚本时应该抓什么重点</p>
+          <h2>先看参数属于哪一类，再看它影响哪一步</h2>
+          <p>
+            初学者读训练或推理脚本时，不要从第一行到最后一行硬啃。先把参数归类：路径、模型结构、并行、精度/量化、数据、checkpoint、启动方式和功能开关。
+            <span class="beginner-note">做饭类比：看中央厨房排班表时，先分清哪些是食材地址，哪些是工位数量，哪些是锅具规格，哪些是出餐流程。</span>
+          </p>
+          <table class="train-compare-table">
+            <thead><tr><th>参数类别</th><th>常见名字</th><th>应该问的问题</th></tr></thead>
+            <tbody>
+              <tr data-focus-row="weight"><td>路径</td><td><code>MODEL_PATH</code>、<code>LOAD_PATH</code>、<code>SAVE_PATH</code></td><td>权重、tokenizer、输出 checkpoint 是否指向同一套模型？</td></tr>
+              <tr data-focus-row="layer"><td>模型结构</td><td><code>num-layers</code>、<code>hidden-size</code>、<code>num-attention-heads</code></td><td>脚本参数是否和 config、架构图一致？</td></tr>
+              <tr data-focus-row="parallel"><td>并行</td><td><code>tensor-model-parallel-size</code>、<code>pipeline-model-parallel-size</code>、<code>expert-model-parallel-size</code></td><td>并行切分是否和权重格式、卡数、节点数一致？</td></tr>
+              <tr data-focus-row="data"><td>数据</td><td><code>DATA_PATH</code>、<code>seq-length</code>、<code>micro-batch-size</code></td><td>数据是否已经预处理，batch 和序列长度是否会 OOM？</td></tr>
+              <tr data-focus-row="inference"><td>精度/量化</td><td><code>bf16</code>、<code>fp8</code>、<code>w8a8</code>、<code>quant</code></td><td>加载路径、YAML 配置和硬件能力是否匹配？</td></tr>
+              <tr data-focus-row="dsa"><td>功能开关</td><td><code>enable-dsa-indexer</code>、<code>use-sparse-flash-attn</code></td><td>打开的优化是否有对应模型结构、依赖和数据路径？</td></tr>
+            </tbody>
+          </table>
+          <p>
+            读脚本的目标不是背参数，而是能解释“这个参数影响哪张图里的哪一块”。例如 TP 影响矩阵并行，EP 影响 MoE experts，CP 影响长上下文切分，DSA 影响稀疏注意力路径。
+            <span class="beginner-note">做饭类比：学习者不需要背整张排班表，但要知道每个岗位动了会影响哪道菜、哪口锅、哪组厨师。</span>
+          </p>
+        </section>
+
+<section class="train-doc-section" id="section-flow" data-focus-section="flow">
+          <p class="train-section-kicker">16 · 用做饭类比串起完整流程</p>
+          <h2>从原始文本到推理服务是一条流水线</h2>
+          <p>
+            大模型工程不是单点知识，而是一条连续链路：准备原始文本，tokenizer 编码，数据预处理，加载或转换权重，训练或微调，保存 checkpoint，再加载到推理框架执行 Prefill/Decode。
+            <span class="beginner-note">做饭类比：采购食材、切配、按菜谱试菜、保存定稿菜谱、正式营业出餐，是同一条厨房流程。</span>
+          </p>
+          <p>
+            如果流程出错，先按链路定位：tokenizer 是否匹配，数据前缀是否正确，权重是否完整，转换并行参数是否一致，推理配置是否对应量化和设备。
+            <span class="beginner-note">做饭类比：菜不对味时，先查食材编号、备菜盒、菜谱版本、工位分工和锅具设置，不要只盯最后出餐口。</span>
+          </p>
+        </section>
+
+<section class="train-doc-section" id="section-checklist" data-focus-section="route">
+          <p class="train-section-kicker">17 · Checklist</p>
+          <h2>训练和推理前先检查这些</h2>
+          <div class="train-check-grid">
+            <div>
+              <h3>训练前</h3>
+              <ul>
+                <li>CANN / torch_npu / PyTorch / MindSpeed-LLM 版本匹配。</li>
+                <li>模型权重完整，tokenizer 路径与模型匹配。</li>
+                <li>HF 到 Megatron-Mcore 转换参数和训练脚本 TP / PP / EP 一致。</li>
+                <li>数据已预处理成 <code>.bin</code> / <code>.idx</code>，<code>DATA_PATH</code> 填前缀。</li>
+                <li><code>micro-batch-size</code>、<code>global-batch-size</code>、<code>seq-length</code> 不会导致 OOM。</li>
+              </ul>
+            </div>
+            <div>
+              <h3>推理前</h3>
+              <ul>
+                <li>模型权重、tokenizer、prompt template 匹配。</li>
+                <li>并行参数与权重切分一致。</li>
+                <li><code>max_new_tokens</code> 不要过大，长上下文要估算 KV Cache。</li>
+                <li>量化权重路径与 YAML 中 dtype / quant mode 对应。</li>
+                <li>多节点推理时 IP、rank、world size 一致。</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+<section class="train-doc-section" id="section-mistakes" data-focus-section="route">
+          <p class="train-section-kicker">18 · 常见误区</p>
+          <h2>第一天最容易误解的地方</h2>
+          <p>
+            7B 不等于普通电脑一定轻松跑。显存、精度、量化、上下文长度和推理框架都会影响能不能跑、跑得多快。
+            <span class="beginner-note">做饭类比：小餐厅也需要炉灶和食材，不是菜名短就一定容易做。</span>
+          </p>
+          <p>
+            下载权重不等于能训练。还需要环境、tokenizer、数据预处理、权重格式转换、并行参数和足够硬件。
+            <span class="beginner-note">做饭类比：有菜谱不等于能开店，还要厨房设备、备菜和员工排班。</span>
+          </p>
+          <p>
+            LoRA 不等于完整训练。它是参数高效微调，适合学习任务格式、领域风格或小范围适配，但不能低成本获得全新基础能力。
+            <span class="beginner-note">做饭类比：贴便签能微调菜品风味，但不能把完全不会做饭的人变成大厨。</span>
+          </p>
+          <p>
+            量化不只是“变快”。它通常能省显存、提吞吐、降时延，但可能影响效果，必须结合评测和业务样例验证。
+            <span class="beginner-note">做饭类比：把菜谱压缩成速记版会更快，但不能漏掉关键步骤。</span>
+          </p>
+          <p>
+            DeepSeek V3.2 脚本不能随便照抄跑。脚本是大规模集群参考，需要按硬件、节点数、网络、权重路径、数据路径、并行策略和版本调整。
+            <span class="beginner-note">做饭类比：中央厨房排班表不能直接拿到家用厨房执行。</span>
+          </p>
+          <p>
+            模型可以工程拆分训练，但不能把每层各自独立训练后随便拼起来。TP、PP、DP、EP、CP 是协同训练同一个模型，不是把模型语义切碎。
+            <span class="beginner-note">做饭类比：流水线可以分工，但所有工位仍然服务同一道菜和同一个质检标准。</span>
+          </p>
+        </section>
+
+<section class="train-doc-section" id="section-conclusion" data-focus-section="conclusion">
+          <p class="train-section-kicker">19 · 结论</p>
+          <h2>先用 Qwen 建地基，再用 DeepSeek 学工程复杂度</h2>
+          <p>
+            初学者第一阶段应该用 Qwen7B 建立 Dense Transformer、tokenizer、config、权重、推理参数和基础训练流程的认知。它仍然不是“随便本机全量训练”的对象，但结构更适合作为第一张地图。
+            <span class="beginner-note">做饭类比：先在标准厨房把切菜、调味、出餐练顺，再去看中央厨房。</span>
+          </p>
+          <p>
+            DeepSeek V3.2 适合第二阶段学习 MoE、MLA、DSA、MTP、并行、量化和长上下文推理。它的价值不是让初学者第一天直接全量训练，而是帮助学习者理解真实大模型工程为什么复杂。
+            <span class="beginner-note">做饭类比：万人宴席不适合第一天上手承包，但它的厨房图纸很适合用来理解大规模协作。</span>
+          </p>
+          <p>
+            判断自己是否真正入门，可以看三件事：能解释模型的层是什么；能说清训练、微调、推理分别更新什么或不更新什么；能读懂脚本里路径、数据、并行、权重和量化参数各自影响哪里。
+            <span class="beginner-note">做饭类比：能说清厨房布局、菜谱怎么改、正式出餐怎么跑，就已经跨过第一道门槛。</span>
+          </p>
+        </section>
+
+        <section class="train-term-bank" aria-label="术语索引">
+          <h2>术语索引</h2>
+          <div class="train-term-grid">
+            <button type="button" class="train-term" data-focus-button="tokenizer" data-section-target="section-tokenizer">Tokenizer</button>
+            <button type="button" class="train-term" data-focus-button="embedding" data-section-target="section-layer">Embedding</button>
+            <button type="button" class="train-term" data-focus-button="layer" data-section-target="section-layer">Layer</button>
+            <button type="button" class="train-term" data-focus-button="attention" data-section-target="section-qwen" data-model-target="qwen">Attention</button>
+            <button type="button" class="train-term" data-focus-button="mlp" data-section-target="section-layer">MLP</button>
+            <button type="button" class="train-term" data-focus-button="lmhead" data-section-target="section-layer">LM Head</button>
+            <button type="button" class="train-term" data-focus-button="moe" data-section-target="section-deepseek" data-model-target="deepseek">MoE</button>
+            <button type="button" class="train-term" data-focus-button="dsa" data-section-target="section-deepseek" data-model-target="deepseek">DSA</button>
+            <button type="button" class="train-term" data-focus-button="training" data-section-target="section-training">SFT / LoRA</button>
+            <button type="button" class="train-term" data-focus-button="inference" data-section-target="section-inference">Prefill / Decode</button>
+            <button type="button" class="train-term" data-focus-button="parallel" data-section-target="section-parallel">TP / PP / EP / CP</button>
+            <button type="button" class="train-term" data-focus-button="split" data-section-target="section-split">拆分训练</button>
+            <button type="button" class="train-term" data-focus-button="script" data-section-target="section-script">读脚本</button>
+          </div>
+        </section>
+      </div>
+    </article>
+
+    <section class="panel-shell train-graph-pane" aria-label="模型架构图">
+      <div class="panel-shell-header train-pane-header train-graph-header">
+        <div>
+          <div class="panel-shell-title" id="graphTitle">DeepSeek V3.2 架构图</div>
+          <div class="panel-shell-meta" id="graphMeta">MoE · MLA · DSA · 671B</div>
+        </div>
+        <div class="train-readout" id="focusReadout">焦点：学习地图</div>
+      </div>
+
+      <div class="train-graph-stage">
+        <div class="train-graph-callout" id="graphCallout">
+          从文本到输出：Tokenizer 切 token，Embedding 转向量，多层 Transformer 加工，LM Head 输出词表概率。
+        </div>
+        <div class="train-graph-grid" id="graphGrid">
+          <div class="train-frame-shell">
+            <div class="train-frame-label" id="primaryFrameLabel">DeepSeek V3.2</div>
+            <iframe
+              id="primaryFrame"
+              class="train-model-frame"
+              src="./assets/deepseek_v32_modelviz_embed.html?theme=light&embed=1"
+              title="DeepSeek V3.2 model architecture"></iframe>
+          </div>
+          <div class="train-frame-shell train-compare-frame">
+            <div class="train-frame-label" id="compareFrameLabel">Qwen7B</div>
+            <iframe
+              id="compareFrame"
+              class="train-model-frame"
+              src="./assets/qwen7b_modelviz_embed.html?theme=light&embed=1"
+              title="Qwen7B model architecture"></iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./train.js"></script>
+</body>
+</html>

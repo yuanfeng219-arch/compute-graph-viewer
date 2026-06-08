@@ -1,0 +1,474 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+.pto-train-mental-page {
+  --model-graphviz-bg: var(--background);
+  --model-graphviz-stage-bg: var(--background);
+  --model-graphviz-line: var(--foreground);
+  --model-graphviz-line-soft: var(--border-strong);
+  --model-graphviz-node-label: var(--foreground);
+  --model-graphviz-node-type: var(--foreground-secondary);
+  --model-graphviz-cluster-label: color-mix(in srgb, var(--foreground) 86%, transparent);
+  --model-graphviz-toggle-bg: var(--state-focus);
+  --model-graphviz-toggle-border: var(--border-strong);
+  --model-graphviz-toggle-icon: var(--foreground);
+  --model-graphviz-tensor-fill: var(--surface-1);
+  --model-graphviz-tensor-stroke: var(--border-default);
+  --model-graphviz-report-p0: #ff2d7a;
+  --model-graphviz-report-p1: #ff9d00;
+  --model-graphviz-report-p2: #ffe600;
+  --model-graphviz-report-priority-on-dark: var(--foreground);
+  --model-graphviz-report-priority-on-light: var(--background);
+  --model-graphviz-node-shadow: none;
+  --model-graphviz-parent-shadow: none;
+  --model-graphviz-panel-shadow: none;
+
+  margin: 0;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+.mental-topbar {
+  min-height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--background-elevated) 96%, transparent);
+}
+
+.mental-title-block {
+  min-width: 0;
+}
+
+.mental-kicker,
+.mental-section-kicker {
+  display: block;
+  color: var(--foreground-secondary);
+  font: var(--text-label);
+  letter-spacing: var(--letter-spacing-label);
+}
+
+.mental-title-block h1 {
+  margin: var(--space-1) 0;
+  color: var(--foreground);
+  font: var(--text-title-1);
+  letter-spacing: 0;
+}
+
+.mental-title-block p {
+  max-width: 960px;
+  margin: 0;
+  color: var(--foreground-secondary);
+  font: var(--text-body-sm);
+}
+
+.mental-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.mental-shell {
+  height: calc(100vh - 84px);
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) minmax(480px, 42vw);
+  gap: var(--space-4);
+  padding: var(--space-4);
+  overflow: hidden;
+}
+
+.mental-reader,
+.mental-visual {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.mental-pane-header {
+  min-height: 58px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--space-3) var(--space-4);
+}
+
+.mental-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.mental-reader-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--space-5) var(--space-6);
+}
+
+.mental-section {
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  scroll-margin-top: var(--space-4);
+}
+
+.mental-section:first-child {
+  padding-top: var(--space-4);
+}
+
+.mental-section.is-active {
+  border-bottom-color: color-mix(in srgb, var(--primary) 34%, var(--border-subtle));
+}
+
+.mental-section h2 {
+  max-width: 980px;
+  margin: var(--space-1) 0 var(--space-3);
+  color: var(--foreground);
+  font: var(--text-title-2);
+  letter-spacing: 0;
+}
+
+.mental-section p {
+  max-width: 1040px;
+  margin: 0 0 var(--space-3);
+  color: var(--foreground);
+  font: var(--text-body);
+  line-height: 1.72;
+}
+
+.mental-section code,
+.mental-source-list code {
+  font-family: var(--font-mono);
+  font-size: 0.94em;
+  color: var(--foreground);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+}
+
+.mental-grid {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.mental-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mental-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mental-grid > div {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.mental-grid strong {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--foreground);
+  font: var(--text-label);
+}
+
+.mental-grid span {
+  display: block;
+  color: var(--foreground-secondary);
+  font: var(--text-body-sm);
+}
+
+.mental-flow-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+}
+
+.mental-flow-list span {
+  min-height: var(--tag-height);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--tag-padding-x);
+  border: 1px solid var(--comp-tag-border);
+  border-radius: var(--tag-radius);
+  background: var(--comp-tag-bg);
+  color: var(--comp-tag-fg);
+  font: var(--text-label);
+}
+
+.mental-table {
+  width: 100%;
+  margin: var(--space-3) 0 var(--space-4);
+  border-collapse: collapse;
+  table-layout: fixed;
+  font: var(--text-body-sm);
+}
+
+.mental-table th,
+.mental-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--foreground-secondary);
+  text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.mental-table th {
+  color: var(--foreground);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mental-table tbody th {
+  width: 24%;
+}
+
+.mental-visual-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mental-visual-chip {
+  flex: 0 0 auto;
+  min-height: var(--tag-height);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--tag-padding-x);
+  border: 1px solid var(--comp-tag-border);
+  border-radius: var(--tag-radius);
+  background: var(--comp-tag-bg);
+  color: var(--comp-tag-fg);
+  font: var(--text-mono);
+}
+
+.mental-visual-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: block;
+  padding: var(--space-3);
+  overflow: hidden;
+}
+
+.mental-graph-stage {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--background);
+  overflow: hidden;
+}
+
+.mental-graph-stage svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+
+.mental-insight {
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--foreground);
+  font: var(--text-body-sm);
+  line-height: 1.6;
+}
+
+.mental-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.mental-evidence-item {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.mental-evidence-item strong {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--foreground);
+  font: var(--text-label);
+}
+
+.mental-evidence-item span {
+  display: block;
+  color: var(--foreground-secondary);
+  font: var(--text-body-sm);
+  line-height: 1.45;
+}
+
+.mental-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mental-source-list a {
+  display: block;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--foreground-secondary);
+  text-decoration: none;
+  font: var(--text-body-sm);
+  overflow-wrap: anywhere;
+}
+
+.mental-source-list a:hover {
+  border-color: var(--border-default);
+  background: var(--state-hover);
+  color: var(--foreground);
+}
+
+.mental-source-list small {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--foreground);
+  font: var(--text-label);
+}
+
+.mental-insight[hidden],
+.mental-evidence-grid[hidden],
+.mental-source-list[hidden] {
+  display: none !important;
+}
+
+.mental-node-tooltip {
+  position: absolute;
+  z-index: 5;
+  left: var(--space-4);
+  top: var(--space-4);
+  width: min(360px, calc(100% - var(--space-6)));
+  max-width: 360px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--background-elevated) 98%, transparent);
+  color: var(--foreground);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}
+
+.mental-node-tooltip strong {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--foreground);
+  font: var(--text-label);
+}
+
+.mental-node-tooltip span {
+  display: block;
+  color: var(--foreground-secondary);
+  font: var(--text-body-sm);
+  line-height: 1.5;
+}
+
+.mental-node-tooltip code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--foreground);
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+}
+
+.mental-graph-stage .pto-model-graphviz-node {
+  cursor: default;
+}
+
+.mental-graph-stage .pto-model-graphviz-node:hover rect {
+  stroke: var(--primary);
+  stroke-width: 2.4px;
+}
+
+@media (max-width: 1180px) {
+  .pto-train-mental-page {
+    overflow: auto;
+  }
+
+  .mental-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mental-actions {
+    justify-content: flex-start;
+  }
+
+  .mental-shell {
+    height: auto;
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .mental-visual {
+    min-height: 720px;
+    order: -1;
+  }
+
+  .mental-reader {
+    min-height: 760px;
+  }
+}
+
+@media (max-width: 760px) {
+  .mental-topbar,
+  .mental-shell {
+    padding: var(--space-3);
+  }
+
+  .mental-reader-scroll {
+    padding: 0 var(--space-3) var(--space-5);
+  }
+
+  .mental-grid-2,
+  .mental-grid-3,
+  .mental-evidence-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mental-table {
+    table-layout: auto;
+  }
+
+  .mental-table th,
+  .mental-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .mental-visual-body {
+    height: 620px;
+  }
+}
