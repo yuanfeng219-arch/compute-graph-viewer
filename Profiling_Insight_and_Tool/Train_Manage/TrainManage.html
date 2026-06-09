@@ -42,12 +42,24 @@
   .app { display: flex; min-height: 100vh; gap: 16px; padding: 16px; }
 
   /* Sidebar */
-  .sidebar { width: 224px; flex-shrink: 0; align-self: flex-start; position: sticky; top: 16px;
+  .sidebar { width: 240px; flex-shrink: 0; align-self: flex-start; position: sticky; top: 16px;
     background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(252,252,255,.92));
     border: 1px solid var(--border); border-radius: 26px; box-shadow: var(--shadow-card);
     padding: 20px 14px; display: flex; flex-direction: column; gap: 4px;
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
-  .brand { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -.02em; padding: 6px 10px 18px; }
+  .brand { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -.02em;
+    padding: 6px 10px 18px; display: flex; align-items: center; gap: 8px; }
+  .brand-text { flex: 1; min-width: 0; }
+  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+    flex-shrink: 0; padding: 0; border: 1px solid var(--border); border-radius: 9px;
+    background: rgba(255,255,255,.6); color: var(--text-2); cursor: pointer; transition: all .15s; }
+  .icon-btn:hover { background: #fff; color: var(--text); border-color: var(--border-strong); }
+  .icon-btn svg { width: 16px; height: 16px; }
+  /* collapsed sidebar */
+  .app.nav-collapsed .sidebar { display: none; }
+  #navExpand, #navHomeCollapsed, #cmpNavExpand, #cmpNavHomeCollapsed { display: none; }
+  .app.nav-collapsed #cmpNavExpand, .app.nav-collapsed #cmpNavHomeCollapsed { display: inline-flex; }
+  .app.nav-collapsed #navExpand, .app.nav-collapsed #navHomeCollapsed { display: inline-flex; }
   .nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 999px;
     color: var(--text-2); cursor: pointer; transition: background .15s, color .15s; }
   .nav-item:hover { background: rgba(255,255,255,.85); color: var(--text); }
@@ -63,7 +75,7 @@
   .dot.purple { background: var(--purple); }
 
   /* Main */
-  .main { flex: 1; min-width: 0; padding: 10px 8px; max-width: 1180px; }
+  .main { flex: 1; min-width: 0; padding: 10px 8px; }
   .page-title { display: flex; align-items: center; gap: 11px; font-family: var(--font-display);
     font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
   .page-title .status { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
@@ -86,6 +98,30 @@
     font-size: 13px; font-weight: 500; transition: all .15s; }
   .tab:hover { color: var(--text); }
   .tab.active { background: #fff; color: var(--text); font-weight: 600; box-shadow: 0 6px 14px rgba(22,23,28,.08); }
+
+  /* Floating tab bar */
+  .float-bar {
+    position: fixed; top: 16px; z-index: 200;
+    background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(252,252,255,.92));
+    border: 1px solid var(--border); border-radius: 26px; box-shadow: var(--shadow-card);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    padding: 8px 8px 8px 16px;
+    display: flex; align-items: center; gap: 16px;
+    opacity: 0; pointer-events: none; transform: translateY(-8px);
+    transition: opacity .2s ease, transform .2s ease; }
+  .float-bar.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+  .float-bar-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .float-bar-nav { display: none; align-items: center; gap: 4px; flex-shrink: 0; }
+  .app.nav-collapsed .float-bar-nav { display: flex; }
+  .float-bar-identity { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .float-bar-name { font-family: var(--font-display); font-size: 14px; font-weight: 600;
+    letter-spacing: -.02em; max-width: 600px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .float-tabs { display: flex; gap: 4px; background: rgba(236,238,245,.9);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px; flex-shrink: 0; }
+  .float-tab { padding: 8px 18px; border-radius: 999px; color: var(--text-2); cursor: pointer;
+    font-size: 13px; font-weight: 500; transition: all .15s; }
+  .float-tab:hover { color: var(--text); }
+  .float-tab.active { background: #fff; color: var(--text); font-weight: 600; box-shadow: 0 6px 14px rgba(22,23,28,.08); }
 
   .card { background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(252,252,255,.95));
     border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-card); }
@@ -235,6 +271,29 @@
     background:rgba(24,99,220,.05); border:1px solid rgba(24,99,220,.12);
     border-radius:12px; padding:9px 13px; margin-bottom:12px; }
 
+  /* framework-layer checklist (#10) */
+  .fw-check { border:1px solid var(--border); border-radius:12px; padding:11px 13px; margin-bottom:14px; background:rgba(33,33,33,.015); }
+  .fw-check-title { font-size:12px; font-weight:600; color:var(--text-2); margin-bottom:8px;
+    font-family:var(--font-mono); display:flex; align-items:center; gap:7px; }
+  .fw-check-summary { font-size:10px; font-weight:600; font-family:var(--font-mono);
+    border-radius:999px; padding:1px 8px; }
+  .fw-check-summary.ok { background:var(--green-soft); color:var(--green); }
+  .fw-check-summary.bad { background:var(--red-soft); color:var(--red); }
+  .fw-check-row { display:flex; gap:9px; align-items:flex-start; padding:6px 0; }
+  .fw-check-row:not(:last-child) { border-bottom:1px dashed var(--border); }
+  .fw-check-icon { flex-shrink:0; width:16px; height:16px; border-radius:50%; font-size:11px;
+    line-height:16px; text-align:center; color:#fff; font-weight:700; }
+  .fw-check-row.pass .fw-check-icon { background:var(--green); }
+  .fw-check-row.fail .fw-check-icon { background:var(--red); }
+  .fw-check-label { font-size:13px; font-weight:600; color:var(--text); }
+  .fw-check-row.fail .fw-check-label { color:var(--red); }
+  .fw-check-detail { font-size:11px; color:var(--text-3); margin-top:2px; line-height:1.5; }
+  .fw-advice-wrap { position:relative; }
+  .fw-advice-dim { opacity:.4; filter:grayscale(.7); pointer-events:none; user-select:none; }
+  .fw-advice-mask { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .fw-advice-mask span { font-size:12px; font-weight:600; color:var(--text-2);
+    background:var(--card); border:1px dashed var(--text-3); border-radius:8px; padding:7px 14px; }
+
   #evLineTooltip { display:none; position:fixed; z-index:9999; pointer-events:none;
     background:rgba(255,255,255,.98); border:1px solid var(--border-strong); border-radius:10px;
     padding:8px 12px; font-size:12px; line-height:1.65; max-width:280px;
@@ -272,6 +331,110 @@
   .cmp-tip-val { font-family: var(--font-mono); font-weight: 600; color: var(--text); }
   .cmp-tip-head { font-family: var(--font-mono); font-size: 10px; color: var(--text-3); margin-bottom: 5px;
     padding-bottom: 4px; border-bottom: 1px solid var(--border); letter-spacing: .04em; }
+  .cmp-tip-dev { margin-left: 6px; font-size: 10px; font-family: var(--font-mono); }
+
+  /* baseline selector in compare sidebar */
+  .cmp-base-tag { font-size: 10px; font-family: var(--font-mono); color: var(--text-3); border: 1px solid var(--border);
+    border-radius: 999px; padding: 1px 8px; cursor: pointer; flex-shrink: 0; transition: all .15s; }
+  .cmp-base-tag:hover { border-color: var(--border-strong); color: var(--text-2); }
+  .cmp-base-tag.on { background: #555561; color: #fff; border-color: #555561; }
+  /* per-chart deviation-vs-baseline summary */
+  .cmp-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .cmp-chart-head-left { display: flex; align-items: center; gap: 7px; }
+  .cmp-chart-head-left .cmp-chart-title { margin-bottom: 0; }
+  .cmp-best-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-family: var(--font-mono);
+    font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .cmp-best-medal { font-size: 11px; }
+  .cmp-dev-wrap { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+  .cmp-dev { font-size: 10px; font-family: var(--font-mono); padding: 1px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .cmp-baseline-pill { font-size: 10px; font-family: var(--font-mono); color: var(--text-3); }
+  .cmp-empty { padding: 48px 24px; text-align: center; color: var(--text-3); }
+  /* per-chart linked info bubble */
+  .cmp-chart-tip { position: absolute; z-index: 30; pointer-events: none; display: none;
+    background: rgba(255,255,255,.97); border: 1px solid var(--border-strong); border-radius: 10px;
+    padding: 6px 9px; box-shadow: var(--shadow-soft); min-width: 118px;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
+  /* #9 参数对比：子页签栏 + 开关 */
+  .cmp-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .cmp-subtabs { display: flex; gap: 4px; background: rgba(236,238,245,.9); border: 1px solid var(--border); border-radius: 999px; padding: 4px; }
+  .cmp-subtab { padding: 7px 18px; border-radius: 999px; color: var(--text-2); cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; }
+  .cmp-subtab:hover { color: var(--text); }
+  .cmp-subtab.active { background: #fff; color: var(--text); font-weight: 600; box-shadow: 0 6px 14px rgba(22,23,28,.08); }
+  .cmp-topbar-right { display: flex; align-items: center; gap: 16px; }
+  .cmp-toggle { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-2); cursor: pointer; user-select: none; }
+  .sw { width: 34px; height: 18px; border-radius: 999px; background: rgba(33,33,33,.18); position: relative; transition: background .15s; flex-shrink: 0; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .sw.on { background: var(--blue); }
+  .sw.on::after { left: 18px; }
+
+  /* #9 智能帮比 */
+  .smart-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .smart-label { font-size: 12px; font-weight: 600; color: var(--purple); font-family: var(--font-mono); white-space: nowrap; }
+  .smart-chip { font-size: 12px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,.8); color: var(--text-2); cursor: pointer; transition: all .15s; }
+  .smart-chip:hover { border-color: var(--purple); color: var(--purple); }
+  .smart-chip.on { background: var(--purple-soft); border-color: var(--purple); color: var(--purple); font-weight: 600; }
+  .smart-input { flex: 1; min-width: 200px; padding: 7px 13px; border-radius: 999px; border: 1px solid var(--border); font-family: var(--font-body); font-size: 12px; background: rgba(255,255,255,.8); color: var(--text); }
+  .smart-input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-soft); }
+  .smart-clear { font-size: 11px; color: var(--text-3); cursor: pointer; font-family: var(--font-mono); white-space: nowrap; }
+  .smart-clear:hover { color: var(--red); }
+  .smart-hint { font-size: 11px; color: var(--text-3); margin: -2px 0 12px; font-family: var(--font-mono); }
+  .smart-hint b { color: var(--purple); font-weight: 600; }
+
+  /* #9 泳道卡片 */
+  /* 参数对比：对比区是独立的双向滚动框 —— 基线列冻结在左、任务标题/分组名冻结在框顶；
+     屏幕宽度不够时框内横向滚动，其余泳道卡片滑入基线卡片下方。控制列(lane-rail)在框外固定不动 */
+  .lane-area { display: flex; gap: 12px; align-items: flex-start; }
+  .lane-wrap { flex: 1; min-width: 0; display: flex; gap: 12px; overflow: auto; padding: 4px 2px 14px;
+    align-items: flex-start; scroll-behavior: smooth; overscroll-behavior: contain; }
+  .lane-card { flex: 0 0 250px; width: 250px; background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(252,252,255,.95));
+    border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow-card); }
+  .lane-card.baseline { position: sticky; left: 0; z-index: 5; border: 2px solid var(--border-strong);
+    background: linear-gradient(180deg, #fbfbfd, #f3f4f8); box-shadow: 10px 0 20px -10px rgba(22,23,28,.22); }
+  .lane-card.picked { border: 2px solid var(--purple); box-shadow: 0 0 0 3px var(--purple-soft), var(--shadow-card); }
+  .lane-card.drag-over { border-style: dashed; border-color: var(--blue); }
+  .lane-head { display: flex; align-items: center; gap: 7px; padding: 13px 14px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 4; background: #fff; border-radius: 18px 18px 0 0; }
+  .lane-card.baseline .lane-head, .lane-card.baseline .lane-group-title { background: #f3f4f8; }
+  .lane-drag { cursor: grab; color: var(--text-3); font-size: 14px; user-select: none; }
+  .lane-drag:active { cursor: grabbing; }
+  .lane-pin { font-size: 12px; }
+  .lane-name { flex: 1; font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lane-base-tag { font-size: 9px; font-family: var(--font-mono); background: #555561; color: #fff; border-radius: 999px; padding: 1px 7px; flex-shrink: 0; }
+  .lane-smart-badge { font-size: 9px; font-family: var(--font-mono); background: var(--purple-soft); color: var(--purple);
+    border: 1px solid var(--purple); border-radius: 999px; padding: 1px 7px; flex-shrink: 0; white-space: nowrap; }
+  .lane-body { padding: 4px 14px 14px; }
+  .lane-group { margin-top: 10px; }
+  .lane-group-title { font-size: 11.5px; font-family: var(--font-mono); color: var(--text); letter-spacing: .04em; font-weight: 700;
+    padding: 7px 0 5px; border-bottom: 1px solid rgba(33,33,33,.06); margin-bottom: 3px;
+    position: sticky; top: 44px; z-index: 3; background: #fff; }
+  .lane-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 5px 8px; margin: 0 -8px;
+    font-size: 12px; border-radius: 6px; transition: background .12s; }
+  .lane-row.row-hi { background: rgba(236,238,245,.7); }
+  .lane-k { color: var(--text-3); white-space: nowrap; }
+  .lane-v { font-family: var(--font-mono); color: var(--text); font-weight: 500; text-align: right; word-break: break-all;
+    display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+  .lane-v.best { color: var(--green); font-weight: 700; }
+  .lane-medal { font-size: 11px; }
+  .lane-empty { font-size: 11px; color: var(--text-3); padding: 16px 0; text-align: center; }
+  /* 加号列：方形圆角按钮 + 下方分组锚点，整列随滚动悬浮固定 */
+  .lane-rail { flex: 0 0 60px; align-self: flex-start;
+    display: flex; flex-direction: column; align-items: stretch; }
+  .lane-add { width: 56px; height: 56px; align-self: center; border: 1.5px dashed var(--border-strong);
+    border-radius: 16px; background: rgba(255,255,255,.6); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--text-3); font-size: 26px; transition: all .15s; position: relative; }
+  .lane-add:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
+  .lane-add.disabled { opacity: .4; cursor: not-allowed; }
+  .lane-add-menu { position: absolute; top: 60px; right: 0; background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow-soft); padding: 8px; z-index: 30; min-width: 210px; display: none; }
+  .lane-add-menu.open { display: block; }
+  .lane-add-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 12px; color: var(--text-2); }
+  .lane-add-item:hover { background: rgba(236,238,245,.7); color: var(--text); }
+  .lane-anchors { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; padding-left: 10px; border-left: 1px solid var(--border); }
+  .lane-anchor { font-size: 11px; font-family: var(--font-mono); color: var(--text-3); cursor: pointer;
+    padding: 4px 6px; text-align: right; white-space: nowrap; border-radius: 4px; transition: all .15s; }
+  .lane-anchor:hover { color: var(--blue); }
+  .lane-anchor.active { color: var(--blue); font-weight: 700; background: var(--blue-soft); box-shadow: inset 2px 0 0 var(--blue); }
 
   .disteff-blocks { display: flex; gap: 10px; width: 100%; margin-top: 8px; }
   .disteff-block { flex: 1; background: rgba(33,33,33,.04); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -285,25 +448,159 @@
   .disteff-target-label { font-size: 9px; font-family: var(--font-mono); white-space: nowrap; }
   .disteff-chart { margin-top: 4px; min-height: 70px; }
 
+  /* hparams tab */
+  .hp-table { width:100%; border-collapse:collapse; }
+  .hp-table th { font-size:11px; color:var(--text-3); font-family:var(--font-mono); letter-spacing:.04em; text-transform:uppercase;
+    padding:8px 16px 10px; text-align:left; border-bottom:1px solid rgba(33,33,33,.08); font-weight:500; }
+  .hp-table td { padding:12px 16px; border-bottom:1px solid rgba(33,33,33,.05); vertical-align:top; }
+  .hp-table tr:last-child td { border-bottom:none; }
+  .hp-name { font-family:var(--font-mono); font-weight:600; font-size:13px; color:var(--text); letter-spacing:.01em; }
+  .hp-cur { font-family:var(--font-display); font-size:20px; font-weight:600; letter-spacing:-.02em; color:var(--text); }
+  .hp-cur.changed { color:var(--blue); }
+  .hp-hist-item { display:flex; align-items:flex-start; gap:7px; margin-bottom:5px; line-height:1.5; }
+  .hp-hist-item:last-child { margin-bottom:0; }
+  .hp-step { font-family:var(--font-mono); font-size:10px; color:var(--text-3); flex-shrink:0; min-width:52px; padding-top:2px; }
+  .hp-from { font-family:var(--font-mono); font-size:12px; text-decoration:line-through; color:var(--text-3); }
+  .hp-arrow { color:var(--text-3); font-size:11px; flex-shrink:0; padding-top:1px; }
+  .hp-to { font-family:var(--font-mono); font-size:12px; color:var(--blue); font-weight:600; }
+  .hp-to.warn { color:var(--orange); }
+  .hp-note { font-size:11.5px; color:var(--text-2); flex:1; }
+  .hp-init { font-family:var(--font-mono); font-size:11px; color:var(--text-3); }
+
   @media (max-width: 980px) {
     .grid-3 { grid-template-columns: 1fr; }
     .diag { grid-template-columns: 1fr; }
     .km-grid { grid-template-columns: 1fr; }
     .cmp-grid { grid-template-columns: 1fr 1fr; }
   }
+
+  /* 更新日志：全局右下角入口 */
+  .changelog-fab { position: fixed; bottom: 22px; right: 22px; z-index: 1200;
+    display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px;
+    border: 1px solid var(--border-strong); border-radius: 999px;
+    background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(248,248,253,.92));
+    color: var(--text-2); font-size: 11px; font-weight: 600; font-family: var(--font-display);
+    cursor: pointer; box-shadow: var(--shadow-card);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: all .15s; }
+  .changelog-fab:hover { transform: translateY(-1px); border-color: var(--blue);
+    color: var(--blue); box-shadow: 0 12px 26px rgba(24,99,220,.14); }
+  .changelog-fab svg { width: 13px; height: 13px; }
+
+  .cl-overlay { position: fixed; inset: 0; z-index: 1300; background: rgba(22,23,28,.34);
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+  .cl-overlay.open { opacity: 1; pointer-events: auto; }
+  .cl-drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1310;
+    width: min(720px, 92vw); background: linear-gradient(180deg, #fdfdff, #f6f7fb);
+    border-left: 1px solid var(--border-strong); box-shadow: -28px 0 64px rgba(48,42,76,.18);
+    transform: translateX(100%); transition: transform .28s cubic-bezier(.22,.61,.36,1);
+    display: flex; flex-direction: column; }
+  .cl-overlay.open .cl-drawer { transform: translateX(0); }
+  .cl-drawer-head { display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    padding: 18px 22px; border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .cl-drawer-head h2 { flex: 1; font-family: var(--font-display); font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
+  .cl-close { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,.6);
+    color: var(--text-2); cursor: pointer; transition: all .15s; }
+  .cl-close:hover { background: #fff; color: var(--text); border-color: var(--border-strong); }
+  .cl-close svg { width: 16px; height: 16px; }
+  .cl-body { flex: 1; overflow-y: auto; padding: 22px 26px 40px; }
+
+  /* Markdown 渲染样式 */
+  .md h1 { font-family: var(--font-display); font-size: 21px; font-weight: 600; letter-spacing: -.02em;
+    margin: 6px 0 14px; line-height: 1.35; }
+  .md h2 { font-family: var(--font-display); font-size: 16.5px; font-weight: 600; letter-spacing: -.01em;
+    margin: 26px 0 12px; padding-bottom: 7px; border-bottom: 1px solid var(--border); }
+  .md h3 { font-family: var(--font-display); font-size: 14px; font-weight: 600; margin: 20px 0 9px; color: var(--text-2); }
+  .md p { font-size: 13px; color: var(--text); margin: 9px 0; }
+  .md hr { border: 0; border-top: 1px solid var(--border); margin: 22px 0; }
+  .md a { color: var(--blue); text-decoration: none; word-break: break-all; }
+  .md a:hover { text-decoration: underline; }
+  .md strong { font-weight: 700; }
+  .md code { font-family: var(--font-mono); font-size: 11.5px; background: rgba(33,33,33,.06);
+    border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; color: var(--text); }
+  .md .table-wrap { margin: 12px 0; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .md table { border-collapse: collapse; table-layout: fixed; width: 100%; font-size: 12px; background: var(--card); }
+  .md th, .md td { text-align: left; vertical-align: top; padding: 9px 12px;
+    border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); line-height: 1.6;
+    word-break: break-word; overflow-wrap: anywhere; }
+  .md th:last-child, .md td:last-child { border-right: 0; }
+  .md tr:last-child td { border-bottom: 0; }
+  .md th:nth-child(1), .md td:nth-child(1) { width: 34px; text-align: center; }
+  .md th:nth-child(4), .md td:nth-child(4) { width: 76px; }
+  .md thead th { background: rgba(236,238,245,.7); font-family: var(--font-display);
+    font-weight: 600; color: var(--text-2); position: sticky; top: 0; }
+  .md tbody tr:nth-child(even) td { background: rgba(248,248,253,.6); }
+  .md td code { word-break: break-all; }
 </style>
 </head>
 <body>
+<button class="changelog-fab" id="changelogFab" title="查看更新日志">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+  更新日志
+</button>
+<div class="cl-overlay" id="clOverlay">
+  <aside class="cl-drawer" role="dialog" aria-label="更新日志">
+    <div class="cl-drawer-head">
+      <h2>更新日志</h2>
+      <button class="cl-close" id="clClose" title="关闭" aria-label="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="cl-body md" id="clBody"></div>
+  </aside>
+</div>
+<script type="text/markdown" id="changelogSrc">
+# infra-RL 训练视角改造（#1–#5）
+
+
+
+## 背景
+ [Qwen2.5-14B _ infra RL]任务，作为 RL Infra 专家视角，诊断强化学习下训练总览页面的 5 个核心不足，并逐一修复。基于@deepseekChat-1：https://chat.deepseek.com/share/kiceh0k2whcrxgjdhw
+
+---
+
+## 改造清单-1
+
+| # | 问题 | 改法 | 状态 |
+|---|------|------|------|
+| 1 | **【原文】**「指标看板：Loss、梯度范数、参数更新比率、学习率、吞吐量、MFU」；「Actor 开始高频重复某个 token，KL 散度急剧上升，背离 Reference 模型分布」<br>关键指标缺少 chosen/rejected 双轴联动图，DPO 最核心的健康指标（两者相对走势）被拆成两个孤立卡片藏在下拉菜单里 | DPO 任务关键指标第 1 卡换成 `logps 偏好对比` 双轴图（蓝线 chosen、橙虚线 rejected），两线交叉点自动画红色警戒竖线；原 `rewards/margins` 卡片移除；`loss / acc / grad_norm` 顺移到 2-4 位。新增 `dualChart()` 函数，`drawCharts()` 识别 `type:"dual"` 分支渲染 | ✅ 已完成 |
+| 2 | **【原文】**「我将展开一个典型的"策略崩溃—排查—根治"全流程」；「训练几百步后，Actor 开始高频重复某个 token……KL 散度急剧上升」；「RM 可能存在漏洞，Actor 发现输出特定模式就能获得高奖励」<br>智能诊断只给结论不给路径，"beta=0.1 偏大"是结论而非诊断，无法看出问题是从哪一步开始、按什么顺序恶化的 | DPO 任务诊断区改为因果链时间线：4 个节点（step ~120 warn / ~300 crit / ~380 crit / 420 stop），带颜色分级小圆点、逐步因果描述、"最早可干预窗口"绿色标签、修改建议蓝色提示框；其他任务保留原 `paras` 文字段落，两套形式共存互不影响 | ✅ 已完成 |
+| 3 | **【原文】**「构建心跳监控（每个 Rank 每隔 10 秒向 Redis 写心跳），一旦某 Rank 无心跳即触发 dump 全部 traceback」；「定期保存（如每 100 步）」<br>告警时间线与指标曲线完全脱节，事件列表用时钟格式而非 step 编号，折线图上没有对应垂直标记线 | 所有指标折线图上叠加事件竖线（红色虚线 + tooltip）；事件列表时间字段改为 step 编号；在"事件"页签下同步加入完整事件列表 | ✅ 已完成 |
+| 4 | **【原文】**「动态 KL 惩罚系数（Adaptive KL）：用 PID 控制器动态调整 β」；「if kl > kl_high: beta *= 1.1 / elif kl < kl_low: beta *= 0.9」<br>没有超参变更历史，干预行为不可追溯，"一键修改"点下去之后发生了什么页面上完全没有记录 | 第 2 个页签"超参"做成列表，分三大列：超参名、当前超参值、修改历史（带 step 时间戳的变更记录） | ✅ 已完成 |
+| 5 | **【原文】**「用大量随机数据对 Critic 单独预训练，使其能给出平滑的基线」；「先将 Reward 序列减去基线并归一化，再传入 GAE，极大降低方差」<br>没有跨任务基线对比，"任务对比"入口是空壳，DPO 的 loss/grad_norm 异常无参照系无法判断严重程度 | 点击左侧"任务对比"后：任务列表左侧出现勾选框，原彩色圆点作为图例色；右侧内容区展示各指标对比图表；鼠标悬浮时所有图表联动显示信息气泡（参考 swanlab 样式）。**跨任务基线对比**：可勾选一个任务设为"基线"（如健康的 qwen infra 框架任务），对比图中基线曲线置灰加粗，其余任务相对基线着色；每张对比图右上角显示当前任务相对基线的偏差摘要（如 DPO grad_norm 末值较基线 +312%、loss 较基线 +0.8），偏差超阈值标红，让 DPO 异常严重程度有可量化参照系 | ✅ 已完成 |
+
+---
+
+## infra-框架先导实验视角改造（#6–#10）
+
+### 背景
+
+任务：**Qwen2.5-7B _ infra 框架**，作为大模型训练推理框架开发专家（具备 TileLang/vLLM/DeepSpeed/Megatron-LM 实战经验）做框架先导实验时，从框架性能调优视角诊断总览页面的 5 个核心不足。现有页面停留在算法层指标（loss/reward/KL），对框架层的 MFU、分布式效率、step 时间分解等核心观测点完全缺失，无法支撑框架参数选型决策。基于@deepseekChat-2：https://chat.deepseek.com/share/rzr5f81w0s5ur688q3
+
+---
+
+## 改造清单-2
+
+| # | 问题 | 改法 | 状态 |
+|---|------|------|------|
+| 6 | **【原文】**「极致算力利用率（MFU，Model FLOPs Utilization）」；「GPT-3 175B 在 1024 GPU 上达到 52% MFU」；「在 A100 上达到 90% 的峰值算力利用率」<br>MFU=35% 仅展示数值折线，无理论上界对比、无计算/通信分解，框架开发者无法判断优化空间在哪 | 顶部 MFU 指标卡片升级为"MFU 诊断卡"：新增理论峰值基准线（H800 BF16 上界约 65%）、当前利用率、差距百分比；卡片底部加"计算占比 vs 通信占比"双色水平分段条；数据字段加 `mfuBreakdown:{compute,comm,other}` | ✅ 已完成（实现有偏差，见下） |
+| 7 | **【原文】**「在 Megatron-LM 流水线中加入 1F1B 交错调度……让 Bubble 率从 15% 降到 5% 以下」；「将后向的梯度 AllReduce 与前向的计算重叠」；「硬件拓扑（IB/NVLink 带宽）」<br>8×H800 分布式训练的并行效率完全不可见：无 Pipeline Bubble 率、无 AllReduce 通信耗时、无 NVLink 带宽利用率 | 总览页新增"分布式效率"折叠区块（默认展开），包含三项迷你仪表：Bubble 率（目标 <5%）、通信/计算重叠度（目标 >85%）、节点内 NVLink 带宽利用率；数据字段加 `dist:{bubbleRate,overlapRatio,nvlinkUtil}[]`（20 个 step 点） | ✅ 已完成（实现有偏差，见下） |
+| 8 | **【原文】**「通信隐藏与计算重叠，将后向的梯度 AllReduce 与前向的计算重叠」；「每 Token 训练成本（是否接近线性加速，通信开销是否最小化）」<br>GPU 利用率仅 41% 但无归因，缺 step 粒度的时间分解（forward/backward/optimizer/comm/data），无法定位瓶颈 | 运行时卡片下方新增"Step 时间分解"横向堆叠条形图：每段颜色对应 forward（蓝）/ backward（紫）/ optimizer（橙）/ comm（红）/ data（灰），hover 显示各段耗时与占比；数据字段加 `stepBreakdown:{fwd,bwd,opt,comm,data}[]` | ✅ 已完成（实现有偏差，见下） |
+| 9 | **【原文】**「切分策略自动生成，根据模型结构和硬件拓扑搜索最优 TP/PP/DP 组合，避免手工反复调参」；「自主决策调度：训练时自动选择混合并行拓扑」<br>先导实验目的是选出最优框架配置，但「任务对比」只有曲线图，无法横向比较各任务的运行 / 环境 / 指令 / 配置 / 超参等离散参数，看不出谁的配置更优 | 「任务对比」顶部新增**「参数对比」页签**（与原「图表对比」并列）：用**泳道卡片**横向铺开各任务，每张卡片纵向按「运行参数 / 环境参数 / 指令参数 / 配置参数 / 超参数」分组展示 key-value。**基线任务卡片固定最左侧**（置灰加粗边框、不可拖动）。顶部提供**智能帮比** Demo：预置「预测最准 / 训练最快」等比较项 chip + 自由输入框，命中的任务卡片头加紫色徽标。默认对有优劣方向的参数**标记最优值**（绿色奖章/对勾，无优劣的参数不标）；右上角**「只看差异」**开关开启后仅保留各任务间存在差异的参数行 | ✅ 已完成 |
+| 10 | **【原文】**「将后向的梯度 AllReduce 与前向的计算重叠」；「解决 MoE 模型的负载均衡、AlltoAll 通信压缩问题」；「异步数据加载等工程细节」<br>智能诊断仅给出超参建议（调 init_kl_coef），未排查框架层因素（梯度同步延迟、数据 batch 解析告警关联、reward 模型负载不均），可能治标不治本 | DPO/infra 框架任务诊断区在现有 `paras` 建议前插入"框架层排查清单"：3 条逐项检查（通信异常 ✓/✗、数据告警关联 ✓/✗、卡间负载均衡 ✓/✗），全部通过后才显示超参调整建议；清单结果由 `diag.frameworkChecks:[{label,pass,detail}]` 驱动 | ✅ 已完成 |
+
+---
+</script>
 <div class="app">
   <aside class="sidebar">
-    <div class="brand">训练管理平台</div>
-    <div class="nav-item" id="navCompare">▥ 任务对比</div>
+    <div class="brand"><button class="icon-btn home-btn" id="navHome" title="返回首页" aria-label="返回首页"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/></svg></button><span class="brand-text">训练管理平台</span><button class="icon-btn" id="navCollapse" title="折叠导航栏" aria-label="折叠导航栏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 18 7 12 13 6"/><polyline points="18 18 12 12 18 6"/></svg></button></div>
+    <div class="nav-item" id="navCompare"><span id="navCompareIcon">⇄</span> 任务对比</div>
     <div class="nav-sep"></div>
     <div id="taskList"></div>
   </aside>
 
   <main class="main">
-    <div class="page-title"><span class="status" id="statusDot"></span> <span id="taskTitle"></span></div>
+    <div class="page-title"><button class="icon-btn home-btn" id="navHomeCollapsed" title="返回首页" aria-label="返回首页"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/></svg></button><button class="icon-btn" id="navExpand" title="展开导航栏" aria-label="展开导航栏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button><span class="status" id="statusDot"></span> <span id="taskTitle"></span></div>
     <div class="page-subtitle" id="taskSubtitle"></div>
 
     <div class="tabs">
@@ -339,7 +636,7 @@
     </div>
 
     <div id="tab-hparams" style="display:none">
-      <div class="card" style="padding:32px 24px; text-align:center; color:var(--text-3);">超参配置（#4 待实现）</div>
+      <div id="hparamsContent"></div>
     </div>
 
     <div id="tab-events" style="display:none">
@@ -353,7 +650,28 @@
       <div class="card" style="padding:32px 24px; text-align:center; color:var(--text-3);">日志（待实现）</div>
     </div>
 
+    <div id="compareView" style="display:none"></div>
+
   </main>
+
+  <div id="floatBar" class="float-bar" aria-hidden="true">
+    <div class="float-bar-left">
+      <div class="float-bar-nav">
+        <button class="icon-btn home-btn" id="floatNavHome" title="返回首页" aria-label="返回首页"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/></svg></button>
+        <button class="icon-btn" id="floatNavExpand" title="展开导航栏" aria-label="展开导航栏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
+      </div>
+      <div class="float-bar-identity">
+        <span class="dot" id="floatDot"></span>
+        <span class="float-bar-name" id="floatName"></span>
+      </div>
+    </div>
+    <div class="float-tabs">
+      <div class="float-tab active" data-tab="overview">总览</div>
+      <div class="float-tab" data-tab="hparams">超参</div>
+      <div class="float-tab" data-tab="events">事件</div>
+      <div class="float-tab" data-tab="logs">日志</div>
+    </div>
+  </div>
 </div>
 
 <div id="cmpTooltip"></div>
@@ -396,6 +714,10 @@ const TASKS = {
       paras: [
         `当前出现了 <span class="hl-red">reward 异常突增</span> 的问题，建议将 <span class="hl">init_kl_coef</span> 从 0.05 调整到 0.20，继续训练后预计可抑制 reward 虚高并达到约 <span class="hl">+6.2%</span> 的有效收益。`,
         `另外检测到 <span class="hl">grad_norm 频繁触顶</span>，需要将 <span class="hl">max_grad_norm</span> 调整为 1.0，可在下一次启动后获得更稳定的收敛曲线。` ],
+      frameworkChecks: [
+        { label:"通信无超时告警", pass:true,  detail:"最近 100 step AllReduce 延迟 P99 < 50ms，NCCL 无 timeout" },
+        { label:"数据告警已核查", pass:false, detail:"step 900 附近 batch 解析告警 12 条，与 step 1180 reward 突增时段重叠，疑似脏样本污染 reward" },
+        { label:"卡间 reward 负载均衡", pass:true, detail:"8 卡 reward 标准差 < 0.3，无单卡热点" } ],
       before: { cap:"修改前", val:"reward 48 ↑", color:"var(--red)", key:"diagBefore" },
       after:  { cap:"修改后预估", val:"reward 31 ✓", color:"var(--green)", key:"diagAfter" } },
     key: [
@@ -429,7 +751,26 @@ const TASKS = {
       bubbleRate:[0.12,0.11,0.10,0.12,0.11,0.10,0.09,0.11,0.10,0.12,0.10,0.11,0.09,0.10,0.11,0.10,0.09,0.10,0.11,0.10],
       overlapRatio:[0.70,0.72,0.74,0.71,0.73,0.75,0.76,0.74,0.72,0.75,0.73,0.74,0.76,0.73,0.74,0.75,0.73,0.74,0.75,0.74],
       nvlinkUtil:[0.55,0.58,0.60,0.57,0.59,0.62,0.61,0.63,0.60,0.62,0.59,0.61,0.63,0.60,0.62,0.61,0.63,0.60,0.62,0.60] },
-    source: `数据为符合 RLHF/PPO 业务的构造数据。`
+    source: `数据为符合 RLHF/PPO 业务的构造数据。`,
+    hparams: [
+      { name: "lr", value: "1.2e-6", history: [
+        { step: null, from: null, to: "2e-6",   note: "初始配置" },
+        { step: 400,  from: "2e-6", to: "1.2e-6", note: "手动调整 — 降低学习率稳定 reward 收敛曲线" }
+      ]},
+      { name: "init_kl_coef", value: "0.05", history: [
+        { step: null, from: null, to: "0.05", note: "初始配置" }
+      ]},
+      { name: "max_grad_norm", value: "1.0", history: [
+        { step: null, from: null, to: "2.0",  note: "初始配置" },
+        { step: 900,  from: "2.0", to: "1.0", note: "手动调整 — 抑制 grad_norm 频繁触顶（P99 >2.5）" }
+      ]},
+      { name: "batch_size", value: "8", history: [
+        { step: null, from: null, to: "8", note: "初始配置" }
+      ]},
+      { name: "ppo_epochs", value: "4", history: [
+        { step: null, from: null, to: "4", note: "初始配置" }
+      ]},
+    ]
   },
 
   // ===== 真实公开 W&B 数据 =====
@@ -483,9 +824,17 @@ const TASKS = {
       vram:[0.72,0.74,0.76,0.78,0.80,0.81,0.82,0.83,0.84,0.85,0.85,0.86,0.86,0.87,0.87,0.87,0.88,0.88,0.88,0.88],
       tput:[2.6,2.7,2.85,2.9,3.0,3.05,2.95,3.0,3.1,3.0,3.05,2.95,3.0,3.08,2.98,3.05,3.0,3.08,3.05,3.1],
       grad_norm:[1.2,1.1,1.0,0.95,0.9,0.88,0.85,0.82,0.8,0.78,0.77,0.76,0.75,0.74,0.74,0.73,0.74,0.74,0.74,0.74],
+      gpu:[0.50,0.54,0.57,0.59,0.61,0.62,0.60,0.62,0.63,0.61,0.63,0.62,0.64,0.63,0.62,0.64,0.63,0.63,0.64,0.63],
       diagBefore:[0,5,10,15,19,22,24,40,60,75,83,85],
       diagAfter:[0,5,10,15,19,22,24,25,26,27,27.5,28] },
-    source: `真实数据来源：W&B 公开项目 <a href="https://wandb.ai/openrlbenchmark/lm_human_preference_details" target="_blank">openrlbenchmark/lm_human_preference_details</a>，论文 <a href="https://arxiv.org/abs/2403.17031" target="_blank">arXiv:2403.17031《The N+ Implementation Details of RLHF with PPO: TL;DR Summarization》</a>，代码 <a href="https://github.com/vwxyzjn/summarize_from_feedback_details" target="_blank">vwxyzjn/summarize_from_feedback_details</a>。关键值：1,000,000 episodes(≈8.56 epoch)、batch 512、lr 3e-6、kl_coef 0.05、8×H100；6.9B 平均 RM 得分 4.783、胜率≈80%，超过 OpenAI 1.3B 基线。`
+    source: `真实数据来源：W&B 公开项目 <a href="https://wandb.ai/openrlbenchmark/lm_human_preference_details" target="_blank">openrlbenchmark/lm_human_preference_details</a>，论文 <a href="https://arxiv.org/abs/2403.17031" target="_blank">arXiv:2403.17031《The N+ Implementation Details of RLHF with PPO: TL;DR Summarization》</a>，代码 <a href="https://github.com/vwxyzjn/summarize_from_feedback_details" target="_blank">vwxyzjn/summarize_from_feedback_details</a>。关键值：1,000,000 episodes(≈8.56 epoch)、batch 512、lr 3e-6、kl_coef 0.05、8×H100；6.9B 平均 RM 得分 4.783、胜率≈80%，超过 OpenAI 1.3B 基线。`,
+    hparams: [
+      { name: "lr",         value: "3e-6",  history: [{ step: null, from: null, to: "3e-6",  note: "初始配置" }]},
+      { name: "kl_coef",    value: "0.05",  history: [{ step: null, from: null, to: "0.05",  note: "初始配置" }]},
+      { name: "batch_size", value: "512",   history: [{ step: null, from: null, to: "512",   note: "初始配置" }]},
+      { name: "ppo_epochs", value: "4",     history: [{ step: null, from: null, to: "4",     note: "初始配置" }]},
+      { name: "cliprange",  value: "0.2",   history: [{ step: null, from: null, to: "0.2",   note: "初始配置" }]},
+    ]
   },
 
   dpo: {
@@ -544,9 +893,27 @@ const TASKS = {
       logpsR:[-118,-122,-128,-132,-138,-145,-152,-160,-168,-176,-182,-188,-192,-196,-198,-200,-202,-203,-204,-205],
       lr:[1,2,3,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5],
       vram:[0.66,0.68,0.70,0.71,0.72,0.73,0.73,0.74,0.74,0.75,0.75,0.75,0.76,0.76,0.76,0.76,0.76,0.76,0.76,0.76],
+      kl:[0.5,1.2,2.5,4,6,9,13,18,25,34,45,58,72,88,105,120,135,148,160,172],
       diagBefore:[0.55,0.6,0.7,0.85,1.0,1.15,1.3,1.7,2.1,2.5,2.8,2.95],
       diagAfter:[0.55,0.6,0.7,0.85,1.0,1.15,1.3,1.1,0.85,0.6,0.5,0.45] },
-    source: `数据为符合 DPO 业务的构造数据（异常/中断场景）。`
+    source: `数据为符合 DPO 业务的构造数据（异常/中断场景）。`,
+    hparams: [
+      { name: "beta", value: "0.1", history: [
+        { step: null, from: null,  to: "0.1",  note: "初始配置" },
+        { step: 420,  from: "0.1", to: "0.05", note: "⚠ 自动中断建议 — beta 过强，KL 压力超模型阈值，导致 logps_chosen 塌缩" }
+      ]},
+      { name: "lr", value: "5e-6", history: [
+        { step: null, from: null,    to: "5e-6", note: "初始配置" },
+        { step: 420,  from: "5e-6", to: "1e-6",  note: "⚠ 自动中断建议 — 大学习率加速 loss 发散，建议降至 1e-6" }
+      ]},
+      { name: "warmup_steps", value: "0", history: [
+        { step: null, from: null, to: "0",  note: "初始配置" },
+        { step: 420,  from: "0",  to: "50", note: "⚠ 自动中断建议 — 冷启动无 warmup，step 1–50 梯度震荡，建议加入 50 步 warmup" }
+      ]},
+      { name: "batch_size", value: "4", history: [
+        { step: null, from: null, to: "4", note: "初始配置" }
+      ]},
+    ]
   },
 
   // ===== 真实公开数据：TRL 官方 GPT-2 情感（IMDB）PPO 示例 =====
@@ -598,9 +965,17 @@ const TASKS = {
       entropy:[2.6,2.5,2.4,2.3,2.22,2.15,2.1,2.05,2.0,1.98,1.95,1.92,1.9,1.88,1.86,1.85,1.85,1.84,1.84,1.84],
       vloss:[0.45,0.38,0.32,0.28,0.25,0.22,0.20,0.18,0.17,0.16,0.15,0.14,0.14,0.13,0.13,0.12,0.12,0.12,0.12,0.12],
       gpu:[0.78,0.80,0.81,0.82,0.83,0.82,0.81,0.83,0.82,0.84,0.83,0.81,0.82,0.83,0.82,0.83,0.82,0.82,0.82,0.82],
+      grad_norm:[0.8,0.75,0.7,0.68,0.65,0.63,0.6,0.58,0.57,0.55,0.54,0.53,0.52,0.52,0.51,0.51,0.5,0.5,0.5,0.5],
       tput:[33,34,35,36,35,36,37,36,35,36,37,36,35,36,37,36,36,35,36,36],
       diagBefore:[-0.55,-0.40,-0.25,-0.10,0.00,0.10,0.20,0.22,0.23,0.24,0.25,0.25],
       diagAfter:[-0.55,-0.40,-0.25,-0.10,0.00,0.10,0.20,0.50,0.90,1.30,1.55,1.69] },
+    hparams: [
+      { name: "lr",            value: "1.41e-5", history: [{ step: null, from: null, to: "1.41e-5", note: "初始配置" }]},
+      { name: "init_kl_coef",  value: "0.2",     history: [{ step: null, from: null, to: "0.2",     note: "初始配置" }]},
+      { name: "target_kl",     value: "6",       history: [{ step: null, from: null, to: "6",        note: "初始配置" }]},
+      { name: "batch_size",    value: "256",     history: [{ step: null, from: null, to: "256",      note: "初始配置" }]},
+      { name: "ppo_epochs",    value: "4",       history: [{ step: null, from: null, to: "4",        note: "初始配置" }]},
+    ],
     source: `真实数据来源：Hugging Face TRL 官方示例「Tune GPT2 to generate positive reviews」 ——
       模型 <a href="https://huggingface.co/lvwerra/gpt2-imdb" target="_blank">lvwerra/gpt2-imdb</a>、奖励模型 <a href="https://huggingface.co/lvwerra/distilbert-imdb" target="_blank">lvwerra/distilbert-imdb</a>、产物 <a href="https://huggingface.co/lvwerra/gpt2-imdb-pos-v2" target="_blank">lvwerra/gpt2-imdb-pos-v2</a>；
       文档 <a href="https://huggingface.co/docs/trl/main/en/sentiment_tuning" target="_blank">trl/sentiment_tuning</a>、
@@ -609,6 +984,129 @@ const TASKS = {
       平均 reward 0.157 → 1.686、中位数 -0.547 → 2.480；heldout 情感得分 0.27 → 0.80（<a href="https://arxiv.org/abs/2406.02577" target="_blank">arXiv:2406.02577</a>）。曲线端点为真实值，逐点过渡按趋势重建。`
   }
 };
+
+// ============================================================
+// #9 参数对比数据
+//   按「运行 / 环境 / 指令 / 配置 / 超参」分组，逐条 key-value。
+//   better: "high"=越大越优 / "low"=越小越优 / 省略=不涉及优劣（不标最优）。
+//   各任务用相同的分组/key 命名，泳道才能横向对齐、支持「只看差异」。
+// ============================================================
+const COMPARE_PARAMS = {
+  qwen: [
+    { group:"运行参数", items:[
+      { key:"卡型规格", value:"8×H800" },
+      { key:"训练时长", value:"1小时21分" },
+      { key:"总 step",  value:"3000" },
+      { key:"评估准确度", value:"0.91", better:"high" },
+      { key:"s/step",   value:"2.37s", better:"low" },
+      { key:"显存占用", value:"95%",  better:"low" },
+      { key:"吞吐量",   value:"2.4万 tok/s" } ]},
+    { group:"环境参数", items:[
+      { key:"框架",   value:"TRL 0.9.6" },
+      { key:"镜像",   value:"trl:0.9.6-cu121" },
+      { key:"CUDA",   value:"12.1" },
+      { key:"计算节点", value:"node-gpu-07" } ]},
+    { group:"指令参数", items:[
+      { key:"启动方式", value:"torchrun" },
+      { key:"nproc_per_node", value:"8" },
+      { key:"入口脚本", value:"ppo.py" } ]},
+    { group:"配置参数", items:[
+      { key:"TP", value:"1" }, { key:"PP", value:"1" }, { key:"DP", value:"8" },
+      { key:"GradAcc", value:"2" }, { key:"attn_kernel", value:"flash2" }, { key:"量化", value:"none" } ]},
+    { group:"超参数", items:[
+      { key:"lr", value:"1.2e-6" }, { key:"init_kl_coef", value:"0.05" },
+      { key:"max_grad_norm", value:"1.0" }, { key:"batch_size", value:"8" }, { key:"ppo_epochs", value:"4" } ]},
+  ],
+  pythia: [
+    { group:"运行参数", items:[
+      { key:"卡型规格", value:"8×H100" },
+      { key:"训练时长", value:"1.0M episodes" },
+      { key:"总 step",  value:"1953" },
+      { key:"评估准确度", value:"0.96", better:"high" },
+      { key:"s/step",   value:"1.80s", better:"low" },
+      { key:"显存占用", value:"88%",  better:"low" },
+      { key:"吞吐量",   value:"3.1万 tok/s" } ]},
+    { group:"环境参数", items:[
+      { key:"框架",   value:"TRL" },
+      { key:"镜像",   value:"trl · pythia-6.9b-sft" },
+      { key:"CUDA",   value:"12.1" },
+      { key:"计算节点", value:"openrlbenchmark" } ]},
+    { group:"指令参数", items:[
+      { key:"启动方式", value:"python" },
+      { key:"nproc_per_node", value:"8" },
+      { key:"入口脚本", value:"ppo.py" } ]},
+    { group:"配置参数", items:[
+      { key:"TP", value:"1" }, { key:"PP", value:"1" }, { key:"DP", value:"8" },
+      { key:"GradAcc", value:"1" }, { key:"attn_kernel", value:"flash2" }, { key:"量化", value:"none" } ]},
+    { group:"超参数", items:[
+      { key:"lr", value:"3e-6" }, { key:"kl_coef", value:"0.05" },
+      { key:"batch_size", value:"512" }, { key:"ppo_epochs", value:"4" }, { key:"cliprange", value:"0.2" } ]},
+  ],
+  dpo: [
+    { group:"运行参数", items:[
+      { key:"卡型规格", value:"8×H800" },
+      { key:"训练时长", value:"0小时37分（已中断）" },
+      { key:"总 step",  value:"3000" },
+      { key:"评估准确度", value:"0.32", better:"high" },
+      { key:"s/step",   value:"3.10s", better:"low" },
+      { key:"显存占用", value:"76%",  better:"low" },
+      { key:"吞吐量",   value:"1.6万 tok/s" } ]},
+    { group:"环境参数", items:[
+      { key:"框架",   value:"TRL 0.9.6" },
+      { key:"镜像",   value:"trl:0.9.6-cu121" },
+      { key:"CUDA",   value:"12.1" },
+      { key:"计算节点", value:"node-gpu-12" } ]},
+    { group:"指令参数", items:[
+      { key:"启动方式", value:"torchrun" },
+      { key:"nproc_per_node", value:"8" },
+      { key:"入口脚本", value:"dpo.py" } ]},
+    { group:"配置参数", items:[
+      { key:"TP", value:"2" }, { key:"PP", value:"1" }, { key:"DP", value:"4" },
+      { key:"GradAcc", value:"4" }, { key:"attn_kernel", value:"flash2" }, { key:"量化", value:"none" } ]},
+    { group:"超参数", items:[
+      { key:"lr", value:"5e-6" }, { key:"beta", value:"0.1" },
+      { key:"warmup_steps", value:"0" }, { key:"batch_size", value:"4" } ]},
+  ],
+  gpt2sent: [
+    { group:"运行参数", items:[
+      { key:"卡型规格", value:"1×V100" },
+      { key:"训练时长", value:"1小时58分" },
+      { key:"总 step",  value:"20000" },
+      { key:"评估准确度", value:"0.80", better:"high" },
+      { key:"s/step",   value:"0.36s", better:"low" },
+      { key:"显存占用", value:"62%",  better:"low" },
+      { key:"吞吐量",   value:"36 samp/s" } ]},
+    { group:"环境参数", items:[
+      { key:"框架",   value:"TRL" },
+      { key:"镜像",   value:"trl · gpt2-imdb" },
+      { key:"CUDA",   value:"11.7" },
+      { key:"计算节点", value:"trl-showcase" } ]},
+    { group:"指令参数", items:[
+      { key:"启动方式", value:"python" },
+      { key:"nproc_per_node", value:"1" },
+      { key:"入口脚本", value:"gpt2-sentiment.py" } ]},
+    { group:"配置参数", items:[
+      { key:"TP", value:"1" }, { key:"PP", value:"1" }, { key:"DP", value:"1" },
+      { key:"GradAcc", value:"1" }, { key:"attn_kernel", value:"eager" }, { key:"量化", value:"none" } ]},
+    { group:"超参数", items:[
+      { key:"lr", value:"1.41e-5" }, { key:"init_kl_coef", value:"0.2" },
+      { key:"target_kl", value:"6" }, { key:"batch_size", value:"256" }, { key:"ppo_epochs", value:"4" } ]},
+  ],
+};
+Object.entries(COMPARE_PARAMS).forEach(([id,p])=>{ if(TASKS[id]) TASKS[id].compareParams = p; });
+
+// 智能帮比预置项：映射到某个参数 + 优劣方向，命中即取该参数最优的任务
+const SMART_PRESETS = [
+  { label:"预测最准", group:"运行参数", key:"评估准确度", dir:"high" },
+  { label:"训练最快", group:"运行参数", key:"s/step",   dir:"low"  },
+  { label:"最省显存", group:"运行参数", key:"显存占用",  dir:"low"  },
+];
+// 自由输入的关键词路由（命中则复用对应预置规则）
+const SMART_KW = [
+  { re:/准|效果|accuracy|reward|质量/i, p:SMART_PRESETS[0] },
+  { re:/快|速度|时间|吞吐|fast|throughput/i, p:SMART_PRESETS[1] },
+  { re:/显存|内存|省|memory|vram/i, p:SMART_PRESETS[2] },
+];
 
 // ---------- chart helpers ----------
 function pathFrom(data, w, h, pad){
@@ -673,31 +1171,6 @@ function fillChart(el, data, color){
   el.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
     <path d="${area}" fill="${color}" opacity="0.18"/><path d="${line}" fill="none" stroke="${color}" stroke-width="1.8"/></svg>`;
 }
-function dualChart(el, dataA, dataB){
-  const w = el.clientWidth||460, h=150, pad=12;
-  const all = dataA.concat(dataB);
-  const min = Math.min(...all), max = Math.max(...all), rng=(max-min)||1;
-  let crossIdx = -1;
-  for(let i=1; i<dataA.length; i++){
-    if(dataB[i] <= dataA[i] && dataB[i-1] > dataA[i-1]){ crossIdx = i; break; }
-  }
-  const lineA = pathFrom(dataA,w,h,pad);
-  const lineB = pathFrom(dataB,w,h,pad);
-  const areaA = lineA+` L ${w-pad} ${h-pad} L ${pad} ${h-pad} Z`;
-  let crossLine = '';
-  if(crossIdx > 0){
-    const cx = (pad + crossIdx*(w-pad*2)/(dataA.length-1)).toFixed(1);
-    crossLine = `<line x1="${cx}" y1="${pad+10}" x2="${cx}" y2="${h-pad}" stroke="var(--red)" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/>
-      <text x="${cx}" y="${pad+8}" font-size="9" fill="var(--red)" font-family="monospace" text-anchor="middle">区分度反转</text>`;
-  }
-  el.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-    <path d="${areaA}" fill="var(--blue)" opacity="0.04"/>
-    ${crossLine}
-    <path d="${lineA}" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="${lineB}" fill="none" stroke="var(--orange)" stroke-width="2" stroke-dasharray="5 3" stroke-linejoin="round" stroke-linecap="round"/>
-  </svg>`;
-}
-
 // ---------- live ticker ----------
 // 页面加载时刻 = 起算基准；刷新页面即复位
 const PAGE_START = Date.now();
@@ -758,6 +1231,10 @@ function renderAll(){
   document.getElementById('statusDot').style.cssText =
     `background:${t.status}; box-shadow:0 0 0 4px ${t.status.replace('var(--blue)','var(--blue-soft)').replace('var(--green)','var(--green-soft)').replace('var(--red)','var(--red-soft)').replace('var(--purple)','var(--purple-soft)')}`;
   document.getElementById('taskTitle').textContent = t.title;
+  document.getElementById('floatDot').className = 'dot ' + t.dot;
+  document.getElementById('floatName').textContent = t.name;
+  const at = document.querySelector('.tab.active');
+  if(at) syncFloatTabs(at.dataset.tab);
   const _desc = t.description || 'xxx';
   const _descPlain = _desc.replace(/<[^>]*>/g, '');
   document.getElementById('taskSubtitle').innerHTML =
@@ -802,7 +1279,23 @@ function renderAll(){
 
   // diagnosis
   const d = t.diag;
-  const diagBodyLeft = d.causal
+  const fc = d.frameworkChecks;
+  const hasBlocker = fc && fc.some(c => !c.pass);
+  const checklistHtml = fc ? `
+    <div class="fw-check">
+      <div class="fw-check-title">框架层排查清单
+        <span class="fw-check-summary ${hasBlocker ? 'bad' : 'ok'}">${hasBlocker ? '存在未通过项' : '全部通过'}</span>
+      </div>
+      ${fc.map(c => `
+        <div class="fw-check-row ${c.pass ? 'pass' : 'fail'}">
+          <span class="fw-check-icon">${c.pass ? '✓' : '✗'}</span>
+          <div class="fw-check-body">
+            <div class="fw-check-label">${c.label}</div>
+            <div class="fw-check-detail">${c.detail}</div>
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+  const adviceBody = d.causal
     ? `<div class="causal-wrap">${d.causal.map(c => `
         <div class="causal-row">
           <span class="causal-step-col">step ${c.step}</span>
@@ -818,6 +1311,11 @@ function renderAll(){
       <div class="btns"><button class="btn primary">一键修改</button><button class="btn ghost">查看详情</button></div>`
     : `${d.paras.map(p => `<p>${p}</p>`).join('')}
        <div class="btns"><button class="btn primary">一键修改</button><button class="btn ghost">查看详情</button></div>`;
+  const advice = hasBlocker
+    ? `<div class="fw-advice-wrap"><div class="fw-advice-dim">${adviceBody}</div>
+        <div class="fw-advice-mask"><span>⚠ 请先处理上方框架层问题</span></div></div>`
+    : adviceBody;
+  const diagBodyLeft = `${checklistHtml}${advice}`;
   document.getElementById('diagCard').innerHTML = `
     <div>
       <div class="card-head" style="margin-bottom:8px;"><h3>智能诊断</h3></div>
@@ -951,6 +1449,7 @@ function renderAll(){
 
   drawCharts();
   renderEventsTab();
+  renderHparamsTab();
 }
 
 // ---------- 指标卡片 + 数据配置 ----------
@@ -1229,6 +1728,12 @@ function bindEvTooltips(){
 }
 
 // ---------- tab switching ----------
+function syncFloatTabs(tabId){
+  document.querySelectorAll('.float-tab').forEach(t=>t.classList.remove('active'));
+  const ft = document.querySelector(`.float-tab[data-tab="${tabId}"]`);
+  if(ft) ft.classList.add('active');
+}
+
 function initTabs(){
   document.querySelectorAll('.tab[data-tab]').forEach(tab=>{
     tab.addEventListener('click',()=>{
@@ -1238,6 +1743,43 @@ function initTabs(){
       const panel = document.getElementById('tab-'+tab.dataset.tab);
       if(panel) panel.style.display='';
       if(tab.dataset.tab==='overview') drawCharts();
+      if(tab.dataset.tab==='hparams') renderHparamsTab();
+      syncFloatTabs(tab.dataset.tab);
+    });
+  });
+}
+
+function initFloatBar(){
+  const bar = document.getElementById('floatBar');
+  const tabsEl = document.querySelector('.tabs');
+
+  function posBar(){
+    const main = document.querySelector('.main');
+    if(!main) return;
+    const r = main.getBoundingClientRect();
+    bar.style.left = r.left + 'px';
+    bar.style.right = (window.innerWidth - r.right) + 'px';
+    bar.style.width = '';
+  }
+  posBar();
+  new ResizeObserver(posBar).observe(document.querySelector('.main'));
+
+  document.getElementById('floatNavExpand').addEventListener('click', ()=>{
+    document.getElementById('navExpand').click();
+  });
+
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ bar.classList.remove('visible'); bar.setAttribute('aria-hidden','true'); }
+      else if(!compareMode){ bar.classList.add('visible'); bar.removeAttribute('aria-hidden'); }
+    });
+  }, { threshold: 0 });
+  obs.observe(tabsEl);
+
+  document.querySelectorAll('.float-tab[data-tab]').forEach(ft=>{
+    ft.addEventListener('click',()=>{
+      const mainTab = document.querySelector(`.tab[data-tab="${ft.dataset.tab}"]`);
+      if(mainTab) mainTab.click();
     });
   });
 }
@@ -1308,14 +1850,720 @@ function renderEventsTab(){
     }).join('')}</tbody></table>`;
 }
 
+// ---------- render hparams tab ----------
+function renderHparamsTab(){
+  const t = TASKS[current];
+  const el = document.getElementById('hparamsContent');
+  if(!el) return;
+  if(!t.hparams || !t.hparams.length){
+    el.innerHTML = `<div class="card" style="padding:32px 24px;text-align:center;color:var(--text-3);">该任务暂无超参数据</div>`;
+    return;
+  }
+  const rows = t.hparams.map(hp => {
+    const hasChange = hp.history.some(h => h.from !== null);
+    const histHtml = hp.history.map(h => {
+      if(h.from === null){
+        return `<div class="hp-hist-item">
+          <span class="hp-step">step 0</span>
+          <span class="hp-init">初始值 <span style="font-family:var(--font-mono);color:var(--text-2)">${h.to}</span></span>
+        </div>`;
+      }
+      const isWarn = h.note.startsWith('⚠');
+      return `<div class="hp-hist-item">
+        <span class="hp-step">step ${h.step}</span>
+        <span class="hp-from">${h.from}</span>
+        <span class="hp-arrow">→</span>
+        <span class="hp-to${isWarn?' warn':''}">${h.to}</span>
+        <span class="hp-note">${h.note}</span>
+      </div>`;
+    }).join('');
+    return `<tr>
+      <td><span class="hp-name">${hp.name}</span></td>
+      <td><span class="hp-cur${hasChange?' changed':''}">${hp.value}</span></td>
+      <td>${histHtml}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<div class="card">
+    <div class="card-head"><h3>超参配置</h3></div>
+    <table class="hp-table">
+      <thead><tr>
+        <th style="width:140px">超参名</th>
+        <th style="width:130px">当前值</th>
+        <th>修改历史</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+// ============================================================
+// #5 跨任务基线对比（compare mode）
+//   勾选多个任务叠加曲线，指定其中一个为「基线」作为参照系；
+//   每张对比图右上角显示其余任务相对基线的偏差摘要，超阈值标红，
+//   让 DPO 等异常任务的 loss/grad_norm 严重程度有可量化的参照。
+// ============================================================
+const DOT_HEX = { blue:'#1863dc', green:'#177245', red:'#b42318', purple:'#9b60aa' };
+function dotColor(id){ return DOT_HEX[TASKS[id].dot] || '#888'; }
+function shortName(id){ return TASKS[id].name.split(' ')[0]; }
+function last(a){ return a[a.length-1]; }
+function fmtNum(v){
+  const a = Math.abs(v);
+  return a>=100 ? v.toFixed(0) : a>=1 ? v.toFixed(2) : v.toFixed(3);
+}
+
+// 参与对比的指标；dir 决定偏差的"好坏"方向（down=越低越好，up=越高越好，flat=仅参考）
+// alias：任务字段名与默认 id 不一致时的映射（如 dpo 的 grad_norm 存为 grad）
+const CMP_METRICS = [
+  { id:'loss',      label:'loss',       dir:'down' },
+  { id:'grad_norm', label:'grad_norm',  dir:'down', alias:{ dpo:'grad' } },
+  { id:'gpu',       label:'GPU 利用率',  dir:'up' },
+  { id:'kl',        label:'KL 散度',     dir:'flat' },
+  { id:'vram',      label:'显存占用',     dir:'flat' },
+  { id:'lr',        label:'学习率',       dir:'flat' },
+];
+function cmpSeries(id, m){
+  const key = (m.alias && m.alias[id]) || m.id;
+  return TASKS[id].series[key] || null;
+}
+// 图表对比：按指标方向（down 越低越好 / up 越高越好）算出末值最优的任务；
+// flat 无优劣方向、不足 2 个可比任务、或所有末值相等时不标（与参数对比 optimalIds 口径一致）
+function bestChartTask(m, tasksWith){
+  if(m.dir !== 'down' && m.dir !== 'up') return null;
+  const entries = tasksWith.map(id=>{ const s = cmpSeries(id, m); return s ? { id, n: last(s) } : null; })
+    .filter(x=> x && x.n != null);
+  if(entries.length < 2) return null;
+  if(new Set(entries.map(e=> e.n)).size === 1) return null;
+  const best = m.dir==='up' ? Math.max(...entries.map(e=>e.n)) : Math.min(...entries.map(e=>e.n));
+  return entries.find(e=> e.n===best).id;
+}
+// 相对基线偏差：abs 绝对差、pct 相对差；bad 表示朝"坏"方向偏离超阈值
+function deviation(cur, base, dir){
+  const abs = cur - base;
+  const pct = base !== 0 ? abs/Math.abs(base) : 0;
+  let bad = false;
+  if(dir === 'down')      bad = pct > 0.5;          // 越低越好：高于基线 >50% 标红
+  else if(dir === 'up')   bad = pct < -0.2;         // 越高越好：低于基线 >20% 标红
+  else                    bad = Math.abs(pct) > 0.5;// 仅参考：偏离 >50% 标红
+  return { abs, pct, bad };
+}
+
+let compareMode = false;
+const compareSel = new Set(['qwen','pythia','dpo']);   // 默认勾选：健康基线 + 真实参照 + 异常任务
+let baselineKey = 'qwen';                              // 默认以健康的 qwen RLHF 为基线
+let cmpCharts = [];
+// #9 参数对比状态
+let compareTab = 'chart';      // 'chart' 图表对比 | 'param' 参数对比
+let markBest = true;           // 标记最优（默认开）
+let compareDiffOnly = false;   // 只看差异
+let smartLabel = '';           // 当前激活的智能帮比比较项
+let smartPickIds = [];         // 命中（胜出）的任务 id
+let laneOrder = null;          // 泳道拖拽后的自定义顺序（baseline 始终置首）
+let dragId = null;
+
+document.querySelectorAll('.home-btn').forEach(b=> b.addEventListener('click', ()=>{
+  window.location.href = 'https://yinyucheng0601.github.io/compute-graph-viewer/launch.html';
+}));
+document.getElementById('navCollapse').addEventListener('click', ()=>{
+  document.querySelector('.app').classList.add('nav-collapsed');
+});
+document.getElementById('navExpand').addEventListener('click', ()=>{
+  document.querySelector('.app').classList.remove('nav-collapsed');
+});
+
+document.getElementById('navCompare').addEventListener('click', ()=>{
+  compareMode ? exitCompare() : enterCompare();
+});
+
+function enterCompare(){
+  compareMode = true;
+  const _fb = document.getElementById('floatBar');
+  _fb.classList.remove('visible'); _fb.setAttribute('aria-hidden','true');
+  document.getElementById('navCompare').classList.add('cmp-active');
+  document.querySelector('.tabs').style.display = 'none';
+  document.querySelectorAll('[id^="tab-"]').forEach(p=> p.style.display = 'none');
+  document.getElementById('compareView').style.display = '';
+  document.querySelector('.page-title').style.display = 'none';
+  document.getElementById('taskTitle').textContent = '';
+  document.getElementById('statusDot').style.cssText = 'display:none';
+  document.getElementById('taskSubtitle').innerHTML = '';
+  document.getElementById('navCompareIcon').textContent = '←';
+  clearInterval(liveTimer);
+  renderCompareSidebar();
+  renderCompare();
+}
+function exitCompare(){
+  compareMode = false;
+  cmpCharts = [];
+  document.getElementById('cmpTooltip').style.display = 'none';
+  document.getElementById('navCompare').classList.remove('cmp-active');
+  document.getElementById('navCompareIcon').textContent = '⇄';
+  document.querySelector('.tabs').style.display = '';
+  document.querySelector('.page-title').style.display = '';
+  document.getElementById('compareView').style.display = 'none';
+  document.querySelectorAll('.tab').forEach(t=> t.classList.remove('active'));
+  document.querySelector('.tab[data-tab="overview"]').classList.add('active');
+  document.getElementById('tab-overview').style.display = '';
+  renderAll();
+}
+
+function renderCompareSidebar(){
+  document.getElementById('taskList').innerHTML = Object.entries(TASKS).map(([id,t])=>{
+    const checked = compareSel.has(id), isBase = id===baselineKey;
+    return `<div class="cmp-task-item ${checked?'cmp-checked':''}" data-id="${id}">
+      <input type="checkbox" class="cmp-cb" data-id="${id}" ${checked?'checked':''}>
+      <span class="dot ${t.dot}"></span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</span>
+      <span class="cmp-base-tag ${isBase?'on':''}" data-base="${id}" title="设为对比基线">基线</span>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('.cmp-cb').forEach(cb=> cb.addEventListener('change', e=>{
+    e.stopPropagation();
+    const id = cb.dataset.id;
+    if(cb.checked) compareSel.add(id);
+    else { compareSel.delete(id); if(baselineKey===id) baselineKey = [...compareSel][0] || null; }
+    renderCompareSidebar(); renderCompare();
+  }));
+  document.querySelectorAll('.cmp-base-tag').forEach(tag=> tag.addEventListener('click', e=>{
+    e.stopPropagation();
+    baselineKey = tag.dataset.base;
+    compareSel.add(baselineKey);              // 基线必然在对比集合内
+    renderCompareSidebar(); renderCompare();
+  }));
+  document.querySelectorAll('.cmp-task-item').forEach(row=> row.addEventListener('click', e=>{
+    if(e.target.classList.contains('cmp-cb') || e.target.classList.contains('cmp-base-tag')) return;
+    const cb = row.querySelector('.cmp-cb');
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change'));
+  }));
+}
+
+// 对比视图调度：固定顶部「图表对比 / 参数对比」子页签，按当前 tab 分流渲染
+function renderCompare(){
+  if(!compareMode) return;
+  const view = document.getElementById('compareView');
+  view.innerHTML = `
+    <div class="cmp-topbar">
+      <div style="display:flex;align-items:center;gap:11px">
+        <button class="icon-btn" id="cmpNavHomeCollapsed" title="返回首页" aria-label="返回首页"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/></svg></button>
+        <button class="icon-btn" id="cmpNavExpand" title="展开导航栏" aria-label="展开导航栏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
+        <div class="cmp-subtabs">
+          <div class="cmp-subtab ${compareTab==='chart'?'active':''}" data-ctab="chart">图表对比</div>
+          <div class="cmp-subtab ${compareTab==='param'?'active':''}" data-ctab="param">参数对比</div>
+        </div>
+      </div>
+      <div class="cmp-topbar-right" id="cmpTopRight"></div>
+    </div>
+    <div id="cmpBody"></div>`;
+  view.querySelector('#cmpNavHomeCollapsed').addEventListener('click', ()=>{
+    window.location.href = 'https://yinyucheng0601.github.io/compute-graph-viewer/launch.html';
+  });
+  view.querySelector('#cmpNavExpand').addEventListener('click', ()=>{
+    document.querySelector('.app').classList.remove('nav-collapsed');
+  });
+  view.querySelectorAll('.cmp-subtab').forEach(el=> el.addEventListener('click', ()=>{
+    compareTab = el.dataset.ctab; renderCompare();
+  }));
+  if(compareTab==='param') renderParamCompare();
+  else renderCompareChart();
+}
+
+function renderCompareChart(){
+  const right = document.getElementById('cmpTopRight');
+  right.innerHTML = `<span class="cmp-toggle" data-toggle="best"><span>标记最优</span><span class="sw ${markBest?'on':''}"></span></span>`;
+  right.querySelector('.cmp-toggle').addEventListener('click', ()=>{ markBest = !markBest; renderCompareChart(); });
+  const body = document.getElementById('cmpBody');
+  const sel = [...compareSel];
+  if(sel.length === 0){
+    body.innerHTML = `<div class="card cmp-empty">请在左侧勾选至少一个任务</div>`;
+    cmpCharts = [];
+    return;
+  }
+  const hasBase = baselineKey && compareSel.has(baselineKey);
+
+  const legend = sel.map(id=>{
+    const isBase = id===baselineKey;
+    return `<div class="cmp-legend-item">
+      <span style="display:inline-block;width:16px;height:0;
+        border-top:${isBase?'3px solid #888':'2px solid '+dotColor(id)};"></span>
+      ${TASKS[id].name}${isBase?' <b class="cmp-baseline-pill">· 基线</b>':''}</div>`;
+  }).join('');
+
+  const grid = CMP_METRICS.map((m, mi)=>{
+    const tasksWith = sel.filter(id=> cmpSeries(id, m));
+    if(tasksWith.length === 0) return '';
+    let devs = '';
+    if(hasBase && cmpSeries(baselineKey, m)){
+      const base = cmpSeries(baselineKey, m);
+      devs = tasksWith.filter(id=> id!==baselineKey).map(id=>{
+        const dv = deviation(last(cmpSeries(id, m)), last(base), m.dir);
+        const sign = dv.pct>=0 ? '+' : '';
+        let style;
+        if(dv.bad) style = 'color:var(--red);border-color:rgba(180,35,24,.35);background:var(--red-soft)';
+        else { const c = dotColor(id); style = `color:${c};border-color:${c}33;background:${c}14`; }
+        return `<span class="cmp-dev" style="${style}"
+          title="${shortName(id)} 末值 ${fmtNum(last(cmpSeries(id,m)))} vs 基线 ${fmtNum(last(base))}">${shortName(id)} ${sign}${(dv.pct*100).toFixed(0)}% vs 基线</span>`;
+      }).join('');
+    }
+    let bestTag = '';
+    if(markBest){
+      const bestId = bestChartTask(m, tasksWith);
+      if(bestId){
+        const c = dotColor(bestId);
+        bestTag = `<span class="cmp-best-tag" style="color:${c};border-color:${c}33;background:${c}14"
+          title="${TASKS[bestId].name} 在 ${m.label} 上末值最优">
+          <span class="cmp-best-medal">🏅</span>最佳 · ${shortName(bestId)}</span>`;
+      }
+    }
+    return `<div class="card" style="padding:14px;min-width:0;">
+      <div class="cmp-chart-head">
+        <span class="cmp-chart-head-left"><span class="cmp-chart-title">${m.label}</span>${bestTag}</span>
+        <span class="cmp-dev-wrap">${devs}</span>
+      </div>
+      <div class="cmp-chart-area" data-mi="${mi}"></div>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="cmp-legend">${legend}${hasBase?'':'<div class="cmp-legend-item" style="color:var(--text-3)">未指定基线 · 点击左侧「基线」标签设定参照系</div>'}</div>
+    <div class="cmp-grid">${grid}</div>`;
+
+  cmpDrawAll();
+}
+
+// ============================================================
+// #9 参数对比：泳道卡片
+//   各任务一列卡片横向铺开，纵向按分组展示 key-value；
+//   基线固定最左、智能帮比高亮命中任务、可标记最优、可只看差异。
+// ============================================================
+function findParam(id, group, key){
+  const cp = TASKS[id].compareParams || [];
+  const g = cp.find(x=> x.group===group); if(!g) return null;
+  return g.items.find(x=> x.key===key) || null;
+}
+// 从含单位的字符串里抽取可比较数值（"2.37s"→2.37、"2.4万"→24000、"5e-6"→5e-6、"8×H800"→8）
+function paramNum(v){
+  if(v==null) return null;
+  const m = String(v).replace(/,/g,'').match(/-?\d+(?:\.\d+)?(?:e-?\d+)?/i);
+  if(!m) return null;
+  let n = parseFloat(m[0]);
+  if(/万/.test(v)) n *= 10000;
+  return n;
+}
+// 某行在所选任务间是否存在差异（缺失计为一种取值）
+function rowDiffers(group, key, sel){
+  const vals = sel.map(id=>{ const it = findParam(id, group, key); return it ? it.value : ' '; });
+  return new Set(vals).size > 1;
+}
+// 该行最优任务集合：需 ≥2 个可比数值且并非全部相等，否则视为无优劣不标记
+function optimalIds(group, key, better, sel){
+  if(!better) return new Set();
+  const entries = sel.map(id=>{ const it = findParam(id, group, key); return it ? { id, n: paramNum(it.value) } : null; })
+    .filter(x=> x && x.n != null);
+  if(entries.length < 2) return new Set();
+  if(new Set(entries.map(e=> e.n)).size === 1) return new Set();
+  const best = better==='high' ? Math.max(...entries.map(e=>e.n)) : Math.min(...entries.map(e=>e.n));
+  return new Set(entries.filter(e=> e.n===best).map(e=> e.id));
+}
+// 并集出所有分组与各分组下的 key（保持出现顺序），并记录 better 方向
+function buildParamModel(sel){
+  const groups = [], gmap = new Map();
+  sel.forEach(id=> (TASKS[id].compareParams||[]).forEach(g=>{
+    let G = gmap.get(g.group);
+    if(!G){ G = { group:g.group, keys:[], kset:new Set(), better:new Map() }; gmap.set(g.group, G); groups.push(G); }
+    g.items.forEach(it=>{
+      if(!G.kset.has(it.key)){ G.kset.add(it.key); G.keys.push(it.key); }
+      if(it.better && !G.better.has(it.key)) G.better.set(it.key, it.better);
+    });
+  }));
+  return groups;
+}
+// 排序：基线置首，其余按拖拽顺序（laneOrder），新加入的接在末尾
+function orderedSel(){
+  let ids = laneOrder ? laneOrder.filter(id=> compareSel.has(id)) : [...compareSel];
+  [...compareSel].forEach(id=>{ if(!ids.includes(id)) ids.push(id); });
+  ids = ids.filter(id=> id!==baselineKey);
+  if(baselineKey && compareSel.has(baselineKey)) ids.unshift(baselineKey);
+  return ids;
+}
+
+// 智能帮比：算出命中（胜出）任务
+function isPreset(label){ return SMART_PRESETS.some(p=> p.label===label); }
+function pickMostOptimal(sel){
+  const model = buildParamModel(sel), cnt = {};
+  sel.forEach(id=> cnt[id]=0);
+  model.forEach(g=> g.keys.forEach(key=>{
+    const better = g.better.get(key); if(!better) return;
+    optimalIds(g.group, key, better, sel).forEach(id=> cnt[id]++);
+  }));
+  const mx = Math.max(0, ...sel.map(id=> cnt[id]));
+  return mx===0 ? [] : sel.filter(id=> cnt[id]===mx);
+}
+function applySmart(label){
+  smartLabel = label;
+  if(!label){ smartPickIds = []; return; }
+  const sel = [...compareSel];
+  let target = SMART_PRESETS.find(p=> p.label===label);
+  if(!target){ const hit = SMART_KW.find(k=> k.re.test(label)); target = hit ? hit.p : null; }
+  smartPickIds = target ? [...optimalIds(target.group, target.key, target.dir, sel)] : pickMostOptimal(sel);
+}
+
+function laneCardHtml(id, model, sel){
+  const t = TASKS[id], isBase = id===baselineKey, picked = smartPickIds.includes(id);
+  let rows = model.map(g=>{
+    const items = g.keys.map(key=>{
+      if(compareDiffOnly && !rowDiffers(g.group, key, sel)) return '';
+      const it = findParam(id, g.group, key);
+      const val = it ? it.value : '—';
+      const better = g.better.get(key);
+      const best = markBest && better && optimalIds(g.group, key, better, sel).has(id);
+      return `<div class="lane-row" data-rk="${g.group}::${key}">
+        <span class="lane-k">${key}</span>
+        <span class="lane-v ${best?'best':''}">${best?'<span class="lane-medal">🏅</span>':''}${val}</span>
+      </div>`;
+    }).filter(Boolean).join('');
+    return items ? `<div class="lane-group" data-group="${g.group}"><div class="lane-group-title">${g.group}</div>${items}</div>` : '';
+  }).join('');
+  if(!rows) rows = `<div class="lane-empty">无差异参数</div>`;
+  return `<div class="lane-card ${isBase?'baseline':''} ${picked?'picked':''}" data-id="${id}" ${isBase?'':'draggable="true"'}>
+    <div class="lane-head">
+      ${isBase?'<span class="lane-pin" title="基线固定最左">📌</span>':'<span class="lane-drag" title="拖拽调整顺序">⠿</span>'}
+      <span class="dot ${t.dot}"></span>
+      <span class="lane-name" title="${t.name}">${t.name}</span>
+      ${isBase?'<span class="lane-base-tag">基线</span>':''}
+      ${picked?`<span class="lane-smart-badge">${smartLabel}</span>`:''}
+    </div>
+    <div class="lane-body">${rows}</div>
+  </div>`;
+}
+// 加号方形按钮 + 下方分组锚点（点击滚动到对应分组，锚点只列当前可见分组）
+function laneRailHtml(model, sel){
+  const remaining = Object.keys(TASKS).filter(id=> !compareSel.has(id));
+  const visGroups = model.filter(g=> g.keys.some(key=> !(compareDiffOnly && !rowDiffers(g.group, key, sel))));
+  const anchors = visGroups.map(g=>`<div class="lane-anchor" data-anchor="${g.group}">${g.group}</div>`).join('');
+  return `<div class="lane-rail">
+    <div class="lane-add ${remaining.length?'':'disabled'}" id="laneAdd" title="${remaining.length?'添加任务列':'已全部加入'}">+
+      <div class="lane-add-menu" id="laneAddMenu">
+        ${remaining.length
+          ? remaining.map(id=>`<div class="lane-add-item" data-add="${id}"><span class="dot ${TASKS[id].dot}"></span>${TASKS[id].name}</div>`).join('')
+          : '<div style="padding:8px;color:var(--text-3);font-size:12px">已全部加入</div>'}
+      </div>
+    </div>
+    ${anchors?`<div class="lane-anchors">${anchors}</div>`:''}
+  </div>`;
+}
+
+function renderParamCompare(){
+  if(smartLabel) applySmart(smartLabel);          // 选择集变化后保持命中结果同步
+  const right = document.getElementById('cmpTopRight');
+  right.innerHTML = `
+    <span class="cmp-toggle" data-toggle="diff"><span>只看差异</span><span class="sw ${compareDiffOnly?'on':''}"></span></span>
+    <span class="cmp-toggle" data-toggle="best"><span>标记最优</span><span class="sw ${markBest?'on':''}"></span></span>`;
+  right.querySelectorAll('.cmp-toggle').forEach(tg=> tg.addEventListener('click', ()=>{
+    if(tg.dataset.toggle==='diff') compareDiffOnly = !compareDiffOnly; else markBest = !markBest;
+    renderParamCompare();
+  }));
+
+  const body = document.getElementById('cmpBody');
+  const sel = orderedSel();
+  if(sel.length===0){ body.innerHTML = `<div class="card cmp-empty">请在左侧勾选至少一个任务</div>`; return; }
+  const model = buildParamModel(sel);
+  const freeVal = smartLabel && !isPreset(smartLabel) ? smartLabel : '';
+
+  body.innerHTML = `
+    <div class="smart-bar">
+      <span class="smart-label">✦ 智能帮比</span>
+      ${SMART_PRESETS.map(p=>`<span class="smart-chip ${smartLabel===p.label?'on':''}" data-preset="${p.label}">${p.label}</span>`).join('')}
+      <input class="smart-input" id="smartInput" placeholder="输入你的比较条件，回车评估（如：显存最省 / 速度最快）" value="${freeVal}">
+      ${smartLabel?'<span class="smart-clear" id="smartClear">清除</span>':''}
+    </div>
+    ${smartLabel?`<div class="smart-hint">已按「<b>${smartLabel}</b>」评估：${smartPickIds.length?smartPickIds.map(id=>shortName(id)).join('、')+' 胜出 ✦':'当前所选任务中无可比项'}（Demo）</div>`:''}
+    <div class="lane-area">
+      <div class="lane-wrap" id="laneWrap">
+        ${sel.map(id=> laneCardHtml(id, model, sel)).join('')}
+      </div>
+      ${laneRailHtml(model, sel)}
+    </div>`;
+
+  bindSmart();
+  bindLaneDnd();
+  bindLaneAdd();
+  bindLaneAnchors();
+  bindLaneRowHover();
+  sizeLaneWrap();
+}
+
+// 对比框为独立滚动容器：按可用视口高度限定其高度，框内出现纵向/横向滚动条
+function sizeLaneWrap(){
+  const wrap = document.getElementById('laneWrap');
+  if(!wrap || !document.body.contains(wrap)) return;
+  const top = wrap.getBoundingClientRect().top;   // 框顶距视口顶的距离
+  wrap.style.maxHeight = Math.max(240, window.innerHeight - top - 16) + 'px';
+}
+if(typeof _laneResize === 'undefined') var _laneResize = null;
+if(!_laneResize){ _laneResize = ()=> sizeLaneWrap(); window.addEventListener('resize', _laneResize, { passive: true }); }
+
+// 点击分组锚点：在对比框内滚动，把对应分组标题滚到悬浮任务标题正下方（锚点在框外的控制列里）
+function headHeight(wrap){ const h = wrap.querySelector('.lane-head'); return h ? h.getBoundingClientRect().height : 46; }
+function laneAnchors(wrap){ const area = wrap.closest('.lane-area'); return area ? [...area.querySelectorAll('.lane-anchor')] : []; }
+function bindLaneAnchors(){
+  const wrap = document.getElementById('laneWrap');
+  if(!wrap) return;
+  laneAnchors(wrap).forEach(a=> a.addEventListener('click', ()=>{
+    const g = wrap.querySelector(`.lane-group[data-group="${CSS.escape(a.dataset.anchor)}"]`);
+    if(!g) return;
+    const top = wrap.scrollTop + g.getBoundingClientRect().top - wrap.getBoundingClientRect().top - headHeight(wrap) - 6;
+    wrap.scrollTo({ top, behavior: 'smooth' });
+  }));
+  _anchorSpy = ()=> updateAnchorSpy();
+  wrap.addEventListener('scroll', _anchorSpy, { passive: true });
+  updateAnchorSpy();
+}
+// 滚动联动：高亮当前悬浮在任务标题下方的那个分组对应的锚点
+let _anchorSpy = null;
+function updateAnchorSpy(){
+  const wrap = document.getElementById('laneWrap');
+  if(!wrap || !document.body.contains(wrap)) return;
+  const anchors = laneAnchors(wrap);
+  if(!anchors.length) return;
+  const band = wrap.getBoundingClientRect().top + headHeight(wrap) + 8;   // 悬浮标题正下方一线
+  let active = anchors[0].dataset.anchor;
+  anchors.forEach(a=>{
+    const g = wrap.querySelector(`.lane-group[data-group="${CSS.escape(a.dataset.anchor)}"]`);
+    if(g && g.getBoundingClientRect().top <= band) active = a.dataset.anchor;
+  });
+  // 触底时无法把末尾分组顶到悬浮线，直接高亮最后一个分组
+  if(wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 2)
+    active = anchors[anchors.length-1].dataset.anchor;
+  anchors.forEach(a=> a.classList.toggle('active', a.dataset.anchor===active));
+}
+
+// 悬浮某参数行时，联动高亮所有泳道中同一参数（group::key）的对应行
+function bindLaneRowHover(){
+  const wrap = document.getElementById('laneWrap');
+  if(!wrap) return;
+  wrap.querySelectorAll('.lane-row[data-rk]').forEach(row=>{
+    const rk = row.dataset.rk;
+    const peers = wrap.querySelectorAll(`.lane-row[data-rk="${CSS.escape(rk)}"]`);
+    row.addEventListener('mouseenter', ()=> peers.forEach(p=> p.classList.add('row-hi')));
+    row.addEventListener('mouseleave', ()=> peers.forEach(p=> p.classList.remove('row-hi')));
+  });
+}
+
+function bindSmart(){
+  document.querySelectorAll('.smart-chip').forEach(c=> c.addEventListener('click', ()=>{
+    const label = c.dataset.preset;
+    applySmart(smartLabel===label ? '' : label);   // 再次点击取消
+    renderParamCompare();
+  }));
+  const input = document.getElementById('smartInput');
+  if(input) input.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ const v = input.value.trim(); applySmart(v); renderParamCompare(); }
+  });
+  const clr = document.getElementById('smartClear');
+  if(clr) clr.addEventListener('click', ()=>{ applySmart(''); renderParamCompare(); });
+}
+function bindLaneDnd(){
+  const wrap = document.getElementById('laneWrap');
+  wrap.querySelectorAll('.lane-card[draggable="true"]').forEach(card=>{
+    card.addEventListener('dragstart', ()=>{ dragId = card.dataset.id; card.style.opacity = '.4'; });
+    card.addEventListener('dragend',   ()=>{ card.style.opacity = ''; });
+    card.addEventListener('dragover',  e=>{ e.preventDefault(); card.classList.add('drag-over'); });
+    card.addEventListener('dragleave', ()=> card.classList.remove('drag-over'));
+    card.addEventListener('drop', e=>{
+      e.preventDefault(); card.classList.remove('drag-over');
+      const targetId = card.dataset.id;
+      if(!dragId || dragId===targetId || targetId===baselineKey){ dragId = null; return; }
+      let order = orderedSel().filter(id=> id!==baselineKey && id!==dragId);
+      order.splice(order.indexOf(targetId), 0, dragId);
+      laneOrder = baselineKey ? [baselineKey, ...order] : order;
+      dragId = null;
+      renderParamCompare();
+    });
+  });
+}
+function bindLaneAdd(){
+  const add = document.getElementById('laneAdd'); if(!add || add.classList.contains('disabled')) return;
+  const menu = document.getElementById('laneAddMenu');
+  add.addEventListener('click', e=>{ e.stopPropagation(); menu.classList.toggle('open'); });
+  menu.addEventListener('click', e=> e.stopPropagation());
+  menu.querySelectorAll('.lane-add-item').forEach(it=> it.addEventListener('click', ()=>{
+    compareSel.add(it.dataset.add); laneOrder = null;
+    renderCompareSidebar(); renderParamCompare();
+  }));
+  document.addEventListener('click', ()=> menu.classList.remove('open'), { once:true });
+}
+
+function cmpDrawAll(){
+  cmpCharts = [];
+  document.querySelectorAll('.cmp-chart-area').forEach(area=>{
+    cmpChart(area, CMP_METRICS[+area.dataset.mi]);
+  });
+}
+
+function cmpChart(area, m){
+  const sel = [...compareSel].filter(id=> cmpSeries(id, m));
+  const w = area.clientWidth || 300, h = 120, pad = 12;
+  const datas = sel.map(id=>({ id, color:dotColor(id), vals:cmpSeries(id, m),
+    name:TASKS[id].name, base:id===baselineKey }));
+  const allV = datas.flatMap(d=> d.vals);
+  const min = Math.min(...allV), max = Math.max(...allV), rng = (max-min)||1;
+  const n = Math.max(...datas.map(d=> d.vals.length));
+  const X = i => pad + i*(w-pad*2)/(n-1);
+  const Y = v => pad + (h-pad*2)*(1-(v-min)/rng);
+  const pathOf = vals => vals.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
+  // 非基线先画、基线后画（置于顶层，灰色加粗）
+  const ordered = [...datas.filter(d=>!d.base), ...datas.filter(d=>d.base)];
+  const lines = ordered.map(d=>
+    `<path d="${pathOf(d.vals)}" fill="none" stroke="${d.base?'#888':d.color}"
+       stroke-width="${d.base?2.6:1.8}" stroke-linejoin="round" stroke-linecap="round"
+       opacity="${d.base?0.95:0.85}"/>`).join('');
+  area.innerHTML = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    ${lines}
+    <line class="cmp-vline" x1="0" y1="${pad}" x2="0" y2="${h-pad}"
+      stroke="rgba(33,33,33,.32)" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>
+    <g class="cmp-dots"></g>
+  </svg><div class="cmp-chart-tip"></div>`;
+  const svg = area.querySelector('svg');
+  const obj = { area, m, datas, n, w, X, Y,
+    vline: svg.querySelector('.cmp-vline'), dots: svg.querySelector('.cmp-dots'),
+    tip: area.querySelector('.cmp-chart-tip') };
+  cmpCharts.push(obj);
+  // 在任意一张图上移动，都联动刷新所有图（竖线 + 数据点 + 各自气泡）
+  area.addEventListener('mousemove', e=>{
+    const rect = area.getBoundingClientRect();
+    const px = (e.clientX-rect.left)/rect.width*w;
+    let idx = Math.round((px-pad)/((w-pad*2)/(n-1)));
+    idx = Math.max(0, Math.min(n-1, idx));
+    cmpSyncAll(idx);
+  });
+  area.addEventListener('mouseleave', cmpHideAll);
+}
+
+// 联动：所有对比图在同一 idx 处画竖线、标记数据点，并各自弹出信息气泡
+function cmpSyncAll(idx){
+  cmpCharts.forEach(c=>{
+    const x = c.X(idx).toFixed(1);
+    c.vline.setAttribute('x1', x); c.vline.setAttribute('x2', x);
+    c.vline.style.display = '';
+    c.dots.innerHTML = c.datas.map(d=> idx>=d.vals.length ? '' :
+      `<circle cx="${c.X(idx).toFixed(1)}" cy="${c.Y(d.vals[idx]).toFixed(1)}"
+        r="${d.base?3.2:2.6}" fill="${d.base?'#888':d.color}" stroke="#fff" stroke-width="1"/>`).join('');
+    cmpFillTip(c, idx);
+  });
+}
+function cmpHideAll(){
+  cmpCharts.forEach(c=>{ c.vline.style.display='none'; c.dots.innerHTML=''; c.tip.style.display='none'; });
+}
+// 单张图的信息气泡：列出各任务在 idx 处取值及相对基线偏差，定位在竖线一侧
+function cmpFillTip(c, idx){
+  const base = c.datas.find(d=> d.base);
+  c.tip.innerHTML = `<div class="cmp-tip-head">进度 ${Math.round(idx/(c.n-1)*100)}%</div>` +
+    c.datas.map(d=>{
+      const v = d.vals[idx];
+      let dev = '';
+      if(base && d!==base){
+        const dv = deviation(v, base.vals[idx], c.m.dir);
+        const sign = dv.pct>=0 ? '+' : '';
+        dev = `<span class="cmp-tip-dev" style="color:${dv.bad?'var(--red)':'var(--text-3)'}">${sign}${(dv.pct*100).toFixed(0)}%</span>`;
+      }
+      return `<div class="cmp-tip-row">
+        <span class="cmp-tip-dot" style="background:${d.base?'#888':d.color}"></span>
+        <span class="cmp-tip-name">${shortName(d.id)}${d.base?'·基线':''}</span>
+        <span class="cmp-tip-val">${fmtNum(v)}</span>${dev}</div>`;
+    }).join('');
+  c.tip.style.display = 'block';
+  // 竖线在左半区时气泡靠右、右半区时靠左，避免遮挡与溢出
+  const aw = c.area.clientWidth;
+  const pxX = (c.X(idx)/c.w) * aw;
+  const tw = c.tip.offsetWidth;
+  let left = pxX < aw/2 ? pxX + 10 : pxX - tw - 10;
+  left = Math.max(2, Math.min(left, aw - tw - 2));
+  c.tip.style.left = left + 'px';
+  c.tip.style.top = '4px';
+}
+
 initTabs();
+initFloatBar();
 renderAll();
-window.addEventListener('resize', drawCharts);
+window.addEventListener('resize', ()=>{ compareMode ? renderCompare() : drawCharts(); });
 
 const menuBtn = document.getElementById('menuBtn'), dropdown = document.getElementById('dropdown');
 menuBtn.addEventListener('click', e=>{ e.stopPropagation(); dropdown.classList.toggle('open'); });
 document.addEventListener('click', ()=> dropdown.classList.remove('open'));
 dropdown.addEventListener('click', e=> e.stopPropagation());
+
+/* ===== 更新日志抽屉 ===== */
+(function(){
+  // 极简 Markdown 渲染（支持标题/分割线/GFM 表格/加粗/行内代码/链接/<br>）
+  function inline(s){
+    s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    s = s.replace(/&lt;br\s*\/?&gt;/gi,'<br>');
+    s = s.replace(/`([^`]+)`/g, (m,c)=>'<code>'+c+'</code>');
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    s = s.replace(/(^|[^"=>])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+    return s;
+  }
+  function cells(line){
+    let t = line.trim().replace(/^\|/,'').replace(/\|$/,'');
+    return t.split('|').map(c=>c.trim());
+  }
+  function renderMarkdown(md){
+    const lines = md.replace(/\r\n/g,'\n').split('\n');
+    let out = '', i = 0;
+    while(i < lines.length){
+      const line = lines[i];
+      // 表格
+      if(/^\s*\|/.test(line) && i+1 < lines.length && /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i+1]) && lines[i+1].includes('-')){
+        const head = cells(line);
+        i += 2;
+        let body = '';
+        while(i < lines.length && /^\s*\|/.test(lines[i])){
+          const row = cells(lines[i]);
+          body += '<tr>' + row.map(c=>'<td>'+inline(c)+'</td>').join('') + '</tr>';
+          i++;
+        }
+        out += '<div class="table-wrap"><table><thead><tr>' +
+          head.map(c=>'<th>'+inline(c)+'</th>').join('') +
+          '</tr></thead><tbody>' + body + '</tbody></table></div>';
+        continue;
+      }
+      let m;
+      if(/^\s*$/.test(line)){ i++; continue; }
+      if(/^---+\s*$/.test(line)){ out += '<hr>'; i++; continue; }
+      if((m = line.match(/^(#{1,3})\s+(.*)$/))){
+        const lv = m[1].length; out += '<h'+lv+'>'+inline(m[2])+'</h'+lv+'>'; i++; continue;
+      }
+      // 段落（合并相邻非空行）
+      let para = [line]; i++;
+      while(i < lines.length && !/^\s*$/.test(lines[i]) && !/^\s*\|/.test(lines[i]) && !/^#{1,3}\s/.test(lines[i]) && !/^---+\s*$/.test(lines[i])){
+        para.push(lines[i]); i++;
+      }
+      out += '<p>'+inline(para.join(' '))+'</p>';
+    }
+    return out;
+  }
+
+  const overlay = document.getElementById('clOverlay');
+  const body = document.getElementById('clBody');
+  let rendered = false;
+  function openLog(){
+    if(!rendered){
+      const src = document.getElementById('changelogSrc').textContent;
+      body.innerHTML = renderMarkdown(src);
+      rendered = true;
+    }
+    overlay.classList.add('open');
+    body.scrollTop = 0;
+  }
+  function closeLog(){ overlay.classList.remove('open'); }
+  document.getElementById('changelogFab').addEventListener('click', openLog);
+  document.getElementById('clClose').addEventListener('click', closeLog);
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) closeLog(); });
+  document.addEventListener('keydown', e=>{ if(e.key === 'Escape') closeLog(); });
+})();
 </script>
 </body>
 </html>
