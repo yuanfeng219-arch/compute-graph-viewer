@@ -16,7 +16,6 @@
     <div class="mental-title-block">
       <span class="mental-kicker">PTO Train · Ascend Training Developer Experience</span>
       <h1>昇腾模型训练开发心智模型</h1>
-      <p>以训练开发流程为主线，把真实 Qwen 与 DeepSeek 案例、模型架构图、并行拓扑和脚本证据放到同一个左右分屏工作台。</p>
     </div>
     <div class="mental-actions">
       <a class="btn btn-ghost" href="./index.html">入门科普页</a>
@@ -29,7 +28,7 @@
       <div class="panel-shell-header mental-pane-header">
         <div>
           <div class="panel-shell-title">主线章节</div>
-          <div class="panel-shell-meta">滚动或点击章节，右侧同步模型架构图与训练证据</div>
+          <div class="panel-shell-meta">训练链路、模型架构图与脚本证据同步</div>
         </div>
       </div>
 
@@ -37,6 +36,7 @@
         <button class="btn btn-sm is-selected" type="button" data-visual-target="ecosystem" data-section-target="section-ecosystem">生态</button>
         <button class="btn btn-sm" type="button" data-visual-target="levels" data-section-target="section-levels">分层</button>
         <button class="btn btn-sm" type="button" data-visual-target="journey" data-section-target="section-journey">旅程</button>
+        <button class="btn btn-sm" type="button" data-visual-target="qwen7b" data-section-target="section-qwen7b">Qwen7B</button>
         <button class="btn btn-sm" type="button" data-visual-target="qwen3" data-section-target="section-qwen3">Qwen3</button>
         <button class="btn btn-sm" type="button" data-visual-target="qwen3moe" data-section-target="section-qwen3moe">MoE</button>
         <button class="btn btn-sm" type="button" data-visual-target="deepseek" data-section-target="section-deepseek">DeepSeek</button>
@@ -50,12 +50,44 @@
           <p class="mental-section-kicker">1 · 生态分层心智模型</p>
           <h2>先把训练生态看成一条任务链，而不是一堆仓库</h2>
           <p>
-            模型训练开发者真正面对的是一条链路：硬件与运行时决定能不能跑，MindSpeed Core 提供并行、显存、通信和融合算子能力，MindSpeed-LLM 把模型、任务、脚本和数据处理装配起来，msTT 负责迁移、精度和性能诊断闭环。
+            官方文档把 MindSpeed LLM 定义为面向昇腾硬件的端到端大语言模型训练方案，覆盖分布式预训练、分布式指令微调以及开发工具链。
+            从开发者视角看，它不是单个脚本集合，而是把权重转换、数据处理、模型规格、训练启动、评估推理和 profiling 证据放在一条链路里。
           </p>
+          <p>
+            这条链路的底座是 Ascend Extension for PyTorch，也就是 <code>torch_npu</code> 适配层；它让 PyTorch 能在昇腾 NPU 上运行，并提供动态图、自动微分、Profiling、优化器和分布式训练等能力。
+            MindSpeed Core 再围绕并行、显存、通信和计算做昇腾亲和优化，MindSpeed LLM 负责把这些能力装配成模型训练任务。
+          </p>
+          <div class="mental-callout">
+            <strong>类比解释</strong>
+            <span>Ascend 生态像一套商用厨房：Atlas NPU 是灶台，CANN/torch_npu 是燃气和锅具适配，MindSpeed Core 是省火省时间的厨具，MindSpeed LLM 是菜谱和备菜流程，profiling/msTT 是试吃后告诉你哪里火候不对。</span>
+          </div>
           <div class="mental-grid mental-grid-3">
-            <div><strong>初学者问题</strong><span>我的卡、镜像、脚本和模型能不能匹配？</span></div>
-            <div><strong>进阶问题</strong><span>权重、数据、loss、checkpoint 是否一致？</span></div>
-            <div><strong>专家问题</strong><span>TP/PP/EP/CP 和通信瓶颈如何解释？</span></div>
+            <div><strong>运行时层</strong><span>CANN、驱动固件、torch_npu、HCCL 决定 NPU 是否可见、分布式通信是否可用。</span></div>
+            <div><strong>加速层</strong><span>MindSpeed Core 提供并行、内存、通信、融合算子、重计算和分布式优化器能力。</span></div>
+            <div><strong>任务层</strong><span>MindSpeed LLM 组织模型、Tokenizer、数据、权重格式、训练脚本、评估推理和 profiling。</span></div>
+          </div>
+          <table class="mental-table">
+            <thead><tr><th>MindSpeed LLM 架构层</th><th>官方能力</th><th>类比解释</th></tr></thead>
+            <tbody>
+              <tr><td>功能模块</td><td>Megatron ↔ HuggingFace 权重转换、分布式评估/推理、Profiling 数据采集、确定性计算、断点续训、训练临终权重保存。</td><td>备菜、试菜、保存半成品和记录火候。</td></tr>
+              <tr><td>训练后端</td><td>Megatron 后端基于 Megatron-LM，通过 ModelSpec 做模型增量开发；FSDP2 后端基于 MindSpeed-FSDP，可直接接入 Transformers 第三方库。</td><td>专业中央厨房适合大规模稳定出餐，标准厨具路线适合更快适配新菜。</td></tr>
+              <tr><td>训练算法</td><td>分布式预训练支持端到端数据处理与主流模型/数据切分；分布式指令微调支持多种业界主流微调算法。</td><td>先学基础烹饪，再按顾客口味做调味和精修。</td></tr>
+              <tr><td>大模型</td><td>预制 100+ 公版模型，覆盖 Dense、MoE、SSM，并兼容 Transformer/SSM 架构。</td><td>菜谱库已覆盖家常菜、宴席菜和新式菜，初学者先照菜谱跑通。</td></tr>
+            </tbody>
+          </table>
+          <table class="mental-table">
+            <thead><tr><th>维度</th><th>Ascend / MindSpeed 生态</th><th>常见竞品生态</th></tr></thead>
+            <tbody>
+              <tr><td>硬件与运行时</td><td>Atlas NPU、CANN、torch_npu、HCCL 形成昇腾原生运行栈。</td><td>NVIDIA GPU、CUDA、cuDNN、NCCL 是更成熟的通用 GPU 训练栈。</td></tr>
+              <tr><td>训练框架装配</td><td>MindSpeed LLM 把权重转换、数据处理、脚本、模型规格、评估推理和 Profiling 串成端到端路径。</td><td>Megatron-LM、DeepSpeed、PyTorch FSDP、Transformers 等组件能力强，但常需要自行组合流程和约束。</td></tr>
+              <tr><td>模型开发路径</td><td>Megatron 后端适合高性能并行训练，FSDP2 后端更接近 Transformers 生态，降低新模型接入成本。</td><td>Transformers 适合快速验证，Megatron/DeepSpeed 适合大规模训练，但跨栈迁移和权重格式通常要额外处理。</td></tr>
+              <tr><td>性能优化重点</td><td>围绕昇腾软硬件做并行、内存、通信和计算亲和优化，强调 profiling 闭环。</td><td>围绕 CUDA kernel、NCCL、ZeRO/FSDP、FlashAttention、Triton 等优化，生态资料多但组合空间更大。</td></tr>
+            </tbody>
+          </table>
+          <div class="mental-source-strip" aria-label="官方文档来源">
+            <span>官方文档</span>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/LLM/MindSpeed_LLM/docs/zh/introduction.md" target="_blank" rel="noopener">MindSpeed LLM 简介</a>
+            <a href="https://www.hiascend.com/document/detail/zh/Pytorch/2600/productoverview/docs/zh/overview/product_overview.md" target="_blank" rel="noopener">Ascend Extension for PyTorch</a>
           </div>
         </section>
 
@@ -63,23 +95,29 @@
           <p class="mental-section-kicker">2 · 开发者分层</p>
           <h2>同一套仓库，不同 level 的开发者看到的是不同复杂度</h2>
           <p>
-            初学者需要一条低决策路径，适合从 Qwen3-8B 这样的 dense 模型开始；进阶开发者需要理解 MoE、DPO、数据格式和长上下文；专家才需要直接面对 DeepSeek-V3.2 671B 这类超大 MoE 的并行策略和性能证据链。
+            分层不是降低能力，而是把当前必须决策的变量压到最少。初学者先用 Qwen7B 看懂模型目录、config、tokenizer、结构代码和 generation config，再用 Qwen3-8B 对接 Ascend 官方快速训练链路；进阶开发者再看 MoE、DPO、长上下文和 all-to-all；专家模式保留 DeepSeek 级别的 TP/PP/EP/CP、profiling 和显存策略证据链。
           </p>
           <table class="mental-table">
-            <thead><tr><th>开发者</th><th>推荐案例</th><th>应该先看什么</th><th>产品机会</th></tr></thead>
+            <thead><tr><th>开发者</th><th>推荐案例</th><th>第一关注点</th><th>继续扩展</th></tr></thead>
             <tbody>
-              <tr><td>初学者</td><td>Qwen3-8B</td><td>Embedding、Decoder、Attention、MLP、LM Head</td><td>训练任务向导</td></tr>
-              <tr><td>进阶</td><td>Qwen3-MoE 30B-A3B</td><td>Router、TopK、Expert、DPO pairwise</td><td>脚本体检器</td></tr>
-              <tr><td>专家</td><td>DeepSeek-V3.2 671B</td><td>MLA、MoE、MTP、TP/PP/EP/CP</td><td>性能解释器</td></tr>
+              <tr><td>初学者</td><td>Qwen7B / Qwen3-8B</td><td>Embedding、Decoder、Attention、MLP、LM Head 如何连成 next token prediction。</td><td>理解 <code>config.json</code>、<code>generation_config.json</code>、<code>DATA_PATH</code> 和 <code>TOKENIZER_PATH</code> 的边界。</td></tr>
+              <tr><td>进阶</td><td>Qwen3-MoE 30B-A3B</td><td>Router 如何为 token 选择专家，TopK 和 EP 如何决定通信。</td><td>DPO 的 chosen/rejected 数据、长上下文 16K、recompute 和 all-to-all dispatcher。</td></tr>
+              <tr><td>专家</td><td>DeepSeek-V3.2 671B</td><td>MLA、Sparse Indexer、MoE、MTP 与 TP/PP/EP/CP 同时出现时如何归因瓶颈。</td><td>用 profiler、通信耗时、pipeline bubble、OOM 位置和日志回到具体架构模块。</td></tr>
             </tbody>
           </table>
+          <div class="mental-source-strip" aria-label="官方文档来源">
+            <span>官方文档</span>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/index/index.html" target="_blank" rel="noopener">MindSpeed 使用导读</a>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/LLM/MindSpeed_LLM/docs/zh/introduction.md" target="_blank" rel="noopener">LLM 能力范围</a>
+          </div>
         </section>
 
         <section class="mental-section" id="section-journey" data-visual-section="journey">
           <p class="mental-section-kicker">3 · 端到端训练旅程</p>
           <h2>从模型权重到首个 step，关键不是按钮，而是约束显性化</h2>
           <p>
-            MindSpeed-LLM 的真实训练流程通常包括下载 HF 权重、转换成 Mcore 或 FSDP2 可用格式、预处理数据、修改路径与并行参数、启动训练、验证 checkpoint 和推理评估。每一步都和模型架构有关系。
+            官方快速入门以 Qwen3-8B 为例，把训练拆成环境准备、开源模型权重准备、权重转换、数据预处理、脚本配置和启动任务。
+            这里最容易踩坑的是：权重格式、数据格式、Tokenizer 路径、模型切分参数并不独立，任何一个字段错了都会在加载权重、构造 batch 或分布式启动时失败。
           </p>
           <div class="mental-flow-list">
             <span>选模型</span>
@@ -91,103 +129,245 @@
             <span>诊断优化</span>
           </div>
           <p>
-            产品体验的关键是告诉用户：哪些字段来自模型结构，哪些字段来自硬件规模，哪些字段来自训练任务，哪些字段必须和权重转换保持一致。
+            数据预处理会把原始文本或指令数据转换成 <code>.bin</code> / <code>.idx</code> 产物，训练脚本里的 <code>DATA_PATH</code> 通常填写前缀，而不是完整文件名。
+            权重从 HuggingFace 转为 Megatron-Mcore 时，<code>target-tensor-parallel-size</code> 和 <code>target-pipeline-parallel-size</code> 必须和训练脚本中的 TP/PP 对齐，否则 checkpoint shard 的布局会不一致。
           </p>
+          <div class="mental-grid mental-grid-2">
+            <div><strong>启动前检查</strong><span>确认 <code>source set_env.sh</code>、NPU 可见、HCCL 端口、多机 IP、日志目录、权重保存目录都已存在。</span></div>
+            <div><strong>首 step 后检查</strong><span>先看 loss 是否输出、吞吐是否稳定、是否出现 OOM、通信超时、数据读取错误或 rank 挂起。</span></div>
+          </div>
+          <div class="mental-source-strip" aria-label="官方文档来源">
+            <span>官方文档</span>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/quickstart/docs/zh/pytorch/training/quick_start.md" target="_blank" rel="noopener">大语言模型训练快速入门</a>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/LLM/MindSpeed_LLM/docs/zh/pytorch/training/pretrain/mcore/pretrain.md" target="_blank" rel="noopener">大模型分布式预训练</a>
+          </div>
+        </section>
+
+        <section class="mental-section" id="section-qwen7b" data-visual-section="qwen7b">
+          <p class="mental-section-kicker">4 · 本地证据：Qwen7B</p>
+          <h2>先用 Qwen7B 建立“模型目录 -> 代码 -> 参数 -> 推理”的闭环</h2>
+          <p>
+            Qwen7B 的价值在于可验证：本地 <code>/Users/yin/gitcode/qwen7b-source</code> 同时包含 README、<code>config.json</code>、<code>generation_config.json</code>、<code>modeling_qwen.py</code>、tokenizer 和 safetensors index。
+            这让学习者能把 Dense Transformer 拆成可检查的文件，而不是只背模型名。
+          </p>
+          <p>
+            本地 README 给出 Qwen-7B 的官方结构口径：32 layers、32 heads、4096 d_model、8192 sequence length，并说明使用 RoPE、SwiGLU、RMSNorm 和可选 FlashAttention 加速。
+            <code>config.json</code> 进一步显示 <code>intermediate_size 22016</code>、<code>max_position_embeddings 32768</code>、<code>vocab_size 151936</code>、<code>use_cache true</code> 和 <code>use_flash_attn auto</code>。
+          </p>
+          <div class="mental-callout">
+            <strong>类比解释</strong>
+            <span>Qwen7B 像一间标准厨房：README 是官方菜单说明，config 是厨房尺寸和工位数，modeling_qwen.py 是后厨动线，generation_config 是出餐规则，safetensors index 是每道配方参数存在哪个柜子。</span>
+          </div>
+          <div class="mental-card-grid mental-card-grid-2" aria-label="Qwen7B 本地来源卡片">
+            <article class="mental-info-card">
+              <span class="mental-card-kicker"><code>README.md</code></span>
+              <h3>官方口径</h3>
+              <p>确认模型规模、tiktoken tokenizer、RoPE、SwiGLU、RMSNorm、FlashAttention 和快速推理样例。</p>
+            </article>
+            <article class="mental-info-card">
+              <span class="mental-card-kicker"><code>config.json</code></span>
+              <h3>结构事实源</h3>
+              <p>32 层、4096 hidden、32 heads、22016 FFN、8192 seq length、32768 max position、151936 vocab。</p>
+            </article>
+            <article class="mental-info-card">
+              <span class="mental-card-kicker"><code>modeling_qwen.py</code></span>
+              <h3>代码路径</h3>
+              <p><code>QWenAttention</code>、<code>QWenMLP</code>、<code>QWenBlock</code>、<code>QWenModel</code>、<code>QWenLMHeadModel</code> 把图上的节点落到类和 forward。</p>
+            </article>
+            <article class="mental-info-card">
+              <span class="mental-card-kicker"><code>generation_config.json</code> / weights</span>
+              <h3>推理和权重证据</h3>
+              <p>采样规则决定输出行为；<code>weight_map</code> 显示 <code>transformer.h.*</code> 和 <code>lm_head</code> 分布在 8 个 shard。</p>
+              <div class="mental-tag-list">
+                <code>eos/pad 151643</code>
+                <code>top_p 0.8</code>
+                <code>max_new_tokens 512</code>
+              </div>
+            </article>
+          </div>
+          <div class="mental-param-grid" aria-label="Qwen7B 参数注释卡片">
+            <article class="mental-param-card"><span>32 layers</span><strong><code>num_hidden_layers: 32</code></strong><p>32 个 <code>QWenBlock</code> 串联；每个 block 包含 attention、MLP、RMSNorm 和残差。</p></article>
+            <article class="mental-param-card"><span>hidden size</span><strong><code>4096</code></strong><p>token hidden state 的宽度，决定 embedding、attention 投影和 LM Head 输入维度。</p></article>
+            <article class="mental-param-card"><span>attention</span><strong><code>32 heads · 128 dim</code></strong><p>代码里 <code>c_attn</code> 一次线性映射出 Q/K/V。</p></article>
+            <article class="mental-param-card"><span>SwiGLU MLP</span><strong><code>22016</code></strong><p><code>w1</code> 和 <code>w2</code> 各到 11008 维，经 SiLU 门控后投影回 4096。</p></article>
+            <article class="mental-param-card"><span>RMSNorm</span><strong><code>epsilon: 1e-6</code></strong><p>每个 block 前置 norm，最终还有 <code>ln_f</code>；稳定数值而不是改变序列长度。</p></article>
+            <article class="mental-param-card"><span>RoPE / cache</span><strong><code>8192 · cache true</code></strong><p>RoPE 负责位置信息；KV Cache 影响 Decode 速度和显存。</p></article>
+          </div>
+          <div class="mental-grid mental-grid-2">
+            <div><strong>适合作为第一张地图</strong><span>Qwen7B 是 Dense decoder，不含 MoE/EP/DSA 复杂分支，适合先学 tokenizer、config、block、LM Head 和 generation config。</span></div>
+            <div><strong>不等于轻量全量训练</strong><span>7B 仍然需要显存、精度、数据、batch、checkpoint 和分布式策略；训练前要先判定是推理、LoRA、SFT、继续预训练还是全量预训练。</span></div>
+          </div>
+          <div class="mental-source-strip" aria-label="官方和本地来源">
+            <span>来源</span>
+            <a href="../../gitcode/qwen7b-source/README.md" target="_blank" rel="noopener">Qwen7B README</a>
+            <a href="../../gitcode/qwen7b-source/config.json" target="_blank" rel="noopener">本地 config.json</a>
+            <a href="../../gitcode/qwen7b-source/modeling_qwen.py" target="_blank" rel="noopener">本地 modeling_qwen.py</a>
+          </div>
         </section>
 
         <section class="mental-section" id="section-qwen3" data-visual-section="qwen3">
-          <p class="mental-section-kicker">4 · 真实案例：Qwen3-8B</p>
+          <p class="mental-section-kicker">5 · 真实案例：Qwen3-8B</p>
           <h2>初学者黄金路径：用 dense decoder 建立训练心智</h2>
           <p>
-            Qwen3-8B 适合做第一张训练地图。它的结构主干清晰：Token IDs 进入 Embedding，经过重复 Decoder Layer，Attention 与 MLP 交替加工，最后由 LM Head 输出 logits。训练脚本里可以看到序列长度、TP/PP、batch 和 fused op 开关如何落到实际命令。
+            Qwen3-8B 适合做第一张训练地图，因为它是清晰的 Dense Decoder：Token IDs 进入 Embedding，经过 36 个 Decoder Layer，Attention 和 SwiGLU MLP 交替加工，最后由 LM Head 输出 logits。脚本里的每个模型参数都能映射回这条结构主干。
+          </p>
+          <p>
+            这不是照抄 shell 参数的练习，而是理解参数来源：层数和 hidden size 来自模型结构，序列长度和 batch 来自训练目标与显存预算，TP/PP 来自权重切分与 NPU 拓扑，fused rotary / swiglu / rmsnorm / flash attention 来自 MindSpeed Core 和 torch_npu 对计算路径的优化。
           </p>
           <table class="mental-table">
+            <thead><tr><th>字段</th><th>脚本值</th><th>注释</th></tr></thead>
             <tbody>
-              <tr><th>仓库脚本</th><td><code>examples/mcore/qwen3/pretrain_qwen3_8b_4K_ptd_A3.sh</code></td></tr>
-              <tr><th>架构参数</th><td>36 layers、hidden size 4096、32 attention heads、GQA、RMSNorm、SwiGLU</td></tr>
-              <tr><th>训练参数</th><td>SEQ_LENGTH 4096、TP 2、PP 1、MBS 1、GBS 128</td></tr>
-              <tr><th>体验重点</th><td>权重路径、tokenizer 路径、DATA_PATH 前缀、TP/PP 与转换一致性</td></tr>
+              <tr><td>仓库脚本</td><td><code>examples/mcore/qwen3/pretrain_qwen3_8b_4K_ptd_A3.sh</code></td><td>A3 单机 16 NPU 示例，训练入口为 <code>pretrain_gpt.py</code>。</td></tr>
+              <tr><td>36 layers</td><td><code>--num-layers 36</code></td><td>Decoder block 重复次数，影响 PP 切层、激活显存和重计算收益。</td></tr>
+              <tr><td>hidden size 4096</td><td><code>--hidden-size 4096</code></td><td>每个 token 的隐藏向量宽度，TP 会沿矩阵维度拆分相关计算。</td></tr>
+              <tr><td>32 heads / GQA</td><td><code>--num-attention-heads 32</code>、<code>--num-query-groups 8</code></td><td>32 个查询头但 8 组 KV，GQA 降低 KV 侧开销，同时保留多头注意力表达。</td></tr>
+              <tr><td>RMSNorm / SwiGLU</td><td><code>--normalization RMSNorm</code>、<code>--swiglu</code></td><td>Norm 和 MLP 激活类型，脚本同时开启 fused rmsnorm 与 fused swiglu 来减少算子开销。</td></tr>
+              <tr><td>SEQ_LENGTH 4096</td><td><code>--seq-length 4096</code></td><td>每条样本最多 4096 token，必须与数据切分、RoPE 上限和显存预算一起看。</td></tr>
+              <tr><td>TP 2 / PP 1</td><td><code>TP=2</code>、<code>PP=1</code></td><td>张量并行拆矩阵，流水并行为 1 表示不按层切 pipeline；权重转换切分要与训练一致。</td></tr>
+              <tr><td>MBS 1 / GBS 128</td><td><code>MBS=1</code>、<code>GBS=128</code></td><td>单 rank micro batch 为 1；全局 batch 通过 DP 与梯度累积凑齐，直接影响吞吐和 loss 曲线稳定性。</td></tr>
             </tbody>
           </table>
+          <div class="mental-source-strip" aria-label="官方文档来源">
+            <span>官方文档</span>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/quickstart/docs/zh/pytorch/training/quick_start.md" target="_blank" rel="noopener">Qwen3-8B 快速入门</a>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/LLM/MindSpeed_LLM/docs/zh/pytorch/training/pretrain/mcore/pretrain.md" target="_blank" rel="noopener">预训练脚本配置</a>
+          </div>
         </section>
 
         <section class="mental-section" id="section-qwen3moe" data-visual-section="qwen3moe">
-          <p class="mental-section-kicker">5 · 真实案例：Qwen3-MoE 30B-A3B</p>
+          <p class="mental-section-kicker">6 · 真实案例：Qwen3-MoE 30B-A3B</p>
           <h2>进阶路径：MoE 让“模型架构”和“并行策略”绑定在一起</h2>
           <p>
-            Qwen3-MoE 30B-A3B 把开发者带到第二层复杂度。Router、TopK、Expert、all-to-all dispatcher、EP 参数不再是性能细节，而是训练能否跑通、loss 是否稳定、通信是否可接受的核心。
+            Qwen3-MoE 30B-A3B 把开发者带到第二层复杂度。MoE 的核心不是参数更多，而是每个 token 先经过 router，再按 TopK 选择专家，专家输出再合并回 token hidden state；因此 EP、all-to-all dispatcher、负载均衡损失和 grouped gemm 都会直接影响训练能否跑通。
           </p>
           <p>
-            同一个模型还覆盖预训练、DPO、长上下文和 FSDP2/A5 量化示例，因此适合做“进阶训练任务向导”的样板。
+            DPO 场景的复杂度还来自 pairwise 数据：同一个问题必须同时保存 chosen 和 rejected，训练入口变成 <code>posttrain_gpt.py</code>，并显式设置 <code>--stage dpo</code> 与 <code>--is-pairwise-dataset</code>。
           </p>
           <table class="mental-table">
+            <thead><tr><th>字段</th><th>脚本值</th><th>注释</th></tr></thead>
             <tbody>
-              <tr><th>预训练脚本</th><td><code>examples/mcore/qwen3_moe/pretrain_qwen3_30b_a3b_4K_ptd.sh</code></td></tr>
-              <tr><th>DPO 脚本</th><td><code>examples/mcore/qwen3_moe/dpo_qwen3_30b_a3b_16K_A3_ptd.sh</code></td></tr>
-              <tr><th>MoE 参数</th><td>128 experts、top-k 8、EP 8 或 DPO 场景下 PP 8 / TP 2</td></tr>
-              <tr><th>体验重点</th><td>pairwise 数据、router 负载、专家并行、长上下文显存</td></tr>
+              <tr><td>预训练脚本</td><td><code>pretrain_qwen3_30b_a3b_4K_ptd.sh</code></td><td>2 节点 x 8 NPU，<code>TP=1</code>、<code>PP=2</code>、<code>EP=8</code>，用于学习专家并行的基本拓扑。</td></tr>
+              <tr><td>DPO 脚本</td><td><code>dpo_qwen3_30b_a3b_16K_A3_ptd.sh</code></td><td>2 节点 x 16 NPU，<code>TP=2</code>、<code>PP=8</code>、<code>SEQ_LENGTH=16384</code>，用于学习后训练和长上下文显存压力。</td></tr>
+              <tr><td>128 experts</td><td><code>--num-experts 128</code></td><td>专家总数，EP 决定专家分布到多少 rank。</td></tr>
+              <tr><td>TopK 8</td><td><code>--moe-router-topk 8</code></td><td>每个 token 选择 8 个专家，影响计算量、通信量和 router 负载均衡。</td></tr>
+              <tr><td>Dispatcher</td><td><code>--moe-token-dispatcher-type alltoall_seq</code></td><td>token 会跨 EP 通信域发送到目标专家，通信瓶颈通常从这里开始显性化。</td></tr>
+              <tr><td>DPO 数据</td><td><code>--is-pairwise-dataset</code></td><td>pairwise 数据需要 chosen/rejected 对，不能用单条 SFT 样本替代。</td></tr>
             </tbody>
           </table>
+          <div class="mental-source-strip" aria-label="官方文档来源">
+            <span>来源</span>
+            <a href="../../gitcode/MindSpeed-LLM-master/examples/mcore/qwen3_moe/pretrain_qwen3_30b_a3b_4K_ptd.sh" target="_blank" rel="noopener">Qwen3-MoE pretrain</a>
+            <a href="../../gitcode/MindSpeed-LLM-master/examples/mcore/qwen3_moe/dpo_qwen3_30b_a3b_16K_A3_ptd.sh" target="_blank" rel="noopener">Qwen3-MoE DPO</a>
+          </div>
         </section>
 
         <section class="mental-section" id="section-deepseek" data-visual-section="deepseek">
-          <p class="mental-section-kicker">6 · 真实案例：DeepSeek-V3.2 671B</p>
+          <p class="mental-section-kicker">7 · 真实案例：DeepSeek-V3.2 671B</p>
           <h2>专家路径：超大 MoE 训练需要证据链，而不是只看参数表</h2>
           <p>
-            DeepSeek-V3.2 是专家级案例。它把 MLA、Sparse Indexer、MoE、MTP、长上下文 RoPE、swap optimizer、recompute、TP/PP/EP/CP 放在同一个训练脚本里。开发者真正需要的是一张能把架构、并行、显存和通信联系起来的图。
+            DeepSeek-V3.2 把 MLA、Sparse Indexer、MoE、MTP、长上下文 RoPE、swap optimizer、recompute、TP/PP/EP/CP 放在同一个训练脚本里。开发者真正需要的不是一张静态参数表，而是一条能把架构模块、并行域、显存策略和通信证据联系起来的解释链。
+          </p>
+          <p>
+            MindSpeed LLM 官方简介明确支持 Qwen3、DeepSeek 等主流模型，并提供包含 TP/PP/DP/CP/EP 的多维并行策略。DeepSeek-V3.2 这种 671B MoE 案例，最适合用来训练专家模式判断：哪个问题属于模型结构，哪个属于并行拓扑，哪个属于 runtime 或 profiling。
           </p>
           <table class="mental-table">
+            <thead><tr><th>字段</th><th>脚本值</th><th>注释</th></tr></thead>
             <tbody>
-              <tr><th>仓库脚本</th><td><code>examples/mcore/deepseek32/pretrain_deepseek32_671b_4k_A3_ptd.sh</code></td></tr>
-              <tr><th>规模</th><td>671B、A3、32 nodes x 16 NPUs</td></tr>
-              <tr><th>并行</th><td>TP 4、PP 8、EP 64、CP 1、GBS 7680</td></tr>
-              <tr><th>体验重点</th><td>通信等待、专家路由、MLA/DSA 开关、recompute 与 optimizer swap</td></tr>
+              <tr><td>仓库脚本</td><td><code>pretrain_deepseek32_671b_4k_A3_ptd.sh</code></td><td>32 节点 x 16 NPU，训练入口使用 <code>torch.distributed.launch</code>。</td></tr>
+              <tr><td>模型深度</td><td><code>NUM_LAYERS=64</code></td><td>脚本层数配置为 64，同时设置 <code>--noop-layers 7,62,63</code>，性能解释要看实际执行层。</td></tr>
+              <tr><td>隐藏维度与头数</td><td><code>hidden-size 7168</code>、<code>attention-heads 128</code></td><td>超大 hidden 和多头注意力决定矩阵计算规模，TP=4 用来拆分相关计算。</td></tr>
+              <tr><td>MLA</td><td><code>--multi-latent-attention</code>、<code>q-lora-rank 1536</code>、<code>kv-lora-rank 512</code></td><td>MLA 用低秩 latent 表示降低注意力侧成本，和长上下文 RoPE 配置一起理解。</td></tr>
+              <tr><td>MoE</td><td><code>--num-experts 256</code>、<code>--moe-router-topk 8</code></td><td>256 experts 加 TopK 8，EP=64 会把专家路由和 all-to-all 通信放大成核心瓶颈。</td></tr>
+              <tr><td>并行拓扑</td><td><code>TP=4</code>、<code>PP=8</code>、<code>EP=64</code>、<code>CP=1</code></td><td>TP 切矩阵，PP 切层，EP 切专家，CP 本例不切上下文。</td></tr>
+              <tr><td>显存策略</td><td><code>--swap-optimizer</code>、<code>--recompute-granularity full</code></td><td>optimizer swap 与重计算是在 HBM 压力下换取可训练性的典型手段。</td></tr>
             </tbody>
           </table>
+          <div class="mental-source-strip" aria-label="官方文档来源">
+            <span>官方文档</span>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/LLM/MindSpeed_LLM/docs/zh/introduction.md" target="_blank" rel="noopener">DeepSeek 与多维并行支持</a>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/LLM/MindSpeed_LLM/docs/zh/pytorch/tools/profiling.md" target="_blank" rel="noopener">性能数据采集</a>
+          </div>
         </section>
 
         <section class="mental-section" id="section-rlhf" data-visual-section="rlhf">
-          <p class="mental-section-kicker">7 · 真实案例：Qwen2.5-7B GRPO</p>
+          <p class="mental-section-kicker">8 · 真实案例：Qwen2.5-7B GRPO</p>
           <h2>后训练路径：RLHF/GRPO 是训练系统架构，不只是模型结构</h2>
           <p>
-            GRPO 的复杂度来自训练系统：Ray 集群、policy rollout、reference 或 reward 侧信号、advantage 计算、训练器更新。这里的右图不画一个纯 decoder，而画后训练闭环，帮助开发者理解为什么 RLHF 不是把 SFT 脚本换个入口就完事。
+            GRPO 的复杂度来自训练系统：Ray 集群、policy rollout、reference 或 reward 侧信号、advantage 计算、训练器更新。这里不能只画一个 decoder，而要画后训练闭环，因为 RLHF/GRPO 的失败往往发生在资源调度、rollout 数据流、主节点 IP、网卡和多进程日志之间。
           </p>
           <table class="mental-table">
+            <thead><tr><th>字段</th><th>脚本值</th><th>注释</th></tr></thead>
             <tbody>
-              <tr><th>仓库脚本</th><td><code>examples/rlhf/grpo/grpo_qwen25_7b_A3.sh</code></td></tr>
-              <tr><th>启动方式</th><td>Ray head/worker，默认配置名 <code>grpo_qwen25_7b_A3</code></td></tr>
-              <tr><th>硬件参数</th><td>NNODES 1、NPUS_PER_NODE 16</td></tr>
-              <tr><th>体验重点</th><td>Ray 资源、主节点 IP、网卡、rollout/训练日志和错误归因</td></tr>
+              <tr><td>仓库脚本</td><td><code>examples/rlhf/grpo/grpo_qwen25_7b_A3.sh</code></td><td>先清理 Python 和 Ray，再创建日志目录并启动 Ray 集群。</td></tr>
+              <tr><td>配置名</td><td><code>grpo_qwen25_7b_A3</code></td><td>Hydra 配置名不要带 <code>.yaml</code> 扩展名，脚本默认从第一个参数覆盖。</td></tr>
+              <tr><td>Ray head</td><td><code>ray start --head</code></td><td>主节点使用 dashboard、node-ip-address 和 NPU resource 注册资源。</td></tr>
+              <tr><td>资源等待</td><td><code>ray status</code> 轮询</td><td>脚本会等待 NPU resource 数量满足 <code>NNODES</code> 后再启动 <code>rlhf_gpt.py</code>。</td></tr>
+              <tr><td>网络字段</td><td><code>MASTER_ADDR</code>、<code>SOCKET_IFNAME</code></td><td>主节点 IP 和当前节点网卡是 GRPO 首要体检点，错了会表现为 Ray 或 HCCL 挂起。</td></tr>
             </tbody>
           </table>
+          <div class="mental-source-strip" aria-label="官方文档来源">
+            <span>官方文档</span>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/index/index.html" target="_blank" rel="noopener">MindSpeed RL 导读</a>
+            <a href="https://www.hiascend.com/developer/software/mindspeed" target="_blank" rel="noopener">MindSpeed 软件页</a>
+          </div>
         </section>
 
         <section class="mental-section" id="section-breakpoints" data-visual-section="breakpoints">
-          <p class="mental-section-kicker">8 · 关键体验断点</p>
+          <p class="mental-section-kicker">9 · 关键体验断点</p>
           <h2>用户出错不是因为不努力，而是约束散落在脚本、文档和架构之间</h2>
           <p>
-            后端选择、权重转换、数据前缀、TP/PP/EP/CP、rank/IP/端口、loss 异常和 OOM 不是孤立问题。好的产品应该在用户启动前做脚本体检，在运行中解释日志，在失败时把错误定位回架构、数据、环境或并行。
+            后端选择、权重转换、数据前缀、TP/PP/EP/CP、rank/IP/端口、loss 异常和 OOM 不是孤立问题。官方预训练文档已经把路径、数据前缀、Tokenizer 和切分配置作为启动前必须修改的字段，但真实用户往往是在脚本、文档和模型架构之间来回找答案。
+          </p>
+          <p>
+            性能数据采集文档提示，profiling 可以用于观察通信/计算时间占比、算子耗时、调度信息和内存占用，但采集粒度越细，数据膨胀和性能劣化越明显。产品体验应该把 profiling 从专家工具变成异常解释工具。
           </p>
           <div class="mental-grid mental-grid-2">
-            <div><strong>P0</strong><span>训练任务向导、脚本体检器、权重转换一致性检查。</span></div>
-            <div><strong>P1</strong><span>数据处理结果可视化、并行拓扑图、训练日志解释器。</span></div>
+            <div><strong>P0 · 启动前</strong><span>检查 CANN/torch_npu 环境、NPU 数量、权重格式、<code>DATA_PATH</code> 前缀、<code>TOKENIZER_PATH</code>、TP/PP 与权重转换一致性。</span></div>
+            <div><strong>P0 · 启动中</strong><span>检查 <code>MASTER_ADDR</code>、<code>NODE_RANK</code>、端口、网卡、日志目录、HCCL 超时和所有节点是否同时拉起。</span></div>
+            <div><strong>P1 · 训练中</strong><span>把 loss NaN、OOM、吞吐下降、通信等待和 pipeline bubble 归因到数据、显存、并行或融合算子路径。</span></div>
+            <div><strong>P1 · 训练后</strong><span>验证 checkpoint、推理输出、评估指标和 profiling 文件，避免脚本成功退出但模型不可用。</span></div>
+          </div>
+          <div class="mental-source-strip" aria-label="官方文档来源">
+            <span>官方文档</span>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/LLM/MindSpeed_LLM/docs/zh/pytorch/training/pretrain/mcore/pretrain.md" target="_blank" rel="noopener">预训练配置字段</a>
+            <a href="https://www.hiascend.com/document/detail/zh/MindSpeed/2600/LLM/MindSpeed_LLM/docs/zh/pytorch/tools/profiling.md" target="_blank" rel="noopener">Profiling 数据采集</a>
           </div>
         </section>
 
         <section class="mental-section" id="section-mvp" data-visual-section="mvp">
-          <p class="mental-section-kicker">9 · 产品 MVP</p>
+          <p class="mental-section-kicker">10 · 产品 MVP</p>
           <h2>第一版不要做“大而全平台”，先做三件能降低失败率的事</h2>
           <p>
-            MVP 应该围绕真实案例闭环：输入卡型、模型、任务和节点数，输出推荐脚本、参数体检、启动前检查和运行解释。模型架构图不是装饰，而是把训练参数为什么这样配讲清楚。
+            MVP 应该围绕真实案例闭环：输入卡型、模型、任务和节点数，输出推荐脚本、参数体检、启动前检查和运行解释。模型架构图不是装饰，它要解释训练参数为什么存在、为什么当前值合理，以及哪个值改错会导致什么级别的失败。
+          </p>
+          <p>
+            第一版可以覆盖 Qwen7B、Qwen3-8B、Qwen3-MoE 30B-A3B、DeepSeek-V3.2 671B 和 Qwen2.5-7B GRPO 五条路径。Qwen7B 负责本地源码与配置入门，Qwen3-8B 负责 Ascend 官方训练快速路径，MoE/DPO 负责解释专家和偏好数据，DeepSeek 负责解释超大并行证据，GRPO 负责解释后训练系统。
           </p>
           <table class="mental-table">
-            <thead><tr><th>模块</th><th>输入</th><th>输出</th></tr></thead>
+            <thead><tr><th>模块</th><th>输入</th><th>输出</th><th>验收标准</th></tr></thead>
             <tbody>
-              <tr><td>训练任务向导</td><td>模型、任务、卡型、节点数</td><td>推荐后端、脚本、数据/权重准备清单</td></tr>
-              <tr><td>脚本体检器</td><td>shell/yaml</td><td>路径、TP/PP/EP/CP、rank、数据前缀、风险提示</td></tr>
-              <tr><td>运行解释器</td><td>日志、profiler、msTT 输出</td><td>阶段判断、异常解释、下一步建议</td></tr>
+              <tr><td>训练任务向导</td><td>模型、任务、卡型、节点数</td><td>推荐后端、脚本、数据/权重准备清单</td><td>用户能在不读全仓库的情况下完成首个脚本配置。</td></tr>
+              <tr><td>脚本体检器</td><td>shell/yaml</td><td>路径、TP/PP/EP/CP、rank、数据前缀、风险提示</td><td>启动前拦截路径缺失、切分不一致、节点参数不完整和日志目录缺失。</td></tr>
+              <tr><td>架构解释器</td><td>模型规格、训练脚本、并行参数</td><td>参数来源、模块映射、显存/通信影响</td><td>用户能回答这个字段为什么存在，改它会影响哪里。</td></tr>
+              <tr><td>运行解释器</td><td>日志、profiler、msTT 输出</td><td>阶段判断、异常解释、下一步建议</td><td>失败时能把错误收敛到环境、数据、权重、并行、算子或调度系统。</td></tr>
             </tbody>
           </table>
+          <table class="mental-table">
+            <thead><tr><th>来自 knowledge.md 的视图</th><th>官方能力校准</th><th>在本工作台中的落点</th></tr></thead>
+            <tbody>
+              <tr><td>实验决策卡</td><td>TensorBoard 覆盖基础指标和 profiling，W&B Tables 支持对比样本预测。</td><td>把 run、config diff、质量/显存/吞吐变化和结论放在同一卡片。</td></tr>
+              <tr><td>样本级下钻</td><td>W&B Tables 官方强调可视化、查询表格数据和误分类样本。</td><td>从 loss 或 eval 指标点到具体 prompt、label、prediction、slice。</td></tr>
+              <tr><td>lineage 图</td><td>MLflow Model Registry 强调版本、生命周期和 metadata。</td><td>把数据、tokenizer、代码、config、checkpoint、eval 串成 DAG。</td></tr>
+              <tr><td>LLM Trace / Eval</td><td>LangSmith 把 tracing、evaluation、monitoring 放在核心工作流。</td><td>GRPO/RLHF 和推理评估页要保留 rollout、reward、judge、token/cost 证据。</td></tr>
+            </tbody>
+          </table>
+          <div class="mental-source-strip" aria-label="官方文档来源">
+            <span>官方文档</span>
+            <a href="https://www.tensorflow.org/tensorboard" target="_blank" rel="noopener">TensorBoard</a>
+            <a href="https://docs.wandb.ai/models/tables" target="_blank" rel="noopener">W&B Tables</a>
+            <a href="https://mlflow.org/docs/latest/ml/model-registry/" target="_blank" rel="noopener">MLflow Registry</a>
+            <a href="https://docs.langchain.com/langsmith/home" target="_blank" rel="noopener">LangSmith</a>
+          </div>
         </section>
       </div>
     </article>

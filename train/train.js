@@ -102,6 +102,10 @@
       label: '读脚本',
       callout: '读脚本先按类别看：路径、结构、并行、精度/量化、数据、checkpoint、启动方式和功能开关。',
     },
+    visualization: {
+      label: '训练可视化',
+      callout: '训练可视化要把 run、config、指标、样本、资源和 checkpoint 连成证据链，帮助判断下一步动作。',
+    },
     flow: {
       label: '完整流程',
       callout: '完整链路是文本、tokenizer、.bin/.idx、权重转换、训练或微调、checkpoint、推理和输出 token。',
@@ -163,6 +167,7 @@
     training: ['layer'],
     split: ['layer'],
     script: ['layer'],
+    visualization: ['data', 'training', 'checkpoint', 'inference'],
     conclusion: ['layer'],
   };
 
@@ -378,9 +383,9 @@
     return `
       [data-pto-train-focus="true"] > rect,
       [data-pto-train-focus="true"] rect:first-child {
-        stroke: var(--primary, #2563eb) !important;
-        stroke-width: 4px !important;
-        filter: drop-shadow(0 0 8px color-mix(in srgb, var(--primary, #2563eb) 36%, transparent)) !important;
+        stroke: var(--border-default, #9ca3af) !important;
+        stroke-width: 3px !important;
+        filter: none !important;
       }
 
       [data-pto-train-focus="true"] > text,

@@ -23,8 +23,8 @@ body {
   gap: var(--space-4);
   min-height: 72px;
   padding: var(--space-3) var(--space-5);
-  border-bottom: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--background-elevated) 96%, transparent);
+  border-bottom: 0;
+  background: transparent;
 }
 
 .train-title-block {
@@ -35,7 +35,7 @@ body {
 .train-section-kicker {
   display: block;
   color: var(--foreground-secondary);
-  font-size: var(--font-size-label-xs);
+  font-size: max(14px, var(--font-size-label-xs));
   line-height: var(--line-height-label);
   font-weight: var(--font-weight-medium);
 }
@@ -72,7 +72,7 @@ body {
   grid-template-areas: "reader graph";
   gap: var(--space-4);
   height: calc(100vh - 72px);
-  padding: var(--space-4);
+  padding: 0 var(--space-4) var(--space-4);
   overflow: hidden;
 }
 
@@ -111,7 +111,7 @@ body {
   border-radius: var(--radius-pill);
   background: var(--surface-3);
   color: var(--foreground-secondary);
-  font-size: var(--font-size-label-xs);
+  font-size: max(14px, var(--font-size-label-xs));
   line-height: 24px;
   white-space: nowrap;
 }
@@ -135,7 +135,7 @@ body {
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--background-elevated) 96%, transparent);
   color: var(--foreground);
-  font-size: var(--font-size-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
   line-height: var(--line-height-body);
   pointer-events: none;
 }
@@ -172,7 +172,7 @@ body {
   border-radius: var(--radius-pill);
   background: var(--surface-3);
   color: var(--foreground-secondary);
-  font-size: var(--font-size-label-xs);
+  font-size: max(14px, var(--font-size-label-xs));
   line-height: 24px;
   pointer-events: none;
 }
@@ -262,7 +262,7 @@ body {
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--warning) 12%, var(--surface-2));
   color: color-mix(in srgb, var(--foreground) 88%, var(--warning));
-  font-size: var(--font-size-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
   line-height: var(--line-height-body);
 }
 
@@ -280,7 +280,7 @@ body {
   border-radius: var(--radius-md);
   background: var(--surface-1);
   color: var(--foreground-secondary);
-  font-size: var(--font-size-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
   line-height: var(--line-height-body);
 }
 
@@ -289,11 +289,95 @@ body {
   white-space: nowrap;
 }
 
+.train-card-grid,
+.train-param-grid {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.train-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.train-card-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.train-card-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.train-param-grid {
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+}
+
+.train-info-card,
+.train-param-card {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.train-info-card h3,
+.train-param-card strong {
+  display: block;
+  margin: 0 0 var(--space-2);
+  color: var(--foreground);
+  font-size: max(14px, var(--font-size-body-md));
+  line-height: var(--line-height-title);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0;
+}
+
+.train-card-kicker,
+.train-param-card span {
+  display: block;
+  margin: 0 0 var(--space-1);
+  color: var(--foreground-secondary);
+  font-size: max(14px, var(--font-size-label-xs));
+  line-height: var(--line-height-label);
+  font-weight: var(--font-weight-medium);
+}
+
+.train-info-card p,
+.train-param-card p {
+  margin: 0;
+  color: var(--foreground-secondary);
+  font-size: max(14px, var(--font-size-body-sm));
+  line-height: 1.58;
+}
+
+.train-info-card p + p {
+  margin-top: var(--space-2);
+}
+
+.train-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.train-tag-list code {
+  min-height: var(--tag-height);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--tag-padding-x);
+  border: 1px solid var(--comp-tag-border);
+  border-radius: var(--tag-radius);
+  background: var(--comp-tag-bg);
+  color: var(--comp-tag-fg);
+  font-size: max(14px, var(--font-size-label-xs));
+}
+
 .train-term.is-active,
 .train-inline-term.is-active {
   color: var(--foreground);
-  border-color: color-mix(in srgb, var(--primary) 72%, var(--border-default));
-  background: color-mix(in srgb, var(--primary) 12%, var(--surface-2));
+  border-color: var(--border-default);
+  background: var(--state-hover);
 }
 
 .train-compare-table {
@@ -301,7 +385,7 @@ body {
   border-collapse: collapse;
   table-layout: fixed;
   margin: var(--space-3) 0 var(--space-4);
-  font-size: var(--font-size-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
 }
 
 .train-compare-table th,
@@ -341,7 +425,7 @@ body {
   color: var(--foreground);
   padding: 0 var(--space-2);
   font: inherit;
-  font-size: var(--font-size-label-xs);
+  font-size: max(14px, var(--font-size-label-xs));
   line-height: var(--line-height-label);
   cursor: pointer;
 }
@@ -368,7 +452,7 @@ body {
   background: var(--surface-2);
   color: var(--foreground-secondary);
   font: inherit;
-  font-size: var(--font-size-label-xs);
+  font-size: max(14px, var(--font-size-label-xs));
   line-height: var(--line-height-label);
   min-height: 28px;
   padding: 0 var(--space-2);
@@ -398,13 +482,13 @@ body {
   margin: 0;
   padding-left: var(--space-5);
   color: var(--foreground-secondary);
-  font-size: var(--font-size-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
   line-height: 1.65;
 }
 
 tr.is-active-row td,
 tr.is-active-row th {
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  background: var(--state-hover);
   color: var(--foreground);
 }
 
@@ -439,7 +523,7 @@ tr.is-active-row th {
 
 @media (max-width: 760px) {
   .train-shell {
-    padding: var(--space-3);
+    padding: 0 var(--space-3) var(--space-3);
   }
 
   .train-controls,
@@ -457,6 +541,13 @@ tr.is-active-row th {
 
   .train-reader-scroll {
     padding: var(--space-3);
+  }
+
+  .train-card-grid-2,
+  .train-card-grid-3,
+  .train-param-grid,
+  .train-check-grid {
+    grid-template-columns: 1fr;
   }
 
   .train-check-grid {

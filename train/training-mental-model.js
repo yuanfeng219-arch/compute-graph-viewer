@@ -55,7 +55,7 @@
       ],
       nodes: [
         n('beginner', 'Beginner', 'Persona', 'tensor', 145, 126, 160, 48, { colorKey: 'io:input' }),
-        n('qwen3', 'Qwen3 Dense', 'Model', 'op', 365, 126, 210, 54, { colorKey: 'sem:dense' }),
+        n('qwen3', 'Qwen7B -> Qwen3', 'Dense Path', 'op', 365, 126, 230, 54, { colorKey: 'sem:dense' }),
         n('goal1', 'First Step', 'Outcome', 'tensor', 610, 126, 150, 48, { colorKey: 'io:output' }),
         n('advanced', 'Advanced', 'Persona', 'tensor', 145, 244, 160, 48, { colorKey: 'io:input' }),
         n('qwenmoe', 'Qwen3 MoE', 'Model', 'op', 365, 244, 210, 54, { colorKey: 'sem:moe' }),
@@ -99,6 +99,42 @@
         e('tokenizer', 'script'),
         e('script', 'run'),
         e('run', 'ckpt'),
+      ],
+    },
+    qwen7b: {
+      width: 820,
+      height: 660,
+      clusters: [
+        { id: 'source', label: 'Local Qwen7B Source', x: 42, y: 58, width: 252, height: 546, colorKey: 'module:source' },
+        { id: 'model', label: 'Dense Decoder Model', x: 352, y: 58, width: 420, height: 546, colorKey: 'module:decoder', repeat: '32' },
+      ],
+      nodes: [
+        n('readme', 'README', 'Official Note', 'tensor', 168, 128, 164, 44, { parent: 'source', colorKey: 'io:input' }),
+        n('config', 'config.json', 'Structure', 'tensor', 168, 210, 164, 44, { parent: 'source', colorKey: 'io:input' }),
+        n('modeling', 'modeling_qwen.py', 'Code', 'tensor', 168, 322, 190, 44, { parent: 'source', colorKey: 'io:input' }),
+        n('weights', 'safetensors index', 'Weights', 'tensor', 168, 492, 190, 44, { parent: 'source', colorKey: 'io:output' }),
+        n('generation', 'generation_config', 'Sampling', 'tensor', 168, 564, 190, 44, { parent: 'source', colorKey: 'io:input' }),
+        n('tokens', 'Token IDs', 'Input', 'tensor', 562, 112, 160, 44, { parent: 'model', colorKey: 'io:input' }),
+        n('embed', 'Embedding', '151936 x 4096', 'op', 562, 190, 214, 50, { parent: 'model', colorKey: 'sem:embedding' }),
+        n('attention', 'Attention', '32 heads', 'op', 562, 284, 214, 50, { parent: 'model', colorKey: 'sem:attention' }),
+        n('mlp', 'SwiGLU MLP', '22016', 'op', 562, 362, 214, 50, { parent: 'model', colorKey: 'sem:mlp' }),
+        n('norm', 'RMSNorm', 'Pre + Final', 'op', 562, 440, 214, 50, { parent: 'model', colorKey: 'sem:norm' }),
+        n('lmhead', 'LM Head', 'Logits', 'op', 562, 518, 214, 50, { parent: 'model', colorKey: 'sem:linear' }),
+        n('sample', 'top_p / eos', 'Decode Rule', 'tensor', 562, 586, 180, 44, { parent: 'model', colorKey: 'io:output' }),
+      ],
+      edges: [
+        e('readme', 'config'),
+        e('config', 'embed'),
+        e('modeling', 'attention'),
+        e('modeling', 'mlp'),
+        e('generation', 'sample'),
+        e('weights', 'lmhead'),
+        e('tokens', 'embed'),
+        e('embed', 'attention'),
+        e('attention', 'mlp'),
+        e('mlp', 'norm'),
+        e('norm', 'lmhead'),
+        e('lmhead', 'sample'),
       ],
     },
     qwen3: {
@@ -279,40 +315,40 @@
       meta: '硬件与运行时 -> MindSpeed Core -> MindSpeed-LLM -> 训练任务 -> msTT',
       chip: '主线',
       graph: graphs.ecosystem,
-      insight: '这一层图的价值是把仓库和工具放回用户任务链：用户不是在找文件，而是在寻找从目标到 checkpoint 的确定路径。',
+      insight: '这一层图的价值是把 Ascend 训练生态和竞品训练生态放到同一张地图里：Ascend 的优势是把 NPU 运行时、MindSpeed Core 加速、MindSpeed LLM 任务装配和 profiling 诊断形成端到端链路；竞品生态组件更成熟、更分散，开发者需要自己拼装约束。',
       nodeNotes: {
         hardware: 'Atlas A2/A3 训练系列、CANN、torch_npu、NNAL 等运行时约束决定脚本能否启动。',
         core: 'MindSpeed Core 承接并行、通信、融合算子和显存优化能力。',
-        llm: 'MindSpeed-LLM 是训练任务总装层，汇聚模型脚本、数据处理、权重转换和训练入口。',
+        llm: 'MindSpeed-LLM 是训练任务总装层，官方架构包含功能模块、训练后端、训练算法和大模型四层。',
         task: '训练任务包括 pretrain、SFT、LoRA、DPO、RLHF、eval 与推理验证。',
         diag: 'msTT、profiler、msProbe 应回流到训练异常解释和性能优化闭环。',
         result: 'checkpoint 是训练链路的可验证产物，后续用于续训、评估、推理和格式转换。',
       },
       evidence: [
-        ['训练总装', 'MindSpeed-LLM 提供 pretrain、posttrain、rlhf、权重转换、数据预处理入口。'],
-        ['加速内核', 'MindSpeed Core 承接并行、通信、融合算子和显存优化。'],
-        ['诊断闭环', 'msTT 与 profiler 应在失败或变慢时回流到训练任务。'],
-        ['硬件范围', '本地安装和快速入门文档以 Atlas A2/A3 训练系列为主。'],
+        ['官方四层', '功能模块、训练后端、训练算法、大模型：分别对应工具链、执行路线、训练方法和模型菜谱库。'],
+        ['Ascend 路线', 'Atlas NPU + CANN/torch_npu/HCCL + MindSpeed Core + MindSpeed LLM，把训练约束收束到昇腾原生链路。'],
+        ['竞品路线', 'CUDA/NCCL + Megatron/DeepSpeed/FSDP/Transformers 生态成熟，但权重、数据、并行和 profiling 常需要自行组合。'],
+        ['做饭类比', 'NPU 是灶台，CANN/torch_npu 是锅具适配，MindSpeed Core 是高效厨具，MindSpeed LLM 是菜谱和备菜流程。'],
       ],
       sources: [
-        ['MindSpeed-LLM README', `${SRC}README.md`],
-        ['模型支持列表', `${SRC}docs/zh/pytorch/models/supported_models.md`],
+        ['MindSpeed LLM introduction', `${SRC}docs/zh/pytorch/introduction.md`],
+        ['MindSpeed feature list', 'https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/asdevguide/mindspeed_0007.html'],
       ],
     },
     levels: {
       title: '开发者分层图',
-      meta: '从 Qwen3 dense 到 Qwen3 MoE，再到 DeepSeek-V3.2 专家训练',
+      meta: '从 Qwen7B 源码入门到 Qwen3 dense 训练，再到 MoE 与 DeepSeek-V3.2',
       chip: 'Level',
       graph: graphs.levels,
       insight: '同一套仓库要给不同 level 的用户暴露不同复杂度。初学者看结构和路径，进阶看数据和 MoE，专家看拓扑和性能证据。',
       nodeNotes: {
         beginner: '目标是从选模型到首个 step，少决策、少分叉。',
-        qwen3: 'Qwen3-8B dense decoder 适合建立 Embedding、Decoder、Attention、MLP、LM Head 基础心智。',
+        qwen3: 'Qwen7B 负责本地源码和配置入门，Qwen3-8B 负责对接 Ascend 官方训练快速路径。',
         qwenmoe: 'Qwen3-MoE 30B-A3B 引入 router、top-k、expert、EP 和 DPO 数据。',
         deepseek: 'DeepSeek-V3.2 671B 用于解释超大 MoE、MLA、MTP、TP/PP/EP/CP 和性能证据。',
       },
       evidence: [
-        ['初学者', 'Qwen3-8B 适合作为首个训练链路，因为结构清晰、案例完整。'],
+        ['初学者', '先用 Qwen7B 读懂本地模型目录和 Dense Transformer，再用 Qwen3-8B 跑通 Ascend 官方训练链路。'],
         ['进阶', 'Qwen3-MoE 30B-A3B 把 router、expert、DPO、长上下文放到同一条线。'],
         ['专家', 'DeepSeek-V3.2 671B 的价值是验证超大 MoE 的并行、通信和显存策略。'],
         ['产品策略', '默认路径少决策，专家模式保留完整控制面。'],
@@ -348,6 +384,38 @@
       sources: [
         ['Qwen3 quick start', `${SRC}docs/zh/pytorch/training/quick_start.md`],
         ['Mcore pretrain doc', `${SRC}docs/zh/pytorch/training/pretrain/mcore/pretrain.md`],
+      ],
+    },
+    qwen7b: {
+      title: 'Qwen7B 本地源码证据图',
+      meta: 'README · config · modeling_qwen.py · generation_config · safetensors',
+      chip: 'Qwen7B',
+      graph: graphs.qwen7b,
+      insight: 'Qwen7B 适合把模型学习从“听说是 7B”变成可验证证据链：README 给官方口径，config 给结构参数，modeling_qwen.py 给执行路径，generation_config 给采样规则，safetensors index 给权重分片。',
+      nodeNotes: {
+        readme: 'README 给出 32 layers、32 heads、4096 d_model、8192 sequence length，并说明 RoPE、SwiGLU、RMSNorm 和 FlashAttention。',
+        config: 'config.json 是结构事实源：151936 vocab、4096 hidden、22016 FFN、32768 max position、use_cache=true。',
+        modeling: 'modeling_qwen.py 把 Attention、MLP、Block、Model 和 LMHead 落成 Python 类和 forward 逻辑。',
+        generation: 'generation_config.json 控制推理停止与采样：eos/pad 151643、max_new_tokens 512、top_p 0.8、top_k 0。',
+        weights: 'model.safetensors.index.json 的 weight_map 显示 transformer.h.* 和 lm_head 分布在 8 个 shard。',
+        embed: 'Embedding 维度由 vocab_size x hidden_size 决定，token id 在这里变成连续向量。',
+        attention: 'QWenAttention 使用 32 heads，c_attn 一次投影出 Q/K/V，并支持 cache 与 flash attention 路径。',
+        mlp: 'QWenMLP 使用 w1、w2 和 SiLU 门控，属于 SwiGLU 风格 MLP。',
+        norm: 'RMSNorm 出现在每个 block 的 attention/MLP 前，以及模型最终 ln_f。',
+        lmhead: 'LM Head 将 4096 hidden state 映射回 151936 词表 logits。',
+        sample: '采样规则决定 decode 输出，不应和模型结构混为一谈。',
+      },
+      evidence: [
+        ['结构参数', '32 layers、hidden size 4096、32 heads、intermediate size 22016、seq length 8192。'],
+        ['代码路径', 'Token IDs -> wte Embedding -> 32x QWenBlock -> ln_f -> lm_head -> logits。'],
+        ['推理配置', 'eos/pad token 151643、max_new_tokens 512、do_sample true、top_p 0.8、top_k 0。'],
+        ['权重证据', 'safetensors index metadata total_size 15442649088，weight_map 指向 8 个 shard。'],
+      ],
+      sources: [
+        ['Qwen7B README', '../../gitcode/qwen7b-source/README.md'],
+        ['Qwen7B config', '../../gitcode/qwen7b-source/config.json'],
+        ['Qwen7B modeling code', '../../gitcode/qwen7b-source/modeling_qwen.py'],
+        ['Qwen7B generation config', '../../gitcode/qwen7b-source/generation_config.json'],
       ],
     },
     qwen3: {
@@ -513,8 +581,10 @@
   const evidenceGrid = document.getElementById('evidenceGrid');
   const sourceList = document.getElementById('sourceList');
   const nodeTooltip = document.getElementById('nodeTooltip');
+  const readerSections = Array.from(document.querySelectorAll('[data-visual-section]'));
   let activeVisual = 'ecosystem';
   let lockUntil = 0;
+  let scrollSyncFrame = 0;
 
   function escapeHtml(value) {
     return String(value ?? '')
@@ -596,6 +666,11 @@
     document.querySelectorAll('[data-visual-target]').forEach((button) => {
       const selected = button.getAttribute('data-visual-target') === key;
       button.classList.toggle('is-selected', selected);
+      if (selected) {
+        button.setAttribute('aria-current', 'true');
+      } else {
+        button.removeAttribute('aria-current');
+      }
     });
   }
 
@@ -644,21 +719,42 @@
     });
   });
 
+  function syncActiveSectionFromScroll() {
+    scrollSyncFrame = 0;
+    if (!readerScroll || window.performance.now() < lockUntil) return;
+    const rootRect = readerScroll.getBoundingClientRect();
+    const visible = readerSections
+      .map((section) => {
+        const rect = section.getBoundingClientRect();
+        const visibleHeight = Math.min(rect.bottom, rootRect.bottom) - Math.max(rect.top, rootRect.top);
+        return {
+          section,
+          visibleHeight,
+          distance: Math.abs(rect.top - rootRect.top),
+        };
+      })
+      .filter((item) => item.visibleHeight > 0)
+      .sort((a, b) => a.distance - b.distance || b.visibleHeight - a.visibleHeight)[0];
+    const key = visible?.section.getAttribute('data-visual-section');
+    if (!key || key === activeVisual) return;
+    renderVisual(key);
+  }
+
+  function requestScrollSync() {
+    if (scrollSyncFrame) return;
+    scrollSyncFrame = window.requestAnimationFrame(syncActiveSectionFromScroll);
+  }
+
+  if (readerScroll) {
+    readerScroll.addEventListener('scroll', requestScrollSync, { passive: true });
+  }
+
   if ('IntersectionObserver' in window && readerScroll) {
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (!visible) return;
-      if (window.performance.now() < lockUntil) return;
-      const key = visible.target.getAttribute('data-visual-section');
-      if (!key || key === activeVisual) return;
-      renderVisual(key);
-    }, {
+    const observer = new IntersectionObserver(requestScrollSync, {
       root: readerScroll,
-      threshold: [0.42, 0.68],
+      threshold: [0.05, 0.35, 0.65],
     });
-    document.querySelectorAll('[data-visual-section]').forEach((section) => observer.observe(section));
+    readerSections.forEach((section) => observer.observe(section));
   }
 
   window.ascendTrainingMentalModel = {

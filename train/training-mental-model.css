@@ -12,8 +12,8 @@ body {
   --model-graphviz-stage-bg: var(--background);
   --model-graphviz-line: var(--foreground);
   --model-graphviz-line-soft: var(--border-strong);
-  --model-graphviz-node-label: var(--foreground);
-  --model-graphviz-node-type: var(--foreground-secondary);
+  --model-graphviz-node-label: #ffffff;
+  --model-graphviz-node-type: color-mix(in srgb, #ffffff 82%, transparent);
   --model-graphviz-cluster-label: color-mix(in srgb, var(--foreground) 86%, transparent);
   --model-graphviz-toggle-bg: var(--state-focus);
   --model-graphviz-toggle-border: var(--border-strong);
@@ -30,7 +30,10 @@ body {
   --model-graphviz-panel-shadow: none;
 
   margin: 0;
+  height: 100vh;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   background: var(--background);
   color: var(--foreground);
@@ -38,18 +41,20 @@ body {
 }
 
 .mental-topbar {
-  min-height: 84px;
+  flex: 0 0 auto;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--background-elevated) 96%, transparent);
+  gap: 0;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 
 .mental-title-block {
   min-width: 0;
+  padding: var(--space-3) 0 0 var(--space-5);
 }
 
 .mental-kicker,
@@ -58,10 +63,11 @@ body {
   color: var(--foreground-secondary);
   font: var(--text-label);
   letter-spacing: var(--letter-spacing-label);
+  font-size: max(14px, var(--font-size-label-xs));
 }
 
 .mental-title-block h1 {
-  margin: var(--space-1) 0;
+  margin: 0;
   color: var(--foreground);
   font: var(--text-title-1);
   letter-spacing: 0;
@@ -72,6 +78,7 @@ body {
   margin: 0;
   color: var(--foreground-secondary);
   font: var(--text-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
 }
 
 .mental-actions {
@@ -82,7 +89,8 @@ body {
 }
 
 .mental-shell {
-  height: calc(100vh - 84px);
+  flex: 1;
+  height: auto;
   display: grid;
   grid-template-columns: minmax(520px, 1fr) minmax(480px, 42vw);
   gap: var(--space-4);
@@ -118,13 +126,20 @@ body {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior-y: contain;
   padding: 0 var(--space-5) var(--space-6);
+  scroll-behavior: smooth;
+  scroll-padding-block: var(--space-4);
+  scroll-snap-type: y mandatory;
 }
 
 .mental-section {
+  min-height: calc(100% - var(--space-2));
   padding: var(--space-5) 0;
   border-bottom: 1px solid var(--border-subtle);
-  scroll-margin-top: var(--space-4);
+  scroll-margin-top: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .mental-section:first-child {
@@ -132,7 +147,11 @@ body {
 }
 
 .mental-section.is-active {
-  border-bottom-color: color-mix(in srgb, var(--primary) 34%, var(--border-subtle));
+  border-bottom-color: var(--border-subtle);
+}
+
+.mental-section.is-active .mental-section-kicker {
+  color: var(--foreground-secondary);
 }
 
 .mental-section h2 {
@@ -148,6 +167,7 @@ body {
   margin: 0 0 var(--space-3);
   color: var(--foreground);
   font: var(--text-body);
+  font-size: max(14px, var(--font-size-body-md));
   line-height: 1.72;
 }
 
@@ -159,6 +179,31 @@ body {
   background: var(--surface-2);
   border-radius: var(--radius-sm);
   padding: 1px 4px;
+}
+
+.mental-callout {
+  max-width: 1040px;
+  margin: var(--space-4) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--highlight-copy-blue-100) 72%, var(--surface-1));
+}
+
+.mental-callout strong {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--foreground);
+  font: var(--text-label);
+  font-size: max(14px, var(--font-size-label-xs));
+}
+
+.mental-callout span {
+  display: block;
+  color: var(--foreground-secondary);
+  font: var(--text-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
+  line-height: 1.6;
 }
 
 .mental-grid {
@@ -188,12 +233,94 @@ body {
   margin-bottom: var(--space-1);
   color: var(--foreground);
   font: var(--text-label);
+  font-size: max(14px, var(--font-size-label-xs));
 }
 
 .mental-grid span {
   display: block;
   color: var(--foreground-secondary);
   font: var(--text-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
+  line-height: 1.5;
+}
+
+.mental-card-grid,
+.mental-param-grid {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.mental-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.mental-card-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mental-param-grid {
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+}
+
+.mental-info-card,
+.mental-param-card {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.mental-info-card h3,
+.mental-param-card strong {
+  display: block;
+  margin: 0 0 var(--space-2);
+  color: var(--foreground);
+  font: var(--text-label);
+  font-size: max(14px, var(--font-size-body-md));
+  letter-spacing: 0;
+}
+
+.mental-card-kicker,
+.mental-param-card span {
+  display: block;
+  margin: 0 0 var(--space-1);
+  color: var(--foreground-secondary);
+  font: var(--text-label);
+  font-size: max(14px, var(--font-size-label-xs));
+}
+
+.mental-info-card p,
+.mental-param-card p {
+  margin: 0;
+  color: var(--foreground-secondary);
+  font: var(--text-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
+  line-height: 1.58;
+}
+
+.mental-info-card p + p {
+  margin-top: var(--space-2);
+}
+
+.mental-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.mental-tag-list code {
+  min-height: var(--tag-height);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--tag-padding-x);
+  border: 1px solid var(--comp-tag-border);
+  border-radius: var(--tag-radius);
+  background: var(--comp-tag-bg);
+  color: var(--comp-tag-fg);
+  font-size: max(14px, var(--font-size-label-xs));
 }
 
 .mental-flow-list {
@@ -213,6 +340,7 @@ body {
   background: var(--comp-tag-bg);
   color: var(--comp-tag-fg);
   font: var(--text-label);
+  font-size: max(14px, var(--font-size-label-xs));
 }
 
 .mental-table {
@@ -221,6 +349,7 @@ body {
   border-collapse: collapse;
   table-layout: fixed;
   font: var(--text-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
 }
 
 .mental-table th,
@@ -242,6 +371,44 @@ body {
   width: 24%;
 }
 
+.mental-source-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mental-source-strip span,
+.mental-source-strip a {
+  min-height: var(--tag-height);
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--tag-radius);
+  font: var(--text-label);
+  font-size: max(14px, var(--font-size-label-xs));
+}
+
+.mental-source-strip span {
+  color: var(--foreground-secondary);
+}
+
+.mental-source-strip a {
+  padding: 0 var(--tag-padding-x);
+  border: 1px solid var(--comp-tag-border);
+  background: var(--comp-tag-bg);
+  color: var(--comp-tag-fg);
+  text-decoration: none;
+}
+
+.mental-source-strip a:hover {
+  border-color: var(--border-default);
+  background: var(--state-hover);
+  color: var(--foreground);
+}
+
 .mental-visual-header {
   display: flex;
   align-items: center;
@@ -260,11 +427,13 @@ body {
   background: var(--comp-tag-bg);
   color: var(--comp-tag-fg);
   font: var(--text-mono);
+  font-size: max(14px, var(--font-size-label-xs));
 }
 
 .mental-visual-body {
   position: relative;
   flex: 1;
+  min-width: 0;
   min-height: 0;
   display: block;
   padding: var(--space-3);
@@ -273,6 +442,8 @@ body {
 
 .mental-graph-stage {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   height: 100%;
   min-height: 0;
   border-radius: var(--radius-md);
@@ -283,8 +454,10 @@ body {
 
 .mental-graph-stage svg {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 100% !important;
   min-height: inherit;
 }
 
@@ -317,12 +490,14 @@ body {
   margin-bottom: var(--space-1);
   color: var(--foreground);
   font: var(--text-label);
+  font-size: max(14px, var(--font-size-label-xs));
 }
 
 .mental-evidence-item span {
   display: block;
   color: var(--foreground-secondary);
   font: var(--text-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
   line-height: 1.45;
 }
 
@@ -342,6 +517,7 @@ body {
   color: var(--foreground-secondary);
   text-decoration: none;
   font: var(--text-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
   overflow-wrap: anywhere;
 }
 
@@ -356,6 +532,7 @@ body {
   margin-bottom: 2px;
   color: var(--foreground);
   font: var(--text-label);
+  font-size: max(14px, var(--font-size-label-xs));
 }
 
 .mental-insight[hidden],
@@ -385,12 +562,14 @@ body {
   margin-bottom: var(--space-1);
   color: var(--foreground);
   font: var(--text-label);
+  font-size: max(14px, var(--font-size-label-xs));
 }
 
 .mental-node-tooltip span {
   display: block;
   color: var(--foreground-secondary);
   font: var(--text-body-sm);
+  font-size: max(14px, var(--font-size-body-sm));
   line-height: 1.5;
 }
 
@@ -408,8 +587,26 @@ body {
 }
 
 .mental-graph-stage .pto-model-graphviz-node:hover rect {
-  stroke: var(--primary);
-  stroke-width: 2.4px;
+  stroke: var(--border-default);
+  stroke-width: 2px;
+}
+
+.mental-graph-stage .pto-model-graphviz-node-label {
+  fill: #ffffff;
+  font-size: max(14px, var(--font-size-title-sm));
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.28);
+}
+
+.mental-graph-stage .pto-model-graphviz-node-type {
+  fill: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.24);
+}
+
+.mental-graph-stage .pto-model-graphviz-node.is-tensor .pto-model-graphviz-node-label,
+.mental-graph-stage .pto-model-graphviz-node.is-tensor .pto-model-graphviz-node-type {
+  fill: var(--foreground);
+  text-shadow: none;
 }
 
 @media (max-width: 1180px) {
@@ -443,17 +640,50 @@ body {
 }
 
 @media (max-width: 760px) {
-  .mental-topbar,
-  .mental-shell {
+  .mental-topbar {
     padding: var(--space-3);
+  }
+
+  .mental-shell {
+    flex: none;
+    padding: 0 var(--space-3) var(--space-3);
+  }
+
+  .mental-title-block {
+    padding: 0;
+  }
+
+  .mental-title-block h1 {
+    font-size: var(--font-size-title-md);
+  }
+
+  .mental-actions {
+    width: 100%;
+    margin-top: var(--space-2);
   }
 
   .mental-reader-scroll {
     padding: 0 var(--space-3) var(--space-5);
   }
 
+  .mental-reader,
+  .mental-visual,
+  .mental-visual-body,
+  .mental-graph-stage {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .mental-graph-stage svg {
+    transform: scale(0.58);
+    transform-origin: center center;
+  }
+
   .mental-grid-2,
   .mental-grid-3,
+  .mental-card-grid-2,
+  .mental-param-grid,
   .mental-evidence-grid {
     grid-template-columns: 1fr;
   }

@@ -51,6 +51,7 @@
         <button class="btn btn-sm" type="button" data-section-target="section-split" data-focus-button="split">拆分</button>
         <button class="btn btn-sm" type="button" data-section-target="section-route" data-focus-button="route">路线</button>
         <button class="btn btn-sm" type="button" data-section-target="section-script" data-focus-button="script">脚本</button>
+        <button class="btn btn-sm" type="button" data-section-target="section-visualization" data-focus-button="visualization">可视化</button>
       </nav>
 
       <div class="train-reader-scroll" id="readerScroll">
@@ -218,25 +219,93 @@
           <p class="train-section-kicker">7 · 案例一：Dense Transformer</p>
           <h2>Qwen7B：适合第一阶段学习的标准样例</h2>
           <p>
-            Qwen7B 是 70 亿参数规模的 Dense Transformer。它适合用来学习模型目录、配置文件、tokenizer、基础推理和 Dense Transformer 的主干结构。
-            <span class="beginner-note">做饭类比：Qwen7B 像标准厨房，所有订单基本都走同一条完整流水线，结构比大型中央厨房更容易入门。</span>
+            Qwen7B 是 70 亿参数规模的 Dense Transformer，更适合作为第一阶段样例：目录完整、结构标准、tokenizer 和权重索引都能在本地文件里直接对应到代码。
+            它的学习价值不是“7B 很小所以可以随便训练”，而是让初学者先看懂一个 decoder-only LLM 如何从 token id 走到 logits。
+            <span class="beginner-note">做饭类比：Qwen7B 像标准厨房，所有订单基本都走同一条完整流水线；先学会这套厨房，再看 DeepSeek 那种大型中央厨房才不会迷路。</span>
           </p>
           <p>
-            本地 <code>qwen7b-source/config.json</code> 里的关键结构包括：32 个 hidden layers、4096 hidden size、32 个 attention heads、22016 intermediate size、8192 基础序列长度，以及更长的 <code>max_position_embeddings</code> 配置。
-            <span class="beginner-note">做饭类比：这相当于厨房有 32 个加工工位，每个工位的工作台宽度是 4096，调味台更宽到 22016。</span>
+            本地 <code>qwen7b-source/config.json</code> 与 README 可以互相校验：README 给出 <code>n_layers=32</code>、<code>n_heads=32</code>、<code>d_model=4096</code>、<code>sequence length=8192</code>；
+            配置文件进一步给出 <code>intermediate_size=22016</code>、<code>max_position_embeddings=32768</code>、<code>vocab_size=151936</code>、<code>use_flash_attn=auto</code>。
+            README 的词表规模写作 151851，配置里的 151936 通常来自工程补齐和特殊 token 预留，读模型时要以加载配置为准。
+            <span class="beginner-note">做饭类比：厨房公开说明写“15 万级菜品编码”，真实排班系统里还会为特殊菜、结束标记和补齐位留编号。</span>
           </p>
           <p>
-            Qwen7B README 和配置里能看到 RoPE、SwiGLU、RMSNorm、Flash Attention 等现代 LLM 常见组件。第一天不用把数学细节推完，但要知道它们分别属于位置编码、MLP 激活、归一化和高效注意力计算。
-            <span class="beginner-note">做饭类比：先知道这些是定位菜品、调味方式、校准火候和高效锅具，后面再研究每个工具的细节。</span>
+            代码层面，<code>modeling_qwen.py</code> 里 <code>QWenModel</code> 创建 <code>wte</code> embedding、<code>ModuleList</code> 里的 32 个 <code>QWenBlock</code>、最终 <code>RMSNorm</code>；
+            <code>QWenBlock</code> 由 <code>RMSNorm -> QWenAttention -> residual -> RMSNorm -> QWenMLP -> residual</code> 组成；
+            <code>QWenLMHeadModel</code> 再接 <code>lm_head</code> 输出词表 logits。
+            <span class="beginner-note">做饭类比：先把订单编号换成食材，经过 32 个加工工位，最后由出菜口给每道候选菜打分。</span>
           </p>
-          <table class="train-compare-table">
-            <tbody>
-              <tr><th>本地目录</th><td><code>/Users/yin/gitcode/qwen7b-source/</code></td></tr>
-              <tr><th>核心文件</th><td><code>README.md</code>、<code>config.json</code>、<code>generation_config.json</code>、<code>tokenization_qwen.py</code>、<code>model.safetensors.index.json</code></td></tr>
-              <tr><th>入门顺序</th><td>先读 README，再看 config，再看 generation config，最后看权重索引。</td></tr>
-              <tr><th>注意事项</th><td>本地 safetensors 分片如果只是 Git LFS pointer，需要拉取真实权重后才能加载。</td></tr>
-            </tbody>
-          </table>
+          <div class="train-card-grid train-card-grid-2" aria-label="Qwen7B 本地来源卡片">
+            <article class="train-info-card">
+              <span class="train-card-kicker"><code>README.md</code></span>
+              <h3>先确认官方口径</h3>
+              <p>读取模型规模、tiktoken tokenizer、RoPE、SwiGLU、RMSNorm、FlashAttention 和快速调用样例，避免把二手描述当事实。</p>
+            </article>
+            <article class="train-info-card">
+              <span class="train-card-kicker"><code>config.json</code></span>
+              <h3>再落到结构参数</h3>
+              <p>层数、hidden、heads、FFN 宽度、上下文、精度、cache 和 flash attention 都要从这里校验。</p>
+            </article>
+            <article class="train-info-card">
+              <span class="train-card-kicker"><code>modeling_qwen.py</code></span>
+              <h3>把图落到代码对象</h3>
+              <p><code>QWenAttention</code>、<code>QWenMLP</code>、<code>QWenBlock</code>、<code>QWenModel</code>、<code>QWenLMHeadModel</code> 对应架构图节点。</p>
+            </article>
+            <article class="train-info-card">
+              <span class="train-card-kicker"><code>model.safetensors.index.json</code></span>
+              <h3>确认权重不是黑盒</h3>
+              <p><code>weight_map</code> 显示 <code>transformer.h.*</code> 和 <code>lm_head</code> 分布在 8 个 shard，加载时必须和结构对应。</p>
+            </article>
+          </div>
+          <div class="train-param-grid" aria-label="Qwen7B 结构参数卡片">
+            <article class="train-param-card"><span>32 layers</span><strong><code>num_hidden_layers: 32</code></strong><p>32 个 decoder block；平时说“32 层”通常不把 embedding 和 LM Head 算进去。</p></article>
+            <article class="train-param-card"><span>hidden size</span><strong><code>4096</code></strong><p>每个 token 的隐藏向量宽度，决定 Attention/MLP 主矩阵规模。</p></article>
+            <article class="train-param-card"><span>attention heads</span><strong><code>32 heads · 128 dim</code></strong><p>配合 <code>kv_channels=128</code>，单头维度是 128。</p></article>
+            <article class="train-param-card"><span>SwiGLU MLP</span><strong><code>intermediate_size: 22016</code></strong><p><code>w1</code> 和 <code>w2</code> 先到 11008 维，经过 SiLU 门控后回到 hidden。</p></article>
+            <article class="train-param-card"><span>context</span><strong><code>8192 / 32768</code></strong><p><code>seq_length</code> 是基础长度参考，<code>max_position_embeddings</code> 是位置缓存上限相关配置。</p></article>
+            <article class="train-param-card"><span>vocab</span><strong><code>151936</code></strong><p>embedding 和 LM Head 的词表维度，必须和 tokenizer 与特殊 token 对齐。</p></article>
+          </div>
+          <div class="train-card-grid train-card-grid-3" aria-label="Qwen7B 推理配置卡片">
+            <article class="train-info-card">
+              <span class="train-card-kicker"><code>generation_config.json</code></span>
+              <h3>停止与补齐</h3>
+              <p><code>eos_token_id</code> 和 <code>pad_token_id</code> 都是 151643，停止词也包含该 id。</p>
+            </article>
+            <article class="train-info-card">
+              <span class="train-card-kicker">采样行为</span>
+              <h3>默认不是贪心</h3>
+              <div class="train-tag-list">
+                <code>do_sample true</code>
+                <code>top_p 0.8</code>
+                <code>top_k 0</code>
+              </div>
+            </article>
+            <article class="train-info-card">
+              <span class="train-card-kicker">输出预算</span>
+              <h3><code>max_new_tokens: 512</code></h3>
+              <p>一次生成最多新增 512 个 token，会直接影响延迟和 KV Cache 占用。</p>
+            </article>
+          </div>
+          <div class="train-check-grid">
+            <div>
+              <h3>Qwen7B 训练前必须分清</h3>
+              <ul>
+                <li>全量训练、继续预训练、SFT、LoRA 是不同成本等级，不能因为是 7B 就默认可全量训练。</li>
+                <li>tokenizer、config、权重 shard、generation config 必须来自同一模型目录。</li>
+                <li>如果转到 MindSpeed/Megatron 路线，权重格式和 TP/PP 切分要和训练脚本一致。</li>
+                <li>seq length、micro batch、精度和 checkpoint 保存都会影响显存与吞吐。</li>
+              </ul>
+            </div>
+            <div>
+              <h3>本地证据</h3>
+              <ul>
+                <li><code>/Users/yin/gitcode/qwen7b-source/config.json</code></li>
+                <li><code>/Users/yin/gitcode/qwen7b-source/modeling_qwen.py</code></li>
+                <li><code>/Users/yin/gitcode/qwen7b-source/generation_config.json</code></li>
+                <li><code>/Users/yin/gitcode/qwen7b-source/model.safetensors.index.json</code></li>
+              </ul>
+            </div>
+          </div>
         </section>
 
 <section class="train-doc-section" id="section-deepseek" data-focus-section="moe" data-model-target="deepseek">
@@ -421,8 +490,54 @@
           </p>
         </section>
 
+<section class="train-doc-section" id="section-visualization" data-focus-section="visualization">
+          <p class="train-section-kicker">16 · 训练可视化</p>
+          <h2>不要只看曲线，要把实验变成可判断的证据链</h2>
+          <p>
+            <code>knowledge.md</code> 里的方向是对的，但要用官方能力校准边界：TensorBoard 官方覆盖 metrics、模型图、权重直方图、embedding、媒体数据和 profiling；
+            W&B Tables 官方强调用表格比较模型在同一测试集上的表现、查看样本预测并查询误分类；MLflow Model Registry 强调模型版本和生命周期；LangSmith 则把 LLM tracing、evaluation 和 monitoring 放在核心位置。
+            所以本页不应该把“更多曲线”当目标，而应该让学习者回答：这次实验改了什么、结果是否值得、失败在哪里、下一步改什么。
+            <span class="beginner-note">做饭类比：只看温度曲线不够，还要知道这次改了哪种调料、哪道菜变好、哪桌客人退菜、下次先改刀工还是火候。</span>
+          </p>
+          <table class="train-compare-table">
+            <thead><tr><th>视图</th><th>该呈现什么</th><th>训练学习价值</th></tr></thead>
+            <tbody>
+              <tr><td>实验决策卡</td><td>baseline、候选 run、config diff、质量/延迟/显存/成本变化、结论和下一步动作。</td><td>让用户从“看 loss”升级到“判断这次实验值不值得继续”。</td></tr>
+              <tr><td>多目标 trade-off</td><td>质量、吞吐、显存、TTFT/TPOT、成本、稳定性放在同一张图或矩阵里。</td><td>避免只按单一 accuracy 或 loss 排名，接近真实模型选型。</td></tr>
+              <tr><td>样本级下钻</td><td>从整体指标点到具体样本，查看从对变错、从错变对、长尾 slice 和误分类模式。</td><td>平均指标告诉你发生了什么，样本视图解释为什么发生。</td></tr>
+              <tr><td>训练阶段时间轴</td><td>warmup、稳定下降、plateau、过拟合、loss spike、checkpoint 保存和数据切换。</td><td>把训练过程讲成阶段，而不是让用户盯着一堆标量曲线。</td></tr>
+              <tr><td>资源/质量叠加</td><td>loss、throughput、NPU 利用率、HBM、通信等待、dataloader、checkpoint 写入在同一时间轴对齐。</td><td>把 profiling 从性能专家工具变成训练异常解释工具。</td></tr>
+              <tr><td>lineage 图</td><td>数据版本、tokenizer、代码 commit、config、checkpoint、eval set 和模型候选的 DAG。</td><td>回答“这个结果是否可信、可复现、能不能上线”。</td></tr>
+            </tbody>
+          </table>
+          <div class="train-check-grid">
+            <div>
+              <h3>Qwen7B 学习页优先做</h3>
+              <ul>
+                <li>把 <code>config.json</code> 和架构图节点互相高亮。</li>
+                <li>把 <code>generation_config.json</code> 和推理输出行为放在一起看。</li>
+                <li>把权重 shard、tokenizer、config 的一致性做成启动前检查。</li>
+                <li>把微调样本、预测结果和错误 slice 做成表格下钻。</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Ascend 训练工作台优先做</h3>
+              <ul>
+                <li>脚本体检：路径、数据前缀、TP/PP/EP/CP、rank、端口、日志目录。</li>
+                <li>运行解释：loss、吞吐、OOM、通信等待和 profiling 事件归因。</li>
+                <li>checkpoint 证据：保存、续训、评估、推理和权重转换是否闭环。</li>
+                <li>实验报告：保留结论层，不只保存数据层。</li>
+              </ul>
+            </div>
+          </div>
+          <div class="train-source-note">
+            <strong>来源校准：</strong>
+            <span>TensorBoard / W&B / MLflow / LangSmith 官方文档用于验证可视化和实验管理能力边界；Ascend MindSpeed LLM 官方文档用于验证训练、数据、权重、profiling 和分布式流程。</span>
+          </div>
+        </section>
+
 <section class="train-doc-section" id="section-flow" data-focus-section="flow">
-          <p class="train-section-kicker">16 · 用做饭类比串起完整流程</p>
+          <p class="train-section-kicker">17 · 用做饭类比串起完整流程</p>
           <h2>从原始文本到推理服务是一条流水线</h2>
           <p>
             大模型工程不是单点知识，而是一条连续链路：准备原始文本，tokenizer 编码，数据预处理，加载或转换权重，训练或微调，保存 checkpoint，再加载到推理框架执行 Prefill/Decode。
@@ -435,7 +550,7 @@
         </section>
 
 <section class="train-doc-section" id="section-checklist" data-focus-section="route">
-          <p class="train-section-kicker">17 · Checklist</p>
+          <p class="train-section-kicker">18 · Checklist</p>
           <h2>训练和推理前先检查这些</h2>
           <div class="train-check-grid">
             <div>
@@ -462,7 +577,7 @@
         </section>
 
 <section class="train-doc-section" id="section-mistakes" data-focus-section="route">
-          <p class="train-section-kicker">18 · 常见误区</p>
+          <p class="train-section-kicker">19 · 常见误区</p>
           <h2>第一天最容易误解的地方</h2>
           <p>
             7B 不等于普通电脑一定轻松跑。显存、精度、量化、上下文长度和推理框架都会影响能不能跑、跑得多快。
@@ -491,7 +606,7 @@
         </section>
 
 <section class="train-doc-section" id="section-conclusion" data-focus-section="conclusion">
-          <p class="train-section-kicker">19 · 结论</p>
+          <p class="train-section-kicker">20 · 结论</p>
           <h2>先用 Qwen 建地基，再用 DeepSeek 学工程复杂度</h2>
           <p>
             初学者第一阶段应该用 Qwen7B 建立 Dense Transformer、tokenizer、config、权重、推理参数和基础训练流程的认知。它仍然不是“随便本机全量训练”的对象，但结构更适合作为第一张地图。
