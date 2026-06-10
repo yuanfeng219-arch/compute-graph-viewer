@@ -2281,37 +2281,67 @@
   </div>
 
   <div id="ingestOverlay" hidden style="position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);">
-    <div style="width:min(720px,92vw);max-height:88vh;display:flex;flex-direction:column;gap:12px;padding:20px;border-radius:14px;border:1px solid var(--border-default);background:var(--background-elevated);box-shadow:0 24px 60px rgba(0,0,0,0.5);">
+    <div style="width:min(760px,92vw);max-height:88vh;display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:14px;border:1px solid var(--border-default);background:var(--background-elevated);box-shadow:0 24px 60px rgba(0,0,0,0.5);">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <strong style="font:var(--text-title-2);color:var(--foreground);">粘贴核源码 · 规则集自动识别</strong>
+        <strong id="ingestTitle" style="font:var(--text-title-2);color:var(--foreground);">粘贴核源码</strong>
         <button class="btn btn-sm btn-ghost" type="button" id="ingestCloseBtn">✕</button>
       </div>
-      <p style="margin:0;color:var(--foreground-muted);font:var(--text-body-sm);line-height:1.5;">粘贴 Ascend C / ASC 核代码，识别器会标注硬件单元归属，并按规则集判定 910B→950 迁移点（必改 / 调整 / 优化机会）。也可点下方「选择文件…」上传。<a href="https://gitcode.com/cann/asc-devkit/tree/master/examples" target="_blank" rel="noreferrer" style="color:var(--primary-hover);text-decoration:none;">asc示例源码获取 ↗</a></p>
-      <label style="display:grid;gap:4px;color:var(--foreground-muted);font:var(--text-label);">
-        核名称 <span style="color:var(--foreground-muted);">（仅作显示标签，不影响识别；粘贴代码后会自动识别函数名，可点开下拉选择或手输）</span>
-        <input type="text" id="ingestNameInput" list="ingestNameOptions" placeholder="自动识别中…留空则用 uploaded_kernel" autocomplete="off" style="min-height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--border-subtle);background:color-mix(in srgb,var(--surface-2) 78%,transparent);color:var(--foreground);font:var(--text-body-sm);">
-        <datalist id="ingestNameOptions"></datalist>
-      </label>
-      <div style="display:grid;gap:8px;padding:12px;border-radius:10px;border:1px solid var(--border-subtle);background:color-mix(in srgb,var(--surface-2) 60%,transparent);">
-        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
-          <input type="checkbox" id="ingestAiToggle" style="margin-top:2px;flex:0 0 auto;">
-          <span style="display:grid;gap:3px;min-width:0;">
-            <span style="color:var(--foreground);font:var(--text-body-sm);font-weight:var(--font-weight-semibold);">融合 AI 分析（DeepSeek）</span>
-            <span id="ingestAiDesc" style="color:var(--foreground-muted);font:var(--text-label);line-height:1.5;">若不勾选，将基于内置规则集，对硬件单元展开分析。勾选后将综合融入 AI 分析的部分。</span>
-          </span>
+
+      <!-- 步骤条 -->
+      <div class="ingest-steps">
+        <div class="ingest-step is-active" data-step="1"><span class="ingest-step-no">1</span><span class="ingest-step-label">粘贴 / 识别</span></div>
+        <div class="ingest-step-line"></div>
+        <div class="ingest-step" data-step="2"><span class="ingest-step-no">2</span><span class="ingest-step-label">代码解析预览</span></div>
+      </div>
+
+      <!-- 第一步：粘贴核源码、配置识别选项 -->
+      <div id="ingestStep1" style="flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px;">
+        <p style="margin:0;color:var(--foreground-muted);font:var(--text-body-sm);line-height:1.5;">粘贴 Ascend C / ASC 核代码，识别器会标注硬件单元归属，并按规则集判定 910B→950 迁移点（必改 / 调整 / 优化机会）。也可点下方「选择文件…」上传。<a href="https://gitcode.com/cann/asc-devkit/tree/master/examples" target="_blank" rel="noreferrer" style="color:var(--primary-hover);text-decoration:none;">asc示例源码获取 ↗</a></p>
+        <div style="display:grid;gap:8px;padding:12px;border-radius:10px;border:1px solid var(--border-subtle);background:color-mix(in srgb,var(--surface-2) 60%,transparent);">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="ingestAiToggle" style="margin-top:2px;flex:0 0 auto;">
+            <span style="display:grid;gap:3px;min-width:0;">
+              <span style="color:var(--foreground);font:var(--text-body-sm);font-weight:var(--font-weight-semibold);">融合 AI 分析（DeepSeek）</span>
+              <span id="ingestAiDesc" style="color:var(--foreground-muted);font:var(--text-label);line-height:1.5;">若不勾选，将基于内置规则集，对硬件单元展开分析。勾选后将综合融入 AI 分析的部分。</span>
+            </span>
+          </label>
+          <div id="ingestAiKeyWrap" hidden style="display:grid;gap:4px;padding-left:26px;">
+            <input type="password" id="ingestAiKey" placeholder="输入 DeepSeek API Key" autocomplete="off" style="min-height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--border-subtle);background:var(--background);color:var(--foreground);font:var(--text-mono);font-size:12px;">
+            <span style="color:var(--foreground-muted);font:var(--text-label);line-height:1.5;">🔒 Key 仅在本次分析的内存中使用，完成（或失败）后立即清除、不会保存；下次打开本弹窗需重新开启开关并重新填写。AI 仅<strong>补充</strong>规则未覆盖的部分，不会推翻必改判定。</span>
+          </div>
+        </div>
+        <div style="position:relative;flex:1 1 auto;min-height:260px;display:flex;">
+          <textarea id="ingestTextInput" spellcheck="false" placeholder="在此粘贴核源码…" style="flex:1 1 auto;min-height:260px;resize:vertical;padding:12px;border-radius:10px;border:1px solid var(--border-subtle);background:var(--background);color:var(--foreground);font:var(--text-mono);line-height:1.5;white-space:pre;overflow:auto;"></textarea>
+          <button class="btn btn-sm btn-ghost" type="button" id="ingestClearBtn" title="清空框内代码" style="position:absolute;top:8px;right:8px;">清空</button>
+        </div>
+        <label style="display:grid;gap:4px;color:var(--foreground-muted);font:var(--text-label);">
+          核名称 <span style="color:var(--foreground-muted);">（仅作显示标签，不影响识别；粘贴代码后会自动识别函数名，可点开下拉选择或手输）</span>
+          <input type="text" id="ingestNameInput" list="ingestNameOptions" placeholder="自动识别中…留空则用 uploaded_kernel" autocomplete="off" style="min-height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--border-subtle);background:color-mix(in srgb,var(--surface-2) 78%,transparent);color:var(--foreground);font:var(--text-body-sm);">
+          <datalist id="ingestNameOptions"></datalist>
         </label>
-        <div id="ingestAiKeyWrap" hidden style="display:grid;gap:4px;padding-left:26px;">
-          <input type="password" id="ingestAiKey" placeholder="输入 DeepSeek API Key" autocomplete="off" style="min-height:30px;padding:0 10px;border-radius:8px;border:1px solid var(--border-subtle);background:var(--background);color:var(--foreground);font:var(--text-mono);font-size:12px;">
-          <span style="color:var(--foreground-muted);font:var(--text-label);line-height:1.5;">🔒 Key 仅在本次分析的内存中使用，完成（或失败）后立即清除、不会保存；下次打开本弹窗需重新开启开关并重新填写。AI 仅<strong>补充</strong>规则未覆盖的部分，不会推翻必改判定。</span>
+        <div id="ingestError" style="display:none;color:var(--danger);font:var(--text-body-sm);"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-ghost" type="button" id="ingestFileBtn">选择文件…</button>
+            <button class="btn btn-sm btn-ghost" type="button" id="ingestSample1Btn">置入示例代码1</button>
+            <button class="btn btn-sm btn-ghost" type="button" id="ingestSample2Btn">置入示例代码2</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="btn btn-sm btn-ghost" type="button" id="ingestCancelBtn">取消</button>
+            <button class="btn btn-sm btn-solid" type="button" id="ingestRunBtn">解析并下一步 →</button>
+          </div>
         </div>
       </div>
-      <textarea id="ingestTextInput" spellcheck="false" placeholder="在此粘贴核源码…" style="flex:1 1 auto;min-height:300px;resize:vertical;padding:12px;border-radius:10px;border:1px solid var(--border-subtle);background:var(--background);color:var(--foreground);font:var(--text-mono);line-height:1.5;white-space:pre;overflow:auto;"></textarea>
-      <div id="ingestError" style="display:none;color:var(--danger);font:var(--text-body-sm);"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <button class="btn btn-sm btn-ghost" type="button" id="ingestFileBtn">选择文件…</button>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <button class="btn btn-sm btn-ghost" type="button" id="ingestCancelBtn">取消</button>
-          <button class="btn btn-sm btn-solid" type="button" id="ingestRunBtn">识别并载入</button>
+
+      <!-- 第二步：代码解析预览（规则集 + 可选 AI） -->
+      <div id="ingestStep2" hidden style="flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px;">
+        <div id="ingestPreviewBody" style="flex:1 1 auto;min-height:260px;overflow:auto;display:flex;flex-direction:column;gap:16px;padding-right:4px;"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <button class="btn btn-sm btn-ghost" type="button" id="ingestBackBtn">← 上一步</button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="btn btn-sm btn-ghost" type="button" id="ingestCancelBtn2">取消</button>
+            <button class="btn btn-sm btn-solid" type="button" id="ingestConfirmBtn">确定并载入</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2377,6 +2407,39 @@
     .sev-pill.is-high { color: var(--danger); background: color-mix(in srgb, var(--danger) 16%, transparent); }
     .sev-pill.is-medium { color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent); }
     .sev-pill.is-info { color: var(--success); background: color-mix(in srgb, var(--success) 14%, transparent); }
+
+    /* 核源码导入弹窗：步骤条 + 解析预览 */
+    .ingest-steps { display: flex; align-items: center; gap: 0; }
+    .ingest-step { display: flex; align-items: center; gap: 8px; color: var(--foreground-muted); font: var(--text-body-sm); white-space: nowrap; }
+    .ingest-step-no {
+      width: 22px; height: 22px; border-radius: 999px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border-default); background: var(--surface-2);
+      color: var(--foreground-muted); font: 700 12px / 1 var(--font-sans);
+    }
+    .ingest-step.is-active { color: var(--foreground); }
+    .ingest-step.is-active .ingest-step-no { background: var(--foreground); color: var(--background); border-color: transparent; }
+    .ingest-step.is-done .ingest-step-no { background: color-mix(in srgb, var(--success) 82%, transparent); color: #0b1f12; border-color: transparent; }
+    .ingest-step-line { flex: 0 0 48px; width: 48px; height: 1px; background: var(--border-subtle); }
+    .ingest-preview-sec { display: flex; flex-direction: column; gap: 10px; }
+    .ingest-preview-head { display: flex; align-items: center; gap: 8px; }
+    .ingest-preview-head h4 { margin: 0; color: var(--foreground); font: var(--text-body-sm); font-weight: var(--font-weight-semibold); }
+    .ingest-preview-card {
+      border: 1px solid var(--border-subtle); border-radius: 10px;
+      background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+      padding: 12px; display: grid; gap: 10px;
+    }
+    .ingest-pv-line { display: grid; gap: 6px; }
+    .ingest-preview-card .ingest-pv-line + .ingest-pv-line { border-top: 1px solid var(--border-subtle); padding-top: 10px; }
+    .ingest-pv-code {
+      font: var(--text-mono); color: var(--foreground); background: var(--background);
+      border: 1px solid var(--border-subtle); border-radius: 8px; padding: 6px 8px;
+      white-space: pre-wrap; overflow-wrap: anywhere;
+    }
+    .ingest-pv-lineno { color: var(--foreground-muted); font: var(--text-mono); flex: 0 0 auto; }
+    .ingest-pv-finding { display: flex; align-items: flex-start; gap: 8px; }
+    .ingest-pv-finding p { margin: 0; color: var(--foreground-secondary); font: var(--text-body-sm); line-height: 1.5; }
+    .ingest-pv-empty { color: var(--foreground-muted); font: var(--text-body-sm); line-height: 1.5; }
     .help-legend { display: grid; gap: 6px; }
     .help-legend-row { display: flex; align-items: center; gap: 8px; color: var(--foreground-secondary); font: var(--text-body-sm); }
     .help-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
@@ -2388,6 +2451,29 @@
       font: var(--text-body-sm); line-height: 1.55;
     }
     .help-source { color: var(--foreground-muted); font: var(--text-label); line-height: 1.5; }
+    .help-ai-table {
+      display: grid; gap: 1px;
+      border-radius: var(--radius-md); overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      background: var(--border-subtle);
+    }
+    .help-ai-row {
+      display: grid; grid-template-columns: 88px 1fr 1.15fr; gap: 1px;
+      background: var(--border-subtle);
+    }
+    .help-ai-row > span {
+      background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+      padding: var(--space-2);
+      color: var(--foreground-secondary);
+      font: var(--text-label); line-height: 1.5;
+    }
+    .help-ai-row.is-head > span {
+      background: color-mix(in srgb, var(--surface-3) 60%, var(--surface-2));
+      color: var(--foreground); font-weight: var(--font-weight-semibold);
+    }
+    .help-ai-row > span:first-child { color: var(--foreground); font-weight: var(--font-weight-semibold); }
+    .help-ai-row > span:last-child { background: color-mix(in srgb, var(--primary) 8%, var(--surface-2)); color: var(--foreground-secondary); }
+    .help-ai-row.is-head > span:last-child { background: color-mix(in srgb, var(--primary) 16%, var(--surface-2)); color: var(--foreground); }
   </style>
 
   <div class="help-backdrop" id="helpBackdrop" hidden></div>
@@ -2444,6 +2530,44 @@
       </div>
 
       <div class="help-sec">
+        <h4>勾选「融合 AI 分析」能补什么</h4>
+        <p>规则集擅长<strong>确定、带出处</strong>的硬判定（尤其「必改」项），但有天然短板。开启融合 AI（DeepSeek）后，它只做<strong>补位与解释、不推翻规则</strong>，主要补这 5 块：</p>
+        <div class="help-ai-table">
+          <div class="help-ai-row is-head">
+            <span>维度</span><span>规则集现状</span><span>AI 补位</span>
+          </div>
+          <div class="help-ai-row">
+            <span>覆盖面</span>
+            <span>只认写进规则的 API，没见过的就漏</span>
+            <span>对陌生 intrinsic / 新写法做语义推理，兜底分类</span>
+          </div>
+          <div class="help-ai-row">
+            <span>跨函数理解</span>
+            <span>文件级正则，同名变量可能认错</span>
+            <span>读懂整个 kernel 的意图（如「这是 Flash Attention」「这段是 tail 处理」）</span>
+          </div>
+          <div class="help-ai-row">
+            <span>改写建议</span>
+            <span>rewriteHint 是写死的模板串</span>
+            <span>针对<strong>你这一行 / 这个核</strong>生成真正可用的 950 改写</span>
+          </div>
+          <div class="help-ai-row">
+            <span>整体判断</span>
+            <span>逐行打标签，没有全局视角</span>
+            <span>自然语言总结整核迁移风险排序 + 改造工作量</span>
+          </div>
+          <div class="help-ai-row">
+            <span>依赖 shape/dtype 的「需调整」项</span>
+            <span>只能给通用提示</span>
+            <span>结合上下文判断是否真的触发</span>
+          </div>
+        </div>
+        <div class="help-note" style="background:color-mix(in srgb,var(--primary) 8%,var(--surface-1));border-color:color-mix(in srgb,var(--primary) 24%,transparent);">
+          AI 结果会以「<strong>AI 智能推荐</strong>」卡片融入对应源码行下，整核摘要挂在首个关键行。需在弹窗里填 DeepSeek API Key（<strong>用后即毁，下次需重填</strong>）；硬约束：AI 不得与「必改」判定相矛盾。
+        </div>
+      </div>
+
+      <div class="help-sec">
         <h4>判据来自哪里</h4>
         <p class="help-source">规则集出处已逐条标注，主要来自仓库内两份文档：<br>· <strong>KNOWLEDGE.md</strong>（§5.3.5「5 大不兼容项」等）<br>· <strong>perf_engineer_guide.html</strong>（910B vs 950 架构差异）<br>并用昇腾社区公开资料做了基本语义裨证。</p>
       </div>
@@ -2458,6 +2582,380 @@
       </div>
     </div>
   </aside>
+
+  <!-- 预置示例核源码（按钮「置入示例代码1/2」读取）。type 非 JS，浏览器不执行；
+       内容为纯文本逐字保存，无需任何转义。来源（gitcode cann/asc-devkit）：
+       示例1 examples/01_simd_cpp_api/.../gelu_eltwise_high_performance/gelu_eltwise.asc
+       示例2 examples/03_simt_api/.../torch_library_roll/roll_custom.asc -->
+  <script type="text/plain" id="ascSample1">/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/* !
+ * \file gelu_eltwise.asc
+ * \brief GELU+Element-wise operator performance tuning sample
+ *
+ * GELU formula (tanh approximation):
+ * GELU(x) ≈ x / (1 + e^(-1.595769 · (x + 0.044715 · x³)))
+ *
+ * Element-wise formula:
+ * y = exp(-0.5 · (GELU(x) + 1)² + 2)
+ */
+
+#include "acl/acl.h"
+#include "kernel_operator.h"
+#include "data_utils.h"
+
+#ifdef ASCENDC_CPU_DEBUG
+#include "cpu_debug_launch.h"
+#endif
+
+constexpr uint32_t scenarioNum = SCENARIO_NUM;
+constexpr float COEFF_A = 0.044715f;
+constexpr float COEFF_B = -1.595769f;
+constexpr float COEFF_C = 1;
+constexpr float COEFF_D = -0.5;
+constexpr float COEFF_E = 2;
+
+template <uint32_t totalM, uint32_t totalN, uint32_t singleCoreM, uint32_t singleCoreN, uint32_t tileLen>
+class KernelGeluEltwise {
+public:
+    __aicore__ inline KernelGeluEltwise() {}
+    __aicore__ inline void Init(__gm__ uint8_t* x, __gm__ uint8_t* y)
+    {
+        AscendC::InitSocState();
+        xGm.SetGlobalBuffer((__gm__ float*)x);
+        yGm.SetGlobalBuffer((__gm__ float*)y);
+        InitGMOffsets();
+    }
+
+    __aicore__ inline void InitGMOffsets()
+    {
+        uint32_t blockIdx = AscendC::GetBlockIdx();
+        constexpr uint32_t mIndex = (totalM + singleCoreM - 1) / singleCoreM;
+        constexpr uint32_t nIndex = (totalN + singleCoreN - 1) / singleCoreN;
+        constexpr uint32_t tailSingleCoreM = totalM - (mIndex - 1) * singleCoreM;
+        constexpr uint32_t tailSingleCoreN = totalN - (nIndex - 1) * singleCoreN;
+
+        uint32_t mIterIdx = blockIdx % mIndex;
+        uint32_t nIterIdx = blockIdx / mIndex;
+        actualSingleCoreM = (mIterIdx == (mIndex - 1)) ? tailSingleCoreM : singleCoreM;
+        actualSingleCoreN = (nIterIdx == (nIndex - 1)) ? tailSingleCoreN : singleCoreN;
+
+        uint64_t gmOffset = mIterIdx * singleCoreM * totalN + nIterIdx * singleCoreN;
+        xGm = xGm[gmOffset];
+        yGm = yGm[gmOffset];
+    }
+
+    __simd_vf__ inline static void GeluEltwiseBasic(
+        __ubuf__ float* xAddr, __ubuf__ float* yAddr, uint32_t n, uint32_t loopNum, uint32_t oneRepeatSize)
+    {
+        AscendC::Reg::MaskReg mask;
+        if constexpr(scenarioNum == 0) {
+            // case 0固定使用128 bytes并行度，即每次处理32个float元素，作为性能基线。
+            mask = AscendC::Reg::CreateMask<float, AscendC::Reg::MaskPattern::VL32>();
+        }
+        AscendC::Reg::RegTensor<float> xReg, yReg;
+
+        for (uint16_t i = 0; i < loopNum; ++i) {
+            if constexpr(scenarioNum != 0) {
+                // case 1/2/3使用GetVecLen()返回的默认向量并行度；Ascend 950PR/Ascend 950DT上为256 bytes，
+                // 即每次处理64个float元素。
+                mask = AscendC::Reg::UpdateMask<float>(n);
+            }
+            AscendC::Reg::LoadAlign(xReg, xAddr + i * oneRepeatSize);
+            AscendC::Reg::Mul(yReg, xReg, xReg, mask);
+            AscendC::Reg::Mul(yReg, yReg, xReg, mask);
+            AscendC::Reg::Muls(yReg, yReg, COEFF_A, mask);
+            AscendC::Reg::Add(yReg, xReg, yReg, mask);
+            AscendC::Reg::Muls(yReg, yReg, COEFF_B, mask);
+            AscendC::Reg::Exp(yReg, yReg, mask);
+            AscendC::Reg::Adds(yReg, yReg, 1.0f, mask);
+            AscendC::Reg::Div(yReg, xReg, yReg, mask);
+            AscendC::Reg::Adds(yReg, yReg, COEFF_C, mask);
+            AscendC::Reg::Mul(yReg, yReg, yReg, mask);
+            AscendC::Reg::Muls(yReg, yReg, COEFF_D, mask);
+            AscendC::Reg::Adds(yReg, yReg, COEFF_E, mask);
+            AscendC::Reg::Exp(yReg, yReg, mask);
+            AscendC::Reg::StoreAlign(yAddr + i * oneRepeatSize, yReg, mask);
+        }
+    }
+
+    __simd_vf__ inline static void GeluEltwiseLoopSplit(
+        __ubuf__ float* xAddr, __ubuf__ float* yAddr, uint32_t n, uint32_t loopNum, uint32_t oneRepeatSize)
+    {
+        AscendC::Reg::MaskReg mask;
+        AscendC::Reg::RegTensor<float> xReg, yReg;
+        uint32_t n2 = n;
+#if SCENARIO_NUM == 3
+#pragma unroll 6
+#endif
+        for (uint16_t i = 0; i < loopNum; ++i) {
+            mask = AscendC::Reg::UpdateMask<float>(n);
+            AscendC::Reg::LoadAlign(xReg, xAddr + i * oneRepeatSize);
+            AscendC::Reg::Mul(yReg, xReg, xReg, mask);
+            AscendC::Reg::Mul(yReg, yReg, xReg, mask);
+            AscendC::Reg::Muls(yReg, yReg, COEFF_A, mask);
+            AscendC::Reg::Add(yReg, xReg, yReg, mask);
+            AscendC::Reg::Muls(yReg, yReg, COEFF_B, mask);
+            AscendC::Reg::Exp(yReg, yReg, mask);
+            AscendC::Reg::Adds(yReg, yReg, 1.0f, mask);
+            AscendC::Reg::Div(yReg, xReg, yReg, mask);
+            AscendC::Reg::StoreAlign(yAddr + i * oneRepeatSize, yReg, mask);
+        }
+#if SCENARIO_NUM == 3
+#pragma unroll 6
+#endif
+        for (uint16_t i = 0; i < loopNum; ++i) {
+            mask = AscendC::Reg::UpdateMask<float>(n2);
+            AscendC::Reg::LoadAlign(yReg, yAddr + i * oneRepeatSize);
+            AscendC::Reg::Adds(yReg, yReg, COEFF_C, mask);
+            AscendC::Reg::Mul(yReg, yReg, yReg, mask);
+            AscendC::Reg::Muls(yReg, yReg, COEFF_D, mask);
+            AscendC::Reg::Adds(yReg, yReg, COEFF_E, mask);
+            AscendC::Reg::Exp(yReg, yReg, mask);
+            AscendC::Reg::StoreAlign(yAddr + i * oneRepeatSize, yReg, mask);
+        }
+    }
+
+    __aicore__ inline void GeluEltwiseRegBaseCompute(
+        const AscendC::LocalTensor<float>& xLocal, const AscendC::LocalTensor<float>& yLocal, uint32_t n)
+    {
+        uint32_t oneRepeatSize = AscendC::GetVecLen() / sizeof(float);
+        if constexpr(scenarioNum == 0) {
+            oneRepeatSize = 128  / sizeof(float);
+        }
+        uint32_t loopNum = AscendC::CeilDivision(n, oneRepeatSize);
+        __ubuf__ float* xAddr = (__ubuf__ float*)xLocal.GetPhyAddr();
+        __ubuf__ float* yAddr = (__ubuf__ float*)yLocal.GetPhyAddr();
+        if constexpr(scenarioNum == 0 || scenarioNum == 1) {
+            asc_vf_call<GeluEltwiseBasic>(xAddr, yAddr, n, loopNum, oneRepeatSize);
+        } else if (scenarioNum == 2 || scenarioNum == 3) {
+            asc_vf_call<GeluEltwiseLoopSplit>(xAddr, yAddr, n, loopNum, oneRepeatSize);
+        }
+    }
+
+    __aicore__ inline void Process()
+    {
+        AscendC::LocalTensor<float> xPing(AscendC::TPosition::VECCALC, xAddrPing, tileLen);
+        AscendC::LocalTensor<float> yPing(AscendC::TPosition::VECCALC, yAddrPing, tileLen);
+        AscendC::LocalTensor<float> xPong(AscendC::TPosition::VECCALC, xAddrPong, tileLen);
+        AscendC::LocalTensor<float> yPong(AscendC::TPosition::VECCALC, yAddrPong, tileLen);
+
+        constexpr uint32_t tileRow = tileLen / singleCoreN;
+        uint32_t loopNum = (actualSingleCoreM + tileRow - 1) / tileRow;
+        uint32_t tailRow = actualSingleCoreM - (loopNum - 1) * tileRow;
+
+        AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID0);
+        AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);
+        AscendC::SetFlag<AscendC::HardEvent::MTE3_V>(EVENT_ID0);
+        AscendC::SetFlag<AscendC::HardEvent::MTE3_V>(EVENT_ID1);
+
+        for (uint32_t loopIdx = 0; loopIdx < loopNum; loopIdx++) {
+            uint32_t copyRows = (loopIdx == (loopNum - 1)) ? tailRow : tileRow;
+
+            int32_t eventID = ((loopIdx & 1) == 0 ? EVENT_ID0 : EVENT_ID1);
+            AscendC::LocalTensor<float>& xLocal = ((loopIdx & 1) == 0 ? xPing : xPong);
+            AscendC::LocalTensor<float>& yLocal = ((loopIdx & 1) == 0 ? yPing : yPong);
+
+            AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(eventID);
+
+            uint32_t blockLen = actualSingleCoreN * sizeof(float);
+            uint32_t srcStride = (totalN - actualSingleCoreN) * sizeof(float);
+            uint32_t dstStride = 0;
+            AscendC::DataCopyExtParams copyParams = {
+                static_cast<uint16_t>(copyRows), blockLen, srcStride, dstStride, 0};
+            AscendC::DataCopyPadExtParams<float> padParams = {false, 0, 0, 0};
+            AscendC::DataCopyPad<float>(xLocal, xGm[loopIdx * tileRow * totalN], copyParams, padParams);
+
+            AscendC::SetFlag<AscendC::HardEvent::MTE2_V>(eventID);
+            AscendC::WaitFlag<AscendC::HardEvent::MTE2_V>(eventID);
+            AscendC::WaitFlag<AscendC::HardEvent::MTE3_V>(eventID);
+
+            GeluEltwiseRegBaseCompute(xLocal, yLocal, copyRows * singleCoreN);
+            AscendC::SetFlag<AscendC::HardEvent::V_MTE2>(eventID);
+
+            AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(eventID);
+            AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(eventID);
+
+            copyParams.srcStride = 0;
+            copyParams.dstStride = srcStride;
+            AscendC::DataCopyPad<float>(yGm[loopIdx * tileRow * totalN], yLocal, copyParams);
+            AscendC::SetFlag<AscendC::HardEvent::MTE3_V>(eventID);
+        }
+
+        AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID0);
+        AscendC::WaitFlag<AscendC::HardEvent::V_MTE2>(EVENT_ID1);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE3_V>(EVENT_ID0);
+        AscendC::WaitFlag<AscendC::HardEvent::MTE3_V>(EVENT_ID1);
+    }
+
+private:
+    static constexpr uint32_t xAddrPing = 0;
+    static constexpr uint32_t xAddrPong = tileLen * sizeof(float);
+    static constexpr uint32_t yAddrPing = xAddrPong + tileLen * sizeof(float);
+    static constexpr uint32_t yAddrPong = yAddrPing + tileLen * sizeof(float);
+
+    AscendC::GlobalTensor<float> xGm;
+    AscendC::GlobalTensor<float> yGm;
+    uint32_t actualSingleCoreM;
+    uint32_t actualSingleCoreN;
+};
+
+template <uint32_t totalM, uint32_t totalN, uint32_t singleCoreM, uint32_t singleCoreN, uint32_t tileLen>
+__global__ __vector__ void gelu_eltwise_custom(__gm__ uint8_t* x, __gm__ uint8_t* y)
+{
+    KernelGeluEltwise<totalM, totalN, singleCoreM, singleCoreN, tileLen> op;
+    op.Init(x, y);
+    op.Process();
+    AscendC::PipeBarrier<PIPE_ALL>();
+}
+
+int32_t main(int32_t argc, char* argv[])
+{
+    constexpr uint32_t totalM = 8192;
+    constexpr uint32_t totalN = 8192;
+    constexpr uint32_t singleCoreM = 256;
+    constexpr uint32_t singleCoreN = 4096;
+    constexpr uint32_t tileLen = 2 * singleCoreN;
+    constexpr uint32_t mTileNum = (totalM + singleCoreM - 1) / singleCoreM;
+    constexpr uint32_t nTileNum = (totalN + singleCoreN - 1) / singleCoreN;
+    uint32_t numBlocks = mTileNum * nTileNum;
+
+    size_t inputByteSize = totalM * totalN * sizeof(float);
+    size_t outputByteSize = totalM * totalN * sizeof(float);
+
+    aclInit(nullptr);
+    int32_t deviceId = 0;
+    aclrtSetDevice(deviceId);
+    aclrtStream stream = nullptr;
+    aclrtCreateStream(&stream);
+
+    uint8_t* inputHost = nullptr;
+    uint8_t* inputDevice = nullptr;
+    aclrtMallocHost((void**)(&inputHost), inputByteSize);
+    aclrtMalloc((void**)(&inputDevice), inputByteSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    ReadFile("./input/input_x.bin", inputByteSize, inputHost, inputByteSize);
+    aclrtMemcpy(inputDevice, inputByteSize, inputHost, inputByteSize, ACL_MEMCPY_HOST_TO_DEVICE);
+
+    uint8_t* outputHost = nullptr;
+    uint8_t* outputDevice = nullptr;
+    aclrtMallocHost((void**)(&outputHost), outputByteSize);
+    aclrtMalloc((void**)(&outputDevice), outputByteSize, ACL_MEM_MALLOC_HUGE_FIRST);
+
+    gelu_eltwise_custom<totalM, totalN, singleCoreM, singleCoreN, tileLen>
+        <<<numBlocks, nullptr, stream>>>(inputDevice, outputDevice);
+    aclrtSynchronizeStream(stream);
+
+    aclrtMemcpy(outputHost, outputByteSize, outputDevice, outputByteSize, ACL_MEMCPY_DEVICE_TO_HOST);
+    WriteFile("./output/output.bin", outputHost, outputByteSize);
+
+    aclrtFree(inputDevice);
+    aclrtFreeHost(inputHost);
+    aclrtFree(outputDevice);
+    aclrtFreeHost(outputHost);
+
+    aclrtDestroyStream(stream);
+    aclrtResetDevice(deviceId);
+    aclFinalize();
+
+    printf("GELU+Element-wise operator completed.\n");
+    return 0;
+}</script>
+  <script type="text/plain" id="ascSample2">/**
+* Copyright (c) 2026 Huawei Technologies Co., Ltd.
+* This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+* CANN Open Software License Agreement Version 2.0 (the "License").
+* Please refer to the License for details. You may not use this file except in compliance with the License.
+* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+* INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+* See LICENSE in the root of the software repository for the full text of the License.
+*/
+
+#include <torch/extension.h>
+#include "torch_npu/csrc/core/npu/NPUStream.h"
+
+namespace {
+    constexpr uint32_t THREAD_COUNT = 2048;
+}
+
+__global__ __launch_bounds__(THREAD_COUNT) void roll_custom(
+    float* input, float* output,
+    int32_t shift, int32_t total_length, int32_t dim_size, int32_t stride)
+{
+    int32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= total_length) {
+        return;
+    }
+
+    // dst_coord 是 idx 在目标 dim 上的坐标，src_coord 是 roll 后对应的源坐标。
+    int32_t dst_coord = (idx / stride) % dim_size;
+    int32_t src_coord = dst_coord - shift;
+    if (src_coord < 0) {
+        src_coord += dim_size;
+    }
+    // 只替换目标 dim 上的坐标，其他维度坐标保持不变。
+    int32_t src_idx = idx + (src_coord - dst_coord) * stride;
+    output[idx] = input[src_idx];
+}
+
+namespace ascendc_ops {
+
+at::Tensor ascendc_roll(const at::Tensor& x, at::IntArrayRef shifts, at::IntArrayRef dims)
+{
+    auto aclStream = c10_npu::getCurrentNPUStream().stream(false);
+    at::Tensor z = at::empty(x.sizes(), x.options());
+
+    int32_t total_length = 1;
+    std::vector<int64_t> shape = x.sizes().vec();
+    for (auto s : shape) {
+        total_length *= s;
+    }
+
+    // dim_size 是目标维度长度，stride 是目标维度坐标变化 1 对应的线性偏移。
+    int32_t dim_shift = 0;
+    int32_t dim_size = total_length;
+    int32_t stride = 1;
+    if (!dims.empty() && !shifts.empty()) {
+        int64_t dim = dims[0];
+        if (dim < 0) {
+            dim += shape.size();
+        }
+        dim_size = shape[dim];
+
+        for (int64_t d = dim + 1; d < shape.size(); d++) {
+            stride *= shape[d];
+        }
+        // 处理负数滚动步数，将结果映射到 [0, dim_size) 范围内。
+        dim_shift = (shifts[0] % dim_size + dim_size) % dim_size;
+    }
+
+    uint32_t threads_per_block = THREAD_COUNT;
+    uint32_t blocks_per_grid = (total_length + threads_per_block - 1) / threads_per_block;
+
+    roll_custom<<<blocks_per_grid, threads_per_block, 0, aclStream>>>(
+        x.data_ptr<float>(), z.data_ptr<float>(), dim_shift, total_length, dim_size, stride);
+
+    return z;
+}
+
+} // namespace ascendc_ops
+
+TORCH_LIBRARY(ascendc_ops, m)
+{
+    m.def("ascendc_roll(Tensor x, int[] shifts, int[] dims) -> Tensor");
+}
+
+TORCH_LIBRARY_IMPL(ascendc_ops, PrivateUse1, m)
+{
+    m.impl("ascendc_roll", TORCH_FN(ascendc_ops::ascendc_roll));
+}</script>
 
   <script src="./rules/ascend_migration_rules.js"></script>
   <script src="./rules/kernel_analyzer.js"></script>
@@ -4890,7 +5388,8 @@
       return names;
     }
 
-    function ingestKernelSource(text, fileName) {
+    // 仅用规则集分析，得到 kernel 对象（不入库、不切换）——供第二步预览
+    function buildKernelFromSource(text, fileName) {
       if (!window.WB_ANALYZER) {
         throw new Error('分析器未加载（rules/kernel_analyzer.js）');
       }
@@ -4903,13 +5402,17 @@
       let unique = id;
       let n = 2;
       while (KERNELS.some((k) => k.id === unique)) unique = `${id}_${n++}`;
-      const kernel = window.WB_ANALYZER.analyze(text, {
+      return window.WB_ANALYZER.analyze(text, {
         id: unique,
         name: rawName.includes('.') ? rawName : `${rawName}.asc`,
         label: rawName,
       });
+    }
+
+    // 确认后才入库并切换显示在下方页面 —— 第二步「确定」触发
+    function commitKernel(kernel) {
       KERNELS.push(kernel);
-      selectKernel(unique);
+      selectKernel(kernel.id);
       return kernel;
     }
 
@@ -4927,14 +5430,48 @@
         desc.textContent = `若不勾选，将基于 ${window.WB_RULES.migration.length} 条内置规则集，对 ${window.WB_RULES.intrinsics.length} 类硬件单元展开分析。勾选后将综合融入 AI 分析的部分。`;
       }
     }
+    // 第二步预览状态：规则集已分析、待确认的核 + 可选 AI 解析结果
+    // { kernel, source, aiOn, apiKey, aiState:{status,parsed,error}, committed }
+    let ingestPending = null;
+
+    function setIngestStep(step) {
+      const s1 = qs('#ingestStep1');
+      const s2 = qs('#ingestStep2');
+      if (s1) s1.hidden = step !== 1;
+      if (s2) s2.hidden = step !== 2;
+      document.querySelectorAll('.ingest-step').forEach((el) => {
+        const n = Number(el.dataset.step);
+        el.classList.toggle('is-active', n === step);
+        el.classList.toggle('is-done', n < step);
+      });
+      const title = qs('#ingestTitle');
+      if (title) title.textContent = step === 2 ? '代码解析预览 · 确认载入' : '粘贴核源码';
+    }
+
     const openIngest = () => {
       if (!ingestOverlay) return;
       qs('#ingestError').style.display = 'none';
+      // 不记录上一次弹窗粘贴的代码与核名：每次打开都清空
+      const ta = qs('#ingestTextInput');
+      if (ta) ta.value = '';
+      const nameInput = qs('#ingestNameInput');
+      if (nameInput) nameInput.value = '';
+      const nameOptions = qs('#ingestNameOptions');
+      if (nameOptions) nameOptions.innerHTML = '';
       resetAiControls();
+      ingestPending = null;
+      setIngestStep(1);
       ingestOverlay.hidden = false;
       qs('#ingestTextInput')?.focus();
     };
     const closeIngest = () => { if (ingestOverlay) ingestOverlay.hidden = true; };
+    // 取消 / 关闭：丢弃未确认的预览，清掉 key
+    const cancelIngest = () => {
+      const keyInput = qs('#ingestAiKey');
+      if (keyInput) keyInput.value = '';
+      ingestPending = null;
+      closeIngest();
+    };
 
     // 粘贴/输入代码时实时识别候选核名
     qs('#ingestTextInput')?.addEventListener('input', (e) => populateNameOptions(e.target.value));
@@ -4945,17 +5482,42 @@
       if (e.target.checked) qs('#ingestAiKey')?.focus();
     });
 
+    // 置入预置示例：从 <script type="text/plain"> 读出逐字源码填入文本框
+    function loadIngestSample(holderId, fallbackName) {
+      const holder = document.getElementById(holderId);
+      const text = holder ? holder.textContent.replace(/^\n/, '') : '';
+      const ta = qs('#ingestTextInput');
+      if (!ta) return;
+      ta.value = text;
+      const nameInput = qs('#ingestNameInput');
+      if (nameInput) nameInput.value = '';
+      const names = populateNameOptions(text);
+      if (nameInput && !nameInput.value) nameInput.value = names[0] || fallbackName;
+      const err = qs('#ingestError');
+      if (err) err.style.display = 'none';
+      ta.focus();
+    }
+
+    qs('#ingestClearBtn')?.addEventListener('click', () => {
+      const ta = qs('#ingestTextInput');
+      if (ta) { ta.value = ''; populateNameOptions(''); ta.focus(); }
+    });
     qs('#kernelIngestBtn')?.addEventListener('click', openIngest);
     qs('#ingestFileBtn')?.addEventListener('click', () => qs('#kernelFileInput')?.click());
-    qs('#ingestCloseBtn')?.addEventListener('click', closeIngest);
-    qs('#ingestCancelBtn')?.addEventListener('click', closeIngest);
-    ingestOverlay?.addEventListener('click', (e) => { if (e.target === ingestOverlay) closeIngest(); });
+    qs('#ingestSample1Btn')?.addEventListener('click', () => loadIngestSample('ascSample1', 'roll_custom'));
+    qs('#ingestSample2Btn')?.addEventListener('click', () => loadIngestSample('ascSample2', 'gelu_eltwise'));
+    qs('#ingestCloseBtn')?.addEventListener('click', cancelIngest);
+    qs('#ingestCancelBtn')?.addEventListener('click', cancelIngest);
+    qs('#ingestCancelBtn2')?.addEventListener('click', cancelIngest);
+    qs('#ingestBackBtn')?.addEventListener('click', () => setIngestStep(1));
+    ingestOverlay?.addEventListener('click', (e) => { if (e.target === ingestOverlay) cancelIngest(); });
+
+    // 第一步「识别并载入」→ 跑规则集分析，进入第二步预览（暂不入库）
     qs('#ingestRunBtn')?.addEventListener('click', () => {
       const err = qs('#ingestError');
       const source = qs('#ingestTextInput').value;
       const aiOn = !!qs('#ingestAiToggle')?.checked;
-      const keyInput = qs('#ingestAiKey');
-      const apiKey = aiOn ? (keyInput?.value || '').trim() : '';
+      const apiKey = aiOn ? (qs('#ingestAiKey')?.value || '').trim() : '';
       if (aiOn && !apiKey) {
         err.textContent = '已开启「融合 AI 分析」，请填写 DeepSeek API Key（或关闭开关）。';
         err.style.display = 'block';
@@ -4963,21 +5525,185 @@
       }
       let kernel;
       try {
-        // ① 规则集分析先跑（确定层），用户立刻看到结果
-        kernel = ingestKernelSource(source);
+        kernel = buildKernelFromSource(source);
       } catch (e) {
         err.textContent = '识别失败：' + (e?.message || e);
         err.style.display = 'block';
         return;
       }
-      // 用后即毁：把 key 取进局部变量，立刻清空输入框
-      if (keyInput) keyInput.value = '';
-      closeIngest();
-      // ② 可选 AI 增强（异步），完成后清除局部 key
-      if (aiOn && apiKey) {
-        enhanceKernelWithDeepSeek(kernel, source, apiKey);
-      }
+      err.style.display = 'none';
+      ingestPending = {
+        kernel, source, aiOn, apiKey,
+        aiState: { status: aiOn ? 'loading' : 'skipped' },
+        committed: false,
+      };
+      renderIngestPreview();
+      setIngestStep(2);
+      // 可选 AI 解析：异步拉取，结果就地呈现在预览第二部分
+      if (aiOn && apiKey) runDeepSeekPreview();
     });
+
+    // 第二步「确定并载入」→ 合并已就绪的 AI 结果，入库并显示在下方页面
+    qs('#ingestConfirmBtn')?.addEventListener('click', () => {
+      if (!ingestPending) return;
+      const pending = ingestPending;
+      const { kernel, aiState } = pending;
+      if (aiState && aiState.status === 'done' && aiState.parsed) {
+        mergeAiResultsIntoKernel(kernel, aiState.parsed);
+      }
+      pending.committed = true;
+      commitKernel(kernel);
+      // 用后即毁：清空 key
+      const keyInput = qs('#ingestAiKey');
+      if (keyInput) keyInput.value = '';
+      pending.apiKey = null;
+      closeIngest();
+      // AI 仍在途：完成后并入已载入核并刷新（见 runDeepSeekPreview）
+      if (!aiState || aiState.status !== 'loading') ingestPending = null;
+    });
+
+    // ── 第二步预览渲染 ─────────────────────────────────────────────────────
+    const SEV_TEXT = { high: '必改', medium: '需调整', info: '优化机会' };
+
+    function renderIngestPreview() {
+      const body = qs('#ingestPreviewBody');
+      if (!body || !ingestPending) return;
+      const k = ingestPending.kernel;
+      body.innerHTML = ruleSectionHtml(k)
+        + (ingestPending.aiOn
+          ? '<div id="ingestAiSection" class="ingest-preview-sec"></div>'
+          : aiDisabledSectionHtml());
+      if (ingestPending.aiOn) renderAiPreviewSection();
+    }
+
+    function ruleLineHtml(a) {
+      const findings = (a.findings || []).map((f) => `
+        <div class="ingest-pv-finding">
+          <span class="sev-pill is-${f.severity}">${SEV_TEXT[f.severity] || f.severity}</span>
+          <p>${escapeHtml(f.verdict910 || '')} → ${escapeHtml(f.verdict950 || '')}</p>
+        </div>`).join('');
+      return `
+        <div class="ingest-pv-line">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="ingest-pv-lineno">L${a.line}</span>
+            ${a.path ? `<span class="wb-chip" style="min-height:20px;">${escapeHtml(a.path)}</span>` : ''}
+            ${a.tag ? `<span class="mode-tag is-${a.kind}">${escapeHtml(a.tag)}</span>` : ''}
+          </div>
+          <div class="ingest-pv-code">${escapeHtml(a.code)}</div>
+          ${findings}
+          ${a.explanation ? `<p style="margin:0;color:var(--foreground-secondary);font:var(--text-body-sm);line-height:1.5;">${escapeHtml(a.explanation)}</p>` : ''}
+        </div>`;
+    }
+
+    function ruleSectionHtml(k) {
+      const tally = (k._meta && k._meta.severityTally) || {};
+      const keys = k.annotations.filter((a) => !a.tagOnly);
+      const chips = ['high', 'medium', 'info']
+        .filter((s) => tally[s])
+        .map((s) => `<span class="sev-pill is-${s}">${SEV_TEXT[s]} ${tally[s]}</span>`)
+        .join('');
+      const lines = keys.length
+        ? keys.map(ruleLineHtml).join('')
+        : '<div class="ingest-pv-empty">未命中关键迁移点，可平滑迁移。</div>';
+      return `
+        <div class="ingest-preview-sec">
+          <div class="ingest-preview-head">
+            <span class="sev-pill" style="background:color-mix(in srgb,var(--primary) 16%,transparent);color:var(--primary-hover);">规则集</span>
+            <h4>规则集解析结果</h4>
+            <span style="margin-left:auto;color:var(--foreground-muted);font:var(--text-label);">${escapeHtml(k.verdict)} · ${keys.length} 个关键行</span>
+          </div>
+          ${chips ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">${chips}</div>` : ''}
+          <div class="ingest-preview-card">${lines}</div>
+        </div>`;
+    }
+
+    function aiDisabledSectionHtml() {
+      return `
+        <div class="ingest-preview-sec">
+          <div class="ingest-preview-head">
+            <span class="sev-pill" style="background:color-mix(in srgb,var(--primary) 16%,transparent);color:var(--primary-hover);">AI</span>
+            <h4>AI 解析（DeepSeek）</h4>
+          </div>
+          <div class="ingest-pv-empty">未开启「融合 AI 分析」。如需 AI 对规则未覆盖处的补充与改写建议，请返回上一步勾选并填写 Key。</div>
+        </div>`;
+    }
+
+    function renderAiPreviewSection() {
+      const el = qs('#ingestAiSection');
+      if (!el || !ingestPending) return;
+      const st = ingestPending.aiState || {};
+      let inner;
+      if (st.status === 'loading') {
+        inner = '<div class="ingest-pv-empty">正在调用 DeepSeek 补全规则未覆盖的分析…</div>';
+      } else if (st.status === 'error') {
+        inner = `<div class="ingest-pv-empty" style="color:var(--danger);">调用失败：${escapeHtml(st.error || '')}。可能是 Key 无效、额度不足或浏览器 CORS 限制。规则集结果不受影响，可直接确定载入。</div>`;
+      } else if (st.status === 'done') {
+        const p = st.parsed || {};
+        const summary = p.summary
+          ? `<div class="ingest-preview-card"><strong style="color:var(--foreground);font:var(--text-body-sm);">整核迁移摘要</strong><p style="margin:0;color:var(--foreground-secondary);font:var(--text-body-sm);line-height:1.55;white-space:pre-wrap;">${escapeHtml(p.summary)}</p></div>`
+          : '';
+        const items = (p.lines || []).map((it) => `
+          <div class="ingest-pv-line">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="ingest-pv-lineno">L${escapeHtml(String(it.line))}</span>
+              <strong style="color:var(--foreground);font:var(--text-body-sm);">${escapeHtml(it.title || 'AI 补充')}</strong>
+            </div>
+            <p style="margin:0;color:var(--foreground-secondary);font:var(--text-body-sm);line-height:1.55;white-space:pre-wrap;">${escapeHtml(it.text || '')}</p>
+          </div>`).join('');
+        const itemsCard = items ? `<div class="ingest-preview-card">${items}</div>` : '';
+        inner = (summary + itemsCard) || '<div class="ingest-pv-empty">AI 未返回补充条目。</div>';
+      } else {
+        inner = '<div class="ingest-pv-empty">准备中…</div>';
+      }
+      el.innerHTML = `
+        <div class="ingest-preview-head">
+          <span class="sev-pill" style="background:color-mix(in srgb,var(--primary) 16%,transparent);color:var(--primary-hover);">AI</span>
+          <h4>AI 解析（DeepSeek）</h4>
+        </div>
+        ${inner}`;
+    }
+
+    // AI 解析：拉取后就地呈现于预览；若用户已点「确定」则并入已载入核并刷新页面
+    async function runDeepSeekPreview() {
+      const pending = ingestPending;
+      if (!pending || !pending.aiOn) return;
+      pending.aiState = { status: 'loading' };
+      if (ingestPending === pending) renderAiPreviewSection();
+      let parsed = null;
+      let error = null;
+      try {
+        const resp = await deepseekChat({
+          model: 'deepseek-chat',
+          messages: buildDeepSeekMessages(pending.kernel, pending.source),
+          temperature: 0.2,
+          response_format: { type: 'json_object' }
+        }, pending.apiKey);
+        const data = await resp.json();
+        const content = data?.choices?.[0]?.message?.content || '';
+        try { parsed = JSON.parse(content); }
+        catch { throw new Error('模型返回非 JSON，无法解析'); }
+      } catch (e) {
+        error = e?.message || String(e);
+      }
+      pending.apiKey = null; // 用后即毁
+      // 用户已重跑（pending 被替换）且本次未确认 → 丢弃本次结果
+      if (ingestPending !== pending && !pending.committed) return;
+      pending.aiState = error ? { status: 'error', error } : { status: 'done', parsed };
+      if (pending.committed) {
+        // 已载入：并入已显示的核并刷新下方代码
+        if (parsed) {
+          mergeAiResultsIntoKernel(pending.kernel, parsed);
+          if (currentKernel().id === pending.kernel.id) renderSource();
+          const n = parsed.lines ? parsed.lines.length : 0;
+          aiToast(`已融合 DeepSeek 分析：新增 ${n} 条 AI 补充，已标注在对应行（卡片中「AI 智能推荐」）。`, 'ok');
+        } else {
+          aiToast('调用失败：' + error + '。可能是 Key 无效、额度不足或浏览器 CORS 限制（纯前端直连）。', 'error');
+        }
+        if (ingestPending === pending) ingestPending = null;
+        return;
+      }
+      if (ingestPending === pending) renderAiPreviewSection();
+    }
 
     // ── 融合 AI 分析：DeepSeek 补全规则未覆盖的部分 ────────────────────────
     function aiToast(text, kind) {
@@ -5056,32 +5782,6 @@
         }
       }
       throw lastErr;
-    }
-
-    async function enhanceKernelWithDeepSeek(kernel, source, apiKey) {
-      aiToast('正在调用 DeepSeek 补全规则未覆盖的分析…');
-      try {
-        const resp = await deepseekChat({
-          model: 'deepseek-chat',
-          messages: buildDeepSeekMessages(kernel, source),
-          temperature: 0.2,
-          response_format: { type: 'json_object' }
-        }, apiKey);
-        // 用后即毁：请求已发出，立刻抹掉局部 key 引用
-        apiKey = null;
-        const data = await resp.json();
-        const content = data?.choices?.[0]?.message?.content || '';
-        let parsed;
-        try { parsed = JSON.parse(content); }
-        catch { throw new Error('模型返回非 JSON，无法解析'); }
-        mergeAiResultsIntoKernel(kernel, parsed);
-        if (currentKernel().id === kernel.id) renderSource();
-        const n = parsed.lines ? parsed.lines.length : 0;
-        aiToast(`已融合 DeepSeek 分析：新增 ${n} 条 AI 补充，已标注在对应行（卡片中「AI 智能推荐」）。`, 'ok');
-      } catch (e) {
-        apiKey = null;
-        aiToast('调用失败：' + (e?.message || e) + '。可能是 Key 无效、额度不足或浏览器 CORS 限制（纯前端直连）。', 'error');
-      }
     }
 
     function mergeAiResultsIntoKernel(kernel, parsed) {
