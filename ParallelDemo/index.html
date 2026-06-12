@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>并行训练可视化 Demo</title>
+<style>
+  /* ── PTO Design System Tokens (inlined) ── */
+  :root {
+    /* foundation */
+    --font-sans: 'Inter', 'Source Han Sans SC', 'PingFang SC', 'Noto Sans SC', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --font-size-label-xs: 11px;
+    --font-size-body-sm:  12px;
+    --font-size-body-md:  14px;
+    --font-weight-medium:   500;
+    --font-weight-semibold: 600;
+    --letter-spacing-label: 0.5px;
+    --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+    --space-4: 16px; --space-5: 20px; --space-6: 24px;
+    --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px;
+    --radius-xl: 16px; --radius-pill: 999px;
+    --shadow-md: 0 6px 18px rgba(0,0,0,.34);
+    --duration-base: 200ms;
+    /* semantic (dark) */
+    --background:          #101010;
+    --background-elevated: #141414;
+    --surface-1: #161616;
+    --surface-2: #1c1c1c;
+    --surface-3: #262626;
+    --surface-4: #313131;
+    --foreground:           rgba(255,255,255,.90);
+    --foreground-secondary: rgba(255,255,255,.60);
+    --foreground-muted:     rgba(255,255,255,.40);
+    --border-subtle:  rgba(255,255,255,.06);
+    --border-default: rgba(255,255,255,.10);
+    --border-strong:  rgba(255,255,255,.16);
+    --primary:       #4369EF;
+    --primary-hover: #5A92E6;
+    --success: #04D793;
+    --warning: #FFAA3B;
+    --danger:  #FF4B7B;
+    --accent:  #7C8DB8;
+    --tone-info-bg: rgba(67,105,239,.10);
+    --state-hover:  rgba(255,255,255,.06);
+
+    /* ── Data-viz local vars (encode domain meaning, not generic UI decoration) ── */
+    --dv-purple: #9b7bff;   /* CP / context-parallel / head layer / logits encoding */
+    --dv-yellow: #e8c95a;   /* embedding layer type — no PTO semantic equivalent */
+
+    /* ── Private-var aliases for JS-generated inline HTML ── */
+    --bg:     var(--background);
+    --panel:  var(--surface-2);
+    --panel2: var(--surface-1);
+    --border: var(--border-default);
+    --text:   var(--foreground);
+    --muted:  var(--foreground-secondary);
+    --card:   var(--surface-1);
+    --accent2: var(--dv-purple);
+    --green:  var(--success);
+    --orange: var(--warning);
+    --pink:   var(--danger);
+    --red:    var(--danger);
+    --yellow: var(--dv-yellow);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font-sans);background:var(--background);color:var(--foreground);height:100vh;overflow:hidden}
+
+  /* ── Header: transparent top chrome (no filled background) ── */
+  header{padding:var(--space-2) var(--space-4);border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;gap:var(--space-3)}
+  header h1{font-size:var(--font-size-body-md);margin:0;font-weight:var(--font-weight-semibold)}
+  header .sub{font-size:var(--font-size-body-sm);color:var(--foreground-muted)}
+
+  /* ── Layout ── */
+  .app{display:grid;grid-template-columns:380px 1fr 1.05fr;height:calc(100vh - 41px)}
+  .col{overflow-y:auto;padding:0 var(--space-4) var(--space-4);border-right:1px solid var(--border-subtle)}
+  .col:last-child{border-right:none}
+  .col h2{font-size:var(--font-size-label-xs);text-transform:uppercase;letter-spacing:var(--letter-spacing-label);color:var(--foreground-muted);margin:0;font-weight:var(--font-weight-medium);position:sticky;top:0;background:var(--background);z-index:2;padding:var(--space-4) 0 var(--space-3)}
+  .h2row{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--background);z-index:2;padding:var(--space-4) 0 var(--space-3);margin-bottom:0}
+  .h2row h2{padding:0;margin:0}
+
+  /* ── Reset button → ghost style ── */
+  .reset{font-size:var(--font-size-label-xs);padding:var(--space-1) var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-sm);background:transparent;color:var(--foreground-muted);cursor:pointer;transition:color var(--duration-base),border-color var(--duration-base)}
+  .reset:hover{color:var(--primary);border-color:var(--primary)}
+
+  /* ── Group / panel containers ── */
+  .group{background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:var(--space-3);margin-bottom:var(--space-3)}
+  .group .gh{font-size:var(--font-size-body-sm);font-weight:var(--font-weight-semibold);margin-bottom:var(--space-2)}
+  .row{display:flex;align-items:center;justify-content:space-between;margin:7px 0;font-size:var(--font-size-body-sm)}
+  .row label{display:flex;align-items:center;gap:var(--space-2);cursor:pointer}
+  input[type=checkbox]{width:15px;height:15px;accent-color:var(--primary)}
+
+  /* ── Inputs ── */
+  .deg{width:54px;background:var(--surface-1);border:1px solid var(--border-default);color:var(--foreground);border-radius:var(--radius-sm);padding:3px var(--space-2);font-size:var(--font-size-body-sm);text-align:center}
+  .deg:disabled{opacity:.35}
+  select{width:100%;background:var(--surface-1);border:1px solid var(--border-default);color:var(--foreground);border-radius:var(--radius-sm);padding:5px var(--space-2);font-size:var(--font-size-body-sm)}
+  #libSelect{width:auto;cursor:pointer;font-weight:var(--font-weight-semibold);padding:3px var(--space-3);border-color:var(--border-strong)}
+  input[type=range]{width:100%;accent-color:var(--primary)}
+  .slabel{display:flex;justify-content:space-between;font-size:var(--font-size-body-sm);color:var(--foreground-secondary);margin-top:var(--space-2)}
+  .slabel b{color:var(--foreground)}
+  .pill{font-size:var(--font-size-label-xs);color:var(--foreground-muted)}
+
+  /* ── World box / mid column ── */
+  .worldbox{padding:var(--space-3) var(--space-4);font-size:var(--font-size-body-sm);margin-bottom:var(--space-3);position:sticky;top:41px;z-index:1}
+  .col-mid{display:flex;flex-direction:column;overflow:hidden;padding:0}
+  .col-mid>.worldbox{position:static;margin:0 var(--space-4) var(--space-4);flex:1;overflow-y:auto;min-height:0}
+  .col-code{overflow-y:auto;padding:0 var(--space-4) var(--space-4);border-right:none}
+  .code-sticky-hdr{position:sticky;top:0;background:var(--background);z-index:5;padding:var(--space-4) 0 var(--space-1);margin-bottom:var(--space-1)}
+  .code-sticky-hdr h2{position:static!important;padding:0 0 var(--space-2);margin:0}
+  .worldbox b{font-size:20px;color:var(--primary)}
+
+  /* ── World diagram ── */
+  .wdiag{margin-top:var(--space-2)}
+  .wdiag-stages{display:flex;flex-direction:column}
+  .wdiag-stage-row{display:flex;gap:var(--space-2);align-items:stretch}
+  .wdiag-dp-row{display:flex;gap:var(--space-2);flex-wrap:wrap;flex:1;min-width:0}
+  .wdiag-dp{border:1px solid var(--success);border-radius:var(--radius-sm);padding:7px var(--space-3);flex:1;min-width:0;background:rgba(4,215,147,.04);display:flex;flex-direction:column}
+  .wdiag-dp-label{font-size:var(--font-size-label-xs);color:var(--success);font-weight:700;margin-bottom:5px;text-align:center;letter-spacing:.05em}
+  .wdiag-stage{margin:1px 0}
+  .wdiag-stage-label{font-size:var(--font-size-label-xs);color:var(--warning);font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:4px}
+  .wdiag-stage-icon{display:inline-block;width:16px;height:16px;flex-shrink:0;background-color:currentColor;-webkit-mask:url('LAYER.svg') no-repeat center/contain;mask:url('LAYER.svg') no-repeat center/contain}
+  /* DATA-VIZ: left border encodes CP group boundary */
+  .wdiag-cp{border-left:2px solid var(--dv-purple);padding-left:var(--space-2);margin:2px 0;flex:1;display:flex;flex-direction:column}
+  .wdiag-tp-row{display:flex;gap:5px;align-items:stretch;flex:1}
+  .wdiag-card{background:transparent;border:1px solid var(--border-default);border-radius:var(--radius-sm);padding:var(--space-2);font-size:var(--font-size-body-sm);font-weight:700;color:var(--primary);flex:1;display:flex;flex-direction:column;align-items:stretch;min-width:0;overflow:hidden;position:relative;transition:border-color var(--duration-base)}
+  .wdiag-g-hdr{font-size:var(--font-size-body-sm);font-weight:700;color:var(--primary);text-align:center;padding-bottom:3px;margin-bottom:3px;border-bottom:1px solid var(--border-subtle);line-height:1.3;flex-shrink:0}
+  .wdiag-card .wdiag-layer-box{font-size:var(--font-size-label-xs);padding:3px var(--space-2);line-height:1.4;margin:1px 0}
+  .wdiag-tp-arr{color:var(--primary);font-size:var(--font-size-body-sm);flex-shrink:0;opacity:.6;align-self:center}
+  .wdiag-pp-arr{text-align:center;color:var(--warning);font-size:var(--font-size-body-sm);margin:4px 0;opacity:.75}
+  .wdiag-dp-bar{text-align:center;color:var(--success);font-size:var(--font-size-label-xs);margin-top:var(--space-2);padding-top:5px;border-top:1px dashed rgba(4,215,147,.35);opacity:.85}
+  .wdiag-cp-label{font-size:var(--font-size-label-xs);color:var(--dv-purple);margin-bottom:3px}
+
+  /* ── Layer column ── */
+  .wdiag-layer-col{display:flex;flex-direction:column;gap:2px;justify-content:space-around;flex-shrink:0;width:74px;padding:2px 0}
+  .wdiag-layer-box{position:relative;z-index:1;background:rgba(0,0,0,.5);border:1px dashed var(--border-strong);border-radius:3px;padding:3px 7px;font-size:var(--font-size-label-xs);color:var(--foreground-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;transition:background var(--duration-base),border-color var(--duration-base),color var(--duration-base),box-shadow var(--duration-base)}
+  .wdiag-layer-box.af{background:rgba(4,215,147,.2)!important;border-color:rgba(4,215,147,.95)!important;color:var(--foreground)!important;box-shadow:0 0 5px rgba(4,215,147,.45)}
+  /* DATA-VIZ: layer type color encoding */
+  .wdiag-lb-emb{border-color:rgba(232,201,90,.6);color:rgba(232,201,90,.9)}
+  .wdiag-lb-attn{border-color:rgba(67,105,239,.55);color:rgba(67,105,239,.9)}
+  .wdiag-lb-mlp{border-color:rgba(4,215,147,.55);color:rgba(4,215,147,.9)}
+  .wdiag-lb-moe{border-color:rgba(255,75,123,.55);color:rgba(255,75,123,.9)}
+  .wdiag-lb-norm{border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.5)}
+  .wdiag-lb-head{border-color:rgba(155,123,255,.6);color:rgba(155,123,255,.9)}
+  .wdiag-card.af{border-color:rgba(4,215,147,.0)}
+  @keyframes ppArrow{0%{opacity:.25}100%{opacity:.85}}
+  .wdiag-pp-arr.af{animation:ppArrow .3s ease forwards;color:var(--success)!important;opacity:.85!important}
+  .wdiag-logits-arr{text-align:center;color:var(--dv-purple);font-size:18px;margin:2px 0;opacity:.18;transition:opacity .3s ease}
+  .wdiag-logits-arr.af{opacity:.9}
+  .wdiag-logits-card{border:1px solid rgba(155,123,255,.28);border-radius:7px;padding:var(--space-3) var(--space-4);text-align:center;font-size:var(--font-size-body-sm);font-weight:600;color:rgba(155,123,255,.45);background:rgba(155,123,255,.03);opacity:.45;transition:opacity .35s ease,box-shadow .35s ease,background .35s ease,border-color .35s ease,color .35s ease;margin-bottom:var(--space-2)}
+  .wdiag-logits-card.af{opacity:1;color:var(--dv-purple);background:rgba(155,123,255,.13);border-color:rgba(155,123,255,.78);box-shadow:0 0 14px rgba(155,123,255,.35)}
+
+  /* ── Batch split animation ── */
+  .wdiag-split-top{position:relative;margin-bottom:var(--space-3)}
+  .wdiag-batch-full{background:rgba(4,215,147,.1);border:1.5px solid rgba(4,215,147,.6);border-radius:var(--radius-sm);padding:5px var(--space-2);font-size:var(--font-size-label-xs);font-weight:700;color:var(--success);text-align:center;transition:opacity .25s ease}
+  .wdiag-batch-full.faded{opacity:0;pointer-events:none}
+  .wdiag-split-pieces{position:absolute;inset:0;display:flex;gap:5px}
+  .wdiag-split-piece{flex:1;min-width:0;background:rgba(4,215,147,.06);border:1px dashed rgba(4,215,147,.5);border-radius:var(--radius-sm);font-size:9px;color:var(--success);padding:3px 4px;display:flex;align-items:center;justify-content:center;text-align:center;transform-origin:center center;opacity:0;transform:scaleX(.1) scaleY(.6);transition:opacity .3s ease,transform .4s cubic-bezier(0.34,1.56,0.64,1)}
+  .wdiag-split-piece.vis{opacity:1;transform:scaleX(1) scaleY(1)}
+
+  /* ── Tabs (code file selector) ── */
+  .tabs{display:flex;gap:var(--space-1);flex-wrap:wrap;margin-bottom:var(--space-2)}
+  .tab{font-size:var(--font-size-label-xs);padding:var(--space-1) var(--space-3);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--surface-2);color:var(--foreground-muted);cursor:pointer;transition:color var(--duration-base),border-color var(--duration-base),background var(--duration-base)}
+  .tab.on{background:var(--surface-3);color:var(--primary);border-color:var(--primary)}
+  .src-meta{font-size:var(--font-size-label-xs);color:var(--foreground-muted);margin-bottom:var(--space-2)}
+  .src-meta a{color:var(--primary);text-decoration:none}
+
+  /* ── Code pane: editor surface ── */
+  pre{margin:0;font-family:var(--font-mono);font-size:11.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;overflow-x:hidden}
+  .ln-row{display:block}
+  .hl-flash{animation:flash 1s ease}
+  @keyframes flash{0%{background:rgba(67,105,239,.45)}100%{background:rgba(67,105,239,.13)}}
+  .kw{color:#c792ea}.fn{color:#82aaff}.str{color:#c3e88d}.cm{color:var(--foreground-muted);font-style:italic}.num{color:#f78c6c}
+  /* DATA-VIZ: standard IDE highlighted-line left bar */
+  .hl{background:rgba(67,105,239,.13);display:block;margin:0 -14px;padding:0 12px;border-left:2px solid var(--primary)}
+
+  /* ── Viz cards ── */
+  .replica{margin-bottom:var(--space-4)}
+  .replica-h{font-size:var(--font-size-body-sm);color:var(--success);margin-bottom:var(--space-2);font-weight:600}
+  .stage{border:1px dashed var(--border-default);border-radius:var(--radius-md);padding:var(--space-3) var(--space-2) var(--space-2);margin-bottom:var(--space-2);position:relative;background:rgba(255,255,255,.012)}
+  .stage-h{position:absolute;top:-9px;left:10px;background:var(--background);padding:0 var(--space-2);font-size:var(--font-size-label-xs);color:var(--warning)}
+  .cprow{margin-top:var(--space-1)}
+  .cprow-h{font-size:10px;color:var(--dv-purple);margin:var(--space-1) 0 2px}
+  .stage-cards{display:flex;gap:var(--space-2);flex-wrap:wrap}
+  .gpu-outer{flex:1;min-width:158px;display:flex;flex-direction:column;gap:var(--space-1)}
+  .gpu{background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:var(--space-2)}
+  .gpu-outer .mem{font-size:10px}
+  .wdiag-card-outer{display:flex;flex-direction:column;align-items:stretch;flex:1;min-width:0}
+  .wdiag-g-label{font-size:var(--font-size-label-xs);font-weight:700;color:var(--primary);text-align:center;margin-bottom:3px;line-height:1.3}
+  .wdiag-mem{font-size:10px;color:var(--foreground-secondary);margin-top:5px;padding:0 1px;cursor:help;border-bottom:1px dashed var(--border-strong)}
+  .wdiag-mem .membar{height:4px;margin-top:3px}
+  .gpu-h{display:flex;justify-content:space-between;align-items:center;font-weight:600;margin-bottom:2px;font-size:var(--font-size-body-sm)}
+  .gpu-h .tag{font-size:10px;color:var(--foreground-muted);font-weight:400}
+  .grpline{font-size:9.5px;color:var(--foreground-muted);margin-bottom:5px;line-height:1.4}
+  /* DATA-VIZ: left border encodes layer type (emb/attn/mlp/moe/norm/head) */
+  .layer{background:var(--surface-2);border-radius:var(--radius-sm);padding:5px 7px;margin:var(--space-1) 0;border-left:3px solid var(--primary)}
+  .layer .ln{font-weight:600;font-size:11.5px}
+  .layer .op{font-size:10.5px;color:var(--foreground-muted);margin-top:2px}
+  /* DATA-VIZ: shard badges encode shard type */
+  .shard{display:inline-block;font-size:9.5px;padding:1px 5px;border-radius:var(--radius-sm);margin-left:var(--space-1);background:rgba(67,105,239,.18);color:var(--primary)}
+  .shard.row{background:rgba(4,215,147,.18);color:var(--success)}
+  .shard.rep{background:rgba(255,255,255,.08);color:var(--foreground-secondary)}
+  .shard.exp{background:rgba(255,75,123,.18);color:var(--danger)}
+  .shard.cp{background:rgba(155,123,255,.18);color:var(--dv-purple)}
+  /* DATA-VIZ: layer type left border colors */
+  .L-emb{border-left-color:var(--dv-yellow)} .L-attn{border-left-color:var(--primary)}
+  .L-mlp{border-left-color:var(--success)}   .L-moe{border-left-color:var(--danger)}
+  .L-norm{border-left-color:var(--foreground-muted)} .L-head{border-left-color:var(--dv-purple)}
+  .mem{margin-top:var(--space-2);font-size:10px}
+  .membar{height:5px;border-radius:3px;background:var(--surface-3);overflow:hidden;margin-top:2px}
+  .membar i{display:block;height:100%;background:var(--success)}
+  .membar i.warn{background:var(--warning)} .membar i.over{background:var(--danger)}
+  .mem-wrap{cursor:help;border-bottom:1px dashed var(--border-strong);display:inline-block;width:100%}
+  .commtag{font-size:10px;color:var(--warning);margin-top:5px}
+  .note{font-size:var(--font-size-label-xs);color:var(--foreground-muted);margin-top:var(--space-2);line-height:1.55}
+  .arrow{text-align:center;color:var(--warning);font-size:var(--font-size-body-sm);margin:1px 0 5px}
+
+  /* ── Para hints: active state uses tinted bg, not left border ── */
+  .para-hint{font-size:var(--font-size-label-xs);color:rgba(255,255,255,.28);line-height:1.5;margin:-3px 0 7px;padding:3px var(--space-2) 3px var(--space-3);background:transparent;border-radius:var(--radius-sm)}
+  .para-hint.on{background:rgba(67,105,239,.05);color:rgba(255,255,255,.38)}
+  .para-hint b{color:rgba(255,255,255,.55);font-weight:600}
+
+  /* ── Conclusion box → inspector-soft-card style ── */
+  .conclusion-box{margin-top:var(--space-3);padding:var(--space-3);border-radius:var(--radius-md);background:var(--surface-3);border:1px solid var(--border-default);font-size:11.5px;line-height:1.65;color:var(--foreground-secondary)}
+  .conclusion-box .ctag{display:inline-block;font-size:var(--font-size-label-xs);padding:1px 7px;border-radius:var(--radius-pill);background:var(--surface-4);color:var(--foreground-muted);font-weight:700;margin:0 var(--space-1) var(--space-1) 0;vertical-align:2px;letter-spacing:.02em}
+  .conclusion-box .ctag.green{background:rgba(4,215,147,.14);color:var(--success)}
+  .conclusion-box .ctag.orange{background:rgba(255,170,59,.14);color:var(--warning)}
+  .conclusion-box .ctag.blue{background:rgba(67,105,239,.14);color:var(--primary)}
+  .conclusion-box b{color:var(--foreground);font-weight:600}
+  .conclusion-box .chead{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--foreground-muted);font-weight:700;margin-bottom:5px;opacity:.8}
+
+  /* ── Training card grid picker ── */
+  .card-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-2);margin-top:var(--space-1)}
+  .card-tile{background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px var(--space-2);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;transition:border-color var(--duration-base),background var(--duration-base);text-align:center;user-select:none}
+  .card-tile:hover{border-color:var(--border-strong);background:var(--state-hover)}
+  .card-tile.selected{border-color:var(--primary);background:var(--tone-info-bg)}
+  .card-tile-icon{display:block;opacity:.55}
+  .card-tile.selected .card-tile-icon{opacity:1}
+  .card-tile-brand{font-size:10px;color:var(--foreground-muted);line-height:1}
+  .card-tile-model{font-size:var(--font-size-body-sm);font-weight:var(--font-weight-semibold);color:var(--foreground);line-height:1.2}
+  .card-tile.selected .card-tile-model{color:var(--primary)}
+  .card-tile-mem{font-size:10px;color:var(--foreground-muted);background:var(--surface-3);border-radius:var(--radius-sm);padding:1px 5px;line-height:1.4}
+  .card-tile.selected .card-tile-mem{color:var(--primary);background:rgba(67,105,239,.15)}
+
+  /* ── Scrollbars: hover-reveal, no layout shift ── */
+  .col, .col-code, .col-mid>.worldbox {
+    scrollbar-gutter: stable;          /* reserves track width so content never shifts */
+    scrollbar-width: thin;             /* Firefox: narrow bar */
+    scrollbar-color: transparent transparent;
+  }
+  .col:hover, .col-code:hover, .col-mid>.worldbox:hover {
+    scrollbar-color: rgba(255,255,255,.18) transparent;
+  }
+  .col::-webkit-scrollbar,
+  .col-code::-webkit-scrollbar,
+  .col-mid>.worldbox::-webkit-scrollbar { width: 5px }
+  .col::-webkit-scrollbar-track,
+  .col-code::-webkit-scrollbar-track,
+  .col-mid>.worldbox::-webkit-scrollbar-track { background: transparent }
+  .col::-webkit-scrollbar-thumb,
+  .col-code::-webkit-scrollbar-thumb,
+  .col-mid>.worldbox::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 3px;
+  }
+  .col:hover::-webkit-scrollbar-thumb,
+  .col-code:hover::-webkit-scrollbar-thumb,
+  .col-mid>.worldbox:hover::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,.18);
+  }
+  .col:hover::-webkit-scrollbar-thumb:hover,
+  .col-code:hover::-webkit-scrollbar-thumb:hover,
+  .col-mid>.worldbox:hover::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,.32);
+  }
+
+  /* ── Collapsible code panel ── */
+  .app{transition:grid-template-columns var(--duration-base) ease}
+  .app.code-collapsed{grid-template-columns:380px 1fr 36px}
+  .app.code-collapsed .col-code{overflow:hidden;padding:0 var(--space-2)}
+  .app.code-collapsed #codeStickyHdr,
+  .app.code-collapsed #code{display:none}
+  .code-collapsed-strip{display:none;flex-direction:column;align-items:center;padding-top:var(--space-3);gap:var(--space-3)}
+  .app.code-collapsed .code-collapsed-strip{display:flex}
+  .code-collapsed-label{writing-mode:vertical-rl;transform:rotate(180deg);font-size:var(--font-size-label-xs);color:var(--foreground-muted);letter-spacing:var(--letter-spacing-label);text-transform:uppercase;font-weight:var(--font-weight-medium);white-space:nowrap;margin-top:var(--space-1)}
+
+  /* ── Layer tooltip ── */
+  #wdiagTip{position:fixed;z-index:9999;background:var(--surface-2);border:1px solid rgba(67,105,239,.35);border-radius:var(--radius-md);padding:var(--space-3);width:272px;font-size:11.5px;line-height:1.55;color:var(--foreground);box-shadow:var(--shadow-md);opacity:0;transform:translateY(5px);transition:opacity .13s ease,transform .13s ease;pointer-events:none}
+  #wdiagTip.vis{opacity:1;transform:translateY(0)}
+  .tip-title{font-size:var(--font-size-body-sm);font-weight:700;color:var(--primary);margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid var(--border-subtle)}
+  .tip-desc{color:var(--foreground-secondary);margin-bottom:7px;font-size:var(--font-size-label-xs);line-height:1.65}
+  .tip-ops-hdr{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--foreground-muted);margin-bottom:3px;font-weight:700}
+  .tip-op{font-size:var(--font-size-label-xs);padding:1px 0;color:var(--foreground-muted);display:flex;align-items:baseline;gap:var(--space-1);flex-wrap:wrap}
+
+  /* ── Operator DAG (layer tooltip hover) ── */
+  #wdiagTip{width:auto;min-width:272px;max-width:305px}
+  .dag-flow{display:flex;flex-direction:column;align-items:center;gap:0;margin-top:10px;padding-top:9px;border-top:1px solid var(--border-subtle);width:100%}
+  .dag-hdr{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--foreground-muted);font-weight:700;margin-bottom:5px;align-self:flex-start}
+  .dag-shape{font-size:9px;font-family:var(--font-mono);color:var(--foreground-muted);line-height:1.2;text-align:center;padding:1px 0;opacity:.6}
+  .dag-arr{color:var(--foreground-muted);font-size:11px;line-height:1;text-align:center;margin:2px 0}
+  .dag-erow{display:flex;align-items:center;gap:5px;width:100%}
+  .dag-n{font-size:10px;padding:3px 7px;border-radius:4px;line-height:1.4}
+  .dag-n-op{background:rgba(67,105,239,.14);border:1px solid rgba(67,105,239,.38);color:#8aabf7;flex:1;text-align:center}
+  .dag-n-w{background:rgba(255,170,59,.08);border:1px solid rgba(255,170,59,.32);color:var(--warning);font-size:9px;font-family:var(--font-mono);flex-shrink:0}
+  .dag-n-comm{background:rgba(4,215,147,.1);border:1px solid rgba(4,215,147,.35);color:var(--success);text-align:center;width:100%}
+  .dag-n-act{background:rgba(155,123,255,.1);border:1px solid rgba(155,123,255,.35);color:var(--dv-purple);text-align:center;width:100%}
+  .dag-conn{color:var(--foreground-muted);font-size:11px;flex-shrink:0;opacity:.5}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧩 并行训练可视化 Demo</h1>
+  <select id="libSelect">
+    <option value="picotron">picotron</option>
+    <option value="torchtitan">torchtitan</option>
+  </select>
+  <span class="sub" id="headerSub">基于 huggingface/picotron 真实逻辑　·　左:配置　中:训练拓扑及计算流动可视化　右:真实源码(随配置高亮)</span>
+</header>
+<div class="app">
+  <!-- ============ LEFT: CONTROLLER ============ -->
+  <div class="col" id="ctrl">
+    <div class="h2row"><h2>控制器</h2><button class="reset" id="resetBtn">↺ 复原</button></div>
+    <div class="group">
+      <div class="gh">并行模式 <span class="pill">(picotron 网格 dp×pp×cp×tp)</span></div>
+      <div class="row"><label><input type="checkbox" id="enDP" data-tab="launch" checked> 数据并行 DP</label><input class="deg" type="number" id="dp" data-tab="launch" min="1" max="8" value="1"></div>
+      <input type="range" class="par-slider" id="dpSlider" min="1" max="8" value="1">
+      <div class="para-hint" id="hintDP"></div>
+      <div class="row"><label><input type="checkbox" id="enPP" data-tab="launch" checked> 流水线并行 PP</label><input class="deg" type="number" id="pp" data-tab="launch" min="1" max="8" value="2"></div>
+      <input type="range" class="par-slider" id="ppSlider" min="1" max="8" value="2">
+      <div class="para-hint" id="hintPP"></div>
+      <div class="row"><label><input type="checkbox" id="enCP" data-tab="launch"> 上下文并行 CP</label><input class="deg" type="number" id="cp" data-tab="launch" min="1" max="8" value="2" disabled></div>
+      <input type="range" class="par-slider" id="cpSlider" min="1" max="8" value="2" disabled>
+      <div class="para-hint" id="hintCP"></div>
+      <div class="row"><label><input type="checkbox" id="enTP" data-tab="launch" checked> 张量并行 TP</label><input class="deg" type="number" id="tp" data-tab="launch" min="1" max="8" value="2"></div>
+      <input type="range" class="par-slider" id="tpSlider" min="1" max="8" value="2">
+      <div class="para-hint" id="hintTP"></div>
+      <div class="row"><label><input type="checkbox" id="enMoE" data-tab="launch"> MoE / 专家并行 EP</label><input class="deg" type="number" id="ep" data-tab="launch" min="1" max="8" value="2" disabled></div>
+      <input type="range" class="par-slider" id="epSlider" min="1" max="8" value="2" disabled>
+      <div class="para-hint" id="hintEP"></div>
+      <div class="conclusion-box" id="parallelConclusion"></div>
+    </div>
+
+    <div class="group">
+      <div class="gh">模型结构</div>
+      <div class="slabel"><span>Transformer 层数</span><b id="vBlocks">4</b></div>
+      <input type="range" id="blocks" data-tab="launch" min="1" max="12" value="4">
+      <div class="para-hint" id="hintBlocks"></div>
+      <div class="slabel"><span>hidden size</span><b id="vHidden">4096</b></div>
+      <input type="range" id="hidden" min="1024" max="8192" step="512" value="4096">
+      <div class="para-hint" id="hintHidden"></div>
+      <div class="slabel" id="expRow" style="display:none"><span>专家数 (每 MoE 层)</span><b id="vExperts">8</b></div>
+      <input type="range" id="experts" min="2" max="16" step="2" value="8" style="display:none">
+      <div class="para-hint" id="hintExperts"></div>
+    </div>
+
+    <div class="group">
+      <div class="gh">训练卡</div>
+      <div class="card-grid" id="cardGrid">
+        <div class="card-tile selected" data-gb="80" data-name="NVIDIA H100 80GB">
+          <img src="NPU-32.svg" width="32" height="32" alt="" class="card-tile-icon">
+          <span class="card-tile-brand">NVIDIA</span>
+          <span class="card-tile-model">H100</span>
+          <span class="card-tile-mem">80 GB</span>
+        </div>
+        <div class="card-tile" data-gb="80" data-name="NVIDIA A100 80GB">
+          <img src="NPU-32.svg" width="32" height="32" alt="" class="card-tile-icon">
+          <span class="card-tile-brand">NVIDIA</span>
+          <span class="card-tile-model">A100</span>
+          <span class="card-tile-mem">80 GB</span>
+        </div>
+        <div class="card-tile" data-gb="40" data-name="NVIDIA A100 40GB">
+          <img src="NPU-32.svg" width="32" height="32" alt="" class="card-tile-icon">
+          <span class="card-tile-brand">NVIDIA</span>
+          <span class="card-tile-model">A100</span>
+          <span class="card-tile-mem">40 GB</span>
+        </div>
+        <div class="card-tile" data-gb="64" data-name="Ascend 910B 64GB">
+          <img src="NPU-32.svg" width="32" height="32" alt="" class="card-tile-icon">
+          <span class="card-tile-brand">Ascend</span>
+          <span class="card-tile-model">910B</span>
+          <span class="card-tile-mem">64 GB</span>
+        </div>
+        <div class="card-tile" data-gb="192" data-name="AMD MI300X 192GB">
+          <img src="NPU-32.svg" width="32" height="32" alt="" class="card-tile-icon">
+          <span class="card-tile-brand">AMD</span>
+          <span class="card-tile-model">MI300X</span>
+          <span class="card-tile-mem">192 GB</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="gh">超参数</div>
+      <div class="slabel"><span>Batch Size (global)</span><b id="vBatch">32</b></div>
+      <input type="range" id="batch" data-tab="launch" min="1" max="512" step="1" value="32">
+      <div class="slabel"><span>Steps</span><b id="vSteps">1000</b></div>
+      <input type="range" id="steps" data-tab="launch" min="100" max="10000" step="100" value="1000">
+      <div class="slabel"><span>学习率 (log)</span><b id="vLr">3.0e-4</b></div>
+      <input type="range" id="lr" data-tab="launch" min="0" max="100" value="62">
+    </div>
+  </div>
+
+  <!-- ============ MIDDLE: VISUALIZATION ============ -->
+  <div class="col col-mid">
+    <h2 style="margin:0 14px;padding:14px 0 6px;position:static;flex-shrink:0">训练拓扑及计算流动可视化</h2>
+    <div class="worldbox">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span>总卡数 World Size = <b id="world">4</b></span>
+        <span class="pill" id="worldFormula"></span>
+      </div>
+      <div id="worldDiagram"></div>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT: CODE ============ -->
+  <div class="col col-code" id="codePanel">
+    <div class="code-sticky-hdr" id="codeStickyHdr">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2)">
+        <h2 style="position:static;padding:0;margin:0" id="codePanelTitle">真实源码（picotron · 随配置高亮）</h2>
+        <button class="reset" id="codeCollapseBtn" title="折叠源码面板">▶ 收起</button>
+      </div>
+      <div class="tabs" id="tabs"></div>
+      <div class="src-meta" id="srcMeta"></div>
+    </div>
+    <pre id="code"></pre>
+    <div class="code-collapsed-strip" id="codeCollapsedStrip">
+      <button class="reset" id="codeExpandBtn" title="展开源码面板">◀</button>
+      <span class="code-collapsed-label">真实源码</span>
+    </div>
+  </div>
+</div>
+
+<div id="wdiagTip"></div>
+<script>
+const $ = id => document.getElementById(id);
+const state = {};
+let currentLib = 'picotron';
+
+// =================== STATE ===================
+function readState(){
+  state.enDP=$('enDP').checked; state.enPP=$('enPP').checked; state.enCP=$('enCP').checked;
+  state.enTP=$('enTP').checked; state.enMoE=$('enMoE').checked;
+  state.dp=state.enDP?+$('dp').value:1; state.pp=state.enPP?+$('pp').value:1;
+  state.cp=state.enCP?+$('cp').value:1; state.tp=state.enTP?+$('tp').value:1;
+  state.ep=state.enMoE?+$('ep').value:1;
+  state.blocks=+$('blocks').value; state.hidden=+$('hidden').value; state.experts=+$('experts').value;
+  const tile=document.querySelector('.card-tile.selected'); state.cardType=tile?tile.dataset.name:'NVIDIA H100 80GB'; state.cardGB=tile?+tile.dataset.gb:80;
+  state.batch=+$('batch').value; state.steps=+$('steps').value;
+  state.lr=Math.pow(10,-6+(+$('lr').value/100)*4);
+  state.world=state.dp*state.pp*state.cp*state.tp;
+}
+
+// =================== picotron 真实网格 ===================
+// grid = arange(world).view(dp, pp, cp, tp) -> rank = ((d*pp+p)*cp+c)*tp+t
+function cardShortName(){
+  // Extract model identifier: "NVIDIA H100 80GB" -> "H100", "Ascend 910B 64GB" -> "910B", "AMD MI300X 192GB" -> "MI300X"
+  const m=state.cardType.match(/H\d+X?|A\d+|910B|MI\d+X/i);
+  return m?m[0]:'GPU';
+}
+function rankOf(d,p,c,t){ return ((d*state.pp+p)*state.cp+c)*state.tp+t; }
+function tpGroup(d,p,c){ const a=[]; for(let t=0;t<state.tp;t++)a.push(rankOf(d,p,c,t)); return a; }
+function cpGroup(d,p,t){ const a=[]; for(let c=0;c<state.cp;c++)a.push(rankOf(d,p,c,t)); return a; }
+function ppGroup(d,c,t){ const a=[]; for(let p=0;p<state.pp;p++)a.push(rankOf(d,p,c,t)); return a; }
+function dpGroup(p,c,t){ const a=[]; for(let d=0;d<state.dp;d++)a.push(rankOf(d,p,c,t)); return a; }
+
+const TENSOR_ICON=`<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" style="display:inline-block;vertical-align:-3px;margin-right:2px;flex-shrink:0"><rect width="3" height="3" x="2" y="5" stroke="currentColor" stroke-width="1"/><rect width="3" height="3" x="5" y="5" stroke="currentColor" stroke-width="1"/><rect width="3" height="3" x="8" y="5" stroke="currentColor" stroke-width="1"/><rect width="3" height="3" x="11" y="5" stroke="currentColor" stroke-width="1"/><rect width="3" height="3" x="2" y="8" stroke="currentColor" stroke-width="1"/><rect width="3" height="3" x="5" y="8" stroke="currentColor" stroke-width="1"/><rect width="3" height="3" x="8" y="8" stroke="currentColor" stroke-width="1"/><rect width="3" height="3" x="11" y="8" stroke="currentColor" stroke-width="1"/></svg>`;
+
+function cardLayerHTML(p, t){
+  const layers=stageLayers(p), tp=state.tp;
+  return layers.map(l=>{
+    const m=l.name.match(/Block (\d+)/), bi=m?m[1]:'';
+    let label;
+    switch(l.kind){
+      case 'emb':  label=tp>1?`Emb (第${t+1}/${tp}片)`:'Embedding'; break;
+      case 'attn': label=tp>1?`Attn-${bi} (第${t+1}/${tp}片)`:`Attn-${bi}`; break;
+      case 'mlp':  label=tp>1?`MLP-${bi} (第${t+1}/${tp}片)`:`MLP-${bi}`; break;
+      case 'moe':  label=tp>1?`MoE-${bi} (第${t+1}/${tp}片)`:`MoE-${bi}`; break;
+      case 'norm': label='Norm'; break;
+      case 'head': label=tp>1?`Head (第${t+1}/${tp}片)`:'Head'; break;
+      default:     label=l.name;
+    }
+    return `<div class="wdiag-layer-box wdiag-lb-${l.kind}" data-kind="${l.kind}" data-bi="${bi}" data-p="${p}" data-t="${t}">${TENSOR_ICON}${label}</div>`;
+  }).join('');
+}
+
+function applyNpuBg(){
+  document.querySelectorAll('.wdiag-card').forEach(card=>{
+    const old=card.querySelector('.npu-bg');
+    if(old) old.remove();
+    const w=card.offsetWidth, h=card.offsetHeight;
+    if(!w||!h) return;
+    const div=document.createElement('div');
+    div.className='npu-bg';
+    if(h>w){
+      div.style.cssText=`position:absolute;z-index:0;pointer-events:none;opacity:0.2;background:url('npu.png') 0 0/100% 100% no-repeat;width:${h}px;height:${w}px;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg);`;
+    } else {
+      div.style.cssText=`position:absolute;inset:0;z-index:0;pointer-events:none;opacity:0.2;background:url('npu.png') 0 0/100% 100% no-repeat;`;
+    }
+    card.insertBefore(div, card.firstChild);
+  });
+}
+
+function renderWorldDiagram(){
+  const el=$('worldDiagram'); if(!el) return;
+  const {dp,pp,cp,tp}=state;
+  let h='<div class="wdiag" id="wdiagRoot" style="position:relative">';
+  {
+    const micro=Math.max(1,Math.round(state.batch/dp));
+    h+=`<div class="wdiag-split-top">`;
+    h+=`<div class="wdiag-batch-full">one step batch · ${state.batch} 训练样本</div>`;
+    if(dp>1){
+      h+=`<div class="wdiag-split-pieces">`;
+      for(let d=0;d<dp;d++){const s=d*micro,e=Math.min(state.batch,s+micro)-1;h+=`<div class="wdiag-split-piece" id="wSplitPiece${d}">shard ${d}<br>${s}~${e}</div>`;}
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  }
+  h+='<div class="wdiag-stages">';
+  for(let p=0;p<pp;p++){
+    if(p>0) h+=`<div class="wdiag-pp-arr" data-top="${p}">↓ PP</div>`;
+    h+=`<div class="wdiag-stage-row" data-p="${p}">`;
+    // dp replicas for this stage
+    h+='<div class="wdiag-dp-row">';
+    for(let d=0;d<dp;d++){
+      h+=`<div class="wdiag-dp${p===0?' wdiag-dp-top':''}" id="wDpBox${d}_${p}">`;
+      if(dp>1) h+=`<div class="wdiag-dp-label">DP ${d}</div>`;
+      if(pp>1) h+=`<div class="wdiag-stage-label"><span class="wdiag-stage-icon"></span>Stage ${p}</div>`;
+      for(let c=0;c<cp;c++){
+        if(cp>1) h+=`<div class="wdiag-cp"><div class="wdiag-cp-label">CP ${c}</div>`;
+        h+=`<div class="wdiag-tp-row">`;
+        for(let t=0;t<tp;t++){
+          if(t>0) h+=`<span class="wdiag-tp-arr">↔</span>`;
+          const _r=rankOf(d,p,c,t),_gb=cardMemGB(p,t),_pct=Math.min(100,_gb/state.cardGB*100),_mc=_pct>100?'over':_pct>80?'warn':'';
+          h+=`<div class="wdiag-card-outer"><div class="wdiag-g-label" title="rank ${_r}">${cardShortName()}_${_r}</div><div class="wdiag-card" data-d="${d}" data-p="${p}">${cardLayerHTML(p,t)}</div><div class="wdiag-mem mem-wrap" data-p="${p}" data-t="${t}">显存 ≈ <b>${_gb.toFixed(1)}</b> / ${state.cardGB} GB<div class="membar"><i class="${_mc}" style="width:${Math.min(100,_pct)}%"></i></div></div></div>`;
+        }
+        h+=`</div>`;
+        if(cp>1) h+=`</div>`;
+      }
+      h+=`</div>`;
+    }
+    h+=`</div>`; // dp-row
+    h+=`</div>`; // stage-row
+  }
+  h+=`</div>`; // wdiag-stages
+
+  h+=`<div id="wLogitsArrow" class="wdiag-logits-arr">↓</div>`;
+  h+=`<div id="wLogitsCard" class="wdiag-logits-card">生成 logits 原始得分，计算 loss</div>`;
+
+  h+=`<svg id="wSplitSvg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible"></svg>`;
+  h+=`</div>`;
+  el.innerHTML=h;
+  setTimeout(initSplitArrows,30);
+  setTimeout(applyNpuBg,30);
+  bindWdiagTooltips();
+}
+
+// picotron distribute_layers: 连续块均分，前面的 rank 多拿余数
+function distributeLayers(){
+  const pp=state.pp,N=state.blocks;
+  const per=[]; for(let i=0;i<pp;i++) per.push(Math.floor(N/pp)+(i<N%pp?1:0));
+  const ranges=[]; let start=0;
+  for(let i=0;i<pp;i++){ranges.push([start,start+per[i]]); start+=per[i];}
+  return ranges; // ranges[pp_rank] = [startLayer, endLayer)
+}
+function stageLayers(p){
+  const [s,e]=distributeLayers()[p]; const layers=[];
+  if(p===0) layers.push({kind:'emb',name:'Embedding'});
+  for(let i=s;i<e;i++){
+    layers.push({kind:'attn',name:`Block ${i} · Attention`});
+    layers.push({kind:state.enMoE?'moe':'mlp',name:`Block ${i} · ${state.enMoE?'MoE-FFN':'MLP'}`});
+  }
+  if(p===state.pp-1) layers.push({kind:'norm',name:'Final LayerNorm'},{kind:'head',name:'LM Head'});
+  return layers;
+}
+
+// 算子分片描述
+function opsForLayer(layer,t){
+  const tp=state.tp,ep=state.ep,cp=state.cp;
+  const colShard=tp>1?{shard:`第 ${t+1}/${tp} 片`,cls:''}:{shard:'整块',cls:'rep'};
+  switch(layer.kind){
+    case 'emb': return [{op:'word_embeddings (VocabParallel)',...colShard}];
+    case 'attn':{
+      const ops=[
+        {op:'QKV Linear (Column)',...(tp>1?{shard:`heads ${t+1}/${tp}`,cls:''}:{shard:'整块',cls:'rep'})},
+        {op:'Self-Attention',...(cp>1?{shard:'序列分片',cls:'cp'}:{shard:'整段',cls:'rep'})},
+        {op:'Out Linear (Row → all-reduce)',...(tp>1?{shard:`输入 ${t+1}/${tp} 片`,cls:'row'}:{shard:'整块',cls:'rep'})},
+      ]; return ops;
+    }
+    case 'mlp': return [
+      {op:'up_proj (Column)',...(tp>1?{shard:`ffn ${t+1}/${tp}`,cls:''}:{shard:'整块',cls:'rep'})},
+      {op:'act (SiLU)',shard:'逐元素',cls:'rep'},
+      {op:'down_proj (Row → all-reduce)',...(tp>1?{shard:`输入 ${t+1}/${tp} 片`,cls:'row'}:{shard:'整块',cls:'rep'})},
+    ];
+    case 'moe':{
+      const ops=[{op:'router / gate',shard:'复制',cls:'rep'}];
+      const E=state.experts;
+      if(ep>1){
+        const per=Math.ceil(E/tp), s=t*per, e=Math.min(E,s+per), ids=[];
+        for(let x=s;x<e;x++)ids.push(x);
+        ops.push({op:'Experts (本卡持有)',shard:`专家 ${ids.join(',')||'—'}`,cls:'exp'});
+        ops.push({op:'all-to-all dispatch/combine',shard:'token 路由',cls:'exp'});
+      }else ops.push({op:`Experts ×${E}`,shard:'全部复制',cls:'rep'});
+      return ops;
+    }
+    case 'norm': return [{op:'LayerNorm',shard:'复制',cls:'rep'}];
+    case 'head': return [{op:'lm_head (Column→Vocab)',...colShard}];
+  }
+  return [];
+}
+
+// 每卡显存估算（权重+Adam优化器态，混合精度约 16 B/param）
+function cardMemGB(p,t){
+  const H=state.hidden, V=32000, B=16; // bytes/param
+  let params=0;
+  for(const l of stageLayers(p)){
+    if(l.kind==='attn') params += 4*H*H/state.tp;
+    else if(l.kind==='mlp') params += 8*H*H/state.tp;
+    else if(l.kind==='moe'){
+      const per=state.ep>1?Math.ceil(state.experts/state.tp):state.experts;
+      params += per*8*H*H + H*state.experts; // experts + router
+    }
+    else if(l.kind==='emb'||l.kind==='head') params += V*H/state.tp;
+  }
+  return params*B/1e9;
+}
+
+// =================== MEM TOOLTIP CONTENT ===================
+function memTooltipHTML(p,t){
+  const H=state.hidden,V=32000,B=16,tp=state.tp;
+  const rows=[];let total=0;
+  for(const l of stageLayers(p)){
+    let cnt=0,formula='';
+    if(l.kind==='attn'){
+      cnt=4*H*H/tp;
+      formula=tp>1
+        ?`4 × H² ÷ TP<br><span style="opacity:.55">Q/K/V/O 权重矩阵，= 4 × ${H}² ÷ ${tp}</span>`
+        :`4 × H²<br><span style="opacity:.55">Q/K/V/O 各为 H×H 的权重矩阵</span>`;
+    } else if(l.kind==='mlp'){
+      cnt=8*H*H/tp;
+      formula=tp>1
+        ?`8 × H² ÷ TP<br><span style="opacity:.55">up/down 权重矩阵，= 8 × ${H}² ÷ ${tp}</span>`
+        :`8 × H²<br><span style="opacity:.55">up 权重矩阵(4H²) + down 权重矩阵(4H²)</span>`;
+    } else if(l.kind==='moe'){
+      const per=state.ep>1?Math.ceil(state.experts/tp):state.experts;
+      cnt=per*8*H*H+H*state.experts;
+      formula=`${per} 专家权重矩阵 × 8H²<br><span style="opacity:.55">+ router 权重矩阵 H×E</span>`;
+    } else if(l.kind==='emb'||l.kind==='head'){
+      cnt=V*H/tp;
+      formula=tp>1
+        ?`V × H ÷ TP<br><span style="opacity:.55">嵌入权重矩阵，= ${V} × ${H} ÷ ${tp}</span>`
+        :`V × H<br><span style="opacity:.55">词表×hidden 的嵌入权重矩阵，= ${V} × ${H}</span>`;
+    }
+    const tipName={
+      attn: l.name.replace(' · Attention',' · Attn QKV/O 权重矩阵'),
+      mlp:  l.name.replace(' · MLP',' · MLP up/down 权重矩阵'),
+      moe:  l.name.replace(' · MoE-FFN',' · MoE 专家权重矩阵'),
+      emb:  'Embedding 词向量权重矩阵',
+      head: 'LM Head 输出权重矩阵',
+    }[l.kind]||l.name;
+    if(cnt>0){total+=cnt;rows.push({name:tipName,formula,cnt});}
+  }
+  const gb=total*B/1e9;
+  const fmt=n=>n>=1e9?(n/1e9).toFixed(2)+'B':n>=1e6?(n/1e6).toFixed(1)+'M':Math.round(n/1e3)+'K';
+  const rowsHTML=rows.map(r=>
+    `<tr>`+
+    `<td style="padding:3px 10px 3px 0;color:var(--muted);white-space:nowrap;vertical-align:top">${r.name}</td>`+
+    `<td style="padding:3px 10px;font-size:10px;color:var(--accent2);line-height:1.4;vertical-align:top">${r.formula}</td>`+
+    `<td style="padding:3px 0;text-align:right;white-space:nowrap;vertical-align:top;font-variant-numeric:tabular-nums">${fmt(r.cnt)}</td>`+
+    `</tr>`
+  ).join('');
+  return `<div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-bottom:8px">静态显存明细（权重 + Adam 优化器态）</div>`+
+    `<table style="width:100%;border-collapse:collapse">`+
+    `<tr style="font-size:9px;color:var(--muted);opacity:.6">`+
+    `<td style="padding:0 10px 5px 0">层</td><td style="padding:0 10px 5px">参数公式</td><td style="padding:0 0 5px;text-align:right">参数量</td></tr>`+
+    rowsHTML+
+    `<tr><td colspan="3" style="padding:0;border-top:1px solid var(--border)"></td></tr>`+
+    `<tr><td colspan="2" style="padding:5px 10px 2px 0;font-weight:600;color:var(--text)">合计参数</td>`+
+    `<td style="padding:5px 0 2px;text-align:right;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums">${fmt(total)}</td></tr>`+
+    `</table>`+
+    `<div style="margin:8px 0 6px;background:rgba(67,105,239,.09);border:1px solid rgba(67,105,239,.22);border-radius:5px;padding:6px 9px;font-size:11.5px">`+
+    `${fmt(total)} × ${B} B ÷ 10⁹ = <b style="color:var(--primary);font-size:13px">${gb.toFixed(2)} GB</b></div>`+
+    `<div style="font-size:10px;color:var(--muted);line-height:1.55">`+
+    `<b style="color:var(--text)">B = 16 B/param</b>（混合精度 + Adam）：`+
+    `bf16权重 <b style="color:var(--text)">2</b> + fp32主权重 <b style="color:var(--text)">4</b>`+
+    ` + Adam m <b style="color:var(--text)">4</b> + Adam v <b style="color:var(--text)">4</b>`+
+    ` + 梯度 <b style="color:var(--text)">2</b> ≈ 16 B<br>`+
+    `不含激活值（激活与 batch / 序列长度相关）<br>`+
+    `<b style="color:var(--text)">V = 32,000</b>：代码中固定写死的词表大小假设（LLaMA 量级），仅影响 Embedding / LM Head 的参数估算，与 hidden size 无关<br>`+
+    `<b style="color:var(--text)">${state.cardGB} GB</b>：来自左侧"训练卡"下拉框（当前：${state.cardType}），是进度条满格的基准值</div>`;
+}
+
+// =================== RENDER VIZ ===================
+function renderViz(){
+  const viz=$('viz'); if(!viz) return; viz.innerHTML='';
+  for(let d=0;d<state.dp;d++){
+    const rep=document.createElement('div'); rep.className='replica';
+    const micro=Math.max(1,Math.round(state.batch/(state.dp*state.cp)));
+    rep.innerHTML=`<div class="replica-h">📦 DP 副本 #${d} · 处理不同数据分片（每卡 micro-batch ≈ ${micro}）</div>`;
+    for(let p=0;p<state.pp;p++){
+      const st=document.createElement('div'); st.className='stage';
+      st.innerHTML=`<div class="stage-h">流水线 Stage ${p}${state.pp>1?` / ${state.pp}`:''}</div>`;
+      for(let c=0;c<state.cp;c++){
+        if(state.cp>1){const h=document.createElement('div');h.className='cprow-h';h.textContent=`CP 子组 ${c}（序列分片 ${c+1}/${state.cp}）`;st.appendChild(h);}
+        const cards=document.createElement('div'); cards.className='stage-cards';
+        for(let t=0;t<state.tp;t++){
+          const rank=rankOf(d,p,c,t);
+          const gpuOuter=document.createElement('div'); gpuOuter.className='gpu-outer';
+          const gpu=document.createElement('div'); gpu.className='gpu';
+          let h=`<div class="gpu-h"><span>🖥️ GPU ${rank}</span><span class="tag">${(state.cardType.split(' ')[1]||'GPU')} · tp${t}</span></div>`;
+          // 组成员（picotron 真实分组）
+          const grp=[];
+          if(state.tp>1) grp.push(`TP组[${tpGroup(d,p,c).join(',')}]`);
+          if(state.pp>1) grp.push(`PP组[${ppGroup(d,c,t).join(',')}]`);
+          if(state.dp>1) grp.push(`DP组[${dpGroup(p,c,t).join(',')}]`);
+          if(state.cp>1) grp.push(`CP组[${cpGroup(d,p,t).join(',')}]`);
+          if(grp.length) h+=`<div class="grpline">${grp.join(' · ')}</div>`;
+          for(const layer of stageLayers(p)){
+            let ops=''; opsForLayer(layer,t).forEach(o=>ops+=`<div class="op">• ${o.op}<span class="shard ${o.cls}">${o.shard}</span></div>`);
+            h+=`<div class="layer L-${layer.kind}"><div class="ln">${layer.name}</div>${ops}</div>`;
+          }
+          if(state.tp>1) h+=`<div class="commtag">↔ TP all-reduce / all-gather（组内 ${state.tp} 卡）</div>`;
+          gpu.innerHTML=h;
+          gpuOuter.appendChild(gpu);
+          // 显存显示在卡矩形下方
+          const gb=cardMemGB(p,t), pct=Math.min(100,gb/state.cardGB*100);
+          const cls=pct>100?'over':pct>80?'warn':'';
+          const memDiv=document.createElement('div'); memDiv.className='mem mem-wrap';
+          memDiv.dataset.p=String(p); memDiv.dataset.t=String(t);
+          memDiv.innerHTML=`显存 ≈ <b>${gb.toFixed(1)}</b> / ${state.cardGB} GB${pct>100?' ⚠️溢出':''}<div class="membar"><i class="${cls}" style="width:${Math.min(100,pct)}%"></i></div>`;
+          gpuOuter.appendChild(memDiv);
+          cards.appendChild(gpuOuter);
+        }
+        st.appendChild(cards);
+      }
+      rep.appendChild(st);
+      if(p<state.pp-1) rep.insertAdjacentHTML('beforeend','<div class="arrow">▼ 激活值 P2P send/recv 到下一 stage（1F1B 调度）</div>');
+    }
+    viz.appendChild(rep);
+  }
+  const leg=$('legend'); if(leg) leg.innerHTML=
+    `图例：<span class="shard">列切</span> <span class="shard row">行切</span> <span class="shard exp">专家</span> <span class="shard cp">序列(CP)</span> <span class="shard rep">复制</span><br>`+
+    `rank 与分组按 picotron 真实公式 <code>grid=arange(world).view(dp,pp,cp,tp)</code> 计算。显存为权重+Adam优化器态的粗略估算（≈16 B/param），未含激活。`;
+}
+
+// =================== 真实源码（来自 picotron 仓库） ===================
+const SOURCES={
+  pgm:{ label:'process_group_manager.py', file:'picotron/process_group_manager.py',
+    code:
+`class ProcessGroupManager:
+    def __init__(self, tp_size, cp_size, pp_size, dp_size):
+        self.global_rank = dist.get_rank()
+        self.world_size  = dist.get_world_size()
+        assert self.world_size == tp_size * cp_size * pp_size * dp_size
+
+        # 把 world_size 张卡 reshape 成 DP × PP × CP × TP 网格
+        self.grid = torch.arange(self.world_size).view(dp_size, pp_size, cp_size, tp_size)
+        # 当前进程在网格中的坐标
+        self.dp_rank, self.pp_rank, self.cp_rank, self.tp_rank = \\
+            (self.grid == self.global_rank).nonzero().flatten().tolist()
+
+        # 沿各个轴切出通信组
+        self.tp_group = dist.new_subgroups_by_enumeration([self.grid[d,p,c,:].tolist()
+                          for d in range(dp_size) for p in range(pp_size) for c in range(cp_size)])[0]
+        self.pp_group = dist.new_subgroups_by_enumeration([self.grid[d,:,c,t].tolist()
+                          for d in range(dp_size) for c in range(cp_size) for t in range(tp_size)])[0]
+        self.dp_group = dist.new_subgroups_by_enumeration([self.grid[:,p,c,t].tolist()
+                          for p in range(pp_size) for c in range(cp_size) for t in range(tp_size)])[0]
+        self.cp_group = dist.new_subgroups_by_enumeration([self.grid[d,p,:,t].tolist()
+                          for d in range(dp_size) for p in range(pp_size) for t in range(tp_size)])[0]
+
+        # 流水线相邻 rank（P2P 通信对象）
+        self.pp_next_rank = None if self.pp_rank == pp_size-1 else \\
+            int(self.grid[self.dp_rank, self.pp_rank+1, self.cp_rank, self.tp_rank])
+        self.pp_prev_rank = None if self.pp_rank == 0 else \\
+            int(self.grid[self.dp_rank, self.pp_rank-1, self.cp_rank, self.tp_rank])`,
+    hl(s){const m=[];if(true)m.push('self.grid = torch.arange');if(s.tp>1)m.push('self.tp_group');if(s.pp>1){m.push('self.pp_group');m.push('self.pp_next_rank');m.push('self.pp_prev_rank');m.push('int(self.grid[self.dp_rank, self.pp_rank+1');m.push('int(self.grid[self.dp_rank, self.pp_rank-1');}if(s.dp>1)m.push('self.dp_group');if(s.cp>1)m.push('self.cp_group');return m;} },
+
+  tp:{ label:'tensor_parallel.py', file:'picotron/tensor_parallel/tensor_parallel.py',
+    code:
+`class ColumnParallelLinear(nn.Module):
+    """权重按【输出维】切分：每卡存 W_i = (out_per_partition, in_features)"""
+    def __init__(self, in_features, out_features):
+        self.out_per_partition = out_features // pgm.tp_world_size
+        self.weight = nn.Parameter(torch.empty(self.out_per_partition, in_features))
+
+    def forward(self, x):
+        # 每卡算各自的一段输出；需要时 all-gather 拼回完整输出
+        output = linear_with_all_reduce(x, self.weight, self.bias)
+        if self.gather_output:
+            output = GatherFromModelParallelRegion.apply(output)
+        return output
+
+class RowParallelLinear(nn.Module):
+    """权重按【输入维】切分：每卡存 W_i = (out_features, in_per_partition)"""
+    def __init__(self, in_features, out_features):
+        self.in_per_partition = in_features // pgm.tp_world_size
+        self.weight = nn.Parameter(torch.empty(out_features, self.in_per_partition))
+
+    def forward(self, x):
+        output_parallel = F.linear(x, self.weight)            # 部分和
+        output = ReduceFromModelParallelRegion.apply(output_parallel)  # all-reduce 求和
+        return output if self.bias is None else output + self.bias`,
+    hl(s){return s.tp>1?['ColumnParallelLinear','RowParallelLinear','all_reduce','GatherFromModelParallelRegion','ReduceFromModelParallelRegion','// 部分和','out_features // pgm.tp_world_size','in_features // pgm.tp_world_size']:[];} },
+
+  pp:{ label:'pipeline_parallel.py', file:'picotron/pipeline_parallel/pipeline_parallel.py',
+    code(s){
+      const pp=s.pp, N=s.blocks;
+      const per=[]; for(let i=0;i<pp;i++) per.push(Math.floor(N/pp)+(i<N%pp?1:0));
+      const ranges=[]; let st=0; for(let i=0;i<pp;i++){ranges.push([st,st+per[i]]);st+=per[i];}
+      const exStages=ranges.map(([a,b],i)=>`#   stage ${i}: block ${a}..${b>a?b-1:a} (${per[i]} 层)`).join('\n');
+      return `def distribute_layers(self, num_layers):
+    # 连续块均分到各 stage；前面的 rank 多拿余数
+    layers_per_gpu = [num_layers // pgm.pp_world_size +
+                      (1 if i < num_layers % pgm.pp_world_size else 0)
+                      for i in range(pgm.pp_world_size)]
+    start_layer = sum(layers_per_gpu[:pgm.pp_rank])
+    return list(range(start_layer, start_layer + layers_per_gpu[pgm.pp_rank]))
+
+def train_step_pipeline_1f1b(model, data_loader, ...):
+    # Warmup：先做若干次前向填满流水线
+    for _ in range(num_warmup_microbatches):
+        x = pipeline_communicate(operation='recv_forward', ...)
+        out = _forward_step(model, x)
+        pipeline_communicate(operation='send_forward', tensor=out, ...)
+    # Steady：一次前向 + 一次反向交替（1F1B）
+    for i in range(num_microbatches_remaining):
+        out = _forward_step(model, input_tensor)
+        grad = bidirectional_pipeline_communicate('send_fwd_recv_bwd', out, ...)
+        input_grad = model.backward(...)
+        bidirectional_pipeline_communicate('send_bwd_recv_fwd', input_grad, ...)
+    # Cooldown：清空剩余反向
+    for _ in range(num_warmup_microbatches):
+        grad = pipeline_communicate(operation='recv_backward', ...)
+        input_grad = model.backward(...)
+        pipeline_communicate(operation='send_backward', tensor=input_grad, ...)
+
+# ── 当前配置示例 (pp_world_size=${pp}, num_layers=${N}) ──
+# layers_per_gpu = [${per.join(', ')}]
+${exStages}`;
+    },
+    hl(s){
+      const base=['distribute_layers','layers_per_gpu','start_layer','pgm.pp_world_size'];
+      if(s.pp>1) return [...base,'train_step_pipeline_1f1b','recv_forward','send_forward','send_fwd_recv_bwd','send_bwd_recv_fwd','recv_backward','send_backward',`pp_world_size=${s.pp}`];
+      return base;
+    } },
+
+  dp:{ label:'data_parallel.py', file:'picotron/data_parallel/data_parallel.py',
+    code:
+`class DataParallelNaive(nn.Module):
+    def register_backward_hook(self, hook):
+        # 给每个需要梯度的参数挂一个梯度累积后回调
+        for p in self.module.parameters():
+            if p.requires_grad:
+                p.register_post_accumulate_grad_hook(hook)
+
+    def _allreduce_grads(self, grad):
+        # 反向时把梯度在 DP(+CP) 组内 all-reduce 求和再平均
+        if self.require_backward_grad_sync:
+            dist.all_reduce(grad, op=dist.ReduceOp.SUM,
+                            group=pgm.cp_dp_group)
+            grad /= pgm.cp_dp_world_size
+        return grad
+
+# 数据集切分：每个 DP 副本拿不同分片
+sampler = DistributedSampler(dataset, num_replicas=pgm.dp_world_size, rank=pgm.dp_rank)
+loader  = DataLoader(dataset, batch_size=micro_batch, sampler=sampler)`,
+    hl(s){
+      const base=['DistributedSampler','batch_size=micro_batch'];
+      if(s.dp>1) return [...base,'DataParallelNaive','register_post_accumulate_grad_hook','dist.all_reduce','grad /= pgm.cp_dp_world_size','num_replicas=pgm.dp_world_size'];
+      return base;
+    } },
+
+  launch:{ label:'create_config.py', file:'create_config.py',
+    code(s){
+      const world=s.dp*s.pp*s.cp*s.tp;
+      const micro=Math.max(1,Math.floor(s.batch/(s.dp*s.cp)));
+      const lrStr=s.lr.toExponential(1);
+      return `# Step 1: 生成 config.json（所有具体数值写在这里）
+python create_config.py \\
+    --dp ${s.dp} --pp ${s.pp} --cp ${s.cp} --tp ${s.tp} \\
+    --mbs ${micro} \\
+    --num_hidden_layers ${s.blocks} \\
+    --exp_name my_run --out_dir ./tmp
+
+# Step 2: torchrun 读取生成的 config.json 启动训练
+# nproc_per_node = dp(${s.dp}) × pp(${s.pp}) × cp(${s.cp}) × tp(${s.tp}) = ${world}
+torchrun --nproc_per_node=${world} train.py --config ./tmp/my_run/config.json
+
+# lr / steps 等超参在 template/base_config.json 里，create_config.py 合并后写入 config.json:
+# {
+#   "training": {
+#     "learning_rate": ${lrStr},
+#     "max_steps": ${s.steps},
+#     "micro_batch_size": ${micro}
+#   }
+# }`;
+    },
+    hl(s){
+      const micro=Math.max(1,Math.floor(s.batch/(s.dp*s.cp)));
+      const lrStr=s.lr.toExponential(1);
+      return [
+        `--dp ${s.dp} --pp ${s.pp} --cp ${s.cp} --tp ${s.tp}`,
+        `--mbs ${micro}`,
+        `--num_hidden_layers ${s.blocks}`,
+        `"learning_rate": ${lrStr}`,
+        `"max_steps": ${s.steps}`,
+        `"micro_batch_size": ${micro}`,
+      ];
+    } },
+};
+
+// =================== 真实源码（来自 torchtitan 仓库） ===================
+const SOURCES_TORCHTITAN={
+  pgm:{ label:'device_mesh.py', file:'torchtitan/parallelisms/parallelize_llama.py',
+    code(s){
+      return `# torchtitan: init_device_mesh = picotron ProcessGroupManager.grid 的 PyTorch 原生写法
+# 同样把 world_size 张卡 reshape 成 dp×pp×cp×tp 多维网格，每个维度是一个 process group
+from torch.distributed.device_mesh import init_device_mesh
+
+# 建立 ${s.dp}×${s.pp}×${s.cp}×${s.tp} = ${s.world} 卡网格（等价于 picotron grid.view）
+device_mesh = init_device_mesh(
+    "cuda",
+    mesh_shape=(${s.dp}, ${s.pp}, ${s.cp}, ${s.tp}),
+    mesh_dim_names=("dp", "pp", "cp", "tp"),
+)
+
+# 沿各维取出子网格（等价于 picotron new_subgroups_by_enumeration）
+tp_mesh = device_mesh["tp"]   # 张量并行子组（${s.tp} 卡）
+pp_mesh = device_mesh["pp"]   # 流水线并行子组（${s.pp} 卡）
+cp_mesh = device_mesh["cp"]   # 上下文并行子组（${s.cp} 卡）
+dp_mesh = device_mesh["dp"]   # 数据并行子组（${s.dp} 卡，供 FSDP2 使用）
+
+# 本卡在各维度的坐标（等价于 picotron dp_rank / pp_rank / cp_rank / tp_rank）
+tp_rank = tp_mesh.get_local_rank()
+pp_rank = pp_mesh.get_local_rank()
+cp_rank = cp_mesh.get_local_rank()
+dp_rank = dp_mesh.get_local_rank()
+
+# 流水线相邻 rank（P2P 通信对象；等价于 picotron pp_next_rank / pp_prev_rank）
+pp_next = pp_rank + 1 if pp_rank < ${s.pp} - 1 else None
+pp_prev = pp_rank - 1 if pp_rank > 0 else None`;
+    },
+    hl(s){
+      const m=['init_device_mesh','device_mesh','mesh_shape'];
+      if(s.tp>1)m.push('tp_mesh');
+      if(s.pp>1)m.push('pp_mesh','pp_next','pp_prev');
+      if(s.dp>1)m.push('dp_mesh');
+      if(s.cp>1)m.push('cp_mesh');
+      return m;
+    }
+  },
+
+  tp:{ label:'parallelize_llama.py', file:'torchtitan/parallelisms/parallelize_llama.py',
+    code:
+`# torchtitan: apply_tp() — DTensor placement 替代 picotron ColumnParallelLinear/RowParallelLinear
+# ColwiseParallel ≡ ColumnParallel（Shard 输出维）
+# RowwiseParallel  ≡ RowParallel  （Shard 输入维 → all-reduce 汇总）
+from torch.distributed.tensor.parallel import (
+    ColwiseParallel, RowwiseParallel, SequenceParallel, parallelize_module,
+)
+from torch.distributed.tensor import Replicate, Shard
+
+parallelize_module(model, tp_mesh, {
+    # Embedding：词表按行切（VocabParallel），输出按序列维切片
+    "tok_embeddings": RowwiseParallel(
+        input_layouts=Replicate(), output_layouts=Shard(1)
+    ),
+    # Attention QKV：列切（Column → Shard 输出维）
+    "layers.{i}.attention.wq": ColwiseParallel(),
+    "layers.{i}.attention.wk": ColwiseParallel(),
+    "layers.{i}.attention.wv": ColwiseParallel(),
+    # Attention Out：行切（Row → Shard 输入维 → all-reduce 汇总输出）
+    "layers.{i}.attention.wo": RowwiseParallel(),
+    # FFN：up/gate 列切，down 行切（等价于 picotron up_proj 列 / down_proj 行）
+    "layers.{i}.feed_forward.w1": ColwiseParallel(),
+    "layers.{i}.feed_forward.w3": ColwiseParallel(),
+    "layers.{i}.feed_forward.w2": RowwiseParallel(),
+    # LM Head：列切，输出全量复制（等价于 picotron VocabParallelLinear）
+    "output": ColwiseParallel(output_layouts=Replicate()),
+})`,
+    hl(s){
+      if(s.tp>1) return ['ColwiseParallel','RowwiseParallel','parallelize_module','Shard','Replicate','all-reduce'];
+      return ['parallelize_module','ColwiseParallel','RowwiseParallel'];
+    }
+  },
+
+  pp:{ label:'pipeline_llama.py', file:'torchtitan/parallelisms/pipeline_llama.py',
+    code(s){
+      const pp=s.pp,N=s.blocks;
+      const per=[]; for(let i=0;i<pp;i++) per.push(Math.floor(N/pp)+(i<N%pp?1:0));
+      const exStages=per.map((n,i)=>{const st=per.slice(0,i).reduce((a,b)=>a+b,0);return `#   stage ${i}: layers ${st}..${n>0?st+n-1:st}  (${n} 层)`;}).join('\n');
+      return `# torchtitan: pipeline_llama_manual_split() — PipelineStage + Schedule
+# 用 torch.distributed.pipelining 替代 picotron 的手写 1F1B P2P 通信
+from torch.distributed.pipelining import PipelineStage, ScheduleGPipe
+# from torch.distributed.pipelining import Schedule1F1B  # 更低 bubble rate
+
+# ── 层分配（与 picotron distribute_layers 相同的均分逻辑）──
+# layers_per_stage = [${per.join(', ')}]  (num_layers=${N}, pp_degree=${pp})
+${exStages}
+stage_idx   = pp_mesh.get_local_rank()
+stage_start = sum(layers_per_stage[:stage_idx])
+stage_module = nn.Sequential(
+    *model.layers[stage_start : stage_start + layers_per_stage[stage_idx]]
+)
+
+stage = PipelineStage(
+    submodule=stage_module,
+    stage_index=stage_idx,
+    num_stages=${pp},
+    device=device,
+    input_args=(sample_input,),  # 用于 tracing 推断 tensor shape
+)
+
+# GPipe：先做所有前向再做反向（简单实现）
+schedule = ScheduleGPipe(stage, n_microbatches=n_microbatches)
+# schedule = Schedule1F1B(stage, n_microbatches=n_microbatches)  # 更省 bubble
+
+# 每步只需一行（schedule 内部处理 P2P send/recv）
+schedule.step(data)`;
+    },
+    hl(s){
+      const base=['PipelineStage','layers_per_stage','stage_idx',`num_stages=${s.pp}`];
+      if(s.pp>1) return [...base,'ScheduleGPipe','Schedule1F1B','schedule.step'];
+      return base;
+    }
+  },
+
+  dp:{ label:'train.py (FSDP2)', file:'torchtitan/train.py',
+    code:
+`# torchtitan: FSDP2 数据并行
+# fully_shard 替代 picotron 的 DataParallelNaive + register_post_accumulate_grad_hook
+from torch.distributed._composable.fsdp import fully_shard, MixedPrecisionPolicy
+
+mp_policy = MixedPrecisionPolicy(
+    param_dtype=torch.bfloat16,
+    reduce_dtype=torch.float32,  # 梯度 all-reduce 用 fp32，防精度溢出
+)
+
+# 逐 TransformerBlock wrap（逐层分片比整体 wrap 更省峰值显存）
+for layer in model.layers:
+    fully_shard(layer,
+        mesh=dp_mesh,
+        mp_policy=mp_policy,
+        reshard_after_forward=True,  # 前向后立即 free 参数分片，节省激活显存
+    )
+# wrap 整个模型外壳（optimizer state 也随之分片到 dp_mesh 各卡）
+fully_shard(model, mesh=dp_mesh, mp_policy=mp_policy)
+# FSDP2 在 backward 时自动对 dp_mesh 做 all-reduce，无需手动 hook
+
+# 数据集切分（与 picotron 相同的 DistributedSampler 思路）
+sampler = DistributedSampler(dataset,
+    num_replicas=dp_mesh.size(),
+    rank=dp_mesh.get_local_rank())
+loader = DataLoader(dataset, batch_size=micro_batch, sampler=sampler)`,
+    hl(s){
+      const base=['DistributedSampler','DataLoader','dp_mesh'];
+      if(s.dp>1) return [...base,'fully_shard','all-reduce','reshard_after_forward','MixedPrecisionPolicy','num_replicas=dp_mesh.size()'];
+      return base;
+    }
+  },
+
+  launch:{ label:'llama3_8b.toml', file:'train_configs/llama3_8b.toml',
+    code(s){
+      const world=s.dp*s.pp*s.cp*s.tp;
+      const micro=Math.max(1,Math.floor(s.batch/(s.dp*s.cp)));
+      const lrStr=s.lr.toExponential(1);
+      return `# torchtitan 通过 TOML config 驱动训练（区别于 picotron 的 CLI flags）
+
+# 启动命令（nproc_per_node = dp×pp×cp×tp = ${world}）
+torchrun --nproc_per_node=${world} train.py \\
+    --job.config_file ./train_configs/llama3_8b.toml
+
+# ── train_configs/llama3_8b.toml ──
+[parallelism]
+tensor_parallel_degree   = ${s.tp}
+pipeline_parallel_degree = ${s.pp}
+context_parallel_degree  = ${s.cp}
+data_parallel_degree     = ${s.dp}
+data_parallel_type       = "fsdp2"
+
+[model]
+name       = "llama3"
+num_layers = ${s.blocks}
+dim        = ${s.hidden}${s.enMoE?`
+num_experts         = ${s.experts}
+num_experts_per_tok = 2`:''}
+
+[training]
+batch_size        = ${micro}
+global_batch_size = ${s.batch}
+learning_rate     = ${lrStr}
+steps             = ${s.steps}
+mixed_precision_param = "bfloat16"
+max_norm          = 1.0`;
+    },
+    hl(s){
+      const micro=Math.max(1,Math.floor(s.batch/(s.dp*s.cp)));
+      const lrStr=s.lr.toExponential(1);
+      const m=[
+        `tensor_parallel_degree   = ${s.tp}`,
+        `pipeline_parallel_degree = ${s.pp}`,
+        `context_parallel_degree  = ${s.cp}`,
+        `data_parallel_degree     = ${s.dp}`,
+        `num_layers = ${s.blocks}`,
+        `dim        = ${s.hidden}`,
+        `batch_size        = ${micro}`,
+        `global_batch_size = ${s.batch}`,
+        `learning_rate     = ${lrStr}`,
+        `steps             = ${s.steps}`,
+      ];
+      if(s.enMoE) m.push(`num_experts         = ${s.experts}`);
+      return m;
+    }
+  },
+
+  moe:{ label:'moe_layer.py', file:'torchtitan/models/llama4/model.py',
+    code(s){
+      const E=s.experts,ep=s.ep,localE=ep>1?Math.ceil(E/ep):E;
+      return `# torchtitan: MoE + Expert Parallel（Llama4 / DeepSeek-V3 风格）
+# router → topk → all-to-all dispatch → 本地专家 FFN → all-to-all combine
+
+class MoEFeedForward(nn.Module):
+    def __init__(self, dim, n_experts=${E}, top_k=2, ep_mesh=None):
+        self.router  = nn.Linear(dim, n_experts, bias=False)  # 可学习门控权重矩阵
+        # Expert Parallel: 每卡仅存 ${localE} 个专家（${E} ÷ ep=${ep}）
+        local_n = n_experts // ep_mesh.size()   # = ${localE}
+        self.experts = nn.ModuleList(
+            [Expert(dim) for _ in range(local_n)]
+        )
+        self.ep_mesh = ep_mesh  # ep=${ep} 卡的 expert-parallel 子网格
+
+    def forward(self, x):  # x: (B×S, dim)
+        logits = self.router(x)                                 # (B×S, ${E})
+        scores, expert_ids = logits.topk(self.top_k, dim=-1)   # top-2
+        scores = F.softmax(scores, dim=-1)${ep>1?`
+
+        # all-to-all 分发：把 token 路由到持有对应专家的卡
+        x_disp, counts = all_to_all_dispatch(
+            x, expert_ids, self.ep_mesh
+        )   # 本卡接收需要自己 ${localE} 个专家处理的 token
+
+        # 本地专家计算（只跑 ${localE} 个专家的前向）
+        expert_out = torch.stack([
+            e(x_disp[i]) for i, e in enumerate(self.experts)
+        ])
+
+        # all-to-all 合并：结果按 token 原序回收
+        return all_to_all_combine(expert_out, counts, scores, self.ep_mesh)`:`
+
+        # ep=1：${E} 个专家全量复制在每张卡，无 all-to-all 路由
+        expert_out = torch.stack([
+            e(x) for e in self.experts
+        ])  # (${E}, B×S, dim)
+        # 用 scores 加权组合 top-2 专家的输出
+        idx = expert_ids.unsqueeze(-1).expand(-1, -1, x.size(-1))
+        return (expert_out.gather(0, idx) * scores.unsqueeze(-1)).sum(1)`}`;
+    },
+    hl(s){
+      const m=['MoEFeedForward','router','top_k','n_experts','Expert'];
+      if(s.ep>1) m.push(...['all_to_all_dispatch','all_to_all_combine','ep_mesh','local_n']);
+      if(s.enMoE) m.push('F.softmax','logits.topk');
+      return m;
+    }
+  },
+};
+function currentSources(){ return currentLib==='torchtitan'?SOURCES_TORCHTITAN:SOURCES; }
+
+let activeTab='pgm';
+
+// 轻量 Python 高亮
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function commentIdx(line){let q=null;for(let i=0;i<line.length;i++){const ch=line[i];if(q){if(ch===q)q=null;}else if(ch==='"'||ch==="'")q=ch;else if(ch==='#')return i;}return -1;}
+function hlLine(raw){
+  let comment=''; const ci=commentIdx(raw);
+  if(ci>=0){comment=raw.slice(ci);raw=raw.slice(0,ci);}
+  let h=esc(raw); const store=[];
+  h=h.replace(/(&#39;.*?&#39;|&quot;.*?&quot;|'.*?'|".*?")/g,m=>{store.push(m);return ` ${store.length-1} `;});
+  h=h.replace(/\b(import|from|as|class|def|return|for|in|if|else|elif|None|True|False|self|global|assert|not|and|or|is|range|int|nn)\b/g,m=>`<span class="kw">${m}</span>`);
+  h=h.replace(/\b(\d+\.?\d*)\b/g,m=>`<span class="num">${m}</span>`);
+  h=h.replace(/ (\d+) /g,(_,i)=>`<span class="str">${store[+i]}</span>`);
+  if(comment) h+=`<span class="cm">${esc(comment)}</span>`;
+  return h;
+}
+function renderTabs(){
+  $('tabs').innerHTML=Object.entries(currentSources()).map(([k,v])=>{
+    const icon=`<img src="Python.png" style="width:13px;height:13px;vertical-align:-2px;margin-right:3px">`;
+    return `<span class="tab ${k===activeTab?'on':''}" data-k="${k}">${icon}${v.label}</span>`;
+  }).join('');
+  document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{activeTab=t.dataset.k;renderTabs();renderCode(true);});
+}
+const SCROLL_HINT={
+  dp:'--dp ', enDP:'--dp ',
+  pp:'--pp ', enPP:'--pp ',
+  tp:'--tp ', enTP:'--tp ',
+  cp:'--cp ', enCP:'--cp ',
+  ep:'--tp ', enMoE:'--tp ',
+  blocks:'--num_hidden_layers ',
+  batch:'--mbs ',
+  steps:'"max_steps"',
+  lr:'"learning_rate"',
+};
+function renderCode(scrollToHl, scrollCtrlId){
+  let src=currentSources()[activeTab];
+  if(!src){src=currentSources()['pgm'];activeTab='pgm';renderTabs();}
+  const marks=src.hl(state);
+  const codeStr=typeof src.code==='function'?src.code(state):src.code;
+  const lines=codeStr.split('\n');
+  const repoBase=currentLib==='torchtitan'
+    ?'https://github.com/pytorch/torchtitan/blob/main/'
+    :'https://github.com/huggingface/picotron/blob/main/';
+  $('srcMeta').innerHTML=`<a href="${repoBase}${src.file}" target="_blank">${src.file}</a> · 高亮＝当前配置激活的代码`;
+  const isBash=activeTab==='launch';
+  $('code').innerHTML=lines.map(line=>{
+    const active=marks.some(m=>line.includes(m));
+    return `<span class="ln-row ${active?'hl':''}">${isBash?esc(line)||'&nbsp;':hlLine(line)||'&nbsp;'}</span>`;
+  }).join('\n');
+  if(scrollToHl){
+    const all=[...$('code').querySelectorAll('.hl')];
+    let target=null;
+    const hint=scrollCtrlId&&SCROLL_HINT[scrollCtrlId];
+    if(hint) target=all.find(el=>el.textContent.includes(hint));
+    if(!target) target=all[all.length-1];
+    if(target){
+      target.scrollIntoView({block:'center',behavior:'smooth'});
+      target.classList.add('hl-flash');
+      setTimeout(()=>target.classList.remove('hl-flash'),1000);
+    }
+  }
+}
+
+// =================== HINTS ===================
+function renderHints(){
+  const s=state;
+  const micro=Math.max(1,Math.round(s.batch/(s.dp*s.cp)));
+
+  // DP
+  const dpEl=$('hintDP');
+  if(s.enDP && s.dp>1){
+    dpEl.className='para-hint on';
+    const cardsPerReplica=s.pp*s.cp*s.tp;
+    const replicaDesc=cardsPerReplica>1
+      ?`（每个副本由 <b>${cardsPerReplica}</b> 张卡组成，PP×CP×TP=${s.pp}×${s.cp}×${s.tp}）`:
+      ``;
+    dpEl.innerHTML=`<b>切分数据集。</b>把 global batch（<b>${s.batch}</b> 条）拆成 <b>${s.dp}</b> 份，每份 <b>${micro}</b> 条，`+
+      `<b>${s.dp}</b> 个完整模型副本各跑一份${replicaDesc}；反向结束后梯度 all-reduce 平均，参数保持一致`;
+  } else {
+    dpEl.className='para-hint';
+    dpEl.innerHTML=`不做数据并行，全部 <b>${s.batch}</b> 条数据由同一组卡处理`;
+  }
+
+  // PP
+  const ppEl=$('hintPP');
+  if(s.enPP && s.pp>1){
+    const ranges=distributeLayers();
+    const stageSizes=ranges.map(([a,b])=>b-a);
+    const desc=stageSizes.every(v=>v===stageSizes[0])
+      ?`每 stage 均含 <b>${stageSizes[0]}</b> 层`
+      :`各 stage 分别含 <b>${stageSizes.join('、')}</b> 层（余数优先分给前面的 stage）`;
+    const cardsPerStage=s.dp*s.cp*s.tp;
+    const stageCardDesc=cardsPerStage>1
+      ?`，每个 stage 横跨 <b>${cardsPerStage}</b> 张卡（DP×CP×TP=${s.dp}×${s.cp}×${s.tp}）`:
+      ``;
+    ppEl.className='para-hint on';
+    ppEl.innerHTML=`<b>切分模型的层。</b>把 <b>${s.blocks}</b> 层的模型沿深度切成 <b>${s.pp}</b> 个 stage，顺序挂到不同的卡${stageCardDesc}；`+
+      `${desc}；前向激活值通过 P2P send/recv 逐 stage 传递，采用 1F1B 调度`;
+  } else {
+    ppEl.className='para-hint';
+    ppEl.innerHTML=`不做流水线并行，全部 <b>${s.blocks}</b> 层都在同一组卡上顺序执行`;
+  }
+
+  // CP
+  const cpEl=$('hintCP');
+  if(s.enCP && s.cp>1){
+    cpEl.className='para-hint on';
+    const cpGroups=s.dp*s.pp;
+    const cpGroupDesc=cpGroups>1?`，共 <b>${cpGroups}</b> 个独立 CP 组（DP×PP=${s.dp}×${s.pp}）`:
+      ``;
+    cpEl.innerHTML=`<b>切分序列长度。</b>把每条序列沿 token 轴均切成 <b>${s.cp}</b> 段，每段由同一 CP 组内不同的卡独立做自注意力${cpGroupDesc}；`+
+      `做跨段注意力时 KV 通过 all-gather 在组内共享（Ring Attention 风格）`;
+  } else {
+    cpEl.className='para-hint';
+    cpEl.innerHTML=`不做序列并行，每张卡处理完整序列`;
+  }
+
+  // TP
+  const tpEl=$('hintTP');
+  if(s.enTP && s.tp>1){
+    tpEl.className='para-hint on';
+    const tpGroups=s.dp*s.pp*s.cp;
+    const tpGroupDesc=tpGroups>1
+      ?`；共 <b>${tpGroups}</b> 个独立 TP 组（DP×PP×CP=${s.dp}×${s.pp}×${s.cp}），各组并行执行相同操作`:
+      ``;
+    tpEl.innerHTML=`<b>切分权重矩阵。</b>把 QKV / FFN 等权重矩阵按列或按行切成 <b>${s.tp}</b> 份，每 TP 组内 <b>${s.tp}</b> 张卡各算部分输出${tpGroupDesc}；`+
+      `列切后 all-gather、行切后 all-reduce，合并成完整结果；每卡权重约为全量的 <b>1/${s.tp}</b>`;
+  } else {
+    tpEl.className='para-hint';
+    tpEl.innerHTML=`不做张量并行，每张卡存并计算完整权重`;
+  }
+
+  // MoE / EP
+  const epEl=$('hintEP');
+  if(s.enMoE){
+    if(s.ep>1){
+      const perCard=Math.ceil(s.experts/s.ep);
+      const epGroups=s.dp*s.pp*s.cp;
+      const epGroupDesc=epGroups>1?`（共 <b>${epGroups}</b> 个独立 EP 组，每组 <b>${s.ep}</b> 张卡）`:
+        ``;
+      epEl.className='para-hint on';
+      epEl.innerHTML=`<b>切分专家到不同卡。</b>把 <b>${s.experts}</b> 个专家分配到每组 <b>${s.ep}</b> 张卡${epGroupDesc}，每卡持有 <b>${perCard}</b> 个专家；`+
+        `每个 token 被 router 选出 top-k 专家，通过 all-to-all 路由到对应的卡上计算`;
+    } else {
+      epEl.className='para-hint on';
+      epEl.innerHTML=`<b>稀疏激活专家。</b>MoE 已启用，专家并行度为 1：<b>${s.experts}</b> 个专家完整复制在每张卡上，无需 all-to-all 路由`;
+    }
+  } else {
+    epEl.className='para-hint';
+    epEl.innerHTML=`未启用 MoE，每层使用标准密集 FFN（无专家路由）`;
+  }
+
+  // Blocks
+  const blocksEl=$('hintBlocks');
+  blocksEl.className='para-hint on';
+  if(s.pp>1){
+    const ranges=distributeLayers();
+    const stageDesc=ranges.map(([a,b],i)=>{
+      const n=b-a;
+      if(n===0) return `Stage${i}：无 block`;
+      if(n===1) return `Stage${i}：block&nbsp;${a}`;
+      return `Stage${i}：block&nbsp;${a}–${b-1}`;
+    }).join('　');
+    blocksEl.innerHTML=`<b>${s.blocks}</b> 个 Transformer block，每块含 Attention + ${s.enMoE?'MoE-FFN':'MLP'} 子层；`+
+      `按 PP=${s.pp} 切分 → ${stageDesc}`;
+  } else {
+    blocksEl.innerHTML=`<b>${s.blocks}</b> 个 Transformer block，每块含 1 个 Attention 子层 + 1 个 ${s.enMoE?'MoE-FFN':'MLP'} 子层，`+
+      `全部 <b>${s.blocks*2}</b> 个子层顺序在同一组卡上执行`;
+  }
+
+  // Hidden
+  const hiddenEl=$('hintHidden');
+  hiddenEl.className='para-hint on';
+  const H=s.hidden;
+  const tpSuffix=s.tp>1?`，TP 后每卡各切 <b>1/${s.tp}</b>`:'';
+  hiddenEl.innerHTML=`每个 token 的向量维 = <b>${H}</b>；`+
+    `Attention QKV Linear：<b>${H}×${H}</b>（每 Q/K/V）${tpSuffix}；`+
+    `MLP up_proj：<b>${H}×${H*4}</b>${tpSuffix}`;
+
+  // Experts
+  const expertsEl=$('hintExperts');
+  if(s.enMoE){
+    expertsEl.className='para-hint on';
+    const activeRatio=Math.round(2/s.experts*100);
+    const epDesc=s.ep>1
+      ?`EP=${s.ep}，每卡持有 <b>${Math.ceil(s.experts/s.ep)}</b> 个专家，token 经 all-to-all 路由`
+      :`专家完整复制在每张卡，无需 all-to-all`;
+    expertsEl.innerHTML=`<b>${s.experts}</b> 个专家，每个专家为独立 FFN（${H}→${H*4}→${H}）；`+
+      `router 为每个 token 选 top-2，每次激活 ≈ <b>${activeRatio}%</b> 的参数；${epDesc}`;
+  } else {
+    expertsEl.className='para-hint';
+    expertsEl.innerHTML='';
+  }
+}
+
+// =================== PARALLEL CONCLUSION ===================
+function renderConclusion(){
+  const s=state;
+  const el=$('parallelConclusion'); if(!el) return;
+  const hasTP=s.enTP&&s.tp>1, hasPP=s.enPP&&s.pp>1;
+  const hasDP=s.enDP&&s.dp>1, hasCP=s.enCP&&s.cp>1;
+  const hasMoE=s.enMoE;
+
+  // 完全单卡
+  if(!hasTP&&!hasPP&&!hasDP&&!hasCP&&!hasMoE){
+    el.innerHTML='<div class="chead">适用场景</div><span class="ctag blue">单卡调试</span>无任何并行与通信开销，适合<b>逻辑验证</b>与小模型快速实验';
+    return;
+  }
+
+  const tags=[], clauses=[];
+
+  // ——显存轴（TP / PP / TP+PP）——
+  // TP 解决「单层太宽」：权重矩阵按列/行切片，hidden size 越大越需要
+  // PP 解决「模型太深」：层数多，沿深度方向分 stage 到不同卡
+  if(hasTP&&hasPP){
+    const tpDom=s.tp>s.pp, ppDom=s.pp>s.tp;
+    tags.push('<span class="ctag">超大模型</span>');
+    if(tpDom)
+      clauses.push(`<b>TP=${s.tp} 为主</b>：层内权重极宽（hidden=${s.hidden}），同时 <b>PP=${s.pp}</b> 切分 ${s.blocks} 层——适用于<b>单层即超限且层数也多</b>的超大模型`);
+    else if(ppDom)
+      clauses.push(`<b>PP=${s.pp} 为主</b>：${s.blocks} 层分 ${s.pp} 个 stage，同时 <b>TP=${s.tp}</b> 进一步切分层内权重——适用于<b>层数多且单层也较宽</b>的大模型`);
+    else
+      clauses.push(`<b>TP=${s.tp}×PP=${s.pp}</b>：同时突破单层宽度（hidden=${s.hidden}）与模型深度（${s.blocks} 层）的双重显存上限`);
+  } else if(hasTP){
+    // TP 核心场景：hidden size 大 → 单层权重放不进一卡
+    if(s.tp>=4){
+      tags.push('<span class="ctag">宽模型</span>');
+      clauses.push(`<b>TP=${s.tp}</b>：hidden=${s.hidden} 极宽，单层 QKV/FFN 权重切 ${s.tp} 份分到 ${s.tp} 卡——适用于<b>单层参数量远超单卡显存</b>的宽模型`);
+    } else {
+      tags.push('<span class="ctag">单层超限</span>');
+      clauses.push(`<b>TP=${s.tp}</b>：单层权重略超单卡容量（hidden=${s.hidden}），层内按列/行切分——适用于<b>单层刚好放不进一卡</b>的场景`);
+    }
+  } else if(hasPP){
+    // PP 核心场景：层数多 → 整体模型装不进少数卡
+    const perStage=Math.round(s.blocks/s.pp);
+    if(s.pp>=4){
+      tags.push('<span class="ctag orange">深模型</span>');
+      clauses.push(`<b>PP=${s.pp}</b>：${s.blocks} 层按顺序分成 ${s.pp} 段（每段 ≈${perStage} 层）——适用于<b>层数极多</b>、全量层无法装入同一组卡的深模型`);
+    } else {
+      tags.push('<span class="ctag orange">层数超限</span>');
+      clauses.push(`<b>PP=${s.pp}</b>：${s.blocks} 层切成 ${s.pp} 个 stage（每段 ≈${perStage} 层）——适用于<b>模型整体参数超出单组卡显存</b>的场景`);
+    }
+  }
+
+  // ——序列轴（CP）——
+  // CP 解决「序列太长」：同一序列分段到多卡，用 Ring-Attention 共享 KV
+  if(hasCP){
+    tags.push('<span class="ctag">长序列</span>');
+    clauses.push(`<b>CP=${s.cp}</b>：序列沿 token 轴切 ${s.cp} 段——适用于<b>超长上下文</b>（文档、视频等长序列）、单卡放不下完整 KV 的训练`);
+  }
+
+  // ——稀疏轴（MoE / EP）——
+  // MoE 解决「想要更多参数但不等比增加计算」
+  if(hasMoE){
+    const pct=Math.round(2/s.experts*100);
+    tags.push('<span class="ctag">稀疏MoE</span>');
+    if(s.ep>1){
+      clauses.push(`<b>MoE + EP=${s.ep}</b>：${s.experts} 专家分 ${s.ep} 卡，每 token 仅激活 top-2（≈${pct}%）——适用于<b>想大幅扩大参数量但不增加 FLOPs</b>、同时分摊专家显存的场景`);
+    } else {
+      clauses.push(`<b>MoE</b>：${s.experts} 专家全量复制，top-2 稀疏激活（≈${pct}%）——适用于<b>以稀疏方式扩大模型容量</b>而每步计算量保持不变的场景`);
+    }
+  }
+
+  // ——吞吐轴（DP）——
+  // DP 解决「模型已放进去，需要更快训练或更大 batch」
+  if(hasDP){
+    if(!hasTP&&!hasPP){
+      // DP 是主角：模型可装进单组卡，纯吞吐扩展
+      tags.push('<span class="ctag green">高吞吐</span>');
+      clauses.push(`<b>DP=${s.dp}</b>：模型可装入单组卡，复制 ${s.dp} 个副本处理不同数据——适用于<b>显存已够用、以最大化训练速度</b>为核心目标的场景`);
+    } else {
+      // DP 是辅助
+      clauses.push(`叠加 <b>DP=${s.dp}</b>：在模型并行解决显存后，再用多副本扩大整体训练吞吐（global batch=${s.batch}）`);
+    }
+  }
+
+  const tagLine=tags.join('');
+  el.innerHTML='<div class="chead">适用场景</div>'+tagLine+clauses.join('<br><span style="opacity:.35;margin:0 4px">│</span>');
+}
+
+// =================== WORLD ANIMATION ===================
+// Animates a data batch flowing stage-by-stage through the pipeline.
+// All DP replicas advance in sync (each gets its own color).
+// TP/CP cards within a stage light up simultaneously.
+let _waTmr=null, _waStage=0, _waOnDone=null;
+
+function _waClear(){
+  const wd=$('worldDiagram'); if(!wd) return;
+  wd.querySelectorAll('.wdiag-card').forEach(el=>el.classList.remove('af'));
+  wd.querySelectorAll('.wdiag-pp-arr').forEach(el=>el.classList.remove('af'));
+  wd.querySelectorAll('.wdiag-layer-box').forEach(el=>el.classList.remove('af'));
+  const la=$('wLogitsArrow'),lc=$('wLogitsCard');
+  if(la)la.classList.remove('af'); if(lc)lc.classList.remove('af');
+}
+
+function _waTick(){
+  const wd=$('worldDiagram'); if(!wd){_waTmr=null;return;}
+  _waClear();
+  const p=_waStage, pp=state.pp;
+  if(p>0) wd.querySelectorAll(`.wdiag-pp-arr[data-top="${p}"]`).forEach(el=>el.classList.add('af'));
+  // stagger by layer index: all cards light up the same layer simultaneously
+  const stageDurLocal=Math.max(80,Math.floor(3000/pp));
+  const stageRow=wd.querySelector(`.wdiag-stage-row[data-p="${p}"]`);
+  if(stageRow){
+    const cards=Array.from(stageRow.querySelectorAll('.wdiag-card'));
+    const numLayers=cards.length>0?cards[0].querySelectorAll('.wdiag-layer-box').length:0;
+    const step=numLayers>1?Math.floor(stageDurLocal*0.75/(numLayers-1)):0;
+    for(let li=0;li<numLayers;li++){
+      setTimeout(()=>{
+        cards.forEach(card=>{
+          const boxes=card.querySelectorAll('.wdiag-layer-box');
+          if(li>0 && boxes[li-1]) boxes[li-1].classList.remove('af'); // 前一层熄灭
+          if(boxes[li]) boxes[li].classList.add('af');
+        });
+      },li*step);
+    }
+  }
+  _waStage=(p+1)%pp;
+  const stageDur=Math.max(80,Math.floor(3000/pp));
+  if(_waStage===0){
+    _waTmr=setTimeout(()=>{
+      const la=$('wLogitsArrow'),lc=$('wLogitsCard');
+      if(la)la.classList.add('af'); if(lc)lc.classList.add('af');
+      _waTmr=setTimeout(()=>{
+        _waClear();
+        if(_waOnDone){const cb=_waOnDone;_waOnDone=null;cb();}
+        else _waTmr=setTimeout(_waTick,3000);
+      },900);
+    },stageDur);
+  } else {
+    _waTmr=setTimeout(_waTick,stageDur);
+  }
+}
+
+function startWorldAnim(onDone){
+  if(_waTmr){clearTimeout(_waTmr);_waTmr=null;}
+  _waStage=0; _waOnDone=onDone||null;
+  _waTick();
+}
+
+// =================== BATCH SPLIT ANIMATION ===================
+let _splitTmr=null,_splitPaths=null,_splitCycleId=0;
+
+function _makeSvgArrow(svg,rootRect,x1,y1,x2,y2,spread){
+  const NS='http://www.w3.org/2000/svg';
+  const midX=(x1+x2)/2+(spread||0),midY=(y1+y2)/2;
+  const tdx=x2-midX,tdy=y2-midY,tmag=Math.sqrt(tdx*tdx+tdy*tdy)||1;
+  const ux=tdx/tmag,uy=tdy/tmag,bk=6,sd=3.5;
+  const a1x=x2-ux*bk-uy*sd,a1y=y2-uy*bk+ux*sd;
+  const a2x=x2-ux*bk+uy*sd,a2y=y2-uy*bk-ux*sd;
+  const pathD=`M${x1},${y1} Q${midX},${midY} ${x2},${y2} M${x2},${y2} L${a1x},${a1y} M${x2},${y2} L${a2x},${a2y}`;
+  const path=document.createElementNS(NS,'path');
+  path.setAttribute('d',pathD);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke','#3ecf8e');
+  path.setAttribute('stroke-width','1.5');
+  path.style.opacity='0.85';
+  path.style.transition='opacity .25s ease';
+  svg.appendChild(path);
+  const len=Math.ceil(path.getTotalLength())+2;
+  path.setAttribute('stroke-dasharray',len);
+  path.setAttribute('stroke-dashoffset',len);
+  return {path,len};
+}
+
+function initSplitArrows(){
+  if(_splitTmr){clearTimeout(_splitTmr);_splitTmr=null;}
+  if(_waTmr){clearTimeout(_waTmr);_waTmr=null;}
+  _waOnDone=null;
+  _splitPaths=null; _splitCycleId++;
+  const svg=$('wSplitSvg'),root=$('wdiagRoot');
+  if(!svg||!root) return;
+  const rootRect=root.getBoundingClientRect();
+  svg.innerHTML='';
+  _splitPaths=[];
+
+  if(state.dp>1){
+    const pieces=Array.from(document.querySelectorAll('.wdiag-split-piece'));
+    const dpBoxes=Array.from(document.querySelectorAll('.wdiag-dp-top'));
+    const n=Math.min(pieces.length,dpBoxes.length);
+    if(!n){_runSplitCycle();return;}
+    for(let i=0;i<n;i++){
+      const pRect=pieces[i].getBoundingClientRect();
+      const dRect=dpBoxes[i].getBoundingClientRect();
+      const x1=pRect.left+pRect.width/2-rootRect.left;
+      const y1=pRect.bottom-rootRect.top+1;
+      const x2=dRect.left+dRect.width/2-rootRect.left;
+      const y2=dRect.top-rootRect.top-2;
+      const spread=(n<=1)?0:(i-(n-1)/2)*Math.max(14,42/n);
+      _splitPaths.push(_makeSvgArrow(svg,rootRect,x1,y1,x2,y2,spread));
+    }
+  } else {
+    // dp=1: single arrow from batch card down to stage0
+    const batchCard=document.querySelector('.wdiag-batch-full');
+    const stage0=document.querySelector('.wdiag-dp-top');
+    if(!batchCard||!stage0){_runSplitCycle();return;}
+    const bRect=batchCard.getBoundingClientRect();
+    const dRect=stage0.getBoundingClientRect();
+    const x1=bRect.left+bRect.width/2-rootRect.left;
+    const y1=bRect.bottom-rootRect.top+1;
+    const x2=dRect.left+dRect.width/2-rootRect.left;
+    const y2=dRect.top-rootRect.top-2;
+    _splitPaths.push(_makeSvgArrow(svg,rootRect,x1,y1,x2,y2,0));
+  }
+  _runSplitCycle();
+}
+
+function _runSplitCycle(){
+  const id=++_splitCycleId;
+  const pieces=Array.from(document.querySelectorAll('.wdiag-split-piece'));
+  const batchFull=document.querySelector('.wdiag-batch-full');
+  // instant reset (no transition)
+  pieces.forEach(p=>p.classList.remove('vis'));
+  if(batchFull) batchFull.classList.remove('faded');
+  if(_splitPaths) _splitPaths.forEach(({path,len})=>{
+    path.style.transition='none'; path.style.opacity='0.85';
+    path.setAttribute('stroke-dashoffset',len);
+  });
+  requestAnimationFrame(()=>{if(_splitPaths)_splitPaths.forEach(({path})=>{path.style.transition='opacity .25s ease';});});
+
+  if(state.dp===1){
+    // dp=1: batch card always visible — just draw arrow then light up stages
+    const n=_splitPaths?_splitPaths.length:0;
+    // phase 1: draw arrow after short settle
+    if(_splitPaths) _splitPaths.forEach(({path,len})=>setTimeout(()=>{
+      if(_splitCycleId!==id) return;
+      _animSplitPath(path,len,500);
+    },400));
+    // phase 2: stage lighting after arrow finishes
+    const gpuStart=400+500+150;
+    setTimeout(()=>{
+      if(_splitCycleId!==id) return;
+      startWorldAnim(()=>{
+        if(_splitCycleId!==id) return;
+        // fade arrow, then restart cycle
+        if(_splitPaths) _splitPaths.forEach(({path})=>{path.style.opacity='0';});
+        _splitTmr=setTimeout(()=>{if(_splitCycleId===id)_runSplitCycle();},700);
+      });
+    },gpuStart);
+  } else {
+    // dp>1: batch splits into shards, arrows fan out to each replica
+    // phase 1: batch fades, all shards spring in simultaneously
+    setTimeout(()=>{
+      if(_splitCycleId!==id) return;
+      if(batchFull) batchFull.classList.add('faded');
+      pieces.forEach(p=>p.classList.add('vis'));
+    },600);
+    // phase 2: draw arrows after shards settle
+    const arrowStart=600+400;
+    const n=_splitPaths?_splitPaths.length:0;
+    if(_splitPaths) _splitPaths.forEach(({path,len},i)=>setTimeout(()=>{
+      if(_splitCycleId!==id) return;
+      _animSplitPath(path,len,450);
+    },arrowStart+i*120));
+    // phase 3: GPU card highlights (one full pass) after all arrows drawn
+    const gpuStart=arrowStart+(n>0?(n-1)*120:0)+450+200;
+    setTimeout(()=>{
+      if(_splitCycleId!==id) return;
+      startWorldAnim(()=>{
+        // phase 4: collapse — arrows fade, shards fold back, batch returns
+        if(_splitCycleId!==id) return;
+        if(_splitPaths) _splitPaths.forEach(({path})=>{path.style.opacity='0';});
+        pieces.forEach(p=>p.classList.remove('vis'));
+        if(batchFull) batchFull.classList.remove('faded');
+        _splitTmr=setTimeout(()=>{if(_splitCycleId===id)_runSplitCycle();},600);
+      });
+    },gpuStart);
+  }
+}
+
+function _animSplitPath(path,len,dur){
+  const t0=performance.now();
+  const step=now=>{
+    const t=Math.min(1,(now-t0)/dur);
+    const e=1-Math.pow(1-t,2.5);
+    path.setAttribute('stroke-dashoffset',len*(1-e));
+    if(t<1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// =================== OPERATOR DAG (per-layer tooltip) ===================
+function layerDagHTML(kind, t) {
+  const H=state.hidden, tp=state.tp, V=32000, E=state.experts, ep=state.ep;
+  const Htp  = tp>1 ? `H/${tp}`  : 'H';
+  const H4tp = tp>1 ? `4H/${tp}` : '4H';
+  const Vtp  = tp>1 ? `V/${tp}`  : 'V';
+  const sh   = s => `<div class="dag-shape">${s}</div>`;
+  const arr  = () => `<div class="dag-arr">↓</div>`;
+  const opN  = s => `<div class="dag-n dag-n-op">${s}</div>`;
+  const wN   = (n,s) => `<div class="dag-n dag-n-w">${n}<br><span style="opacity:.5;font-size:8px">${s}</span></div>`;
+  const commN = s => `<div class="dag-n dag-n-comm">${s}</div>`;
+  const actN  = s => `<div class="dag-n dag-n-act">${s}</div>`;
+  const cn   = () => `<span class="dag-conn">→</span>`;
+  const erow = (...items) => `<div class="dag-erow">${items.join('')}</div>`;
+  let h = `<div class="dag-hdr">算子图</div>`;
+  switch(kind) {
+    case 'emb':
+      h += sh('token [B, seq]'); h += arr();
+      h += erow(wN('W_emb',`V×${Htp}`), cn(), opN('VocabEmbedding'));
+      if(tp>1){h+=arr();h+=commN('all-gather → H');}
+      h+=arr(); h+=sh('act [B, seq, H]');
+      break;
+    case 'attn':
+      h+=sh('x [B, seq, H]'); h+=arr();
+      h+=erow(wN('W_Q/K/V',`H×${Htp}`), cn(), opN('QKV Linear (col-∥)'));
+      h+=arr(); h+=sh(`Q/K/V [B, seq, ${Htp}]`); h+=arr();
+      h+=actN('Scaled Dot-Product'); h+=arr();
+      h+=sh(`attn [B, seq, ${Htp}]`); h+=arr();
+      h+=erow(wN('W_O',`${Htp}×H`), cn(), opN('Out Proj (row-∥)'));
+      if(tp>1){h+=arr();h+=commN('all-reduce');}
+      h+=arr(); h+=sh('x + res [B, seq, H]');
+      break;
+    case 'mlp':
+      h+=sh('x [B, seq, H]'); h+=arr();
+      h+=erow(wN('W_up',`H×${H4tp}`), cn(), opN('up_proj (col-∥)'));
+      h+=arr(); h+=actN('SiLU'); h+=arr();
+      h+=erow(wN('W_dn',`${H4tp}×H`), cn(), opN('down_proj (row-∥)'));
+      if(tp>1){h+=arr();h+=commN('all-reduce');}
+      h+=arr(); h+=sh('x + res [B, seq, H]');
+      break;
+    case 'moe': {
+      const perCard=ep>1?Math.ceil(E/tp):E;
+      h+=sh('x [B, seq, H]'); h+=arr();
+      h+=erow(wN('W_router',`H×${E}`), cn(), opN('gate / router'));
+      h+=arr();
+      if(ep>1){h+=commN('all-to-all dispatch');h+=arr();}
+      h+=erow(wN(`W_exp×${perCard}`,'H×4H'), cn(), opN(`Expert FFN ×${perCard}`));
+      if(ep>1){h+=arr();h+=commN('all-to-all combine');}
+      h+=arr(); h+=sh('x + res [B, seq, H]');
+      break;
+    }
+    case 'norm':
+      h+=sh('x [B, seq, H]'); h+=arr();
+      h+=erow(wN('γ, β','[H]'), cn(), opN('LayerNorm'));
+      h+=arr(); h+=sh('norm [B, seq, H]');
+      break;
+    case 'head':
+      h+=sh('x [B, seq, H]'); h+=arr();
+      h+=erow(wN('W_head',`H×${Vtp}`), cn(), opN('lm_head (col-∥)'));
+      if(tp>1){h+=arr();h+=commN('all-gather → V');}
+      h+=arr(); h+=sh('logits [B, seq, V]');
+      break;
+  }
+  return `<div class="dag-flow">${h}</div>`;
+}
+
+// =================== WDIAG LAYER TOOLTIP ===================
+const LAYER_DESC={
+  emb: '将离散 token ID 映射为连续向量，是模型的<b>输入门户</b>。词表按 TP 组切分（VocabParallel），每卡存 vocab/tp 行嵌入权重。',
+  attn:'<b>自注意力权重矩阵（Q / K / V / O）</b>：让每个位置动态关注序列中所有位置，捕捉长程依赖。Q/K/V 投影权重矩阵按注意力头做列切（Column Parallel），Out 投影权重矩阵按输入做行切（Row Parallel），行切后 all-reduce 汇总结果。',
+  mlp: '<b>前馈网络权重矩阵（up / down）</b>：注意力之后对每个位置做升维 → 激活函数 → 降维，增强模型表达能力。up_proj 权重矩阵列切，down_proj 权重矩阵行切后 all-reduce。',
+  moe: '<b>混合专家 FFN 权重矩阵</b>：可学习 router 为每个 token 选 top-2 专家，以稀疏激活换取更大参数量。Expert Parallel 时不同卡持有不同专家子集（各自的权重矩阵），token 经 all-to-all 路由到对应卡计算。',
+  norm:'<b>Final LayerNorm 权重（scale / bias）</b>：在输出 logits 之前对隐状态做归一化，稳定数值分布。权重体积极小，全量复制在每张卡上，无需切分。',
+  head:'<b>LM Head 输出权重矩阵（hidden → vocab）</b>：将最终隐状态线性投影到词表维度，输出每个位置的下一 token logits。按 Column Parallel 切分，通常与 Embedding 共享同一权重矩阵。',
+};
+const LAYER_KIND_LABEL={emb:'Embedding',attn:'Attention',mlp:'MLP',moe:'MoE-FFN',norm:'LayerNorm',head:'LM Head'};
+
+function bindWdiagTooltips(){
+  const wd=$('worldDiagram'); if(!wd) return;
+  const tip=$('wdiagTip');
+  wd.querySelectorAll('.wdiag-layer-box[data-kind]').forEach(el=>{
+    el.addEventListener('mouseenter',e=>{
+      const {kind,bi,t}=el.dataset;
+      const blockTitle=bi?`Block ${bi} · `:'';
+      tip.innerHTML=
+        `<div class="tip-title">${blockTitle}${LAYER_KIND_LABEL[kind]||kind}</div>`+
+        `<div class="tip-desc">${LAYER_DESC[kind]||''}</div>`+
+        layerDagHTML(kind, +t);
+      _moveTip(e); tip.classList.add('vis');
+    });
+    el.addEventListener('mousemove',_moveTip);
+    el.addEventListener('mouseleave',()=>tip.classList.remove('vis'));
+  });
+}
+
+function _moveTip(e){
+  const tip=$('wdiagTip');
+  const tw=tip.offsetWidth||272, th=tip.offsetHeight||130;
+  const x=e.clientX+16, y=e.clientY+14;
+  tip.style.left=(x+tw>window.innerWidth ?e.clientX-tw-10:x)+'px';
+  tip.style.top =(y+th>window.innerHeight?e.clientY-th-10:y)+'px';
+}
+
+// =================== WIRE UP ===================
+function syncDisabled(){
+  [['dp','enDP'],['pp','enPP'],['cp','enCP'],['tp','enTP'],['ep','enMoE']].forEach(([id,chk])=>{
+    const dis=!$(chk).checked; $(id).disabled=dis; const sl=$(id+'Slider'); if(sl) sl.disabled=dis;
+  });
+  const moe=$('enMoE').checked; $('expRow').style.display=moe?'flex':'none'; $('experts').style.display=moe?'block':'none';
+}
+function update(scrollToHl, scrollCtrlId){
+  syncDisabled(); readState();
+  $('world').textContent=state.world;
+  $('worldFormula').textContent=`dp=${state.dp}、pp=${state.pp}、cp=${state.cp}、tp=${state.tp}`;
+  $('vBlocks').textContent=state.blocks; $('vHidden').textContent=state.hidden;
+  $('vExperts').textContent=state.experts; $('vBatch').textContent=state.batch;
+  $('vSteps').textContent=state.steps; $('vLr').textContent=state.lr.toExponential(1);
+  renderCode(scrollToHl, scrollCtrlId); renderViz(); renderHints(); renderWorldDiagram(); renderConclusion();
+}
+// 改配置时：若该控件关联某源码文件，自动切到对应 Tab 并定位高亮行
+function onControlChange(e){
+  const tab=e.target.dataset.tab;
+  let scroll=false;
+  if(tab && currentSources()[tab]){ activeTab=tab; renderTabs(); scroll=true; }
+  update(scroll, e.target.id);
+}
+document.querySelectorAll('input:not(.par-slider),select').forEach(el=>{el.addEventListener('input',onControlChange);el.addEventListener('change',onControlChange);});
+// 滑动条 → 更新数字输入并转发 input 事件；数字输入 → 回写滑动条位置
+[['dp','dpSlider'],['pp','ppSlider'],['cp','cpSlider'],['tp','tpSlider'],['ep','epSlider']].forEach(([nid,sid])=>{
+  const num=$(nid),sl=$(sid); if(!num||!sl) return;
+  sl.addEventListener('input',()=>{num.value=sl.value; num.dispatchEvent(new Event('input',{bubbles:true}));});
+  num.addEventListener('input',()=>{sl.value=num.value;});
+});
+document.querySelectorAll('.card-tile').forEach(tile=>{tile.onclick=()=>{document.querySelectorAll('.card-tile').forEach(t=>t.classList.remove('selected'));tile.classList.add('selected');update(false);};});
+
+// 复原：记录初始值，点击还原
+const DEFAULTS=[...document.querySelectorAll('#ctrl input,#ctrl select')].map(el=>({el,
+  v:el.type==='checkbox'?el.checked:el.value}));
+$('resetBtn').onclick=()=>{
+  DEFAULTS.forEach(d=>{ if(d.el.type==='checkbox') d.el.checked=d.v; else d.el.value=d.v; });
+  document.querySelectorAll('.card-tile').forEach((t,i)=>t.classList.toggle('selected',i===0));
+  currentLib='picotron'; $('libSelect').value='picotron';
+  activeTab='pgm'; renderTabs(); update(false); updateLibUI();
+};
+
+// ── 库切换下拉框 ──
+function updateLibUI(){
+  const isPico=currentLib==='picotron';
+  if($('headerSub')) $('headerSub').textContent=isPico
+    ?'基于 huggingface/picotron 真实逻辑　·　左:配置　中:训练拓扑及计算流动可视化　右:真实源码(随配置高亮)'
+    :'基于 pytorch/torchtitan 真实逻辑　·　左:配置　中:训练拓扑及计算流动可视化　右:真实源码(随配置高亮)';
+  if($('codePanelTitle')) $('codePanelTitle').textContent=isPico
+    ?'真实源码（picotron · 随配置高亮）'
+    :'真实源码（torchtitan · 随配置高亮）';
+}
+$('libSelect').addEventListener('change',e=>{
+  currentLib=e.target.value;
+  if(currentLib==='picotron'&&activeTab==='moe') activeTab='pgm';
+  updateLibUI(); renderTabs(); renderCode(false);
+});
+
+// =================== MEM TOOLTIP BUBBLE ===================
+(()=>{
+  const el=document.createElement('div');
+  el.style.cssText=[
+    'position:fixed','z-index:9999','display:none',
+    'max-width:340px','min-width:270px',
+    'background:var(--panel)','border:1px solid var(--border)',
+    'border-radius:10px','padding:12px 14px',
+    'font-size:11px','line-height:1.5','color:var(--text)',
+    'box-shadow:0 8px 32px rgba(0,0,0,.75)','pointer-events:none',
+  ].join(';');
+  document.body.appendChild(el);
+
+  function pos(e){
+    const vw=window.innerWidth,vh=window.innerHeight;
+    const tw=el.offsetWidth||320,th=el.offsetHeight||220;
+    let x=e.clientX+18,y=e.clientY-Math.round(th/2);
+    if(x+tw>vw-10)x=e.clientX-tw-18;
+    if(y<10)y=10;
+    if(y+th>vh-10)y=vh-th-10;
+    el.style.left=x+'px';el.style.top=y+'px';
+  }
+
+  document.addEventListener('mouseover',e=>{
+    const w=e.target.closest('.mem-wrap');if(!w)return;
+    el.innerHTML=memTooltipHTML(+w.dataset.p,+w.dataset.t);
+    el.style.display='block';pos(e);
+  });
+  document.addEventListener('mousemove',e=>{
+    if(el.style.display==='none')return;
+    if(!e.target.closest('.mem-wrap')){el.style.display='none';return;}
+    pos(e);
+  });
+  document.addEventListener('mouseout',e=>{
+    if(!e.relatedTarget||!e.relatedTarget.closest?.('.mem-wrap'))el.style.display='none';
+  });
+})();
+
+// =================== CODE PANEL COLLAPSE ===================
+const _app=document.querySelector('.app');
+$('codeCollapseBtn').onclick=()=>_app.classList.add('code-collapsed');
+$('codeExpandBtn').onclick=()=>_app.classList.remove('code-collapsed');
+
+renderTabs(); update(false);
+</script>
+</body>
+</html>
