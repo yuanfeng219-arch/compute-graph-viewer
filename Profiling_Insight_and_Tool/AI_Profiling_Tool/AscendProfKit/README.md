@@ -11,7 +11,7 @@ AscendProfKit/
 ├── CLAUDE.md                                      # Claude Code 专家角色加载指引（自动生效）
 ├── skills/                                        # 全部 Skill 知识库（共 15 个）
 │   ├── profiling-workflow/                        # 通用报告输出规范（所有分析均适用）
-│   ├── performance-health-score/                  # 性能健康度评分 PHS（报告结论速览首行，含场景权重规则）
+│   ├── performance-health-score/                  # 性能健康度评分 PHS（报告结论速览首行，含场景权重规则 + 显存容量利用率诊断指标）
 │   ├── ascend-profiler-db-explorer/               # Profiling DB SQL 查询（含 CTE 宏）
 │   ├── ascendc-operator-performance-optim/        # AscendC 端到端算子调优（5 阶段闭环）
 │   ├── cluster-fast-slow-rank-detector/           # 集群快慢卡诊断（含分析脚本）
@@ -23,7 +23,7 @@ AscendProfKit/
 │   ├── msinsight-view-selector/                   # 为每个诊断结果推荐 MindStudio Insight 可视化视图
 │   ├── msot-msopprof-operator-profiler/           # msOpProf 算子深度性能分析
 │   ├── nan-overflow-detection/                    # 多卡分布式训练 NaN/Inf 溢出检测与根因追溯
-│   ├── op-mfu-calculator/                         # 算子 MFU 计算（GEMM / FlashAttention）
+│   ├── op-mfu-calculator/                         # 算子 MFU 计算（GEMM / FlashAttention，支持从 profiler 落盘批量提取聚合）
 │   └── rl-consistency-analysis/                   # 训推一致性根因分析（含分析脚本）
 └── resources/
     └── configs/
@@ -108,6 +108,20 @@ Claude 会按 `CLAUDE.md` 的指引读取对应 `SKILL.md`（专家知识）和 
 
 > 脚本只算几何近似（关键路径无依赖边、重叠率依赖 `Overlap Analysis` 桶语义），所有桶值均打印，须结合 MindStudio Insight Timeline 视图人工校正。
 
+### 计算与显存利用率指标（`op-mfu-calculator` / `performance-health-score`）
+
+从 profiler 落盘（**目录名 / 采集等级不限**，识别 `*_ascend_pt/ASCEND_PROFILER_OUTPUT/`）批量提取的利用率指标。MFU 需采集时开 `record_shapes=true`，显存需 `profile_memory=true`。
+
+| 指标 | 含义 | 数据来源 | 归属 skill |
+|------|------|---------|-----------|
+| MFU（算子达成率） | Σ算子 FLOPs ÷ Σ算子耗时 ÷ 芯片峰值；matmul 用输出 shape 锚定 M/N、A 非 M 维定 K（**转置安全**） | `kernel_details.csv`（shape+耗时）/ DB `COMPUTE_TASK_INFO` | `op-mfu-calculator` |
+| MFU（端到端 step） | Σ整网 FLOPs ÷ (step 总跨度 × 峰值)，永远 ≤ 算子达成率 | 上 + `step_trace_time.csv` | `op-mfu-calculator` |
+| cube_utilization | 硬件实测 AI Core cube 流水线利用率（≠ MFU，互补同报） | `kernel_details.csv` 自带列 / `aic_mac_ratio` | `op-mfu-calculator` |
+| 显存容量利用率 | 显存占用峰值(GB) ÷ 单卡 HBM 总容量；与"带宽利用率"是两个维度 | `memory_record.csv`/`npu_module_mem.csv`/`operator_memory.csv` / DB `NPU_MEM` | `performance-health-score`（诊断项，不计入 PHS） |
+| 芯片型号/峰值 | 定 MFU 峰值与 HBM 容量；落盘 metadata 常缺，优先查 DB | `ascend_pytorch_profiler_*.db` 的 `NPU_INFO` 表 | 两者共用 |
+
+> ⚠️ 见到 MFU > 100% 多半是 matmul 的 M/N/K 用输入 shape 直接推导、未处理 NN/NT/TN 转置布局所致；务必用**输出 shape** 锚定 M/N。
+
 ### 优先级权重规则（贯穿所有性能报告）
 
 **1. 关键路径加权（`timeline-swimlane-analyzer` 核心原则）**
@@ -159,6 +173,8 @@ Claude 会按 `CLAUDE.md` 的指引读取对应 `SKILL.md`（专家知识）和 
 | `op-mfu-calculator/SKILL.md` | 算子 MFU 极低 | MFU < 20% | 算子远未吃满算力，存在明显性能损失 | 排查内存带宽瓶颈、launch overhead、Shape 不规则（过小或非对齐）等因素 |
 | `op-mfu-calculator/SKILL.md` | 算子 MFU 中等 | MFU 30%～60% | 通用工作负载典型水平，仍有提升空间 | 结合 Roofline 分析确认是 Compute Bound 还是 Memory Bound，针对性优化 Shape 或并行度 |
 | `op-mfu-calculator/SKILL.md` | 算子 MFU 高 | MFU > 70% | 算子形状、并行度和实现已接近设备上限 | 继续保持；若仍需提升可尝试混合精度或算子融合 |
+| `op-mfu-calculator/SKILL.md` | MFU 算出 > 100%（不合理） | 落盘聚合 MFU 冲到 100%~180% | matmul 的 M/N/K 直接用输入 shape 推导、未处理 NN/NT/TN 转置布局，N 被错当成 K 维 | 用**输出 shape** 锚定 M/N，K 取输入 A 中非 M 的那一维；FA 不要套 matmul 公式 |
+| `performance-health-score/SKILL.md` | 显存容量利用率高 / OOM 风险 | `memory_record.csv` 的 `Total Reserved` 峰值 ÷ 单卡 HBM 容量 > 90% | 接近显存上限，易触发 OOM | recompute / 调小 micro-batch / 调整并行切分；若 Reserved≫Allocated 则查分配器碎片（`expandable_segments`） |
 | `msot-msopprof-operator-profiler/SKILL.md` | 算子瓶颈类型未知 | 算子性能不达预期，不确定是计算限制还是内存限制 | 需通过 Roofline 定性瓶颈类型（Compute Bound / Memory Bound / Latency Bound） | 使用 `--aic-metrics=Roofline,Default` 采集，用 MindStudio Insight 查看 `visualize_data.bin` 中的 Roofline 图 |
 | `msot-msopprof-operator-profiler/SKILL.md` | `--kernel-name` 参数不生效 | 指定算子名过滤但无效，采集了全部算子 | `--kernel-name` 仅在 `application` 输入形态下有效，对 `config` / `export` 无效 | 切换为 `application` 输入形态；若使用 `config`，改用其他过滤方式（如 `--launch-count`） |
 | `msot-msopprof-operator-profiler/SKILL.md` | simulator `--soc-version` 不生效 | `msprof op simulator --config` 场景下 `--soc-version` 指定无效 | `config` 场景下仿真器通过 `LD_LIBRARY_PATH` 指定，`--soc-version` 不生效 | 改用 `export LD_LIBRARY_PATH=${INSTALL_DIR}/tools/simulator/<SocVersion>/lib:$LD_LIBRARY_PATH` |

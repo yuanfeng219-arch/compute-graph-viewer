@@ -1,5 +1,17 @@
 # AscendProfKit 变更记录
 
+## 2026-06-16 落盘 MFU 批量提取 + 显存容量利用率指标
+
+### 背景
+
+`op-mfu-calculator` 此前只有"用户手填维度算单算子 MFU"的公式，缺少"直接从 profiler 落盘批量提取 shape+耗时聚合 MFU"的方法；实测中发现按输入 shape 直接推 M/N/K 会因 NN/NT/TN 转置布局把 N 错当 K 维，导致聚合 MFU 冲到 100%~180%。另外现有 skill 只有"内存**带宽**利用率"，没有"显存**容量**利用率（HBM 占用率）"这一常被问到的独立指标。
+
+### 修改文件
+
+- `skills/op-mfu-calculator/SKILL.md`：新增"从 Profiler 落盘数据批量提取与聚合 MFU"整节——数据来源（`kernel_details.csv` / DB `COMPUTE_TASK_INFO` / `NPU_INFO`）、**转置安全的 M/N/K 推导规则**（用输出 shape 锚定 M/N）、算子达成率 vs 端到端 step MFU 两种口径、`cube_utilization(%)` 与 MFU 的区别、可复用 awk 脚本；明确"目录名 / 采集等级无关，前提是 `record_shapes=true`"。更新 description。
+- `skills/performance-health-score/SKILL.md`：内存维度下新增"显存容量利用率（HBM 占用率）"补充诊断指标（来源 `memory_record.csv`/`npu_module_mem.csv`/`operator_memory.csv`/DB `NPU_MEM`），明确**不计入 PHS 评分**、与带宽利用率区分；澄清两个"内存利用率"。更新 description。
+- `README.md`：目录结构两行说明更新；"指标速查与权重规则"新增"计算与显存利用率指标"小节表；"诊断知识库"新增 MFU>100% 转置坑、显存容量利用率高/OOM 两行。
+
 ## 2026-06-10 规则 7 指标看板：HTML 注释块 → 可见 Markdown 表格
 
 ### 背景

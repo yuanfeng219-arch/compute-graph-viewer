@@ -1,6 +1,6 @@
 ---
 name: performance-health-score
-description: 为一次性能 profiling 数据计算 0-100 的性能健康度评分 (PHS, Performance Health Score) 与等级 (S/A/B+/B/C/D)，作为报告"结论速览"首行的仪表盘指标。复合公式涵盖计算利用率、通信效率、调度效率、内存带宽利用率四个子项；按工作负载场景（大模型多卡训练 / 单卡训练或推理 / 单算子调优 / 集群慢卡）自动切换权重；子项缺数据时按比例归一化剩余权重。
+description: 为一次性能 profiling 数据计算 0-100 的性能健康度评分 (PHS, Performance Health Score) 与等级 (S/A/B+/B/C/D)，作为报告"结论速览"首行的仪表盘指标。复合公式涵盖计算利用率、通信效率、调度效率、内存带宽利用率四个子项；按工作负载场景（大模型多卡训练 / 单卡训练或推理 / 单算子调优 / 集群慢卡）自动切换权重；子项缺数据时按比例归一化剩余权重。另含一个独立诊断指标"显存容量利用率（HBM 占用率，从 memory_record.csv / npu_module_mem.csv / NPU_MEM 表提取，不计入 PHS）"，用于回答显存占用 / OOM 风险类问题。
 metadata:
   type: skill
 ---
@@ -83,6 +83,30 @@ PHS = w_compute × 计算利用率
   - Ascend 910B：1.6 TB/s（HBM2e）
   - Ascend 910C：按手册
 - 数据来源：算子调优场景用 `Memory.csv`；训练场景用 `ascend_pytorch_profiler_*.db` 的 memory 表
+
+> **注意区分两个"内存利用率"**：本子项是**带宽利用率**（实测读写带宽 ÷ HBM 峰值带宽，反映访存压力）。它与下面的**显存容量利用率**（占了多少 GB ÷ 单卡 HBM 总容量）是不同维度，别混用。PHS 评分用的是本子项（带宽）。
+
+#### 补充指标：显存容量利用率（HBM 占用率 — 诊断用，不计入 PHS）
+
+回答"显存利用率""HBM 占了多少""会不会 OOM/还能加多大 batch"这类问题时报此指标。**它是独立诊断项，不进入 PHS 加权公式**（PHS 内存子项仍只用带宽利用率，避免双重计入）。
+
+> 前提与目录名 / 采集等级无关（落盘目录叫 `level2`、`prof_out` 等都行），只要采集时开了 `profile_memory=true`（落盘里有 `memory_record.csv` 即满足）。
+
+```
+显存容量利用率 = 显存占用峰值 (GB) ÷ 单卡 HBM 总容量 (GB) × 100
+```
+
+- **显存占用峰值**数据来源（落盘 CSV，取 `Total Reserved(MB)` 时间序列最大值）：
+  - `memory_record.csv`：整进程视角，`Component=APP` 行的 `Total Reserved(MB)` 峰值（最贴近"这张卡占了多少显存"）；同表还有 `Total Allocated(MB)`（实际分配）/`Total Active(MB)`（活跃张量），可一并报；
+  - `npu_module_mem.csv`：按组件（SLOG/KERNEL/...）拆分的 Reserved，用于定位占用大头；
+  - `operator_memory.csv`：逐算子申请/释放与生命周期，用于排查显存峰值是哪些算子/激活贡献的；
+  - DB 口径：`ascend_pytorch_profiler_*.db` 的 `NPU_MEM`（`hbm`/`ddr` 字节）、`NPU_MODULE_MEM`（`totalReserved`）、`NPU_OP_MEM`（`totalAllocate`/`totalReserve`）。
+- **单卡 HBM 总容量**：随芯片型号（如 910B 常见 32GB / 64GB），从 `NPU_INFO` 表确认型号后定；落盘缺型号时按候选容量给区间并注明"待确认型号"，不要猜单值。
+- **判读**：
+  - Reserved ≫ Allocated（碎片/预留过多）→ 关注 `PYTORCH_NPU_ALLOC_CONF=expandable_segments:True` 等分配器配置；
+  - 容量利用率低但带宽利用率高 → 访存瓶颈而非容量瓶颈，优化方向在带宽/算子而非省显存；
+  - 容量利用率高（如 >90%）→ OOM 风险，建议 recompute / 调小 micro-batch / 切分并行度。
+- **多卡**：逐 rank 取峰值后报 max 与分布；PP/DP 不同 stage 的显存通常不均衡，按 rank 分别给。
 
 ---
 
