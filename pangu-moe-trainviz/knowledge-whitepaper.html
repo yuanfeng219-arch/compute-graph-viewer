@@ -312,7 +312,7 @@
           <td><a class="index-link" href="#combined">多维叠加</a></td>
           <td>说明 ParallelDemo 的 <code>dp × pp × cp × tp</code> 网格公式如何映射到 rank 坐标。</td>
           <td>避免把“多维语义标签”误解成五张卡或单一卡片归属。</td>
-          <td>形成“开发者配置 → rank mesh → 通信组 → 单卡计算切片”的主图。</td>
+          <td>形成“公开模型配置 → 派生训练策略 → rank mesh → 单卡计算切片”的主图。</td>
         </tr>
         <tr>
           <td><span class="pill blue">10</span></td>
@@ -1028,115 +1028,210 @@
       </div>
       <div class="evidence-caption">读图顺序：先看左边的 rank 身份，再看右边叠加的五类坐标。真正的 placement 是多维标签交叉，而不是单个归类。</div>
     </div>
+    <table class="section-table detail-table">
+      <thead><tr><th>数据层级</th><th>本图采用的口径</th><th>可靠性边界</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>官方公开模型配置</td>
+          <td>openPangu-Ultra-MoE-718B：61 层、hidden 7680、256 路由专家、1 共享专家、top-8、MLA / MTP / sandwich norm 等结构。</td>
+          <td><span class="pill good">official config</span> 可作为确定训练场景的静态模型底座。</td>
+        </tr>
+        <tr>
+          <td>派生训练 placement</td>
+          <td>用 <code>DP=32 / PP=16 / CP=1 / TP=8</code> 落成 <code>world=4096</code> 的 rank mesh；MoE 侧用 <code>EP=32</code> 把 256 experts 聚合为 32 个 expert bucket。</td>
+          <td><span class="pill blue">derived</span> 这是产品可解释样例，不声称 openPangu 官方真实训练切分已经公开。</td>
+        </tr>
+        <tr>
+          <td>动态训练遥测</td>
+          <td>loss、grad norm、router z-loss、专家负载、All-to-All 字节数、rank util 等信号需要来自一次自有 Ascend run，或用 OLMoE/BLOOM 逻辑信号重投影。</td>
+          <td><span class="pill hot">synthetic / self-collected</span> 未公开的逐 step 数据不能伪装成官方真实遥测。</td>
+        </tr>
+      </tbody>
+    </table>
     <div class="screenshot" id="paralleldemo-mesh">
-      <div class="shotbar"><span class="dots"></span>ParallelDemo 对齐图 · 从配置到单卡计算</div>
+      <div class="shotbar"><span class="dots"></span>把 ParallelDemo 落实成真实训练配置 · 从公开模型到单卡计算</div>
       <div class="shotbody flush">
-        <svg viewBox="0 0 1280 760" xmlns="http://www.w3.org/2000/svg" class="whitepaper-svg" style="--svg-width: 1100px">
+        <svg viewBox="0 0 1360 820" xmlns="http://www.w3.org/2000/svg" class="whitepaper-svg" style="--svg-width: 1160px">
           <defs>
             <marker id="meshArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
               <path d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/>
             </marker>
           </defs>
-          <text x="640" y="48" text-anchor="middle" font-size="26" font-weight="850" fill="#0f172a">配置并行度 → 生成 rank 网格 → 推导通信组 → 影响单卡计算</text>
-          <text x="640" y="78" text-anchor="middle" font-size="14" font-weight="650" fill="#64748b">示例使用 ParallelDemo 截图中的配置：DP=1、PP=4、CP=4、TP=4、EP=4、experts=8</text>
+          <text x="680" y="48" text-anchor="middle" font-size="26" font-weight="850" fill="#0f172a">公开模型配置 → 派生训练策略 → rank 网格 → 单卡任务投影</text>
+          <text x="680" y="78" text-anchor="middle" font-size="14" font-weight="650" fill="#64748b">确定化样例：openPangu-Ultra-MoE-718B · DP=32 / PP=16 / CP=1 / TP=8，EP=32 作为 MoE 专家放置层</text>
 
-          <g transform="translate(38,112)">
-            <rect x="0" y="0" width="270" height="520" rx="20" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
-            <text x="135" y="38" text-anchor="middle" font-size="20" font-weight="850" fill="#1d4ed8">1. 开发者配置</text>
-            <g font-size="15" font-weight="800" fill="#1e3a8a">
-              <rect x="34" y="76" width="88" height="40" rx="10" fill="#ffffff" stroke="#93c5fd"/>
-              <text x="78" y="102" text-anchor="middle">DP = 1</text>
-              <rect x="148" y="76" width="88" height="40" rx="10" fill="#ffffff" stroke="#93c5fd"/>
-              <text x="192" y="102" text-anchor="middle">PP = 4</text>
-              <rect x="34" y="136" width="88" height="40" rx="10" fill="#ffffff" stroke="#93c5fd"/>
-              <text x="78" y="162" text-anchor="middle">CP = 4</text>
-              <rect x="148" y="136" width="88" height="40" rx="10" fill="#ffffff" stroke="#93c5fd"/>
-              <text x="192" y="162" text-anchor="middle">TP = 4</text>
+          <g transform="translate(34,112)">
+            <rect x="0" y="0" width="250" height="560" rx="20" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+            <text x="125" y="38" text-anchor="middle" font-size="19" font-weight="850" fill="#1d4ed8">1. 模型与训练配置</text>
+            <rect x="24" y="72" width="202" height="98" rx="14" fill="#ffffff" stroke="#bfdbfe"/>
+            <text x="125" y="101" text-anchor="middle" font-size="14" font-weight="850" fill="#0f172a">整网模型架构</text>
+            <text x="125" y="126" text-anchor="middle" font-size="12" fill="#1e3a8a">61 layers · 3 dense + 58 MoE</text>
+            <text x="125" y="148" text-anchor="middle" font-size="12" fill="#1e3a8a">256 routed experts · top-8</text>
+            <g font-size="13" font-weight="800" fill="#1e3a8a">
+              <rect x="24" y="200" width="88" height="38" rx="10" fill="#ffffff" stroke="#93c5fd"/>
+              <text x="68" y="224" text-anchor="middle">DP = 32</text>
+              <rect x="138" y="200" width="88" height="38" rx="10" fill="#ffffff" stroke="#93c5fd"/>
+              <text x="182" y="224" text-anchor="middle">PP = 16</text>
+              <rect x="24" y="254" width="88" height="38" rx="10" fill="#ffffff" stroke="#93c5fd"/>
+              <text x="68" y="278" text-anchor="middle">CP = 1</text>
+              <rect x="138" y="254" width="88" height="38" rx="10" fill="#ffffff" stroke="#93c5fd"/>
+              <text x="182" y="278" text-anchor="middle">TP = 8</text>
             </g>
-            <rect x="28" y="216" width="214" height="96" rx="14" fill="#ffffff" stroke="#bfdbfe"/>
-            <text x="135" y="248" text-anchor="middle" font-size="15" font-weight="850" fill="#0f172a">world size</text>
-            <text x="135" y="278" text-anchor="middle" font-size="18" font-weight="850" fill="#1d4ed8">DP × PP × CP × TP = 64</text>
-            <rect x="28" y="350" width="214" height="112" rx="14" fill="#fff7ed" stroke="#fdba74"/>
-            <text x="135" y="382" text-anchor="middle" font-size="15" font-weight="850" fill="#9a3412">MoE / EP 叠加</text>
-            <text x="135" y="412" text-anchor="middle" font-size="13" fill="#7c2d12">EP = 4，experts = 8</text>
-            <text x="135" y="438" text-anchor="middle" font-size="12" fill="#7c2d12">控制专家放置与 token 路由</text>
+            <rect x="24" y="326" width="202" height="86" rx="14" fill="#ffffff" stroke="#bfdbfe"/>
+            <text x="125" y="354" text-anchor="middle" font-size="14" font-weight="850" fill="#0f172a">world size</text>
+            <text x="125" y="382" text-anchor="middle" font-size="16" font-weight="850" fill="#1d4ed8">32 × 16 × 1 × 8 = 4096</text>
+            <rect x="24" y="448" width="202" height="74" rx="14" fill="#fff7ed" stroke="#fdba74"/>
+            <text x="125" y="474" text-anchor="middle" font-size="14" font-weight="850" fill="#9a3412">MoE / EP 叠加</text>
+            <text x="125" y="498" text-anchor="middle" font-size="12" fill="#7c2d12">EP=32 · 8 experts / bucket</text>
           </g>
 
-          <path d="M316 372 L348 372" stroke="#1d4ed8" stroke-width="3" fill="none" marker-end="url(#meshArrow)"/>
+          <path d="M292 392 L320 392" stroke="#1d4ed8" stroke-width="3" fill="none" marker-end="url(#meshArrow)"/>
 
-          <g transform="translate(354,112)">
-            <rect x="0" y="0" width="270" height="520" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
-            <text x="135" y="38" text-anchor="middle" font-size="20" font-weight="850" fill="#0f172a">2. 多维 rank 网格</text>
-            <rect x="30" y="76" width="210" height="92" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
-            <text x="135" y="110" text-anchor="middle" font-size="16" font-weight="850" fill="#0f172a">grid[d][p][c][t]</text>
-            <text x="135" y="140" text-anchor="middle" font-size="13" fill="#526070">view(dp, pp, cp, tp)</text>
-            <rect x="26" y="208" width="218" height="92" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
-            <text x="135" y="240" text-anchor="middle" font-size="14" font-weight="800" fill="#1d4ed8">rank 公式</text>
-            <text x="135" y="270" text-anchor="middle" font-size="13" fill="#1e3a8a">((d×pp + p)×cp + c)×tp + t</text>
-            <g font-size="13" fill="#475467">
-              <rect x="28" y="342" width="214" height="118" rx="14" fill="#ffffff" stroke="#dbe5f0"/>
-              <text x="135" y="374" text-anchor="middle" font-weight="850" fill="#0f172a">例：rank_6</text>
-              <text x="135" y="402" text-anchor="middle">d=0, p=0, c=1, t=2</text>
-              <text x="135" y="430" text-anchor="middle">物理上可落在 H100_6</text>
-            </g>
+          <g transform="translate(326,112)">
+            <rect x="0" y="0" width="250" height="560" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+            <text x="125" y="38" text-anchor="middle" font-size="19" font-weight="850" fill="#0f172a">2. 多维 rank 网格</text>
+            <rect x="24" y="76" width="202" height="92" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+            <text x="125" y="110" text-anchor="middle" font-size="16" font-weight="850" fill="#0f172a">grid[d][p][c][t]</text>
+            <text x="125" y="140" text-anchor="middle" font-size="13" fill="#526070">view(dp, pp, cp, tp)</text>
+            <rect x="24" y="210" width="202" height="94" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
+            <text x="125" y="241" text-anchor="middle" font-size="14" font-weight="800" fill="#1d4ed8">rank 公式</text>
+            <text x="125" y="268" text-anchor="middle" font-size="12" fill="#1e3a8a">((d×pp+p)×cp+c)×tp+t</text>
+            <rect x="24" y="352" width="202" height="116" rx="14" fill="#ffffff" stroke="#dbe5f0"/>
+            <text x="125" y="384" text-anchor="middle" font-size="14" font-weight="850" fill="#0f172a">例：rank_299</text>
+            <text x="125" y="412" text-anchor="middle" font-size="12" fill="#475467">d=2, p=5, c=0, t=3</text>
+            <text x="125" y="438" text-anchor="middle" font-size="12" fill="#475467">运行在 910B_299</text>
           </g>
 
-          <path d="M632 372 L664 372" stroke="#1d4ed8" stroke-width="3" fill="none" marker-end="url(#meshArrow)"/>
+          <path d="M584 392 L612 392" stroke="#1d4ed8" stroke-width="3" fill="none" marker-end="url(#meshArrow)"/>
 
-          <g transform="translate(670,112)">
-            <rect x="0" y="0" width="270" height="520" rx="20" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="2"/>
-            <text x="135" y="38" text-anchor="middle" font-size="20" font-weight="850" fill="#6d28d9">3. 通信组投影</text>
-            <g font-size="12.5" fill="#4c1d95">
-              <rect x="24" y="76" width="222" height="64" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
-              <text x="135" y="102" text-anchor="middle" font-weight="850">TP（Tensor Parallel）组</text>
-              <text x="135" y="124" text-anchor="middle">固定 d,p,c；变化 t：4,5,6,7</text>
-              <rect x="24" y="160" width="222" height="64" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
-              <text x="135" y="186" text-anchor="middle" font-weight="850">PP（Pipeline Parallel）组</text>
-              <text x="135" y="208" text-anchor="middle">固定 d,c,t；变化 p：6,22,38,54</text>
-              <rect x="24" y="244" width="222" height="64" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
-              <text x="135" y="270" text-anchor="middle" font-weight="850">CP（Context Parallel）组</text>
-              <text x="135" y="292" text-anchor="middle">固定 d,p,t；变化 c：2,6,10,14</text>
-              <rect x="24" y="328" width="222" height="64" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
-              <text x="135" y="354" text-anchor="middle" font-weight="850">DP（Data Parallel）组</text>
-              <text x="135" y="376" text-anchor="middle">固定 p,c,t；变化 d：本例 DP=1</text>
-              <rect x="24" y="428" width="222" height="54" rx="12" fill="#fff7ed" stroke="#fdba74"/>
-              <text x="135" y="452" text-anchor="middle" font-weight="850" fill="#9a3412">EP（Expert Parallel）/ MoE</text>
-              <text x="135" y="472" text-anchor="middle" fill="#7c2d12">专家持有范围与 token 路由</text>
-            </g>
-          </g>
-
-          <path d="M948 372 L980 372" stroke="#1d4ed8" stroke-width="3" fill="none" marker-end="url(#meshArrow)"/>
-
-          <g transform="translate(986,112)">
-            <rect x="0" y="0" width="256" height="520" rx="20" fill="#ecfdf5" stroke="#86efac" stroke-width="2"/>
-            <text x="128" y="38" text-anchor="middle" font-size="20" font-weight="850" fill="#047857">4. 单卡计算切片</text>
-            <g class="svg-chip">
-              <use href="#chip-shell-tall" x="30" y="70" width="196" height="250"/>
-              <text x="128" y="116" text-anchor="middle" font-size="20" font-weight="850" fill="#0f172a">rank_6 / H100_6</text>
-              <rect x="58" y="148" width="140" height="30" rx="8" fill="#ffedd5" stroke="#fdba74"/>
-              <text x="128" y="168" text-anchor="middle" font-size="12" font-weight="800" fill="#9a3412">PP0：Emb + Block0</text>
-              <rect x="58" y="188" width="140" height="30" rx="8" fill="#ede9fe" stroke="#c4b5fd"/>
-              <text x="128" y="208" text-anchor="middle" font-size="12" font-weight="800" fill="#6d28d9">TP：第 3/4 片</text>
-              <rect x="58" y="228" width="140" height="30" rx="8" fill="#cffafe" stroke="#67e8f9"/>
-              <text x="128" y="248" text-anchor="middle" font-size="12" font-weight="800" fill="#0e7490">CP1：序列分片</text>
-              <rect x="58" y="268" width="140" height="30" rx="8" fill="#fee2e2" stroke="#fca5a5"/>
-              <text x="128" y="288" text-anchor="middle" font-size="12" font-weight="800" fill="#b91c1c">MoE：E4-E5</text>
-            </g>
-            <g font-size="12" fill="#166534">
-              <rect x="26" y="348" width="204" height="118" rx="14" fill="#ffffff" stroke="#bbf7d0"/>
-              <text x="128" y="374" text-anchor="middle" font-weight="850" fill="#047857">卡内应呈现</text>
-              <text x="128" y="400" text-anchor="middle">Embedding / Attention / MoE FFN</text>
-              <text x="128" y="424" text-anchor="middle">QKV、Out、MLP 权重分片</text>
-              <text x="128" y="448" text-anchor="middle">router/gate、expert、all-to-all</text>
+          <g transform="translate(618,112)">
+            <rect x="0" y="0" width="270" height="560" rx="20" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="2"/>
+            <text x="135" y="38" text-anchor="middle" font-size="19" font-weight="850" fill="#6d28d9">3. 通信组投影</text>
+            <g font-size="12.2" fill="#4c1d95">
+              <rect x="24" y="72" width="222" height="58" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
+              <text x="135" y="96" text-anchor="middle" font-weight="850">TP（Tensor Parallel）组</text>
+              <text x="135" y="118" text-anchor="middle">固定 d,p,c；变化 t：296-303</text>
+              <rect x="24" y="146" width="222" height="58" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
+              <text x="135" y="170" text-anchor="middle" font-weight="850">PP（Pipeline Parallel）组</text>
+              <text x="135" y="192" text-anchor="middle">固定 d,c,t；变化 p：259…379</text>
+              <rect x="24" y="220" width="222" height="58" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
+              <text x="135" y="244" text-anchor="middle" font-weight="850">CP（Context Parallel）组</text>
+              <text x="135" y="266" text-anchor="middle">固定 d,p,t；本例 CP=1</text>
+              <rect x="24" y="294" width="222" height="58" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
+              <text x="135" y="318" text-anchor="middle" font-weight="850">DP（Data Parallel）组</text>
+              <text x="135" y="340" text-anchor="middle">固定 p,c,t；变化 d：43…4011</text>
+              <rect x="24" y="386" width="222" height="70" rx="12" fill="#fff7ed" stroke="#fdba74"/>
+              <text x="135" y="412" text-anchor="middle" font-weight="850" fill="#9a3412">EP（Expert Parallel）/ MoE</text>
+              <text x="135" y="434" text-anchor="middle" fill="#7c2d12">专家 bucket 与 token 路由</text>
             </g>
           </g>
 
-          <rect x="160" y="680" width="960" height="48" rx="16" fill="#ffffff" stroke="#dbe5f0"/>
-          <text x="640" y="710" text-anchor="middle" font-size="15" font-weight="850" fill="#0f172a">结论：多维语义标签应表现为同一 rank 的坐标投影与卡内计算切片，而不是五张相互独立的卡。</text>
+          <path d="M896 392 L924 392" stroke="#1d4ed8" stroke-width="3" fill="none" marker-end="url(#meshArrow)"/>
+
+          <g transform="translate(932,112)">
+            <rect x="0" y="0" width="390" height="560" rx="20" fill="#ecfdf5" stroke="#86efac" stroke-width="2"/>
+            <text x="195" y="38" text-anchor="middle" font-size="20" font-weight="850" fill="#047857">4. 多 rank 计算切片</text>
+            <text x="195" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="#166534">一个 TP 组中的多个 rank；每张卡内部都保留完整切片标签</text>
+
+            <g class="svg-chip" font-size="9.5" fill="#243244">
+              <use href="#chip-shell-tall" x="22" y="82" width="162" height="206"/>
+              <text x="103" y="119" text-anchor="middle" font-size="15" font-weight="850" fill="#0f172a">rank_296</text>
+              <text x="103" y="139" text-anchor="middle" fill="#64748b">910B_296</text>
+              <rect x="46" y="154" width="114" height="21" rx="6" fill="#ffedd5" stroke="#fdba74"/>
+              <text x="103" y="169" text-anchor="middle" font-weight="800" fill="#9a3412">PP5 · layers 20-23</text>
+              <rect x="46" y="181" width="114" height="21" rx="6" fill="#ede9fe" stroke="#c4b5fd"/>
+              <text x="103" y="196" text-anchor="middle" font-weight="800" fill="#6d28d9">TP0 · shard 1/8</text>
+              <rect x="46" y="208" width="114" height="21" rx="6" fill="#dbeafe" stroke="#93c5fd"/>
+              <text x="103" y="223" text-anchor="middle" font-weight="800" fill="#1d4ed8">DP2 · sample shard</text>
+              <rect x="46" y="235" width="114" height="21" rx="6" fill="#cffafe" stroke="#67e8f9"/>
+              <text x="103" y="250" text-anchor="middle" font-weight="800" fill="#0e7490">CP0 · full context</text>
+              <rect x="46" y="262" width="114" height="21" rx="6" fill="#fee2e2" stroke="#fca5a5"/>
+              <text x="103" y="277" text-anchor="middle" font-weight="800" fill="#b91c1c">EP16 · E128-E135</text>
+
+              <use href="#chip-shell-tall" x="206" y="82" width="162" height="206"/>
+              <text x="287" y="119" text-anchor="middle" font-size="15" font-weight="850" fill="#0f172a">rank_297</text>
+              <text x="287" y="139" text-anchor="middle" fill="#64748b">910B_297</text>
+              <rect x="230" y="154" width="114" height="21" rx="6" fill="#ffedd5" stroke="#fdba74"/>
+              <text x="287" y="169" text-anchor="middle" font-weight="800" fill="#9a3412">PP5 · layers 20-23</text>
+              <rect x="230" y="181" width="114" height="21" rx="6" fill="#ede9fe" stroke="#c4b5fd"/>
+              <text x="287" y="196" text-anchor="middle" font-weight="800" fill="#6d28d9">TP1 · shard 2/8</text>
+              <rect x="230" y="208" width="114" height="21" rx="6" fill="#dbeafe" stroke="#93c5fd"/>
+              <text x="287" y="223" text-anchor="middle" font-weight="800" fill="#1d4ed8">DP2 · sample shard</text>
+              <rect x="230" y="235" width="114" height="21" rx="6" fill="#cffafe" stroke="#67e8f9"/>
+              <text x="287" y="250" text-anchor="middle" font-weight="800" fill="#0e7490">CP0 · full context</text>
+              <rect x="230" y="262" width="114" height="21" rx="6" fill="#fee2e2" stroke="#fca5a5"/>
+              <text x="287" y="277" text-anchor="middle" font-weight="800" fill="#b91c1c">EP17 · E136-E143</text>
+
+              <use href="#chip-shell-tall" x="22" y="314" width="162" height="206"/>
+              <text x="103" y="351" text-anchor="middle" font-size="15" font-weight="850" fill="#0f172a">rank_298</text>
+              <text x="103" y="371" text-anchor="middle" fill="#64748b">910B_298</text>
+              <rect x="46" y="386" width="114" height="21" rx="6" fill="#ffedd5" stroke="#fdba74"/>
+              <text x="103" y="401" text-anchor="middle" font-weight="800" fill="#9a3412">PP5 · layers 20-23</text>
+              <rect x="46" y="413" width="114" height="21" rx="6" fill="#ede9fe" stroke="#c4b5fd"/>
+              <text x="103" y="428" text-anchor="middle" font-weight="800" fill="#6d28d9">TP2 · shard 3/8</text>
+              <rect x="46" y="440" width="114" height="21" rx="6" fill="#dbeafe" stroke="#93c5fd"/>
+              <text x="103" y="455" text-anchor="middle" font-weight="800" fill="#1d4ed8">DP2 · sample shard</text>
+              <rect x="46" y="467" width="114" height="21" rx="6" fill="#cffafe" stroke="#67e8f9"/>
+              <text x="103" y="482" text-anchor="middle" font-weight="800" fill="#0e7490">CP0 · full context</text>
+              <rect x="46" y="494" width="114" height="21" rx="6" fill="#fee2e2" stroke="#fca5a5"/>
+              <text x="103" y="509" text-anchor="middle" font-weight="800" fill="#b91c1c">EP18 · E144-E151</text>
+
+              <use href="#chip-shell-tall" x="206" y="314" width="162" height="206"/>
+              <text x="287" y="351" text-anchor="middle" font-size="15" font-weight="850" fill="#0f172a">rank_299</text>
+              <text x="287" y="371" text-anchor="middle" fill="#64748b">910B_299</text>
+              <rect x="230" y="386" width="114" height="21" rx="6" fill="#ffedd5" stroke="#fdba74"/>
+              <text x="287" y="401" text-anchor="middle" font-weight="800" fill="#9a3412">PP5 · layers 20-23</text>
+              <rect x="230" y="413" width="114" height="21" rx="6" fill="#ede9fe" stroke="#c4b5fd"/>
+              <text x="287" y="428" text-anchor="middle" font-weight="800" fill="#6d28d9">TP3 · shard 4/8</text>
+              <rect x="230" y="440" width="114" height="21" rx="6" fill="#dbeafe" stroke="#93c5fd"/>
+              <text x="287" y="455" text-anchor="middle" font-weight="800" fill="#1d4ed8">DP2 · sample shard</text>
+              <rect x="230" y="467" width="114" height="21" rx="6" fill="#cffafe" stroke="#67e8f9"/>
+              <text x="287" y="482" text-anchor="middle" font-weight="800" fill="#0e7490">CP0 · full context</text>
+              <rect x="230" y="494" width="114" height="21" rx="6" fill="#fee2e2" stroke="#fca5a5"/>
+              <text x="287" y="509" text-anchor="middle" font-weight="800" fill="#b91c1c">EP19 · E152-E159</text>
+            </g>
+
+            <rect x="24" y="528" width="342" height="20" rx="10" fill="#ffffff" stroke="#bbf7d0"/>
+            <text x="195" y="542" text-anchor="middle" font-size="10.5" font-weight="800" fill="#047857">同一 PP/DP/CP，TP shard 与 expert bucket 随 rank 变化</text>
+          </g>
+
+          <rect x="150" y="728" width="1060" height="48" rx="16" fill="#ffffff" stroke="#dbe5f0"/>
+          <text x="680" y="758" text-anchor="middle" font-size="15" font-weight="850" fill="#0f172a">结论：ParallelDemo 的网格公式可落成盘古训练诊断样例；每个 rank/card 都要携带自己的切片标签。</text>
         </svg>
       </div>
-      <div class="evidence-caption">官方依据：MindSpore Transformers 配置说明给出 <code>parallel_config.data_parallel</code>、<code>model_parallel</code>、<code>context_parallel</code>、<code>pipeline_stage</code> 等并行度，并要求 <code>device_num = data_parallel × model_parallel × context_parallel × pipeline_stage</code>；MindSpore 通信 API 提供通信组和组内 / 全局 rank 映射；MoE 配置定义 <code>expert_num</code>、<code>num_experts_chosen</code> 和专家计算通信并行参数。因此“并行坐标层”是符合官方配置关系的产品抽象，名称本身不是官方术语。参考：<a href="https://www.mindspore.cn/mindformers/docs/zh-CN/master/feature/configuration.html">MindSpore Transformers 配置文件说明</a>、<a href="https://www.mindspore.cn/docs/zh-CN/master/api_python/mindspore.communication.html">MindSpore communication API</a>。</div>
+      <div class="evidence-caption">证据边界：模型结构来自公开 <a href="https://huggingface.co/FreedomIntelligence/openPangu-Ultra-MoE-718B/blob/main/config.json">openPangu-Ultra-MoE-718B config</a> 与 <a href="https://huggingface.co/FreedomIntelligence/openPangu-Ultra-MoE-718B/blob/main/inference/model.py">inference/model.py</a>；<code>DP=32 / PP=16 / CP=1 / TP=8 / EP=32</code> 是用于把 ParallelDemo 公式落实到大规模训练的派生 placement，不是官方公开的真实训练切分。模型架构只定义 forward 主干；训练 step 还包含 loss、backward、通信同步与 optimizer update，可参考 <a href="https://docs.pytorch.org/tutorials/recipes/recipes/zeroing_out_gradients.html">PyTorch 训练循环示例</a>。MindSpore Transformers 配置说明提供 <code>data_parallel</code>、<code>model_parallel</code>、<code>context_parallel</code>、<code>pipeline_stage</code>、<code>expert_num</code>、<code>num_experts_chosen</code> 等字段依据，通信 API 提供通信组与 rank 映射依据。与 ParallelDemo 的差异边界：截图中的 H100_0 是 <code>Stage 0</code>，所以显示 Embedding；本图的 <code>rank_299 / PP5</code> 不应显示 Embedding，只显示该 stage 覆盖的 blocks。<code>E152-E159</code> 是盘古产品场景中的 EP bucket，不是直接照搬 ParallelDemo 当前 demo 里按 TP shard 展示专家片的简化逻辑。</div>
     </div>
+    <table class="section-table detail-table">
+      <thead><tr><th>概念</th><th>在训练中的含义</th><th>在图表中的表达边界</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>stage</code></td>
+          <td>PP（Pipeline Parallel，流水线并行）把整网层序列切成的流水线阶段。</td>
+          <td><code>Stage 0</code> 表示模型开头的层段，不是第 0 个训练 step；只有 Stage 0 才通常包含 Embedding。</td>
+        </tr>
+        <tr>
+          <td>训练样本 / sample</td>
+          <td>一条训练数据；语言模型里通常是一段 token 序列。</td>
+          <td>DP（Data Parallel，数据并行）下不同 rank 吃不同 <code>sample shard</code>，不是模型结构不同。</td>
+        </tr>
+        <tr>
+          <td><code>batch</code> / <code>mini-batch shard</code></td>
+          <td>一个 step 输入的一组样本；被 DP/CP 等切分后，每个 rank 只处理其中一部分。</td>
+          <td>可显示 <code>samples 512-1023</code> 或 <code>mini-batch shard</code>，不要把它说成 tensor shard。</td>
+        </tr>
+        <tr>
+          <td><code>tensor</code></td>
+          <td>数据、权重、激活、梯度在计算机里的多维数组表示。</td>
+          <td>TP（Tensor Parallel，张量并行）切的是权重/激活等 tensor 维度，例如 QKV / Out 第 4/8 片。</td>
+        </tr>
+        <tr>
+          <td><code>step</code></td>
+          <td>一次训练迭代，通常包含 forward、loss、backward、通信同步、optimizer update。</td>
+          <td>模型架构图只覆盖 forward 主干；step runtime card 才表达 backward、通信和参数更新。</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="callout"><b>产品口径：</b>整网模型架构是“前向计算模板”，训练步骤是“执行一次训练迭代”，单卡任务是“整网架构经 placement 投影到某个 rank/device 后，在当前 step 里实际承担的切片与通信”。</div>
     <div class="arch">
       <div class="arch-layer">
         <div class="arch-label">物理轴</div>

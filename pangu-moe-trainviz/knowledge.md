@@ -15,6 +15,7 @@
 ## 阅读目录
 
 - [1. 先把几个基本名词分开](#1-先把几个基本名词分开)
+- [1.2 stage、训练样本、batch、step、tensor 是什么](#12-stage训练样本batchsteptensor-是什么)
 - [2. 最大的误区：是不是“卡按层和算子分配”？](#2-最大的误区是不是卡按层和算子分配)
 - [3. DP：数据并行 Data Parallel](#3-dp数据并行-data-parallel)
 - [4. FSDP：全分片数据并行 Fully Sharded Data Parallel](#4-fsdp全分片数据并行-fully-sharded-data-parallel)
@@ -28,11 +29,13 @@
 - [9.3 并行数量是不是开发者可以自己设置](#93-这些并行数量是不是开发者可以自己设置)
 - [9.4 盘古 MoE 单卡内部会呈现哪些计算](#94-一个卡内部会受到并行策略怎样影响)
 - [10. 为什么 ParallelDemo 的逻辑对，但示意图不能直接当真实盘古拓扑](#10-为什么-paralleldemo-的逻辑对但示意图不能直接当真实盘古拓扑)
+- [10.4 如何把 ParallelDemo 落实成确定的盘古训练配置](#104-如何把-paralleldemo-落实成确定的盘古训练配置)
+- [10.5 整网模型架构、训练步骤、单卡任务的关系](#105-整网模型架构训练步骤单卡任务的关系)
 - [11. 对 TrainScope 的产品表达建议](#11-对-trainscope-的产品表达建议)
 - [11.4 推荐的单卡详情结构](#114-推荐的单卡详情结构)
 - [12. 给页面文案直接可用的几种模板](#12-给页面文案直接可用的几种模板)
 - [13. 最终结论](#13-最终结论)
-- [14. 官方依据](#14-官方依据)
+- [14. 官方与可靠代码依据](#14-官方与可靠代码依据)
 
 ---
 
@@ -80,6 +83,46 @@
 更准确的表达应该是：
 
 `rank_237 运行在 host_03 的 device_5 上，属于 PP5 / TP2 / DP7 / EP19`
+
+### 1.2 stage、训练样本、batch、step、tensor 是什么
+
+这些词容易混在一起，但它们不是同一个维度。
+
+| 概念 | 准确定义 | 类比 | 在图里应该怎么表达 |
+|---|---|---|---|
+| `训练样本 sample` | 一条训练数据。对语言模型来说，通常是一段 token 序列，模型用前面的 token 预测后面的 token。 | 一份学生作业。 | `sample 0-511`、`样本 shard A`。 |
+| `token` | 文本被 tokenizer 切出来的最小训练单位之一，例如一个字、词片段或符号。 | 作业里的一个字/词。 | `sequence length`、`token 2048-4095`。 |
+| `tensor` | 计算机里承载数据、权重、激活、梯度的多维数组。样本被编码后会变成 tensor，但 tensor 不等于样本。 | 装在表格里的数字矩阵。 | `input_ids tensor`、`hidden_states tensor`、`QKV weight tensor`。 |
+| `batch` | 一个训练 step 一次送进模型的一组样本。 | 一摞作业。 | `one step batch · 32 samples`。 |
+| `mini-batch shard` | 在 DP/CP 等并行下，一个 rank 实际处理的 batch 子集。 | 每个老师分到的一部分作业。 | `rank_1: samples 512-1023`。 |
+| `step` | 一次训练迭代。通常包括取 batch、forward、loss、backward、通信同步、optimizer update。 | 完整批改一摞作业并更新答案标准的一轮。 | `step 1997`、`current step`。 |
+| `stage` | 在 PP（Pipeline Parallel，流水线并行）里，把整网层序列切成的一个流水线阶段。 | 工厂流水线的一段工位。 | `Stage 0`、`PP5 · layers 20-23`。 |
+
+关键区别：
+
+- `sample / batch / mini-batch shard` 是数据维度，回答“这次喂了哪些训练数据”。
+- `tensor` 是计算表示，回答“数据、权重、激活、梯度在机器里以什么数组形态存在”。
+- `stage` 是模型切分维度，回答“整网前向链路中哪一段层放在这个流水线阶段”。
+- `step` 是时间维度，回答“训练跑到了第几次迭代”。
+
+所以，`DP` 图里“不同 rank 吃不同数据”说的是 `mini-batch shard` 不同，不是模型结构不同。`PP` 图里的 `Stage 0` 说的是模型层段不同，不是第 0 个训练 step。
+
+以 `ParallelDemo` 截图为例：
+
+```text
+one step batch · 32 训练样本
+        |
+        v
+Stage 0
+CP0
+EP组0
+H100_0
+Emb (第1/4片)
+Attn-0 (第1/4片)
+MoE-0 [E0-E1]
+```
+
+这句话的含义是：在当前训练 step 里，某一组样本进入流水线；`H100_0` 处在 `Stage 0`，所以它执行整网开头部分的 Embedding 和 Block 0；同时它是 TP 第 1/4 片，所以这些算子内部的权重/激活不是完整一份，而是第 1 个张量分片。
 
 ---
 
@@ -700,12 +743,16 @@ TrainScope 的图表建议分成两层：
 如果要在白皮书里画图，推荐画成：
 
 ```text
-开发者配置
-DP=1 / PP=4 / CP=4 / TP=4 / EP=4
+公开模型配置
+openPangu-Ultra-MoE-718B: 61 layers / hidden 7680 / 256 routed experts / top-8
+        |
+        v
+派生训练策略
+DP=32 / PP=16 / CP=1 / TP=8 / EP=32
         |
         v
 rank mesh
-grid[d][p][c][t], world=64
+grid[d][p][c][t], world=4096
         |
         v
 通信组投影
@@ -713,8 +760,241 @@ TP group / PP group / CP group / DP group / EP placement
         |
         v
 单卡计算切片
-Embedding / Attention / MLP / MoE Experts / all-to-all / all-reduce
+按 stage 展示：Stage0 含 Embedding；中间 stage 含 Attention + Dense/MoE FFN；末尾 stage 含 Final Norm / LM Head
+再叠加 TP/CP/EP/DP 对应的 tensor shard、sequence shard、expert bucket、batch shard 和通信组
 ```
+
+### 10.4 如何把 `ParallelDemo` 落实成确定的盘古训练配置
+
+建议把白皮书里的图标题定为：
+
+```text
+把 ParallelDemo 落实成真实训练配置 · 从公开模型到单卡计算
+```
+
+这里的“真实训练配置”要谨慎理解：它不是说我们已经拿到了 openPangu 官方完整训练 placement，而是说我们用公开模型结构和官方并行配置口径，构造一套可落地、可解释、可扩展到真实卡数的训练诊断样例。
+
+推荐固定成这个样例：
+
+| 层级 | 配置 | 可靠性 |
+|---|---|---|
+| 模型结构 | openPangu-Ultra-MoE-718B：61 层、hidden 7680、256 路由专家、1 共享专家、top-8、MLA、MTP、sandwich norm | 官方公开 config，可作为确定底座 |
+| 基础 rank mesh | `DP=32 / PP=16 / CP=1 / TP=8`，所以 `world_size = 32 × 16 × 1 × 8 = 4096` | 产品派生 placement，不声称是官方真实训练切分 |
+| MoE / EP | `EP=32`，把 256 experts 聚合成 32 个 expert bucket，每桶 8 个 experts | 产品派生 expert placement，用于解释专家路由和 All-to-All |
+| 动态遥测 | loss、grad norm、router z-loss、expert load、All-to-All bytes、rank util | 需要自采 Ascend run；没有自采时必须标注 synthetic / reprojected |
+
+这样落图时，可以选一个具体 rank 讲清楚：
+
+```text
+rank_299
+d=2, p=5, c=0, t=3
+
+DP2: 第 2 个数据并行副本
+PP5: 第 5 个流水线 stage，示例层段 layers 20-23
+CP0: 本例不做 context 切分
+TP3: 第 4/8 个张量分片
+EP19: 示例 expert bucket，experts 152-159
+```
+
+它对应的页面表达不是：
+
+```text
+910B_299 负责第 20-23 层
+```
+
+而是：
+
+```text
+rank_299 运行在 910B_299 上；
+它处在 PP5，所以只执行该 stage 的层段；
+它处在 TP3，所以该 stage 内 Attention 的 QKV / Out，以及 FFN / expert 投影只拿第 4/8 片；
+它处在 DP2，所以吃的是第 2 个数据副本的 mini-batch shard；
+它处在 CP0，所以本例不切上下文；
+它叠加 EP19，所以 MoE FFN 区域显示 expert bucket E152-E159 以及 all-to-all dispatch/combine。
+```
+
+这和 `ParallelDemo` 截图的关系要分清：
+
+- `ParallelDemo` 截图里的 `H100_0` 是 `Stage 0 / CP0 / EP组0 / TP0`，所以卡内显示 `Emb (第1/4片)`、`Attn-0 (第1/4片)`、`MoE-0 [E0-E1]` 是准确的。
+- `rank_299 / PP5` 不是 `Stage 0`，所以不应照搬 `Embedding`。它应显示 `Blocks 20-23` 内部的 `Attention + MoE FFN` 切片；只有 `PP0 / Stage0` 才额外显示 Embedding，最后一个 stage 才额外显示 Norm / LM Head。
+- `ParallelDemo` 当前 demo 里，MoE 卡片的专家范围由 `experts / tp` 计算；在小 demo 中常把 `tp` 和 `ep` 设成相同数值，所以看起来像专家并行。盘古产品场景里如果要表达 `EP=32`，就应把 `expert bucket` 独立建模，例如 `EP19 -> E152-E159`，不要把它说成 ParallelDemo 原生代码直接推导出的结果。
+- 因此，准确结论是：ParallelDemo 的 `dp × pp × cp × tp` 网格和 `PP stage -> 卡内层段 -> TP/CP 切片` 逻辑应被复用；盘古 MoE 的 `EP bucket` 是在此基础上新增的专家放置语义。
+
+这才是“把 ParallelDemo 落实成真实训练配置”的含义：复用 `ParallelDemo` 的 rank mesh 公式和通信组推导，但把小 demo 数字换成盘古可解释样例，并且明确标注哪些是官方公开、哪些是产品推导、哪些是合成或待自采。
+
+### 10.5 整网模型架构、训练步骤、单卡任务的关系
+
+先回答一个核心问题：**一个模型的架构是不是计算步骤？**
+
+更准确地说：
+
+- 模型架构是“前向计算的结构模板”，定义输入如何经过 Embedding、Attention、MLP/MoE、Norm、Head 变成 logits。
+- 训练步骤是“一次训练迭代的执行流程”，它会调用模型架构做 forward，但还会额外包含 loss、backward、通信同步、优化器更新。
+- 单卡任务是“整网架构在某个 rank/device 上的投影”，由 PP/TP/CP/DP/EP placement 决定，而不是整网架构本身。
+
+类比：
+
+- 模型架构像一条完整生产线图纸：原料从入口走到出口，中间有哪些工序。
+- 训练步骤像一天里生产一批货的完整工作流：上料、生产、质检、发现误差、调整机器参数。
+- 单卡任务像某个工位今天实际负责的那部分工序：它不等于整条生产线，但必须能追溯回整条生产线上的位置。
+
+#### 10.5.1 盘古整网模型架构能确定什么
+
+基于公开 `openPangu-Ultra-MoE-718B` 配置和推理代码，可以确定整网前向结构的大框架：
+
+```text
+Token IDs / Position IDs / Attention Mask
+        |
+        v
+Parallel Embedding
+        |
+        v
+Dense Decoder Layers × 3
+        |
+        v
+MoE Decoder Layers × 58
+  每个 MoE 层内部：
+  MLA Attention
+    -> Router / Gate Top-8
+    -> Routed Experts × 256 + Shared Expert × 1
+    -> dispatch / combine / residual / norm
+        |
+        v
+Final RMSNorm
+        |
+        v
+LM Head -> Logits
+```
+
+可靠依据：
+
+- `config.json` 明确给出 `num_hidden_layers=61`、`first_k_dense_replace=3`、`hidden_size=7680`、`n_routed_experts=256`、`n_shared_experts=1`、`num_experts_per_tok=8`、`num_attention_heads=128`、`num_nextn_predict_layers=1` 等结构参数。
+- `inference/model.py` 里的 `PanguUltraMoEModel.forward()` 会顺序遍历 `self.layers`，最后做 `self.norm`；`PanguUltraMoEForCausalLM.forward()` 会调用 `self.model(...)` 后接 `lm_head` 得到 logits。
+- 同一份代码里，`PanguUltraMoE.forward()` 包含 `gate`、`moe_npu`、`shared_experts`；`moe_npu()` 包含 NPU MoE routing、expert token 统计、expert 计算和 finalize routing；`PanguUltraMoEAttention` 包含 MLA 相关 Q/K/V 低秩投影与输出投影。
+
+边界要说清楚：这些来源能证明“模型前向结构”和“推理侧 NPU MoE 路径”，但不能证明官方完整训练 placement，也不能证明每个训练 step 的真实通信流量。
+
+#### 10.5.2 训练步骤比模型架构多什么
+
+训练时不是只跑一遍模型前向。一个标准训练 step 至少包含：
+
+```text
+取当前 step 的 batch
+        |
+        v
+forward：按模型架构计算 logits
+        |
+        v
+loss：把 logits 和 label 比较，得到损失
+        |
+        v
+backward：反向传播，计算梯度
+        |
+        v
+distributed communication：按 DP/TP/PP/CP/EP 做 all-reduce、all-gather、send/recv、all-to-all 等
+        |
+        v
+optimizer step：根据梯度更新参数
+        |
+        v
+进入下一个 step
+```
+
+可靠依据：
+
+- PyTorch 官方训练示例的核心循环是 `optimizer.zero_grad()`、`outputs = net(inputs)`、`loss = criterion(outputs, labels)`、`loss.backward()`、`optimizer.step()`。这说明 forward 只是训练 step 的一部分。
+- PyTorch autograd 语义说明 `.backward()` 负责从 loss 反向计算并累积梯度。
+- MindSpore Transformers 文档说明大模型训练中可以组合数据并行、模型并行、流水线并行、序列并行等策略；这些策略会把 forward/backward/通信/显存状态分散到多设备上。
+
+因此，TrainScope 的“计算轴”不应该只画静态模型结构，也要允许叠加训练 step 的动态信号：
+
+- loss、grad norm、weight/activation stats
+- router z-loss、expert load、token dispatch
+- all-reduce / all-gather / all-to-all / P2P send-recv
+- optimizer update 是否发生、是否跳步、是否溢出
+
+#### 10.5.3 每张卡上的任务和整网架构是什么关系
+
+每张卡上的任务不是独立发明出来的，它来自“整网架构 × 并行 placement”的交集。
+
+| 并行维度 | 它怎样投影整网架构 | 对单卡任务的影响 |
+|---|---|---|
+| PP（Pipeline Parallel，流水线并行） | 把整网层序列切成多个 stage。 | 决定这张卡处于哪段层，例如 `PP5 -> Blocks 20-23`。Stage 0 可能包含 Embedding，最后 stage 可能包含 Final Norm / LM Head。 |
+| TP（Tensor Parallel，张量并行） | 把同一层内部的权重矩阵、attention heads 或输出维度切片。 | 决定这张卡持有 Attention QKV / Out、FFN up/down、Embedding / LM Head 的第几片。 |
+| CP/SP（Context/Sequence Parallel，上下文/序列并行） | 把序列长度或上下文窗口切片。 | 决定这张卡处理哪段 token，以及 attention/KV/LayerNorm/Dropout 等是否需要跨卡交换。 |
+| DP（Data Parallel，数据并行） | 复制同一份模型计算图，让不同副本吃不同样本。 | 决定这张卡处理哪个 mini-batch shard；模型结构相同，样本不同。 |
+| EP（Expert Parallel，专家并行） | 在 MoE 层里把 experts 放到不同 rank/device 上。 | 决定这张卡持有哪些 expert bucket，以及 token 是否经 all-to-all dispatch/combine 到这里。 |
+
+把这张表套到 `rank_299 / PP5 / TP3 / CP0 / DP2 / EP19`：
+
+```text
+整网架构：openPangu-Ultra-MoE-718B
+        |
+        v
+PP5 选择整网中的 Blocks 20-23
+        |
+        v
+TP3 选择这些 blocks 里 Attention / FFN / expert 投影的第 4/8 片
+        |
+        v
+CP0 表示本例不切上下文
+        |
+        v
+DP2 表示吃第 2 个数据副本的 mini-batch shard
+        |
+        v
+EP19 表示 MoE 层的 expert bucket E152-E159 会投影到该 rank/device
+```
+
+所以准确表达不是：
+
+```text
+这张卡负责盘古模型的一部分架构
+```
+
+而是：
+
+```text
+这个 rank/device 执行整网架构在 PP5 层段上的前后向；
+在这些层内部，它只持有 TP3 张量分片；
+在 MoE FFN 处，它还叠加 EP19 expert bucket；
+在当前 step 中，它处理 DP2 的训练样本 shard，并参与对应通信组。
+```
+
+#### 10.5.4 对产品图表的落地要求
+
+TrainScope 页面建议把“整网模型架构”和“单卡任务”做成可追溯的父子关系：
+
+```text
+整网架构节点
+Parallel Embedding / Dense Layer / MLA Attention / Router / Experts / LM Head
+        |
+        | placement projection
+        v
+rank/device 任务
+stageLayers / tensorShards / sequenceShard / expertBucket / batchShard / commGroups
+        |
+        | runtime telemetry
+        v
+step 级信号
+loss / grad / router stats / expert load / communication bytes / overflow
+```
+
+产品上要避免两类误导：
+
+- 不要把模型架构图当成训练步骤全貌。架构图只覆盖 forward 主干，训练还包括 loss、backward、通信和 optimizer update。
+- 不要把单卡任务画成一张卡拥有完整的模型小副本。混合并行下，单卡通常只拥有某个 stage、某些 tensor shard、某些 expert bucket、某段数据或序列。
+
+可靠代码与文档来源：
+
+- Pangu 模型配置：`https://huggingface.co/FreedomIntelligence/openPangu-Ultra-MoE-718B/blob/main/config.json`
+- Pangu 推理代码：`https://huggingface.co/FreedomIntelligence/openPangu-Ultra-MoE-718B/blob/main/inference/model.py`
+- Pangu 模型卡：`https://huggingface.co/FreedomIntelligence/openPangu-Ultra-MoE-718B`
+- PyTorch 训练循环示例：`https://docs.pytorch.org/tutorials/recipes/recipes/zeroing_out_gradients.html`
+- MindSpore Transformers 分布式并行训练：`https://www.mindspore.cn/mindformers/docs/zh-CN/master/feature/parallel_training.html`
+- MindSpore Transformers 配置文件说明：`https://www.mindspore.cn/mindformers/docs/zh-CN/master/feature/configuration.html`
+- 本地整网架构图数据：`/Users/yin/pto/pangu-moe-trainviz/data/graph-ultramoe-718b.js`
+- ParallelDemo placement 与卡内任务逻辑：`/Users/yin/pto/Profiling_Insight_and_Tool/ParallelDemo/dist.html`
 
 ---
 
@@ -822,9 +1102,17 @@ stageLayers / tensorShards / sequenceShard / batchShard / expertIds / routeStats
 
 ---
 
-## 14. 官方依据
+## 14. 官方与可靠代码依据
 
 以下链接是这份说明直接参考的官方文档：
+
+- openPangu-Ultra-MoE-718B config: https://huggingface.co/FreedomIntelligence/openPangu-Ultra-MoE-718B/blob/main/config.json
+
+- openPangu-Ultra-MoE-718B inference/model.py: https://huggingface.co/FreedomIntelligence/openPangu-Ultra-MoE-718B/blob/main/inference/model.py
+
+- openPangu-Ultra-MoE-718B model card: https://huggingface.co/FreedomIntelligence/openPangu-Ultra-MoE-718B
+
+- PyTorch training loop example: https://docs.pytorch.org/tutorials/recipes/recipes/zeroing_out_gradients.html
 
 - PyTorch DistributedDataParallel: https://docs.pytorch.org/docs/2.12/generated/torch.nn.parallel.DistributedDataParallel.html
 
