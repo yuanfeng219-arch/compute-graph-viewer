@@ -125,6 +125,14 @@
       color: #0f172a;
     }
 
+    .detail-table td:first-child,
+    .detail-table th:first-child {
+      width: 13rem;
+      white-space: nowrap;
+      font-weight: 760;
+      color: #23304a;
+    }
+
     .index-table th,
     .index-table td {
       vertical-align: top;
@@ -301,16 +309,16 @@
         <tr>
           <td><span class="pill blue">09</span></td>
           <td><a class="index-link" href="#combined">多维叠加</a></td>
-          <td>说明一个 rank 如何同时落在 PP、TP、DP、CP、EP 上。</td>
-          <td>真实训练的 placement 是多维坐标交叉，而非单一分类。</td>
-          <td>形成 placement 视图的主心智模型。</td>
+          <td>说明 ParallelDemo 的 <code>dp × pp × cp × tp</code> 网格公式如何映射到 rank 坐标。</td>
+          <td>避免把“多维语义标签”误解成五张卡或单一卡片归属。</td>
+          <td>形成“开发者配置 → rank mesh → 通信组 → 单卡计算切片”的主图。</td>
         </tr>
         <tr>
           <td><span class="pill blue">10</span></td>
           <td><a class="index-link" href="#product-guidance">产品表达</a></td>
-          <td>说明 TrainScope 如何复用 ParallelDemo 逻辑并重构视图。</td>
-          <td>这决定数据接口、聚合层级和文案口径是否正确。</td>
-          <td>形成可落地的字段、标题与 tooltip 建议。</td>
+          <td>说明并行数量是否可由开发者配置，以及盘古 MoE 单卡内部会呈现哪些计算。</td>
+          <td>这决定 TrainScope 的数据接口、聚合层级和单卡详情是否可扩展到真实卡数。</td>
+          <td>形成字段、tooltip、单卡详情结构与 MoE expert placement 建议。</td>
         </tr>
       </tbody>
     </table>
@@ -946,7 +954,8 @@
   <section class="floor" id="combined">
     <div class="kicker">Framework · 多维并行叠加</div>
     <h2>真实训练不是单选题，而是多维坐标叠加</h2>
-    <p class="lead">同一个 rank 往往同时属于 `PP（Pipeline Parallel，流水线并行）`、`TP（Tensor Parallel，张量并行）`、`DP（Data Parallel，数据并行）`、`CP（Context Parallel，上下文并行）`、`EP（Expert Parallel，专家并行）` 多个维度。真正的 placement 视图，必须把这些标签叠加起来表达。</p>
+    <p class="lead">在混合并行训练中，同一个 rank 往往同时拥有 PP（Pipeline Parallel，流水线并行）、TP（Tensor Parallel，张量并行）、DP（Data Parallel，数据并行）、CP（Context Parallel，上下文并行）和 EP（Expert Parallel，专家并行）等坐标。这里的“叠加”不是把一张卡拆成多张卡，而是同一个 rank 在多个通信组、切分维度和专家路由维度中各有一个坐标。</p>
+    <div class="callout"><b>与 ParallelDemo 的匹配关系：</b>两者逻辑匹配，但准确表达应是“配置的并行度生成多维 rank 网格，再把同一 rank 投影到不同并行坐标上”。ParallelDemo 当前实现中 <code>world = dp × pp × cp × tp</code>，并用 <code>grid = arange(world).view(dp, pp, cp, tp)</code> 推导 rank、TP（Tensor Parallel，张量并行）组、PP（Pipeline Parallel，流水线并行）组、CP（Context Parallel，上下文并行）组和 DP（Data Parallel，数据并行）组；EP（Expert Parallel，专家并行）/ MoE 在该 Demo 中作为专家放置与 token 路由语义叠加显示，不参与这条 <code>world</code> 乘法。</div>
     <div class="screenshot">
       <div class="shotbar"><span class="dots"></span>组合主图 · 一个 rank 的多维身份</div>
       <div class="shotbody flush">
@@ -1018,6 +1027,115 @@
       </div>
       <div class="evidence-caption">读图顺序：先看左边的 rank 身份，再看右边叠加的五类坐标。真正的 placement 是多维标签交叉，而不是单个归类。</div>
     </div>
+    <div class="screenshot">
+      <div class="shotbar"><span class="dots"></span>ParallelDemo 对齐图 · 从配置到单卡计算</div>
+      <div class="shotbody flush">
+        <svg viewBox="0 0 1280 760" xmlns="http://www.w3.org/2000/svg" class="whitepaper-svg" style="--svg-width: 1100px">
+          <defs>
+            <marker id="meshArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/>
+            </marker>
+          </defs>
+          <text x="640" y="48" text-anchor="middle" font-size="26" font-weight="850" fill="#0f172a">配置并行度 → 生成 rank 网格 → 推导通信组 → 影响单卡计算</text>
+          <text x="640" y="78" text-anchor="middle" font-size="14" font-weight="650" fill="#64748b">示例使用 ParallelDemo 截图中的配置：DP=1、PP=4、CP=4、TP=4、EP=4、experts=8</text>
+
+          <g transform="translate(38,112)">
+            <rect x="0" y="0" width="270" height="520" rx="20" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+            <text x="135" y="38" text-anchor="middle" font-size="20" font-weight="850" fill="#1d4ed8">1. 开发者配置</text>
+            <g font-size="15" font-weight="800" fill="#1e3a8a">
+              <rect x="34" y="76" width="88" height="40" rx="10" fill="#ffffff" stroke="#93c5fd"/>
+              <text x="78" y="102" text-anchor="middle">DP = 1</text>
+              <rect x="148" y="76" width="88" height="40" rx="10" fill="#ffffff" stroke="#93c5fd"/>
+              <text x="192" y="102" text-anchor="middle">PP = 4</text>
+              <rect x="34" y="136" width="88" height="40" rx="10" fill="#ffffff" stroke="#93c5fd"/>
+              <text x="78" y="162" text-anchor="middle">CP = 4</text>
+              <rect x="148" y="136" width="88" height="40" rx="10" fill="#ffffff" stroke="#93c5fd"/>
+              <text x="192" y="162" text-anchor="middle">TP = 4</text>
+            </g>
+            <rect x="28" y="216" width="214" height="96" rx="14" fill="#ffffff" stroke="#bfdbfe"/>
+            <text x="135" y="248" text-anchor="middle" font-size="15" font-weight="850" fill="#0f172a">world size</text>
+            <text x="135" y="278" text-anchor="middle" font-size="18" font-weight="850" fill="#1d4ed8">DP × PP × CP × TP = 64</text>
+            <rect x="28" y="350" width="214" height="112" rx="14" fill="#fff7ed" stroke="#fdba74"/>
+            <text x="135" y="382" text-anchor="middle" font-size="15" font-weight="850" fill="#9a3412">MoE / EP 叠加</text>
+            <text x="135" y="412" text-anchor="middle" font-size="13" fill="#7c2d12">EP = 4，experts = 8</text>
+            <text x="135" y="438" text-anchor="middle" font-size="12" fill="#7c2d12">控制专家放置与 token 路由</text>
+          </g>
+
+          <path d="M316 372 L348 372" stroke="#1d4ed8" stroke-width="3" fill="none" marker-end="url(#meshArrow)"/>
+
+          <g transform="translate(354,112)">
+            <rect x="0" y="0" width="270" height="520" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+            <text x="135" y="38" text-anchor="middle" font-size="20" font-weight="850" fill="#0f172a">2. 多维 rank 网格</text>
+            <rect x="30" y="76" width="210" height="92" rx="14" fill="#ffffff" stroke="#cbd5e1"/>
+            <text x="135" y="110" text-anchor="middle" font-size="16" font-weight="850" fill="#0f172a">grid[d][p][c][t]</text>
+            <text x="135" y="140" text-anchor="middle" font-size="13" fill="#526070">view(dp, pp, cp, tp)</text>
+            <rect x="26" y="208" width="218" height="92" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
+            <text x="135" y="240" text-anchor="middle" font-size="14" font-weight="800" fill="#1d4ed8">rank 公式</text>
+            <text x="135" y="270" text-anchor="middle" font-size="13" fill="#1e3a8a">((d×pp + p)×cp + c)×tp + t</text>
+            <g font-size="13" fill="#475467">
+              <rect x="28" y="342" width="214" height="118" rx="14" fill="#ffffff" stroke="#dbe5f0"/>
+              <text x="135" y="374" text-anchor="middle" font-weight="850" fill="#0f172a">例：rank_6</text>
+              <text x="135" y="402" text-anchor="middle">d=0, p=0, c=1, t=2</text>
+              <text x="135" y="430" text-anchor="middle">物理上可落在 H100_6</text>
+            </g>
+          </g>
+
+          <path d="M632 372 L664 372" stroke="#1d4ed8" stroke-width="3" fill="none" marker-end="url(#meshArrow)"/>
+
+          <g transform="translate(670,112)">
+            <rect x="0" y="0" width="270" height="520" rx="20" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="2"/>
+            <text x="135" y="38" text-anchor="middle" font-size="20" font-weight="850" fill="#6d28d9">3. 通信组投影</text>
+            <g font-size="12.5" fill="#4c1d95">
+              <rect x="24" y="76" width="222" height="64" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
+              <text x="135" y="102" text-anchor="middle" font-weight="850">TP（Tensor Parallel）组</text>
+              <text x="135" y="124" text-anchor="middle">固定 d,p,c；变化 t：4,5,6,7</text>
+              <rect x="24" y="160" width="222" height="64" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
+              <text x="135" y="186" text-anchor="middle" font-weight="850">PP（Pipeline Parallel）组</text>
+              <text x="135" y="208" text-anchor="middle">固定 d,c,t；变化 p：6,22,38,54</text>
+              <rect x="24" y="244" width="222" height="64" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
+              <text x="135" y="270" text-anchor="middle" font-weight="850">CP（Context Parallel）组</text>
+              <text x="135" y="292" text-anchor="middle">固定 d,p,t；变化 c：2,6,10,14</text>
+              <rect x="24" y="328" width="222" height="64" rx="12" fill="#ffffff" stroke="#c4b5fd"/>
+              <text x="135" y="354" text-anchor="middle" font-weight="850">DP（Data Parallel）组</text>
+              <text x="135" y="376" text-anchor="middle">固定 p,c,t；变化 d：本例 DP=1</text>
+              <rect x="24" y="428" width="222" height="54" rx="12" fill="#fff7ed" stroke="#fdba74"/>
+              <text x="135" y="452" text-anchor="middle" font-weight="850" fill="#9a3412">EP（Expert Parallel）/ MoE</text>
+              <text x="135" y="472" text-anchor="middle" fill="#7c2d12">专家持有范围与 token 路由</text>
+            </g>
+          </g>
+
+          <path d="M948 372 L980 372" stroke="#1d4ed8" stroke-width="3" fill="none" marker-end="url(#meshArrow)"/>
+
+          <g transform="translate(986,112)">
+            <rect x="0" y="0" width="256" height="520" rx="20" fill="#ecfdf5" stroke="#86efac" stroke-width="2"/>
+            <text x="128" y="38" text-anchor="middle" font-size="20" font-weight="850" fill="#047857">4. 单卡计算切片</text>
+            <g class="svg-chip">
+              <use href="#chip-shell-tall" x="30" y="70" width="196" height="250"/>
+              <text x="128" y="116" text-anchor="middle" font-size="20" font-weight="850" fill="#0f172a">rank_6 / H100_6</text>
+              <rect x="58" y="148" width="140" height="30" rx="8" fill="#ffedd5" stroke="#fdba74"/>
+              <text x="128" y="168" text-anchor="middle" font-size="12" font-weight="800" fill="#9a3412">PP0：Emb + Block0</text>
+              <rect x="58" y="188" width="140" height="30" rx="8" fill="#ede9fe" stroke="#c4b5fd"/>
+              <text x="128" y="208" text-anchor="middle" font-size="12" font-weight="800" fill="#6d28d9">TP：第 3/4 片</text>
+              <rect x="58" y="228" width="140" height="30" rx="8" fill="#cffafe" stroke="#67e8f9"/>
+              <text x="128" y="248" text-anchor="middle" font-size="12" font-weight="800" fill="#0e7490">CP1：序列分片</text>
+              <rect x="58" y="268" width="140" height="30" rx="8" fill="#fee2e2" stroke="#fca5a5"/>
+              <text x="128" y="288" text-anchor="middle" font-size="12" font-weight="800" fill="#b91c1c">MoE：E4-E5</text>
+            </g>
+            <g font-size="12" fill="#166534">
+              <rect x="26" y="348" width="204" height="118" rx="14" fill="#ffffff" stroke="#bbf7d0"/>
+              <text x="128" y="374" text-anchor="middle" font-weight="850" fill="#047857">卡内应呈现</text>
+              <text x="128" y="400" text-anchor="middle">Embedding / Attention / MoE FFN</text>
+              <text x="128" y="424" text-anchor="middle">QKV、Out、MLP 权重分片</text>
+              <text x="128" y="448" text-anchor="middle">router/gate、expert、all-to-all</text>
+            </g>
+          </g>
+
+          <rect x="160" y="680" width="960" height="48" rx="16" fill="#ffffff" stroke="#dbe5f0"/>
+          <text x="640" y="710" text-anchor="middle" font-size="15" font-weight="850" fill="#0f172a">结论：多维语义标签应表现为同一 rank 的坐标投影与卡内计算切片，而不是五张相互独立的卡。</text>
+        </svg>
+      </div>
+      <div class="evidence-caption">官方依据：MindSpore Transformers 配置说明给出 <code>parallel_config.data_parallel</code>、<code>model_parallel</code>、<code>context_parallel</code>、<code>pipeline_stage</code> 等并行度，并要求 <code>device_num = data_parallel × model_parallel × context_parallel × pipeline_stage</code>；MindSpore 通信 API 提供通信组和组内 / 全局 rank 映射；MoE 配置定义 <code>expert_num</code>、<code>num_experts_chosen</code> 和专家计算通信并行参数。因此“并行坐标层”是符合官方配置关系的产品抽象，名称本身不是官方术语。参考：<a href="https://www.mindspore.cn/mindformers/docs/zh-CN/master/feature/configuration.html">MindSpore Transformers 配置文件说明</a>、<a href="https://www.mindspore.cn/docs/zh-CN/master/api_python/mindspore.communication.html">MindSpore communication API</a>。</div>
+    </div>
     <div class="arch">
       <div class="arch-layer">
         <div class="arch-label">物理轴</div>
@@ -1072,6 +1190,53 @@
         </div>
       </div>
     </div>
+    <table class="section-table detail-table">
+      <thead><tr><th>问题</th><th>细化结论</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>这些并行度能否由开发者配置</td>
+          <td>可以配置，但不是任意配置。MindSpore Transformers 暴露 <code>parallel_config.data_parallel</code>、<code>model_parallel</code>、<code>context_parallel</code>、<code>pipeline_stage</code> 等字段；这些值必须满足设备数量、模型层数、attention head 数、序列长度、global batch、拓扑和通信开销等约束。ParallelDemo 的滑块表达的是这个配置空间。</td>
+        </tr>
+        <tr>
+          <td>与 ParallelDemo 的公式关系</td>
+          <td>当前 ParallelDemo 使用 <code>world = dp × pp × cp × tp</code>，并将 rank reshape 为 <code>grid[d][p][c][t]</code>。因此 TrainScope 应复用这套 rank 坐标与通信组推导逻辑；如果真实盘古训练引入独立 EP（Expert Parallel，专家并行）维度，需要在数据层显式建模，而不是默认把 EP 固定绑定到 TP 或卡号。</td>
+        </tr>
+        <tr>
+          <td>图表应该怎么展示</td>
+          <td>主视图建议按三层组织：先展示物理层 <code>host/device</code>，再展示运行时层 <code>globalRank/localRank</code>，最后展示并行坐标层 <code>pp/tp/dp/cp/ep</code>。单卡详情面板再展开“本 rank 的卡内计算切片”，避免在总览里平铺真实训练的全部卡。</td>
+        </tr>
+      </tbody>
+    </table>
+    <table class="section-table detail-table">
+      <thead><tr><th>并行策略</th><th>对单卡 / 单 rank 内部呈现的影响</th><th>以盘古 MoE 训练视图为例</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>PP（Pipeline Parallel，流水线并行）</td>
+          <td>决定这个 rank 处在第几个流水线 stage，以及该 stage 覆盖哪些连续层段。</td>
+          <td>Stage 0 可显示 Embedding + early Transformer blocks；Stage N 可显示后续 blocks 或 LM Head。这里才适合写 <code>layers 36-42</code> 这类层段范围。</td>
+        </tr>
+        <tr>
+          <td>TP（Tensor Parallel，张量并行）</td>
+          <td>决定同一层内部的张量 / 权重 / 算子切片，通常需要同组 all-reduce、all-gather 或 reduce-scatter。</td>
+          <td>Embedding 词表分片、Attention QKV column shard、Attention output row shard、MLP up/down projection shard、LM Head vocab shard；卡片上应标 <code>第 3/4 片</code>，而不是“独占 Attention 层”。</td>
+        </tr>
+        <tr>
+          <td>CP（Context Parallel，上下文并行）</td>
+          <td>决定 attention 看到的 token / context 分片，以及 KV、QKV 或 attention 中间结果在组内如何交换。</td>
+          <td>同一个 Block 的 Self-Attention 区域显示 <code>CP1 · token shard</code>、KV exchange、Ring / Ulysses / hybrid CP 等算法标签；它不改变该 rank 属于哪个 PP stage。</td>
+        </tr>
+        <tr>
+          <td>DP（Data Parallel，数据并行）</td>
+          <td>决定这个 rank 处理哪份样本 / mini-batch shard，并决定 backward 后的梯度同步组。</td>
+          <td>卡片或顶部 batch 条显示 <code>samples 512-1023</code> 之类的数据 shard；反向传播后显示 gradient all-reduce，同步的是梯度 / 参数更新，不是把样本数据拼回去。</td>
+        </tr>
+        <tr>
+          <td>EP（Expert Parallel，专家并行） / MoE</td>
+          <td>决定当前 rank 持有哪些专家、token 经 gate 路由到哪些专家，以及 dispatch / combine 的通信路径。</td>
+          <td>MoE FFN 区域显示 router / gate 复制、experts E4-E5、本 rank 的 top-k token bucket、all-to-all dispatch/combine。不要把 <code>EP组</code> 简化成“这张卡负责整个 MoE 层”。</td>
+        </tr>
+      </tbody>
+    </table>
     <div class="rec-grid">
       <div class="rec-panel">
         <h3>字段与标题</h3>
@@ -1182,6 +1347,21 @@
           <td>DeepSpeed MoE Tutorial</td>
           <td>EP（Expert Parallel，专家并行）：ep_size 组内 rank 共同分配该层 experts</td>
           <td><a href="https://www.deepspeed.ai/tutorials/mixture-of-experts/">https://www.deepspeed.ai/tutorials/mixture-of-experts/</a></td>
+        </tr>
+        <tr>
+          <td>MindSpore Transformers 分布式并行训练</td>
+          <td>官方说明多种并行模式可以组合成混合并行策略，并分别描述 DP（Data Parallel，数据并行）、模型/TP、长序列/CP 和 PP（Pipeline Parallel，流水线并行）的语义</td>
+          <td><a href="https://www.mindspore.cn/mindformers/docs/zh-CN/master/feature/parallel_training.html">https://www.mindspore.cn/mindformers/docs/zh-CN/master/feature/parallel_training.html</a></td>
+        </tr>
+        <tr>
+          <td>MindSpore Transformers 配置文件说明</td>
+          <td>并行度配置、<code>device_num</code> 乘法约束、PP 层数分配、MoE 专家数量与专家计算通信并行配置</td>
+          <td><a href="https://www.mindspore.cn/mindformers/docs/zh-CN/master/feature/configuration.html">https://www.mindspore.cn/mindformers/docs/zh-CN/master/feature/configuration.html</a></td>
+        </tr>
+        <tr>
+          <td>MindSpore communication API</td>
+          <td>通信组、组大小、组内 rank、全局 rank 与组内 rank 互相映射</td>
+          <td><a href="https://www.mindspore.cn/docs/zh-CN/master/api_python/mindspore.communication.html">https://www.mindspore.cn/docs/zh-CN/master/api_python/mindspore.communication.html</a></td>
         </tr>
       </tbody>
     </table>
