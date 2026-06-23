@@ -47,6 +47,20 @@ keywords: [db, sqlite, sql, table, schema, ascend-pytorch-profiler-db, ascend_py
 - 仅当用户表明要将结果输出到文件时，调用`msprof_mcp` 提供的 `execute_sql_to_csv` 工具，允许全表扫描。
 - 在本 skill 表结构说明优先通过 `scripts/get_schema.py` 获取，只有当文档中没有相关表信息时，才允许使用 `PRAGMA table_info(TABLE)` 作为补充，但不应作为常规手段。
 
+## 字段时间单位速查（跨表对耗时前必看）
+
+> ⚠️ **反复踩的坑**：Profiling DB / recipe 输出里**时间单位不统一**，混用会差 1000×（曾把 6.33 **秒**的 step 误标成 6.33 ms）。对任意耗时做拆解或换算前，先确认单位：
+
+| 来源 / 字段 | 单位 |
+|---|---|
+| 逐 rank `*.db`：`TASK`/`COMPUTE_TASK_INFO`/`COMMUNICATION_OP` 的 `startNs`/`endNs`、`STEP_TIME.startNs/endNs` | **纳秒 ns** |
+| recipe 统计的 `*Ns` 列（`SumNs`/`MeanNs`/`MaxNs`，如 `HcclPerRankStats`/`SlowOpStats`/`ComputeOp*`） | **纳秒 ns** |
+| `cluster_analysis.db` 的 **`ClusterStepTraceTime`**（`computing`/`communication`/`free`/`bubble` 等） | **微秒 μs** |
+| `cluster_analysis.db` 的 `ClusterCommunication*`：`transit_time`/`total_duration` | **毫秒 ms**；`transit_size` 为 **MB**，`bandwidth` 为 **GB/s**（≈ `transit_size_MB / transit_time_ms`） |
+| `FreeAnalysis` 的 `duration(us)`/`startTime(us)` | **微秒 μs**（列名已带 us） |
+
+**硬规则**：(1) `ClusterStepTraceTime`(μs) 与逐 rank `STEP_TIME`(ns) 交叉验算同一 step 总跨度，确认换算无误后再下结论；(2) 报告中所有耗时统一换算到 ms（或对秒级 step 标 s），并显式标单位（承 `msprof-analyze-cli` 规范）。
+
 ## Track A：黄金视图 / CTE 宏（优先）
 
 在处理任何 Profiling 数据库查询时，必须优先尝试 **Track A（快速通道）**：

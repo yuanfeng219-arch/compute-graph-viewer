@@ -220,6 +220,26 @@ MFU = 聚合达成算力 ÷ 芯片峰值 TFLOP/s
 - 两者一起报最有信息量：cube_util 说明"单元忙不忙"，MFU 说明"忙的同时算得快不快"。
 - 这与 `timeline-swimlane-analyzer` 的 **time-based 算子利用率**（device 忙时 / step 跨度，看"有没有空泡"）又是第三个维度，三者不互相替代。
 
+### MFU 不可算时的兜底链（融合 / AICPU 算子 + 非 cube PMU）
+
+落盘场景下 FLOPs-based MFU 会因两类原因**双重失效**，必须有兜底，**不要硬算出一个假 MFU**：
+
+1. **融合 / AICPU 算子无 shape**：TP 序列并行的 `AllGatherMatmul` / `MatmulReduceScatter` 及其 `*Aicpu` 变体，`InputShapes` 常为 `N/A`，无法推 FLOPs；且它们的耗时**内嵌通信等待**（不是纯计算），即使有 shape 也**不该**套 matmul MFU 公式（会把通信时间算进分母，结果无意义）。
+2. **PMU metric 选错**：`cube_utilization` 只有在 `aic_metrics=PipeUtilization` 时才采集；若采集用的是 `ACL_AICORE_MEMORY_UB`（UB 带宽计数）等其它 metric set，则 `kernel_details.csv` / `TASK_PMU_INFO` 里**没有 cube_util**，第一档兜底也没了。
+
+**兜底优先级**（从精确到粗略，用到哪档就在报告里写明用了哪档 + 为什么）：
+
+```
+① FLOPs-based MFU（有 shape 的 MatMul/FA）
+   ↓ 主力算子为融合/AICPU、shape=N/A → 不可算
+② 硬件 cube_utilization（aic_mac_ratio）
+   ↓ aic_metrics 非 PipeUtilization、未采集 → 不可算
+③ 时间口径 device-busy 代理 = Σ计算算子耗时 ÷ step 跨度（×100）
+   并按已知低效项下修（如 AICPU 时间占比、Block Dim 未饱和占比），显式标注"代理值，非真实 MFU"
+```
+
+> 报告里务必区分：③ 反映"device 有多忙"，**不**反映"忙时算得多快"。把它写进 PHS「计算利用率」子项时，要在第 5 章注明口径与下修依据（承 `performance-health-score`）。
+
 ### 芯片理论峰值来源
 
 1. 优先读 `NPU_INFO` 表拿确切型号，对照本 skill 上文"常见芯片理论峰值"表取 BF16/FP16 峰值；
