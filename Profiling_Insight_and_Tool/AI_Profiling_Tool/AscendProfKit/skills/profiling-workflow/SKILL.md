@@ -272,6 +272,8 @@ get_skill("msinsight-view-selector")
      - `rank_3_ascend_pt/ASCEND_PROFILER_OUTPUT/trace_view.json` → `evidence/rank_3_ascend_pt/trace_view.json`
      - `rank_5_ascend_pt/ASCEND_PROFILER_OUTPUT/trace_view.json` → `evidence/rank_5_ascend_pt/trace_view.json`
    - **一律复制，不设大小阈值**：`trace_view.json` / `profiler.db` / `*.bin` 等大文件（数百 MB ~ 数 GB）也照常复制进去。
+   - **派生证据同样要复制**：很多结论的证据**不在原始落盘里**，而在分析过程中生成的文件——`msprof-analyze` 各 `-m` 模式产出的 `cluster_analysis.db`（如 `slow_rank` 的 `SlowRank`、`hccl_sum` 的 `HcclTopOpStats`、`free_analysis` 的 `FreeAnalysis` 表）、`advisor` 的 `mstt_advisor_*.html`。凡第 3 章问题点引用了这些派生表/建议，就把对应的 db / html 一并复制进 `evidence/` 并登记进举证清单（注明查哪张表）。**不要只把原始 `cluster_analysis.db` 复制进去就以为够了**——它通常不含 recipe 派生统计表。
+   - **DB-only 导出**（`export_type=db`，无 `trace_view.json`/`kernel_details.csv`）时，举证文件就是相应的 `.db`（rank 的 `ascend_pytorch_profiler_*.db` / 集群 `cluster_analysis.db`），按 `msinsight-view-selector` 的「DB-only 视图映射」书写关注点。
    - 复制命令保留目录：`mkdir -p evidence/<sub>` 后 `cp <src> evidence/<sub>/`（Windows 用 `Copy-Item`）。
 3. **只读保护**（承规则 3）：复制方向**永远是 落盘目录 → 报告目录**；绝不修改、删除、或在原始落盘目录内写任何文件。
 

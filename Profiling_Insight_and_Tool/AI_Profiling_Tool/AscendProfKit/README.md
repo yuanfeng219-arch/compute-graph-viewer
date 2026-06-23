@@ -121,6 +121,10 @@ Claude 会按 `CLAUDE.md` 的指引读取对应 `SKILL.md`（专家知识）和 
 | 芯片型号/峰值 | 定 MFU 峰值与 HBM 容量；落盘 metadata 常缺，优先查 DB | `ascend_pytorch_profiler_*.db` 的 `NPU_INFO` 表 | 两者共用 |
 
 > ⚠️ 见到 MFU > 100% 多半是 matmul 的 M/N/K 用输入 shape 直接推导、未处理 NN/NT/TN 转置布局所致；务必用**输出 shape** 锚定 M/N。
+>
+> ⚠️ **MFU 双重失效兜底**（`op-mfu-calculator`）：当主力 matmul 为 TP 融合算子（`AllGatherMatmul`/`MatmulReduceScatter` 及 `*Aicpu` 变体，`InputShapes=N/A`、且耗时内嵌通信）**且** `aic_metrics` 非 `PipeUtilization`（如选了 `ACL_AICORE_MEMORY_UB`，没采 `cube_utilization`）时，FLOPs 与 cube_util 两档都不可用——退到第三档**时间口径 device-busy 代理**（Σ计算算子耗时 ÷ step 跨度，按 AICPU / Block Dim 占比下修），并显式标注"代理值，非真实 MFU"，不要硬算假 MFU。
+>
+> ⚠️ **纯 DB 导出（`export_type=db`）与时间单位**：落盘无 `trace_view.json`/`kernel_details.csv`/`communication_matrix.json` 时，Insight 直接载入 `.db`（见 `msinsight-view-selector` 的「DB-only 视图映射」）；对耗时换算前先核对单位——`ClusterStepTraceTime` 为 **μs**、`*Ns`/`STEP_TIME` 为 **ns**、通信 `transit_time` 为 **ms**，混用会差 1000×（详见 `ascend-profiler-db-explorer` 的「字段时间单位速查」）。
 
 ### 优先级权重规则（贯穿所有性能报告）
 
@@ -166,14 +170,18 @@ Claude 会按 `CLAUDE.md` 的指引读取对应 `SKILL.md`（专家知识）和 
 | `ascend-profiler-db-explorer/SKILL.md` | 定位算子计算热点 | 用户需查询"哪些算子最耗时"/"TopK 算子"/"计算瓶颈" | 需从 Profiling DB 的 `COMPUTE_TASK_INFO` 聚合算子耗时 | 使用 Compute CTE 宏查询 `compute_view`，按 `SUM(duration_ns) DESC LIMIT 20` 排序 |
 | `ascend-profiler-db-explorer/SKILL.md` | 集合通信耗时分析 | 用户需分析 HCCL / AllReduce / AllGather 耗时 | 需从 `COMMUNICATION_OP` 表聚合通信算子时长 | 使用 Communication CTE 宏查询 `comm_view`，按耗时排序 |
 | `ascend-profiler-db-explorer/SKILL.md` | 下发调度拥塞 | 用户需分析 PyTorch 框架下发 vs CANN 下发 vs 设备执行的耗时差异 | 框架层 / CANN 层 / 设备层耗时不匹配，存在调度拥塞 | 使用 Dispatch CTE 宏查询 `dispatch_view`，对比 `pytorch_duration_ns`、`cann_duration_ns`、`task_duration_ns` 三列差值 |
+| `ascend-profiler-db-explorer/SKILL.md` | 跨表耗时单位不一致（差 1000×） | `ClusterStepTraceTime` 为 **μs**，而 `*Ns`/`STEP_TIME.startNs/endNs` 为 **ns**、通信 `transit_time` 为 **ms**（`transit_size`=MB、`bandwidth`=GB/s）；混用曾把 6.33 **秒** 的 step 误标成 6.33 ms | 单位陷阱，非性能问题 | 对耗时做拆解/换算前查「字段时间单位速查」表；用 `STEP_TIME`(ns) 交叉验算 `ClusterStepTraceTime`(μs)，统一换算 ms（秒级 step 标 s）并显式标单位 |
 | `mindstudio_profiler_data_check/SKILL.md` | Profiler 采集未正常 Stop | 框架 profiler：`profiler_info.json` 缺失；msprof：`PROF_{}/device_{}/end_info.*` 缺失 | 采集过程中进程异常退出或 `profiler.stop()` 未被调用，数据不完整 | 检查代码中 `profiler.stop()` 调用路径；修复后重新采集；不得对未正常 Stop 的数据继续分析 |
 | `mindstudio_profiler_data_check/SKILL.md` | Profiler 数据未解析 | `ASCEND_PROFILER_OUTPUT` 目录（框架 profiler）或 `mindstudio_profiler_output` 目录（msprof）缺失 | 原始 profiling 数据尚未导出为可分析格式，后续工具无法运行 | 框架 profiler 执行 `offline_parse_pytorch.py` 或 `offline_parse_mindspore.py`；msprof 执行 `msprof --export=on --output=<path>` |
 | `mindstudio_profiler_data_check/SKILL.md` | 关键交付件缺失 | Text 模式缺 `trace_view.json` / `kernel_details.csv`；DB 模式缺 `*_profiler_*.db`；msprof 缺 `msprof_*.db` 或 `op_summary.csv` | 对应分析功能（Timeline / 算子分析）将无法执行 | 检查采集时的 `export_type` 配置；必要时重新采集并确认导出完整 |
+| `msinsight-view-selector/SKILL.md` | 纯 DB 导出（`export_type=db`）无标准视图文件 | 落盘只有 `*.db`，无 `trace_view.json`/`kernel_details.csv`/`communication_matrix.json` | Insight 可直接载入 `.db`——映射表的 Text 件不存在 ≠「无视图」，不要硬造文件名 | 按「DB-only 视图映射」用对应 `.db` 替代（rank `ascend_pytorch_profiler_*.db` / 集群 `cluster_analysis.db`）；advisor 文本类建议挂 `mstt_advisor_*.html`、recipe 派生统计挂对应 `-m` 产出 db；采集端建议同时开 `export_type=["text","db"]` |
+| `profiling-workflow/SKILL.md`（规则 5） | 举证文件遗漏派生证据 | 结论引用 `SlowRank`/`HcclTopOpStats`/`FreeAnalysis` 等表或 advisor 建议，但 `evidence/` 只复制了原始落盘 / 原始 `cluster_analysis.db` | 这些派生统计**只在** msprof-analyze 各 `-m` 产出与 `mstt_advisor_*.html` 里，原始 db 不含 | 把对应 recipe 的 `cluster_analysis.db` 与 advisor html 一并复制进 `evidence/` 并登记进举证清单，注明查哪张表 |
 | `dataset-source-identifier/SKILL.md` | 落盘数据来源/模型识别 | 需判定这批数据是什么模型/用途、是否 LLM 训练 | 按落盘内证据取证：tokenizer vocab（`151936`→Qwen 系列）、算子签名（RMSNorm/SwiGlu/RoPE/FlashAttention→Transformer LLM；含 `*Grad`/`ApplyAdamWV2`→训练）、多 Embedding 表+小 hidden→推荐/CTR、单算子 simulator→算子调优 | **有依据才写，无确证依据的字段（如被 PP/TP 切分无法反推的模型规模）留空、禁止臆测**；结论 + 识别依据写入 report.md §5「数据来源与落盘信息」块（规则 8），前端自动填「落盘文件信息」卡片 |
 | `op-mfu-calculator/SKILL.md` | 算子 MFU 极低 | MFU < 20% | 算子远未吃满算力，存在明显性能损失 | 排查内存带宽瓶颈、launch overhead、Shape 不规则（过小或非对齐）等因素 |
 | `op-mfu-calculator/SKILL.md` | 算子 MFU 中等 | MFU 30%～60% | 通用工作负载典型水平，仍有提升空间 | 结合 Roofline 分析确认是 Compute Bound 还是 Memory Bound，针对性优化 Shape 或并行度 |
 | `op-mfu-calculator/SKILL.md` | 算子 MFU 高 | MFU > 70% | 算子形状、并行度和实现已接近设备上限 | 继续保持；若仍需提升可尝试混合精度或算子融合 |
 | `op-mfu-calculator/SKILL.md` | MFU 算出 > 100%（不合理） | 落盘聚合 MFU 冲到 100%~180% | matmul 的 M/N/K 直接用输入 shape 推导、未处理 NN/NT/TN 转置布局，N 被错当成 K 维 | 用**输出 shape** 锚定 M/N，K 取输入 A 中非 M 的那一维；FA 不要套 matmul 公式 |
+| `op-mfu-calculator/SKILL.md` | MFU 无法计算（融合/AICPU 算子 + 非 cube PMU） | 主力 matmul 为 `AllGatherMatmul`/`MatmulReduceScatter`（含 `*Aicpu`），`InputShapes=N/A`；且 `aic_metrics=ACL_AICORE_MEMORY_UB` 未采 `cube_utilization` | FLOPs 与 cube_util 双重缺失；融合算子耗时内嵌通信，本就不该套 matmul MFU | 走兜底链 ①FLOPs→②cube_util→③时间口径 device-busy 代理（按 AICPU/Block Dim 占比下修），显式标注"代理值，非真实 MFU"，不硬算 |
 | `performance-health-score/SKILL.md` | 显存容量利用率高 / OOM 风险 | `memory_record.csv` 的 `Total Reserved` 峰值 ÷ 单卡 HBM 容量 > 90% | 接近显存上限，易触发 OOM | recompute / 调小 micro-batch / 调整并行切分；若 Reserved≫Allocated 则查分配器碎片（`expandable_segments`） |
 | `msot-msopprof-operator-profiler/SKILL.md` | 算子瓶颈类型未知 | 算子性能不达预期，不确定是计算限制还是内存限制 | 需通过 Roofline 定性瓶颈类型（Compute Bound / Memory Bound / Latency Bound） | 使用 `--aic-metrics=Roofline,Default` 采集，用 MindStudio Insight 查看 `visualize_data.bin` 中的 Roofline 图 |
 | `msot-msopprof-operator-profiler/SKILL.md` | `--kernel-name` 参数不生效 | 指定算子名过滤但无效，采集了全部算子 | `--kernel-name` 仅在 `application` 输入形态下有效，对 `config` / `export` 无效 | 切换为 `application` 输入形态；若使用 `config`，改用其他过滤方式（如 `--launch-count`） |

@@ -25,6 +25,28 @@
 
 ---
 
+## DB-only 导出（`export_type=db`）的视图映射
+
+> **背景**：下方「问题点 → 视图映射表」的「所需文件」默认是 **Text 导出件**（`trace_view.json` / `kernel_details.csv` / `cluster_communication_matrix.json` 等）。当采集只开了 `export_type=["db"]` 时，落盘目录里**这些文件一个都不存在**，只有 `*_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_*.db`、`analysis.db` 和集群侧 `cluster_analysis_output/cluster_analysis.db`。
+
+此时**不要标"无视图"，也不要硬造一个渲染不出来的文件名**，按下表替换：
+
+| 映射表里的 Text 件 | DB-only 下的替代（MindStudio Insight 可直接载入 `.db`） |
+|---|---|
+| `trace_view.json`（Timeline 系统调优） | 该 rank 的 `ascend_pytorch_profiler_{rank}.db` |
+| `kernel_details.csv`（算子视图） | 同上 `ascend_pytorch_profiler_{rank}.db`（`COMPUTE_TASK_INFO`） |
+| `cluster_communication_matrix.json` / `cluster_communication.json`（通信视图） | `cluster_analysis_output/cluster_analysis.db`（`ClusterCommunication*` 表） |
+| `memory_record.csv` / `operator_memory.csv`（内存视图） | 该 rank `*.db` 的 `MEMORY_RECORD` / `OP_MEMORY` 表 |
+
+两类**天生没有时序几何、无法用泳道图渲染**的发现，按"证据本质"挂载，而非套 Timeline：
+
+- **advisor 文本类建议**（亲和 API 替换、"修改代码避免 AICPU"、动态 shape、JIT 在线编译等）：主证据 = **advisor 的 `mstt_advisor_*.html`**（定位到对应段落），辅以该 rank `.db` 的 `PYTORCH_API` / `CANN_API` 调用点。
+- **recipe 派生统计**（`HcclTopOpStats` 的 min/max-rank 双峰、`SlowRank` 的 slowAffectCount、`FreeAnalysis` 的 launch 间隙等）：证据 = **对应 `-m` 模式产出的 `cluster_analysis.db`**（注明查哪张表、怎么排序），这类统计**只存在于 recipe 输出里**，原始落盘和原始 `cluster_analysis.db` 都没有。
+
+> 采集端建议（写进报告「数据与方法/采集建议」）：要用标准 Insight 视图，**采集时同时开 `export_type=["text","db"]`**——这样既有 db 供集群 recipe 分析，又有 Text 件供视图直接渲染。
+
+---
+
 ## 问题点 → 视图映射表
 
 ### 集群 / 多卡问题（Hermes）
