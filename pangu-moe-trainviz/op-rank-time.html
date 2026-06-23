@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>openPangu-718B · 算子 × 硬件 × 时间(真实架构 + 流水线满载)</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:rgba(16,20,28,.84); --line:rgba(255,255,255,.08);
+    --txt:#e7ecf5; --dim:#8b95a8; --accent:#a78bfa;
+    --font-sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --foreground:var(--txt); --foreground-secondary:#b8c0ce; --foreground-muted:var(--dim);
+    --background:#0b0e14; --background-elevated:#111722; --surface-2:rgba(17,23,34,.9); --surface-3:#0f131b;
+    --border-subtle:rgba(255,255,255,.09); --state-hover:rgba(255,255,255,.06);
+    --radius-md:10px; --radius-sm:8px; --radius-pill:999px;
+    --surface-backdrop-filter-soft:blur(12px);
+    --ide-frame-page-bg:var(--surface-3); --ide-frame-bg:var(--surface-2); --ide-frame-pane-bg:rgba(10,14,22,.86);
+    --ide-frame-pane-border:var(--border-subtle); --ide-frame-control-bg:rgba(255,255,255,.045);
+    --ide-frame-control-border:rgba(255,255,255,.1); --ide-frame-control-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+    --ide-frame-header-height:32px; --ide-frame-title-font:600 12.5px/1.2 var(--font-sans); --ide-frame-meta-font:500 12px/1.35 var(--font-mono);
+    --swim-f:#38bdf8; --swim-b:#f97316; --swim-bubble:rgba(148,163,184,.18);
+  }
+  html[data-theme="light"]{
+    --bg:#f6f7fb; --panel:rgba(255,255,255,.9); --line:rgba(17,24,39,.12);
+    --txt:#111827; --dim:#5f6878; --accent:#6d5dfc;
+    --foreground:var(--txt); --foreground-secondary:#334155; --foreground-muted:#64748b;
+    --background:#f8fafc; --background-elevated:#ffffff; --surface-2:rgba(255,255,255,.92); --surface-3:#eef2f7;
+    --border-subtle:rgba(15,23,42,.12); --state-hover:rgba(15,23,42,.055);
+    --ide-frame-page-bg:var(--background-elevated); --ide-frame-bg:var(--background);
+    --ide-frame-pane-bg:rgba(255,255,255,.92); --ide-frame-pane-border:var(--border-subtle);
+    --ide-frame-control-bg:rgba(255,255,255,.72); --ide-frame-control-border:rgba(15,23,42,.12);
+    --swim-bubble:rgba(100,116,139,.16);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+    font-family:var(--font-mono);font-size:12px}
+  #app{position:fixed;inset:0}
+  canvas{display:block}
+  .hud{position:fixed;z-index:10;backdrop-filter:blur(10px);
+    background:var(--ide-frame-pane-bg);border:1px solid var(--ide-frame-pane-border);border-radius:var(--radius-md);
+    box-shadow:0 18px 54px rgba(0,0,0,.22),inset 0 0 0 1px rgba(255,255,255,.02)}
+  #themeToggle{top:16px;right:332px;padding:8px 12px;cursor:pointer;color:var(--txt);
+    font:inherit;font-size:12px;border-radius:10px;background:var(--panel)}
+  #themeToggle:hover{border-color:rgba(167,139,250,.45)}
+  #title{top:16px;left:16px;padding:13px 15px;max-width:360px}
+  #title h1{font-size:12px;letter-spacing:.05em;font-weight:600;line-height:1.4}
+  #title h1 b{color:var(--accent)}
+  #title p{margin-top:6px;font-size:12px;line-height:1.6;color:var(--dim)}
+  #title .cfg{margin-top:8px;font-size:12px;color:var(--txt)}
+  #title .cfg em{font-style:normal;color:var(--accent)}
+  #focus{top:16px;right:16px;width:330px;padding:14px 16px}
+  #focus .k{font-size:12px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+  #focus .who{margin-top:4px;font-size:13px;font-weight:600;color:#38bdf8}
+  #focus .meta{margin-top:6px;font-size:12px;color:var(--dim);line-height:1.7}
+  #focus .meta b{color:var(--txt)}
+  #focus .opname{margin-top:10px;font-size:14px;font-weight:600;line-height:1.35}
+  #focus .opdesc{margin-top:7px;font-size:12px;line-height:1.6;color:var(--dim)}
+  #focus .opdesc b{color:var(--txt)}
+  #focus .maptag{display:inline-block;margin-top:10px;font-size:12px;padding:4px 9px;
+    border-radius:999px;border:1px solid var(--line)}
+  #axisHud{top:230px;right:16px;width:330px;padding:12px 14px}
+  #axisHud .k{font-size:12px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+  #axisHud .axis-body{display:flex;gap:12px;align-items:center;margin-top:8px}
+  #axisHud .axis-figure{position:relative;width:104px;height:92px;flex:none;border:1px solid var(--line);
+    border-radius:10px;background:rgba(4,8,16,.28);overflow:hidden}
+  html[data-theme="light"] #axisHud .axis-figure{background:rgba(255,255,255,.36)}
+  #axisViewport,#axisViewport canvas{width:100%;height:100%;display:block}
+  #axisHud .axis-copy{font-size:12px;line-height:1.55;color:var(--dim)}
+  #axisHud .axis-copy b{color:var(--txt)}
+  #axisHud .axis-copy .x{color:#f87171}.axis-copy .y{color:#4ade80}.axis-copy .z{color:#38bdf8}
+  #swimlanePanel{left:50%;transform:translateX(-50%);bottom:116px;width:min(1120px,calc(100vw - 360px));padding:0;overflow:hidden}
+  .pane-head{min-height:var(--ide-frame-header-height);display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:0 10px;background:color-mix(in srgb,var(--ide-frame-pane-bg) 92%,transparent)}
+  .pane-title{font:var(--ide-frame-title-font);color:var(--foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pane-meta{font:var(--ide-frame-meta-font);color:var(--foreground-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #swimlaneScroller{max-height:210px;overflow:auto;border-top:1px solid var(--ide-frame-pane-border)}
+  .swimlane-grid{display:grid;grid-template-columns:112px repeat(var(--tick-count),80px);min-width:max-content;font:500 12px/1.2 var(--font-mono)}
+  .swim-head,.swim-lane,.swim-cell{border-right:1px solid var(--ide-frame-pane-border);border-bottom:1px solid var(--ide-frame-pane-border)}
+  .swim-head{position:sticky;top:0;z-index:2;min-height:24px;display:flex;align-items:center;justify-content:center;
+    color:var(--foreground-muted);background:color-mix(in srgb,var(--ide-frame-pane-bg) 94%,transparent)}
+  .swim-lane{position:sticky;left:0;z-index:1;min-height:38px;display:flex;flex-direction:column;justify-content:center;gap:2px;
+    padding:0 9px;color:var(--foreground);background:color-mix(in srgb,var(--ide-frame-pane-bg) 96%,transparent)}
+  .swim-lane small{color:var(--foreground-muted);font-size:12px}
+  .swim-cell{min-height:40px;padding:5px 8px;display:flex;flex-direction:column;justify-content:center;gap:2px;color:var(--foreground-secondary);
+    background:rgba(255,255,255,.02);cursor:pointer;border-left:3px solid transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
+  html[data-theme="light"] .swim-cell{background:rgba(15,23,42,.02);box-shadow:inset 0 0 0 1px rgba(15,23,42,.03)}
+  .swim-cell b{font-size:12px;color:var(--foreground)}
+  .swim-cell small{font-size:12px;color:var(--foreground-muted)}
+  .swim-cell[data-phase="F"]{border-left-color:var(--swim-f)}
+  .swim-cell[data-phase="B"]{border-left-color:var(--swim-b)}
+  .swim-cell[data-phase="bubble"]{border-left-color:var(--swim-bubble);color:var(--foreground-muted)}
+  .swim-cell.is-current{outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:1}
+  .swim-cell.is-focus-lane{box-shadow:inset 3px 0 0 var(--accent)}
+  .swim-cell[data-phase="F"] b{color:var(--swim-f)}
+  .swim-cell[data-phase="B"] b{color:var(--swim-b)}
+  .swim-cell[data-phase="bubble"] b{color:var(--foreground-muted)}
+  #legend{left:16px;bottom:226px;padding:11px 13px;font-size:12px;display:flex;gap:18px}
+  #legend .col .h{color:var(--txt);font-size:12px;letter-spacing:.06em;margin-bottom:5px}
+  #legend .row{display:flex;align-items:center;gap:7px;margin:3.5px 0;color:var(--dim)}
+  #legend .dot{width:9px;height:9px;border-radius:2px;flex:none}
+  #legend .ln{width:15px;height:0;border-top:2px solid;flex:none}
+  #transport{left:50%;transform:translateX(-50%);bottom:16px;padding:13px 16px;
+    display:flex;align-items:center;gap:16px;width:min(780px,calc(100vw - 410px));max-width:calc(100vw - 32px)}
+  #transport .ctrls{display:flex;align-items:center;gap:10px;flex:none}
+  #transport button{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.04);
+    color:var(--txt);border-radius:10px;padding:10px 14px;font:inherit;font-size:13px;transition:.15s}
+  #transport button:hover{background:rgba(167,139,250,.16);border-color:rgba(167,139,250,.4)}
+  #playBtn{min-width:92px}
+  #playbackInfo{min-width:0;flex:1;border-left:1px solid var(--line);padding-left:15px}
+  #stepTitle{font-size:14px;line-height:1.35;font-weight:700;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #stepDetail{margin-top:4px;font-size:12px;line-height:1.45;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #stepBadge{display:inline-block;margin-right:8px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);
+    font-size:12px;font-weight:700;color:var(--accent)}
+  #tip{position:fixed;z-index:20;pointer-events:none;display:none;
+    background:rgba(10,13,20,.95);border:1px solid var(--line);border-radius:9px;
+    padding:8px 10px;font-size:12px;line-height:1.5;max-width:320px;
+    box-shadow:0 16px 40px rgba(0,0,0,.25)}
+  html[data-theme="light"] #tip{background:rgba(255,255,255,.98);border-color:rgba(17,24,39,.14);
+    box-shadow:0 16px 40px rgba(15,23,42,.16)}
+  #tip .t-id{color:#38bdf8;font-weight:600}
+  html[data-theme="light"] #tip .t-id{color:#2563eb}
+  #tip .t-task{color:var(--txt);margin-top:3px}
+  #tip .t-idle{color:var(--dim)}
+  #tip .t-explain{color:var(--dim);margin-top:4px}
+  #tip .t-desc{color:var(--txt);margin-top:6px}
+  .hint{position:fixed;bottom:300px;left:50%;transform:translateX(-50%);
+    font-size:12px;color:var(--dim);z-index:9}
+  @media (max-width:980px){
+    #transport{width:calc(100vw - 32px)}
+    #swimlanePanel{width:calc(100vw - 32px);bottom:126px}
+    #legend{display:none}
+    .hint{display:none}
+    #stepTitle,#stepDetail{white-space:normal}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<button id="themeToggle" class="hud" type="button" aria-pressed="false">Light</button>
+
+<div id="title" class="hud">
+  <h1>openPangu-Ultra-MoE-718B · <b>算子 × 硬件 × 时间</b></h1>
+  <p>上方是<b style="color:var(--txt)">真实完整架构图</b>:原始模型 local XY 图被立成竖直板(local X→世界 X, local Y→高度 Z);Embedding 和 Final/Head 只出现一次;中间 <b style="color:var(--txt)">L0-L60 全部 decode layers</b> 沿世界 Y 展开,L0-L2 是 Dense,L3-L60 是 MoE。下方 32 卡仍按 1F1B 流水满载,竖线连到当前执行算子的卡。</p>
+  <div class="cfg">代表配置 <em>DP2 × PP2 × TP8 = 32 卡</em>(真实 DP32/PP16/TP8/EP32·4096 卡的缩放示意)</div>
+</div>
+
+<div id="focus" class="hud">
+  <div class="k">聚焦 / focused rank</div>
+  <div class="who" id="fWho">D0·P0</div>
+  <div class="meta" id="fMeta">—</div>
+  <div class="opname" id="fOp">—</div>
+  <div class="opdesc" id="fDesc">—</div>
+  <span class="maptag" id="fTag">—</span>
+</div>
+
+<div id="axisHud" class="hud">
+  <div class="k">坐标系 / z-up axes</div>
+  <div class="axis-body">
+    <div class="axis-figure"><div id="axisViewport" aria-hidden="true"></div></div>
+    <div class="axis-copy">
+      <div><b class="x">X</b> = 地面左右 / 模型 local X</div>
+      <div><b class="y">Y</b> = 地面深度 / MoE 层复制方向</div>
+      <div><b class="z">Z</b> = 高度 / 模型 local Y</div>
+    </div>
+  </div>
+</div>
+
+<div id="swimlanePanel" class="hud" aria-label="1F1B simulated timeline swimlane">
+  <header class="pane-head">
+    <div class="pane-title">1F1B simulated training trace · swimlane</div>
+    <div class="pane-meta" id="traceMeta">DP2 × PP2 × TP8 · chunk-level schedule</div>
+  </header>
+  <div id="swimlaneScroller"><div id="swimlaneView"></div></div>
+</div>
+
+<div id="legend" class="hud">
+  <div class="col">
+    <div class="h">算子语义色</div>
+    <div class="row"><span class="dot" style="background:#7a5cc4"></span>Embedding</div>
+    <div class="row"><span class="dot" style="background:#4f8fc0"></span>MLA 注意力</div>
+    <div class="row"><span class="dot" style="background:#c45c93"></span>Router 门控</div>
+    <div class="row"><span class="dot" style="background:#9a5cc4"></span>Expert FFN</div>
+    <div class="row"><span class="dot" style="background:#3ba88a"></span>All-to-All(算子)</div>
+    <div class="row"><span class="dot" style="background:#5c7ac4"></span>Norm/残差</div>
+  </div>
+  <div class="col">
+    <div class="h">通信连线色</div>
+    <div class="row"><span class="ln" style="border-color:#38bdf8"></span>All-Reduce (TP)</div>
+    <div class="row"><span class="ln" style="border-color:#fbbf24"></span>All-to-All (EP)</div>
+    <div class="row"><span class="ln" style="border-color:#4ade80"></span>send/recv (PP)</div>
+  </div>
+</div>
+
+<div id="transport" class="hud">
+  <div class="ctrls">
+    <button id="prevBtn">◀</button>
+    <button id="playBtn">▶ 播放</button>
+    <button id="nextBtn">▶</button>
+  </div>
+  <div id="playbackInfo" aria-live="polite">
+    <div id="stepTitle"><span id="stepBadge">—</span><span id="stepTitleText">—</span></div>
+    <div id="stepDetail">—</div>
+  </div>
+</div>
+<div class="hint">拖拽旋转 · ⌘+拖拽平移 · 滚轮缩放 · 点卡片/node 聚焦 · 悬停看它在算什么</div>
+
+<div id="tip"><div class="t-id"></div><div class="t-body"></div></div>
+
+<!-- 真实架构数据(经典脚本,只读) -->
+<script src="data/graph-ultramoe-718b.js"></script>
+
+<script type="importmap">
+{ "imports": { "three": "../hpc-topology-viewer-main/node_modules/three/build/three.module.min.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ===== 模拟 1F1B trace 数据 ===== */
+const TRACE_URL='data/strict-1f1b-trace-sim.json';
+let TRACE=null;
+try{
+  TRACE=await fetch(TRACE_URL,{cache:'no-store'}).then(r=>{
+    if(!r.ok)throw new Error(`${r.status} ${r.statusText}`);
+    return r.json();
+  });
+}catch(err){
+  console.error('Failed to load simulated 1F1B trace',err);
+  TRACE={schema:'fallback',fidelity:'fallback',defaultTick:0,config:{dp:2,pp:2,tp:8,microbatches:1,stageRanges:{0:[0,30],1:[31,60]}},lanes:[
+    {id:'d0p0',dp:0,stage:0,label:'D0 · PP0',rankRange:'0-7'},
+    {id:'d0p1',dp:0,stage:1,label:'D0 · PP1',rankRange:'8-15'},
+    {id:'d1p0',dp:1,stage:0,label:'D1 · PP0',rankRange:'16-23'},
+    {id:'d1p1',dp:1,stage:1,label:'D1 · PP1',rankRange:'24-31'}
+  ],ticks:[{tick:0,region:'steady',stages:{0:{phase:'F',micro:0,layerRange:[0,30],opFocus:{layer:30,step:'moe_residual'},stepIndex:1,stepTotal:1,label:'F m0 · L0-L30',dependsOn:['input'],produces:['hidden'],explain:'Fallback simulated frame.'},1:{phase:'F',micro:0,layerRange:[31,60],opFocus:{layer:31,step:'mla'},stepIndex:1,stepTotal:1,label:'F m0 · L31-L60',dependsOn:['hidden'],produces:['loss'],explain:'Fallback simulated frame.'}}}]};
+}
+document.getElementById('traceMeta').textContent=`${TRACE.fidelity} · ${TRACE.config.schedule||'simulated schedule'} · ${TRACE.ticks.length} ticks`;
+
+/* ===== UI 主题 ===== */
+const themeBtn=document.getElementById('themeToggle');
+const SCENE_THEMES={
+  dark:{
+    bg:0x0e1116,fog:0x0e1116,fogDensity:0.004,
+    board:0x2c313a,pkg:0x383e48,outline:0x525a66,tray:0x3c4654,
+    grid:0x222730,gridMinor:0x161d2c,ground:0x10131a,
+    hemi:1.45,key:0.85,fill:0.3
+  },
+  light:{
+    bg:0xf8f8f8,fog:0xf8f8f8,fogDensity:0.0025,
+    board:0xdbe4ef,pkg:0xc7d2df,outline:0x7a8798,tray:0xaeb8c7,
+    grid:0xb8c2d2,gridMinor:0xdce3ed,ground:0xe8edf4,
+    hemi:1.2,key:0.95,fill:0.45
+  }
+};
+let applyThreeTheme=()=>{};
+function applyUiTheme(theme){
+  document.documentElement.dataset.theme=theme;
+  themeBtn.textContent=theme==='light'?'Dark':'Light';
+  themeBtn.setAttribute('aria-pressed',theme==='light'?'true':'false');
+  applyThreeTheme(theme);
+}
+const savedTheme='light';
+localStorage.setItem('op-rank-time-theme',savedTheme);
+applyUiTheme(savedTheme);
+themeBtn.onclick=()=>{
+  const next=document.documentElement.dataset.theme==='light'?'dark':'light';
+  localStorage.setItem('op-rank-time-theme',next);
+  applyUiTheme(next);
+};
+
+/* ===== 真实图(全展开,只读) ===== */
+const G = window.buildUltraMoE718BGraph({moeExpanded:true, expertExpanded:true});
+const byId = new Map(G.nodes.map(n=>[n.id,n]));
+const EXPERT_IDS = G.nodes.filter(n=>/^expert_group_/.test(n.id)).map(n=>n.id);
+
+/* ===== 配色(沿用原架构页 SEM_HUE + hslHex) ===== */
+const SEM_HUE={'sem:embedding':262,'module:decoder':222,'sem:attention':205,'sem:norm':182,
+  'sem:gate':330,'sem:comm':158,'sem:moe':280,'sem:mlp':118,'sem:residual':242,'sem:head':20,
+  'module:moe':288,'module:model':215,'module:mlp':118};
+function hslHex(h,s=0.45,l=0.46){
+  const a=s*Math.min(l,1-l);
+  const f=n=>{const k=(n+h/30)%12;const c=l-a*Math.max(-1,Math.min(k-3,9-k,1));
+    return Math.round(255*c).toString(16).padStart(2,'0');};
+  return parseInt(f(0)+f(8)+f(4),16);
+}
+const GRAY=0x6b7280;
+function colorForNode(n){
+  if(n.colorKey&&SEM_HUE[n.colorKey]!=null) return hslHex(SEM_HUE[n.colorKey]);
+  return GRAY;
+}
+const LINE={tp:0x38bdf8, ep:0xfbbf24, pp:0x4ade80};
+const initialSceneTheme=SCENE_THEMES[savedTheme]||SCENE_THEMES.dark;
+const TH={
+  board:initialSceneTheme.board,pkg:initialSceneTheme.pkg,outline:initialSceneTheme.outline,
+  tray:initialSceneTheme.tray,grid:initialSceneTheme.grid,gridMinor:initialSceneTheme.gridMinor
+};
+function setSceneThemeTokens(t){
+  TH.board=t.board;TH.pkg=t.pkg;TH.outline=t.outline;TH.tray=t.tray;TH.grid=t.grid;TH.gridMinor=t.gridMinor;
+}
+const curTheme=()=>document.documentElement.dataset.theme||savedTheme||'dark';
+const sceneLabelColor=()=>curTheme()==='light'?0x334155:0xdbe2ee;
+const sceneMutedColor=()=>curTheme()==='light'?0x64748b:0xaab2bd;
+function mixHex(a,b,t){
+  const ar=(a>>16)&255,ag=(a>>8)&255,ab=a&255,br=(b>>16)&255,bg=(b>>8)&255,bb=b&255;
+  const r=Math.round(ar+(br-ar)*t),g=Math.round(ag+(bg-ag)*t),bl=Math.round(ab+(bb-ab)*t);
+  return (r<<16)|(g<<8)|bl;
+}
+function readableSceneColor(colorHex){
+  if(curTheme()!=='light')return colorHex;
+  const r=(colorHex>>16)&255,g=(colorHex>>8)&255,b=colorHex&255;
+  const l=(Math.max(r,g,b)+Math.min(r,g,b))/510;
+  return l>0.52?mixHex(colorHex,0x0f172a,0.48):colorHex;
+}
+
+/* ===== 算子步进定义(映射表 §4) ===== */
+const STEP_META={
+  embedding:{label:'Parallel Embedding', sem:'sem:embedding', comm:'tp', nodes:['embedding','embedding_weight']},
+  dense:{label:'Dense 解码层 ×3', sem:'module:decoder', comm:'tp', nodes:['dense_block']},
+  mla:{label:'MLA 注意力', sem:'sem:attention', comm:'tp', nodes:['mla']},
+  moe_prenorm:{label:'Pre-RMSNorm', sem:'sem:norm', comm:null, nodes:['moe_prenorm']},
+  gate:{label:'Router · Top-8', sem:'sem:gate', comm:null, nodes:['gate','w_gate']},
+  a2a_dispatch:{label:'All-to-All 分发', sem:'sem:comm', comm:'ep', nodes:['a2a_dispatch']},
+  experts:{label:'当前 MoE 层专家池:256 路由专家 + 共享专家', sem:'sem:moe', comm:null, nodes:EXPERT_IDS.concat(['shared_expert','w_expert'])},
+  a2a_combine:{label:'All-to-All 汇聚', sem:'sem:comm', comm:'ep', nodes:['a2a_combine']},
+  moe_residual:{label:'残差 + RMSNorm', sem:'sem:residual', comm:null, nodes:['moe_residual']},
+  final_norm:{label:'Final RMSNorm', sem:'sem:norm', comm:null, nodes:['final_norm']},
+  lm_head:{label:'LM Head', sem:'sem:head', comm:'tp', nodes:['lm_head','lm_head_weight']},
+};
+const STEP_DESC={
+  experts:'当前 MoE layer 内的一个 Expert Pool block:256 个 routed experts 按 EP 切分执行;它和 Router、All-to-All 分发/汇聚、Shared Expert、Residual 共同构成这一层 MoE。'
+};
+const descOf=step=>STEP_DESC[step]??(()=>{const id=STEP_META[step].nodes[0];return byId.get(id)?.desc||'';})();
+const semColor=step=>hslHex(SEM_HUE[STEP_META[step].sem]);
+const TOTAL_LAYERS=61, FIRST_MOE_LAYER=3, LAST_MOE_LAYER=60;
+const LAYER_STEPS=['mla','moe_prenorm','gate','a2a_dispatch','experts','a2a_combine','moe_residual'];
+
+/* ===== 场景 ===== */
+const app=document.getElementById('app');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(initialSceneTheme.bg);
+scene.fog=new THREE.FogExp2(initialSceneTheme.fog,initialSceneTheme.fogDensity);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+renderer.setClearColor(initialSceneTheme.bg,1);
+app.appendChild(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.02,400);
+const target=new THREE.Vector3(0,2.55,0);
+const ZOOM_MIN=3.5, ZOOM_MAX=115;
+const cam={r:24,theta:-0.5,phi:0.96};
+const camRight=new THREE.Vector3(), camUp=new THREE.Vector3();
+function updateCam(){
+  camera.position.set(
+    target.x+cam.r*Math.sin(cam.phi)*Math.sin(cam.theta),
+    target.y+cam.r*Math.cos(cam.phi),
+    target.z+cam.r*Math.sin(cam.phi)*Math.cos(cam.theta));
+  camera.lookAt(target);
+}
+updateCam();
+const hemi=new THREE.HemisphereLight(0xffffff,initialSceneTheme.ground,initialSceneTheme.hemi); scene.add(hemi);
+const key=new THREE.DirectionalLight(0xffffff,initialSceneTheme.key); key.position.set(8,20,12); scene.add(key);
+const fill=new THREE.DirectionalLight(0xffffff,initialSceneTheme.fill); fill.position.set(-8,8,-10); scene.add(fill);
+
+/* ===== 文字贴图 ===== */
+function makeTextPlane(text,w,h,colorHex,bg){
+  const cv=document.createElement('canvas'); cv.width=512; cv.height=Math.max(64,Math.round(512*h/w));
+  const g=cv.getContext('2d');
+  if(bg){g.fillStyle=bg;g.fillRect(0,0,cv.width,cv.height);}
+  g.fillStyle='#'+colorHex.toString(16).padStart(6,'0');
+  let fs=Math.min(64, cv.height*0.5);
+  g.font=`600 ${fs}px "JetBrains Mono",monospace`; g.textAlign='center'; g.textBaseline='middle';
+  // 自动缩字号适配宽度
+  while(g.measureText(text).width>cv.width*0.92 && fs>14){fs-=2;g.font=`600 ${fs}px "JetBrains Mono",monospace`;}
+  g.fillText(text,cv.width/2,cv.height/2);
+  const tex=new THREE.CanvasTexture(cv); tex.anisotropy=4;
+  const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:false});
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat); pl.renderOrder=6; return pl;
+}
+function makeFixedTextMesh(cv,w,h,renderOrder=7){
+  const tex=new THREE.CanvasTexture(cv); tex.anisotropy=4;
+  const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthTest:false,side:THREE.DoubleSide});
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);
+  mesh.renderOrder=renderOrder;
+  return mesh;
+}
+function makeSprite(text,colorHex=sceneLabelColor(),scale){
+  const cv=document.createElement('canvas'); cv.width=512;cv.height=96;
+  const g=cv.getContext('2d'); g.font='700 36px "JetBrains Mono",monospace';g.textBaseline='middle';
+  const c=readableSceneColor(colorHex);
+  g.lineWidth=curTheme()==='light'?5:7;
+  g.strokeStyle=curTheme()==='light'?'rgba(255,255,255,.78)':'rgba(0,0,0,.68)';
+  g.strokeText(text,8,52);
+  g.fillStyle='#'+c.toString(16).padStart(6,'0'); g.fillText(text,8,52);
+  return makeFixedTextMesh(cv,scale,scale*96/512,7);
+}
+
+/* ===== 右上角:真实 3D 坐标轴小视图 ===== */
+function makeAxisLabel(text,colorHex){
+  const cv=document.createElement('canvas'); cv.width=128;cv.height=72;
+  const g=cv.getContext('2d'); g.textAlign='center'; g.textBaseline='middle';
+  g.font='700 44px "JetBrains Mono",monospace';
+  g.fillStyle='#'+colorHex.toString(16).padStart(6,'0');
+  g.fillText(text,64,36);
+  const tex=new THREE.CanvasTexture(cv); tex.anisotropy=4;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(0.36,0.20,1);
+  return sp;
+}
+const axisMount=document.getElementById('axisViewport');
+const axisRenderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+axisRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+axisRenderer.setClearColor(0x000000,0);
+axisMount.appendChild(axisRenderer.domElement);
+const axisScene=new THREE.Scene();
+const axisCamera=new THREE.PerspectiveCamera(42,1,0.1,12);
+const axisLabels=[];
+function addAxisArrow(dir,color,label){
+  const arrow=new THREE.ArrowHelper(dir,new THREE.Vector3(0,0,0),1.28,color,0.24,0.14);
+  axisScene.add(arrow);
+  const sp=makeAxisLabel(label,color);
+  sp.position.copy(dir.clone().multiplyScalar(1.58));
+  axisLabels.push(sp);
+  axisScene.add(sp);
+}
+axisScene.add(new THREE.AmbientLight(0xffffff,1));
+axisScene.add(new THREE.Mesh(
+  new THREE.SphereGeometry(0.065,18,12),
+  new THREE.MeshBasicMaterial({color:0xdbe2ee})
+));
+addAxisArrow(new THREE.Vector3(1,0,0),0xf87171,'X');
+// 用户坐标采用 Z-up:内部 Three.js Y 是用户 Z,内部 Three.js Z 是用户 Y。
+addAxisArrow(new THREE.Vector3(0,0,1),0x4ade80,'Y');
+addAxisArrow(new THREE.Vector3(0,1,0),0x38bdf8,'Z');
+function resizeAxisRenderer(){
+  const w=Math.max(1,axisMount.clientWidth), h=Math.max(1,axisMount.clientHeight);
+  axisRenderer.setSize(w,h,false);
+  axisCamera.aspect=w/h;
+  axisCamera.updateProjectionMatrix();
+}
+function syncAxisCamera(){
+  const view=camera.position.clone().sub(target).normalize();
+  axisCamera.position.copy(view.multiplyScalar(4.2));
+  axisCamera.up.copy(camera.up);
+  axisCamera.lookAt(0,0,0);
+  axisLabels.forEach(sp=>sp.quaternion.copy(axisCamera.quaternion));
+}
+resizeAxisRenderer();
+
+/* ===== 上方:真实架构 local XY 竖板 + L0-L60 decode layers 沿世界 Y 全展开 ===== */
+const clusterById=new Map(G.clusters.map(c=>[c.id,c]));
+const ARCH_PS=0.0056, ARCH_HEIGHT_CENTER=5.15, ARCH_LAYER_FRONT=2.2, ARCH_LAYER_GAP=0.13, ARCH_IO_GAP=0.56, ARCH_THICK=0.055, ARCH_FRONT=0.055;
+const EDGE_COL={activation:0x4369ef,communication:0x10b981,parameter:0xf59e0b,gradient:0xef4444};
+const DENSE_LAYER_IDS=[0,1,2];
+const MOE_LAYER_IDS=Array.from({length:LAST_MOE_LAYER-FIRST_MOE_LAYER+1},(_,i)=>FIRST_MOE_LAYER+i);
+const MOE_NODE_IDS=new Set([
+  'mla','moe_prenorm','gate','w_gate','a2a_dispatch','shared_expert','w_expert','a2a_combine','moe_residual',
+  ...EXPERT_IDS
+]);
+const STATIC_INPUT_IDS=['token_ids','input_embeds','position_ids','attn_mask','embedding','embedding_weight'];
+const STATIC_OUTPUT_IDS=['final_norm','lm_head','logits','mtp_head','mtp_logits','lm_head_weight'];
+const archPickables=[], archRecords=[], archByKey=new Map(), archRecordByMesh=new Map();
+const archKey=(layer,id)=>`${layer}:${id}`;
+const archDepth=layer=>{
+  if(layer==='input')return archDepth(0)-ARCH_IO_GAP;
+  if(layer==='output')return archDepth(LAST_MOE_LAYER)+ARCH_IO_GAP;
+  return ARCH_LAYER_FRONT-(LAST_MOE_LAYER-layer)*ARCH_LAYER_GAP;
+};
+const graphPos=(x,y,layer=0)=>new THREE.Vector3((x-G.width/2)*ARCH_PS,ARCH_HEIGHT_CENTER+(y-G.height/2)*ARCH_PS,archDepth(layer));
+const clusterCenterPos=(id,layer)=>{const c=clusterById.get(id);return c?graphPos(c.x+c.width/2,c.y+c.height/2,layer):null;};
+const nodePos=(id,layer=0)=>{
+  if(/^expert_group_/.test(id))return clusterCenterPos('expert_pool',layer);
+  const n=byId.get(id);return n?graphPos(n.x,n.y,layer):null;
+};
+const isMoeNode=id=>MOE_NODE_IDS.has(id);
+const isMajorLayer=layer=>layer<5||layer%10===0||layer===LAST_MOE_LAYER;
+const layerRenderOrder=layer=>typeof layer==='number'?20+layer:(layer==='output'?90:10);
+const lineMat=(color,opacity)=>new THREE.LineBasicMaterial({color,transparent:true,opacity});
+function rememberArch(mesh,id,layer,base,labelOverride,descOverride){
+  mesh.userData={
+    panel:true,id,layer,
+    desc:descOverride ?? byId.get(id)?.desc ?? '',
+    label:labelOverride ?? byId.get(id)?.label ?? id,
+    activeHighlight:false,
+    trailHighlight:false,
+    hoverHighlight:false
+  };
+  mesh.renderOrder=layerRenderOrder(layer);
+  const rec={mesh,id,layer,base};
+  archPickables.push(mesh); archRecords.push(rec); archRecordByMesh.set(mesh,rec); archByKey.set(archKey(layer,id),mesh);
+}
+function refreshArchMesh(mesh){
+  const rec=archRecordByMesh.get(mesh);
+  if(!rec||!mesh.material)return;
+  let ei=rec.base.ei, op=rec.base.op, sc=1;
+  if(mesh.userData.trailHighlight){ei=Math.max(ei,0.32);op=Math.max(op,0.38);sc=1.02;}
+  if(mesh.userData.activeHighlight){ei=Math.max(ei,0.78);op=Math.max(op,0.82);sc=1.04;}
+  if(mesh.userData.hoverHighlight){ei=1;op=1;sc=1.09;}
+  mesh.material.emissiveIntensity=ei;
+  mesh.material.opacity=op;
+  mesh.scale.set(sc,sc,sc);
+}
+function setArchState(mesh,key,value){
+  if(!mesh||!mesh.userData)return;
+  mesh.userData[key]=value;
+  refreshArchMesh(mesh);
+}
+function mapExpertAliases(mesh,layer){
+  EXPERT_IDS.forEach(id=>archByKey.set(archKey(layer,id),mesh));
+}
+function addArchLabel(text,p,colorHex,scale,renderOrder=7){
+  const sp=makeSprite(text,colorHex,scale);
+  sp.position.set(p.x,p.y,p.z+ARCH_FRONT*2.2);
+  sp.renderOrder=renderOrder;
+  scene.add(sp);
+  return sp;
+}
+function addNodeNote(id,layer,text,colorHex,dx=0,dy=0,scale=1.0){
+  const p=nodePos(id,layer); if(!p)return null;
+  return addArchLabel(text,p.clone().add(new THREE.Vector3(dx,dy,0)),colorHex,scale);
+}
+function addClusterNote(c,layer,text,colorHex,dx=0,dy=0,scale=1.0){
+  if(!c)return null;
+  const p=graphPos(c.x+c.width/2,c.y+c.height/2,layer).add(new THREE.Vector3(dx,dy,0));
+  return addArchLabel(text,p,colorHex,scale);
+}
+function addCluster(c,layer,opacity,{showLabel=true,labelText=null,labelScale=null}={}){
+  const p=graphPos(c.x+c.width/2,c.y+c.height/2,layer);
+  const geo=new THREE.EdgesGeometry(new THREE.BoxGeometry(c.width*ARCH_PS,c.height*ARCH_PS,ARCH_THICK*0.7));
+  const box=new THREE.LineSegments(geo,new THREE.LineDashedMaterial({
+    color:colorForNode(c),dashSize:0.09,gapSize:0.06,transparent:true,opacity
+  }));
+  box.computeLineDistances(); box.position.copy(p); box.renderOrder=layerRenderOrder(layer); scene.add(box);
+  if(c.id==='expert_pool')addExpertPoolPanel(c,layer,{showLabel,labelText});
+  if(showLabel&&c.id!=='expert_pool'){
+    const label=labelText??c.label;
+    addArchLabel(label,p.clone().add(new THREE.Vector3(0,c.height*ARCH_PS/2-0.12,0)),colorForNode(c),labelScale??Math.min(1.25,c.width*ARCH_PS*0.22),layerRenderOrder(layer)+0.1);
+  }
+}
+function addExpertPoolPanel(c,layer,{showLabel=true,labelText=null}={}){
+  const p=graphPos(c.x+c.width/2,c.y+c.height/2,layer);
+  const w=c.width*ARCH_PS, h=c.height*ARCH_PS;
+  const col=colorForNode(c);
+  const major=typeof layer==='number'&&isMajorLayer(layer);
+  const base={ei:major?0.04:0.006,op:major?0.10:0.006};
+  const mat=new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:base.ei,
+    transparent:true,opacity:base.op,metalness:0.08,roughness:0.78,depthWrite:false});
+  const panel=new THREE.Mesh(new THREE.BoxGeometry(w,h,ARCH_THICK*0.55),mat);
+  panel.position.copy(p);
+  scene.add(panel);
+  rememberArch(panel,'expert_pool',layer,base,'Expert Pool',
+    '当前 MoE 层的专家池：32 个 EP bucket × 每桶 8 个 routed experts = 256 routed experts。它是一层内部结构，不是 32 层。');
+  mapExpertAliases(panel,layer);
+  if(showLabel)addArchLabel(labelText??`Expert Pool · L${layer}`,p.clone().add(new THREE.Vector3(0,h*0.36,0)),0xfbbf24,0.5,layerRenderOrder(layer)+0.2);
+}
+function addNode(n,layer,{ghost=false,showLabel=true,labelText=null,descOverride=null}={}){
+  if(/^expert_group_/.test(n.id))return;
+  const p=graphPos(n.x,n.y,layer), w=Math.max(n.width*ARCH_PS,0.22), h=Math.max(n.height*ARCH_PS,0.13);
+  const col=colorForNode(n), isParam=n.kind!=='op';
+  const base={ei:ghost?0.01:(isParam?0.04:0.105), op:ghost?(isParam?0.025:0.03):(isParam?0.16:0.34)};
+  const mat=new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:base.ei,
+    transparent:true,opacity:base.op,metalness:0.18,roughness:0.55,depthWrite:false});
+  const box=new THREE.Mesh(new THREE.BoxGeometry(w,h,ARCH_THICK),mat);
+  box.position.copy(p); scene.add(box); rememberArch(box,n.id,layer,base,labelText,descOverride);
+  const expert=/^expert_group_/.test(n.id);
+  if(showLabel&&!expert)addArchLabel(labelText??n.label,p,sceneLabelColor(),Math.min(expert?0.28:0.76,w*0.92),layerRenderOrder(layer)+0.2);
+}
+function addArchLine(a,b,color,opacity,layerA=0,layerB=layerA){
+  const pa=nodePos(a,layerA), pb=nodePos(b,layerB); if(!pa||!pb)return;
+  addArchLinePoints(pa,pb,color,opacity);
+}
+function addArchLinePoints(pa,pb,color,opacity){
+  if(!pa||!pb)return;
+  const front=ARCH_FRONT;
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+    pa.clone().add(new THREE.Vector3(0,0,front)),
+    pb.clone().add(new THREE.Vector3(0,0,front))
+  ]),lineMat(color,opacity)));
+}
+function drawGraphEdges(layer,{moeOnly=false,opacity=0.18}={}){
+  G.edges.forEach(e=>{
+    if(moeOnly&&!(isMoeNode(e.source)&&isMoeNode(e.target)))return;
+    if(e.source==='moe_residual'&&e.target==='final_norm')return;
+    if(e.source==='dense_block'&&e.target==='mla')return;
+    addArchLine(e.source,e.target,EDGE_COL[e.edgeType]||0x4369ef,e.dashed?opacity*0.55:opacity,layer);
+  });
+}
+function addExpertFan(layer,opacity=0.18){
+  const c=G.clusters.find(cl=>cl.id==='expert_pool');
+  const pool=c?graphPos(c.x+c.width/2,c.y+c.height/2,layer):null;
+  addArchLinePoints(nodePos('a2a_dispatch',layer),pool,EDGE_COL.communication,opacity);
+  addArchLinePoints(pool,nodePos('a2a_combine',layer),EDGE_COL.communication,opacity);
+}
+function addLayerMarker(layer,text,colorHex,major=false){
+  if(!(major||layer<5||layer%5===0||layer===LAST_MOE_LAYER))return;
+  const y=layer<FIRST_MOE_LAYER?306:430;
+  addArchLabel(text,graphPos(132,y,layer),colorHex,major?0.48:0.38,layerRenderOrder(layer)+0.25);
+}
+function addDenseLayer(layer){
+  const n=byId.get('dense_block');
+  const desc=`Dense decoder layer L${layer}:前 3 个解码层之一,没有 Router、All-to-All、Expert Pool 或 Shared Expert;hidden state 直接传给下一层。`;
+  addNode(n,layer,{ghost:layer!==0,labelText:`Dense L${layer}`,descOverride:desc,showLabel:true});
+  addLayerMarker(layer,`L${layer} Dense`,0x38bdf8,true);
+}
+function addMoeLayer(layer){
+  const major=isMajorLayer(layer);
+  const moeCluster=clusterById.get('moe_layer');
+  const expertCluster=clusterById.get('expert_pool');
+  if(moeCluster)addCluster(moeCluster,layer,major?0.16:0.014,{showLabel:major,labelText:`MoE L${layer}`});
+  if(expertCluster)addCluster(expertCluster,layer,major?0.15:0.012,{showLabel:major,labelText:`Expert Pool · L${layer}`});
+  G.nodes.filter(n=>isMoeNode(n.id)).forEach(n=>{
+    const showLabel=major&&!['w_gate','w_expert'].includes(n.id);
+    addNode(n,layer,{ghost:!major,showLabel});
+  });
+  drawGraphEdges(layer,{moeOnly:true,opacity:major?0.22:0.018});
+  addExpertFan(layer,major?0.18:0.012);
+  addLayerMarker(layer,`L${layer} MoE`,0xa78bfa,major);
+}
+function drawStaticInputOutput(){
+  STATIC_INPUT_IDS.forEach(id=>addNode(byId.get(id),'input',{showLabel:true}));
+  STATIC_OUTPUT_IDS.forEach(id=>addNode(byId.get(id),'output',{showLabel:true}));
+  addArchLine('token_ids','embedding',EDGE_COL.activation,0.62,'input','input');
+  addArchLine('input_embeds','embedding',EDGE_COL.activation,0.26,'input','input');
+  addArchLine('embedding_weight','embedding',EDGE_COL.parameter,0.25,'input','input');
+  addArchLine('embedding','dense_block',EDGE_COL.activation,0.72,'input',0);
+  ['position_ids','attn_mask'].forEach(id=>{
+    addArchLine(id,'dense_block',EDGE_COL.activation,0.20,'input',0);
+    addArchLine(id,'mla',EDGE_COL.activation,0.12,'input',FIRST_MOE_LAYER);
+    addArchLine(id,'mla',EDGE_COL.activation,0.08,'input',LAST_MOE_LAYER);
+  });
+  addArchLine('final_norm','lm_head',EDGE_COL.activation,0.58,'output','output');
+  addArchLine('lm_head','logits',EDGE_COL.activation,0.58,'output','output');
+  addArchLine('final_norm','mtp_head',EDGE_COL.activation,0.36,'output','output');
+  addArchLine('mtp_head','mtp_logits',EDGE_COL.activation,0.36,'output','output');
+  addArchLine('lm_head_weight','lm_head',EDGE_COL.parameter,0.24,'output','output');
+  addArchLabel('Embedding: not copied',nodePos('embedding','input').clone().add(new THREE.Vector3(0.95,0,0)),0xa78bfa,0.62,layerRenderOrder('input')+0.2);
+  addArchLabel('Final / Head: not copied',nodePos('final_norm','output').clone().add(new THREE.Vector3(1.05,0,0)),0xfb923c,0.62,layerRenderOrder('output')+0.2);
+}
+function drawHiddenStateChain(){
+  addArchLine('dense_block','dense_block',0x93c5fd,0.58,0,1);
+  addArchLine('dense_block','dense_block',0x93c5fd,0.58,1,2);
+  addArchLine('dense_block','mla',0x93c5fd,0.62,2,FIRST_MOE_LAYER);
+  for(let layer=FIRST_MOE_LAYER;layer<LAST_MOE_LAYER;layer++){
+    addArchLine('moe_residual','mla',0x93c5fd,layer%10===0?0.34:0.15,layer,layer+1);
+  }
+  addArchLine('moe_residual','final_norm',0x93c5fd,0.7,LAST_MOE_LAYER,'output');
+  addArchLabel('hidden state flows L0 → L60 along world Y toward the front',
+    graphPos(G.width-210,420,34),0x93c5fd,0.78,layerRenderOrder(34)+0.3);
+}
+function buildArchitecturePreview(){
+  drawStaticInputOutput();
+  DENSE_LAYER_IDS.forEach(addDenseLayer);
+  MOE_LAYER_IDS.forEach(addMoeLayer);
+  drawHiddenStateChain();
+  addArchLabel('L0-L2: Dense decode layers, no experts',graphPos(1040,308,1),0x38bdf8,0.62,layerRenderOrder(1)+0.3);
+  addArchLabel('L3-L60: each layer has Router + Dispatch + Expert Pool + Shared Expert + Combine + Residual',
+    graphPos(1050,470,32),0xa78bfa,0.72,layerRenderOrder(32)+0.3);
+}
+function resetArchitecture(){
+  archRecords.forEach(r=>{
+    r.mesh.userData.activeHighlight=false;
+    r.mesh.userData.trailHighlight=false;
+    refreshArchMesh(r.mesh);
+  });
+}
+function archLayerForProg(prog,step){
+  if(step==='embedding')return 'input';
+  if(step==='final_norm'||step==='lm_head')return 'output';
+  return prog.layer;
+}
+function archMeshForStep(prog,step){
+  const layer=archLayerForProg(prog,step);
+  const ids=STEP_META[step]?.nodes||[];
+  const primary=ids.find(id=>archByKey.has(archKey(layer,id)))||ids.find(id=>archByKey.has(archKey(0,id)))||'mla';
+  return archByKey.get(archKey(layer,primary))||archByKey.get(archKey(0,primary))||null;
+}
+function archStepPoint(prog,step){
+  const mesh=archMeshForStep(prog,step);
+  return mesh?mesh.position.clone():null;
+}
+function highlightArchitecture(stage,step,prog){
+  const layer=archLayerForProg(prog,step);
+  const ids=STEP_META[step]?.nodes||[];
+  ids.forEach(id=>{
+    const mesh=archByKey.get(archKey(layer,id))||archByKey.get(archKey(0,id));
+    setArchState(mesh,'activeHighlight',true);
+  });
+  const mesh=archMeshForStep(prog,step);
+  return mesh?mesh.position.clone():new THREE.Vector3(0,ARCH_HEIGHT_CENTER,archDepth(typeof layer==='number'?layer:0));
+}
+buildArchitecturePreview();
+
+/* ===== 下方:32 卡 UB-fabric 卡阵 ===== */
+const SC=1.7, BASE_Y=0.06*SC, COL_PITCH=0.56*SC, ROW_PITCH=0.42*SC;
+const NODE_DEFS=[
+  {id:0, dp:0, stage:0, label:'D0·P0', x:-1.05*SC, z:-1.2*SC},
+  {id:1, dp:0, stage:1, label:'D0·P1', x: 1.05*SC, z:-1.2*SC},
+  {id:2, dp:1, stage:0, label:'D1·P0', x:-1.05*SC, z: 1.2*SC},
+  {id:3, dp:1, stage:1, label:'D1·P1', x: 1.05*SC, z: 1.2*SC},
+];
+const nodeByDS=(dp,stage)=>NODE_DEFS.find(n=>n.dp===dp&&n.stage===stage);
+const boardGeo=new THREE.BoxGeometry(0.42*SC,0.04*SC,0.3*SC);
+const pkgGeo=new THREE.BoxGeometry(0.2*SC,0.02*SC,0.16*SC);
+const boardEdge=new THREE.EdgesGeometry(boardGeo), pkgEdge=new THREE.EdgesGeometry(pkgGeo);
+const boardMeshes=[], pkgMeshes=[], boardEdgeLines=[], trayLines=[], nodeCards=[[],[],[],[]], nodeCenter=[];
+function cardWorld(node,t){const col=t%2,row=Math.floor(t/2);
+  return new THREE.Vector3(node.x+(col-0.5)*COL_PITCH, BASE_Y, node.z+(row-1.5)*ROW_PITCH);}
+NODE_DEFS.forEach(node=>{
+  for(let t=0;t<8;t++){
+    const p=cardWorld(node,t);
+    const board=new THREE.Mesh(boardGeo,new THREE.MeshStandardMaterial({color:TH.board,emissive:0x000000,metalness:0.02,roughness:0.7}));
+    board.position.copy(p);
+    const boardEdgeLine=new THREE.LineSegments(boardEdge,new THREE.LineBasicMaterial({color:TH.outline,transparent:true,opacity:0.6}));
+    board.add(boardEdgeLine); boardEdgeLines.push(boardEdgeLine);
+    const pkg=new THREE.Mesh(pkgGeo,new THREE.MeshStandardMaterial({color:TH.pkg,metalness:0.02,roughness:0.66}));
+    pkg.position.set(0,0.03*SC,0); board.add(pkg); pkgMeshes.push(pkg);
+    const rank=(node.dp*2+node.stage)*8+t;
+    board.userData={card:true,node:node.id,nodeLabel:node.label,dp:node.dp,stage:node.stage,t,rank,role:null,active:false,focus:false};
+    scene.add(board); boardMeshes.push(board); nodeCards[node.id].push(board);
+  }
+  const hx=0.62*SC,hz=0.92*SC,y=BASE_Y-0.03*SC;
+  const pts=[[node.x-hx,y,node.z-hz],[node.x+hx,y,node.z-hz],[node.x+hx,y,node.z+hz],[node.x-hx,y,node.z+hz],[node.x-hx,y,node.z-hz]].map(a=>new THREE.Vector3(...a));
+  const trayLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:TH.tray,transparent:true,opacity:0.8}));
+  scene.add(trayLine); trayLines.push(trayLine);
+  const lab=makeSprite(node.label,sceneMutedColor(),1.65); lab.position.set(node.x,BASE_Y+0.25,node.z-hz-0.1); scene.add(lab);
+  nodeCenter[node.id]=new THREE.Vector3(node.x,BASE_Y,node.z);
+});
+let grid=null;
+function rebuildGrid(){
+  if(grid){
+    scene.remove(grid);
+    grid.geometry.dispose();
+    const mats=Array.isArray(grid.material)?grid.material:[grid.material];
+    mats.forEach(m=>m.dispose());
+  }
+  grid=new THREE.GridHelper(13,26,TH.grid,TH.gridMinor);
+  grid.position.y=BASE_Y-0.06*SC;
+  scene.add(grid);
+}
+rebuildGrid();
+
+applyThreeTheme=theme=>{
+  const t=SCENE_THEMES[theme]||SCENE_THEMES.dark;
+  setSceneThemeTokens(t);
+  scene.background.setHex(t.bg);
+  scene.fog.color.setHex(t.fog);
+  scene.fog.density=t.fogDensity;
+  renderer.setClearColor(t.bg,1);
+  hemi.groundColor.setHex(t.ground);
+  hemi.intensity=t.hemi;
+  key.intensity=t.key;
+  fill.intensity=t.fill;
+  boardMeshes.forEach(b=>{if(!b.userData.active)b.material.color.setHex(TH.board);});
+  pkgMeshes.forEach(p=>p.material.color.setHex(TH.pkg));
+  boardEdgeLines.forEach(l=>l.material.color.setHex(TH.outline));
+  trayLines.forEach(l=>l.material.color.setHex(TH.tray));
+  rebuildGrid();
+};
+applyThreeTheme(savedTheme);
+
+/* ===== 动态层(光柱 + 通信连线) ===== */
+const dyn=new THREE.Group(); scene.add(dyn);
+function clearDyn(){while(dyn.children.length){const o=dyn.children.pop();o.geometry?.dispose();o.material?.dispose();}}
+const addLine=(a,b,c,op,y)=>{const pa=y==null?a:new THREE.Vector3(a.x,y,a.z),pb=y==null?b:new THREE.Vector3(b.x,y,b.z);
+  dyn.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([pa,pb]),new THREE.LineBasicMaterial({color:c,transparent:true,opacity:op})));};
+const addArc=(a,b,c,op,lift)=>{const mid=a.clone().add(b).multiplyScalar(0.5);mid.y+=lift;
+  const pts=new THREE.QuadraticBezierCurve3(a.clone(),mid,b.clone()).getPoints(28);
+  dyn.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:c,transparent:true,opacity:op})));
+  return mid;};
+
+/* ===== 1F1B timeline trace ===== */
+const P0R=TRACE.config.stageRanges?.[0]||TRACE.config.stageRanges?.['0']||[0,30];
+const P1R=TRACE.config.stageRanges?.[1]||TRACE.config.stageRanges?.['1']||[31,60];
+const TRACE_TICKS=TRACE.ticks||[];
+const TRACE_LANES=TRACE.lanes||[];
+let traceIndex=Math.max(0,Math.min(TRACE_TICKS.length-1,TRACE.defaultTick??0));
+function frameAt(i=traceIndex){return TRACE_TICKS[Math.max(0,Math.min(TRACE_TICKS.length-1,i))]||TRACE_TICKS[0];}
+function stageCell(stage,i=traceIndex){
+  const f=frameAt(i);
+  return f.stages?.[String(stage)]||f.stages?.[stage]||{phase:'bubble',label:'bubble',dependsOn:[],produces:[],explain:'No scheduled work.'};
+}
+function eventForNode(node,i=traceIndex){
+  const e=stageCell(node.stage,i);
+  return {...e,dp:node.dp,stage:node.stage,nodeId:node.id,frame:frameAt(i)};
+}
+function laneEvent(lane,i=traceIndex){
+  const e=stageCell(lane.stage,i);
+  return {...e,dp:lane.dp,stage:lane.stage,laneId:lane.id,frame:frameAt(i)};
+}
+function isBubbleEvent(evt){return !evt||evt.phase==='bubble'||!evt.opFocus;}
+function eventStep(evt){return evt?.opFocus?.step||evt?.step||'moe_residual';}
+function eventLayer(evt){
+  if(evt?.opFocus&&evt.opFocus.layer!=null)return evt.opFocus.layer;
+  if(evt?.layer!=null)return evt.layer;
+  return evt?.stage===1?31:30;
+}
+function eventRange(evt){return evt?.layerRange||(evt?.stage===1?P1R:P0R);}
+function eventProg(evt){
+  const step=eventStep(evt);
+  return {range:eventRange(evt),layer:eventLayer(evt),micro:evt?.micro??0,idx:Math.max(0,(evt?.stepIndex??1)-1),
+    cycle:[step],step,phase:evt?.phase||'F',evt};
+}
+const progOf=stage=>eventProg({...stageCell(stage),stage});
+const curStep=p=>p.step||p.cycle[p.idx];
+function visibleMicro(stage){const e=stageCell(stage);return isBubbleEvent(e)?'—':e.micro;}
+function stepIndexText(p){return `${(p.idx??0)+1}/${p.evt?.stepTotal||p.cycle.length}`;}
+function eventPhaseName(evt){return evt?.phase==='B'?'Backward':evt?.phase==='F'?'Forward':'Bubble';}
+function eventColor(evt){
+  if(isBubbleEvent(evt))return TH.board;
+  const base=semColor(eventStep(evt));
+  return evt.phase==='B'?mixHex(base,0xf97316,0.42):base;
+}
+function substDp(text,dp){return String(text??'').replaceAll('D*',`D${dp}`);}
+function listText(list,dp){return (list||[]).map(v=>substDp(v,dp)).join(' / ')||'—';}
+function eventComm(evt){
+  if(isBubbleEvent(evt))return null;
+  return evt.comm||STEP_META[eventStep(evt)]?.comm||null;
+}
+
+/* ===== 渲染当前帧 ===== */
+let focusNode=0;   // 聚焦哪个硬件 node
+function roleText(evt,t){
+  if(isBubbleEvent(evt))return 'pipeline bubble · this stage has no runnable op';
+  const step=eventStep(evt), L=STEP_META[step].label, comm=eventComm(evt), phase=eventPhaseName(evt);
+  if(comm==='pp')return `${phase} ${evt.label} · PP send/recv boundary`;
+  if(step==='experts') return `${phase} Expert Pool shard · EP rank ${t}/8`;
+  if(comm==='tp') return `${phase} All-Reduce participant · TP shard ${t}/8`;
+  if(comm==='ep') return `${phase} All-to-All participant · EP rank ${t}/8`;
+  if(['moe_prenorm','gate','moe_residual','final_norm'].includes(step)) return `${phase} ${L} · local per-rank compute`;
+  return `${phase} ${L} · TP shard ${t}/8`;
+}
+function commLabel(evt){
+  const comm=eventComm(evt);
+  if(isBubbleEvent(evt))return 'Bubble';
+  if(comm==='pp')return 'PP send/recv';
+  if(comm==='tp')return 'TP All-Reduce';
+  if(comm==='ep')return 'EP All-to-All';
+  return 'Local';
+}
+function stageSummary(stage){
+  const evt={...stageCell(stage),stage};
+  if(isBubbleEvent(evt))return `PP${stage}: bubble`;
+  return `PP${stage}: ${evt.phase} m${evt.micro} · ${evt.label}`;
+}
+function updatePlaybackInfo(fn,evt){
+  const p=eventProg(evt), step=curStep(p), f=frameAt();
+  const title=isBubbleEvent(evt)
+    ?`${fn.label} · pipeline bubble`
+    :`${fn.label} · ${evt.phase} m${evt.micro} · ${evt.label} · ${STEP_META[step].label}`;
+  const detail=isBubbleEvent(evt)
+    ?`tick ${f.tick} / ${TRACE_TICKS.length-1} · ${evt.explain||'This lane is waiting for a dependency.'}`
+    :`tick ${f.tick} · dependsOn: ${listText(evt.dependsOn,fn.dp)} · produces: ${listText(evt.produces,fn.dp)} · ${evt.explain}`;
+  const badge=document.getElementById('stepBadge');
+  const text=document.getElementById('stepTitleText');
+  const detailEl=document.getElementById('stepDetail');
+  const comm=eventComm(evt), col='#'+(comm?LINE[comm]:eventColor(evt)).toString(16).padStart(6,'0');
+  badge.textContent=commLabel(evt);
+  badge.style.color=col;
+  badge.style.borderColor=col;
+  text.textContent=title;
+  detailEl.textContent=detail;
+}
+function groupHalo(node,c,op,label){
+  const hx=0.72*SC,hz=1.02*SC,y=BASE_Y+0.02;
+  const pts=[[node.x-hx,y,node.z-hz],[node.x+hx,y,node.z-hz],[node.x+hx,y,node.z+hz],[node.x-hx,y,node.z+hz],[node.x-hx,y,node.z-hz]].map(a=>new THREE.Vector3(...a));
+  dyn.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:c,transparent:true,opacity:op})));
+  if(label){const sp=makeSprite(label,c,2.2);sp.position.set(node.x,BASE_Y+0.55,node.z+hz);dyn.add(sp);}
+}
+function commLines(node,evt,bright){
+  const cards=nodeCards[node.id], yL=BASE_Y+0.32, comm=eventComm(evt);
+  if(comm==='pp'){
+    groupHalo(node,LINE.pp,bright?0.58:0.2,null);
+    return;
+  }
+  if(comm==='tp'){  // All-Reduce:TP 组内(8 卡)
+    for(let t=0;t<8;t++)addLine(cards[t].position,cards[(t+1)%8].position,LINE.tp,bright?0.85:0.3,yL);
+    groupHalo(node,LINE.tp,bright?0.65:0.22,null);
+  }
+  if(comm==='ep'){  // All-to-All:EP 组内(8 卡)全互联
+    for(let i=0;i<8;i++)for(let j=i+1;j<8;j++)addLine(cards[i].position,cards[j].position,LINE.ep,bright?0.4:0.12,yL+0.03);
+    groupHalo(node,LINE.ep,bright?0.65:0.22,null);
+  }
+}
+function neighborEvent(stage,dir){
+  let i=traceIndex+dir;
+  while(i>=0&&i<TRACE_TICKS.length){
+    const e={...stageCell(stage,i),stage};
+    if(!isBubbleEvent(e))return e;
+    i+=dir;
+  }
+  return null;
+}
+function drawStageOpTrail(stage,evt){
+  if(isBubbleEvent(evt))return;
+  const prog=eventProg(evt), step=curStep(prog), prev=neighborEvent(stage,-1), next=neighborEvent(stage,1);
+  const p0=prev?archStepPoint(eventProg(prev),eventStep(prev)):null, p1=archStepPoint(prog,step), p2=next?archStepPoint(eventProg(next),eventStep(next)):null;
+  const col=semColor(step), ghost=0xaab2bd;
+  const prevMesh=prev?archMeshForStep(eventProg(prev),eventStep(prev)):null, nextMesh=next?archMeshForStep(eventProg(next),eventStep(next)):null;
+  setArchState(prevMesh,'trailHighlight',true);
+  setArchState(nextMesh,'trailHighlight',true);
+  if(p0&&p1)addLine(p0,p1,ghost,0.36);
+  if(p1&&p2)addLine(p1,p2,col,0.52);
+}
+function drawPpHandoffs(){
+  [0,1].forEach(dp=>{
+    const a=nodeCenter[nodeByDS(dp,0).id].clone(); a.y=BASE_Y+0.3;
+    const b=nodeCenter[nodeByDS(dp,1).id].clone(); b.y=BASE_Y+0.3;
+    const s0=eventForNode(nodeByDS(dp,0)), s1=eventForNode(nodeByDS(dp,1));
+    const hidden=(s1.dependsOn||[]).some(x=>x.includes('hidden'))||(s0.produces||[]).some(x=>x.includes('hidden'));
+    const grad=(s0.dependsOn||[]).some(x=>x.includes('grad'))||(s1.produces||[]).some(x=>x.includes('grad'));
+    if(hidden||grad)addArc(hidden?a:b,hidden?b:a,LINE.pp,0.92,1.4);
+  });
+}
+const activePrim={};
+function redraw(){
+  clearDyn(); resetArchitecture();
+  // 复位卡 + 架构高亮
+  boardMeshes.forEach(b=>{b.material.color.setHex(TH.board);b.material.emissive.setHex(0x000000);
+    b.material.emissiveIntensity=0;b.position.y=BASE_Y;b.userData.role=null;b.userData.active=false;b.userData.focus=false;});
+
+  // 每个硬件 node 都在忙:按它当前算子着色
+  NODE_DEFS.forEach(node=>{
+    const evt=eventForNode(node), col=eventColor(evt), isFocus=node.id===focusNode;
+    nodeCards[node.id].forEach((b,t)=>{
+      b.userData.active=!isBubbleEvent(evt); b.userData.role=roleText(evt,t); b.userData.focus=isFocus; b.userData.event=evt;
+      b.material.color.setHex(col); b.material.emissive.setHex(col);
+      b.material.emissiveIntensity=isBubbleEvent(evt)?0:(isFocus?0.85:0.4); b.position.y=BASE_Y+(isFocus&&!isBubbleEvent(evt)?0.14*SC:0.05*SC);
+    });
+    commLines(node,evt,isFocus);
+  });
+
+  // PP send/recv:只在当前 tick 存在 hidden/grad handoff 时画亮绿色弧线。
+  drawPpHandoffs();
+  // DP 梯度 All-Reduce:同 stage 跨 DP 副本
+  [0,1].forEach(stage=>{const a=nodeCenter[nodeByDS(0,stage).id],b=nodeCenter[nodeByDS(1,stage).id];
+    addArc(new THREE.Vector3(a.x,BASE_Y+0.16,a.z),new THREE.Vector3(b.x,BASE_Y+0.16,b.z),0x9aa7ff,0.32,0.8);});
+
+  // 活跃架构层:按当前真实 layer 高亮 L0-L60 中对应切片
+  activePrim[0]=activePrim[1]=null;
+  [0,1].forEach(stage=>{
+    const evt={...stageCell(stage),stage};
+    if(isBubbleEvent(evt))return;
+    const prog=eventProg(evt), step=curStep(prog), p=highlightArchitecture(stage,step,prog);
+    activePrim[stage]=p;
+    drawStageOpTrail(stage,evt);
+    NODE_DEFS.filter(nd=>nd.stage===stage).forEach(nd=>addLine(p,nodeCenter[nd.id],eventColor(evt),0.26));
+  });
+
+  // 聚焦:该卡当前层算子 → 卡区四角+中心(光柱)
+  const fn=NODE_DEFS[focusNode], fevt=eventForNode(fn), fstep=eventStep(fevt), fcol=eventColor(fevt);
+  const fp=activePrim[fn.stage];
+  if(fp&&!isBubbleEvent(fevt)){const cs=nodeCards[focusNode];
+    [cs[0],cs[1],cs[6],cs[7]].forEach(c=>addLine(fp,c.position,fcol,0.5));
+    addLine(fp,nodeCenter[focusNode],fcol,0.55);}
+
+  // HUD
+  document.getElementById('fWho').textContent=`${fn.label} · global rank ${(fn.dp*2+fn.stage)*8}–${(fn.dp*2+fn.stage)*8+7}`;
+  if(isBubbleEvent(fevt)){
+    document.getElementById('fMeta').innerHTML=`tick <b>${frameAt().tick}</b> · PP stage ${fn.stage} · DP${fn.dp}`;
+    document.getElementById('fOp').textContent='Pipeline bubble';
+    document.getElementById('fDesc').innerHTML=`${fevt.explain||'这个 stage 暂时等待依赖。'}<br><b>说明:</b>当前 tick 里该 stage 没有可执行算子，只保留等待和切换信息。`;
+  }else{
+    const p=eventProg(fevt), layerKind=p.layer<FIRST_MOE_LAYER?'Dense layer(no experts)':'MoE layer';
+    document.getElementById('fMeta').innerHTML=`micro-batch <b>m${fevt.micro}</b> · <b>${eventPhaseName(fevt)}</b> · <b>${layerKind} L${p.layer}</b> / range L${eventRange(fevt)[0]}-L${eventRange(fevt)[1]} · representative op <b>${stepIndexText(p)}</b>`;
+    document.getElementById('fOp').textContent=`${fevt.phase} · ${STEP_META[fstep].label}`;
+    document.getElementById('fDesc').innerHTML=`${descOf(fstep)}<br><b>因果:</b>${fevt.explain}<br><b>dependsOn:</b> ${listText(fevt.dependsOn,fn.dp)}<br><b>produces:</b> ${listText(fevt.produces,fn.dp)}`;
+  }
+  const tag=document.getElementById('fTag'), comm=eventComm(fevt);
+  const cx='#'+(comm?LINE[comm]:fcol).toString(16).padStart(6,'0');
+  tag.textContent=comm==='pp'?'PP hidden/grad handoff':comm?(comm==='tp'?'TP 组内 8 卡 · All-Reduce':'EP 组内 8 卡 · All-to-All'):(isBubbleEvent(fevt)?'等待依赖 / bubble':'逐卡本地 · 无通信');
+  tag.style.color=cx; tag.style.borderColor=cx;
+  updatePlaybackInfo(fn,fevt);
+  renderSwimlane();
+}
+
+/* ===== Swimlane timeline ===== */
+function renderSwimlane(){
+  const host=document.getElementById('swimlaneView');
+  host.style.setProperty('--tick-count',TRACE_TICKS.length);
+  let html='<div class="swimlane-grid"><div class="swim-head">lane</div>';
+  TRACE_TICKS.forEach((t,i)=>{html+=`<div class="swim-head">t${t.tick}</div>`;});
+  TRACE_LANES.forEach(lane=>{
+    const focusLane=NODE_DEFS[focusNode]?.dp===lane.dp&&NODE_DEFS[focusNode]?.stage===lane.stage;
+    html+=`<div class="swim-lane"><span>${esc(lane.label)}</span><small>rank ${esc(lane.rankRange)}</small></div>`;
+    TRACE_TICKS.forEach((tick,i)=>{
+      const evt=laneEvent(lane,i), bubble=isBubbleEvent(evt), phase=bubble?'bubble':evt.phase;
+      const current=i===traceIndex, range=eventRange(evt), phaseMark=bubble?'·':evt.phase;
+      const label=bubble?'bubble':`${phaseMark} m${evt.micro}`;
+      const sub=bubble?'waiting':`L${range[0]}-${range[1]}`;
+      html+=`<button class="swim-cell${current?' is-current':''}${focusLane?' is-focus-lane':''}" data-tick="${i}" data-phase="${esc(phase)}" title="${esc(evt.explain||'')}"><b>${esc(label)}</b><small>${esc(sub)}</small></button>`;
+    });
+  });
+  html+='</div>';
+  host.innerHTML=html;
+  host.querySelectorAll('.swim-cell').forEach(cell=>{
+    cell.onclick=()=>{setPlay(false);traceIndex=Number(cell.dataset.tick)||0;redraw();};
+  });
+  const cur=host.querySelector('.swim-cell.is-current');
+  if(cur)requestAnimationFrame(()=>cur.scrollIntoView({block:'nearest',inline:'center'}));
+}
+
+/* ===== 播放 ===== */
+const PLAY_INTERVAL=1300;
+let playing=false,timer=null;
+function tick(){traceIndex=(traceIndex+1)%TRACE_TICKS.length;redraw();}
+function back(){traceIndex=(traceIndex-1+TRACE_TICKS.length)%TRACE_TICKS.length;redraw();}
+function setPlay(p){playing=p;document.getElementById('playBtn').textContent=p?'❚❚ 暂停':'▶ 播放';
+  clearInterval(timer); if(p)timer=setInterval(tick,PLAY_INTERVAL);}
+document.getElementById('playBtn').onclick=()=>setPlay(!playing);
+document.getElementById('nextBtn').onclick=()=>{setPlay(false);tick();};
+document.getElementById('prevBtn').onclick=()=>{setPlay(false);back();};
+
+/* ===== 交互 ===== */
+let dragging=false,lx=0,ly=0,moved=false;
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;moved=false;lx=e.clientX;ly=e.clientY;});
+addEventListener('pointerup',e=>{if(dragging&&!moved)pick(e);dragging=false;});
+addEventListener('pointermove',e=>{
+  if(dragging){if(Math.abs(e.clientX-lx)+Math.abs(e.clientY-ly)>3)moved=true;
+    const dx=e.clientX-lx, dy=e.clientY-ly;
+    if(e.metaKey){
+      camera.getWorldDirection(camUp);
+      camRight.setFromMatrixColumn(camera.matrixWorld,0);
+      camUp.setFromMatrixColumn(camera.matrixWorld,1);
+      const panScale=Math.max(0.006,cam.r*0.0018);
+      target.addScaledVector(camRight,-dx*panScale);
+      target.addScaledVector(camUp,dy*panScale);
+    }else{
+      cam.theta-=dx*0.006;
+      cam.phi=Math.max(0.18,Math.min(1.5,cam.phi-dy*0.006));
+    }
+    lx=e.clientX;ly=e.clientY;updateCam();}
+  onHover(e);
+});
+renderer.domElement.addEventListener('wheel',e=>{
+  e.preventDefault();
+  cam.r=Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,cam.r+e.deltaY*0.018));
+  updateCam();
+},{passive:false});
+
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2(),tip=document.getElementById('tip');
+function setMouse(e){mouse.x=(e.clientX/innerWidth)*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(mouse,camera);}
+function pick(e){setMouse(e);const hit=ray.intersectObjects(boardMeshes,false)[0];
+  if(hit){focusNode=hit.object.userData.node;redraw();}}
+function esc(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+let hoverArch=null;
+function setHoverArch(mesh){
+  if(hoverArch&&hoverArch!==mesh)setArchState(hoverArch,'hoverHighlight',false);
+  hoverArch=mesh||null;
+  if(hoverArch)setArchState(hoverArch,'hoverHighlight',true);
+}
+function layerName(layer){
+  if(layer==='input')return 'Embedding / 输入静态区';
+  if(layer==='output')return 'Final Norm / Head 静态区';
+  if(layer<FIRST_MOE_LAYER)return `Dense decode layer L${layer}`;
+  return `MoE decode layer L${layer}`;
+}
+function archObjectExplain(d){
+  if(d.layer==='input')return '架构对象:模型入口与 Embedding,不随 decode layer 复制。';
+  if(d.layer==='output')return '架构对象:模型出口 Final RMSNorm / LM Head / MTP Head,只在 L60 之后执行一次。';
+  if(d.id==='expert_pool')return `架构对象:${layerName(d.layer)} 的单个 Expert Pool block;它表示这一层内的 256 routed experts,不是 32 个层,也不是 32 个格子。`;
+  if(d.id==='dense_block')return `架构对象:${layerName(d.layer)};前 3 层是 Dense decoder,没有 Router、All-to-All、Expert Pool、Shared Expert。`;
+  return `架构对象:${layerName(d.layer)} 里的 ${d.label};播放高亮表示当前硬件 stage 正在执行这个算子步骤。`;
+}
+function boardObjectExplain(d){
+  const evt=eventForNode({dp:d.dp,stage:d.stage,id:d.node}), comm=eventComm(evt);
+  if(isBubbleEvent(evt)){
+    return `硬件对象:global rank ${d.rank},位于 DP${d.dp} / PP${d.stage} / TP shard ${d.t};当前 tick 是 pipeline bubble,这一格没有可执行算子，只是在等待依赖完成。${evt.explain||''}`;
+  }
+  const prog=eventProg(evt), step=curStep(prog);
+  const commText=comm==='pp'?'这一格表示 PP 边界 hidden state 或 gradient 的 send/recv。':comm==='tp'?'同 node 的 8 卡组成 TP 组,参与 All-Reduce。':comm==='ep'?'同 node 的 8 卡组成 EP 组,参与 token All-to-All。':'本步骤主要是逐卡本地计算,没有集合通信。';
+  return `硬件对象:global rank ${d.rank},位于 DP${d.dp} / PP${d.stage} / TP shard ${d.t};当前模拟 trace 为 ${evt.phase} micro-batch m${evt.micro},stage range L${eventRange(evt)[0]}-L${eventRange(evt)[1]},3D 代表算子是 L${prog.layer} · ${STEP_META[step].label}。${commText}`;
+}
+function onHover(e){
+  setMouse(e);
+  const hb=ray.intersectObjects(boardMeshes,false)[0];
+  if(hb){const d=hb.object.userData;
+    setHoverArch(null);
+    tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';
+    tip.querySelector('.t-id').textContent=`${d.nodeLabel} · TP rank ${d.t} · global rank ${d.rank}`;
+    tip.querySelector('.t-body').innerHTML=
+      `<div class="t-explain">${esc(boardObjectExplain(d))}</div>`+
+      (d.role?`<div class="t-task">▸ ${esc(d.role)}</div>`:`<div class="t-idle">▸ 空闲</div>`);
+    return;
+  }
+  const hp=ray.intersectObjects(archPickables,false)[0];
+  if(hp){
+    setHoverArch(hp.object);
+    const d=hp.object.userData;
+    tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';
+    tip.querySelector('.t-id').textContent=`${d.label} · ${layerName(d.layer)}`;
+    tip.querySelector('.t-body').innerHTML=
+      `<div class="t-explain">${esc(archObjectExplain(d))}</div>`+
+      (d.desc?`<div class="t-desc">${esc(d.desc)}</div>`:'');
+    return;
+  }
+  setHoverArch(null);
+  tip.style.display='none';
+}
+
+/* ===== 循环 ===== */
+function loop(now){
+  const pulse=0.6+Math.sin(now*0.004)*0.28;
+  boardMeshes.forEach(b=>{if(b.userData.focus)b.material.emissiveIntensity=pulse;});
+  renderer.render(scene,camera);
+  syncAxisCamera();
+  axisRenderer.render(axisScene,axisCamera);
+  requestAnimationFrame(loop);
+}
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);
+  resizeAxisRenderer();
+});
+redraw(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>
