@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,14 +13,16 @@
     (function applyStoredTheme() {
       try {
         const queryTheme = new URLSearchParams(window.location.search).get('theme');
-        const storedTheme = localStorage.getItem('pangu-moe-whitepaper-theme');
+        const storedTheme = localStorage.getItem('pangu-moe-whitepaper-theme-v2');
         if (queryTheme === 'light' || queryTheme === 'dark') {
           document.documentElement.dataset.theme = queryTheme;
         } else if (storedTheme === 'light' || storedTheme === 'dark') {
           document.documentElement.dataset.theme = storedTheme;
+        } else {
+          document.documentElement.dataset.theme = 'light';
         }
       } catch (error) {
-        document.documentElement.dataset.theme = 'dark';
+        document.documentElement.dataset.theme = 'light';
       }
     })();
   </script>
@@ -580,8 +582,8 @@
     }
 
     .pressure-surface {
-      height: min(74vh, 760px);
-      min-height: 620px;
+      height: min(82vh, 900px);
+      min-height: 760px;
     }
 
     .source-panel h2 {
@@ -732,7 +734,7 @@
           <a class="nav-link" href="#vpp">VPP</a>
           <a class="nav-link" href="#network">Network</a>
         </nav>
-        <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换到浅色模式" title="切换到浅色模式">
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="切换到深色模式" title="切换到深色模式">
           <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="4"></circle>
             <path d="M12 2v2"></path>
@@ -799,7 +801,7 @@
       <div class="source-panel">
         <div class="visual-surface pressure-surface">
           <div class="surface-title"><strong>通信压力速览</strong><span>每个策略先看数据从哪里流向哪里</span></div>
-          <svg class="viz-svg" id="pressure-map" viewBox="0 0 980 620" role="img" aria-label="DP TP PP EP CP SP 典型通信压力可视化"></svg>
+          <svg class="viz-svg" id="pressure-map" viewBox="0 0 980 760" role="img" aria-label="DP TP PP EP CP SP 典型通信压力可视化"></svg>
         </div>
       </div>
     </section>
@@ -1883,23 +1885,23 @@
         if (!svg) return;
         svg.innerHTML = '';
         addDefs(svg, 'pressure', COLORS.network);
-        svg.appendChild(rect(18, 18, 944, 584, { rx: 18, fill: 'rgba(255,255,255,0.025)', stroke: 'rgba(255,255,255,0.10)' }));
+        svg.appendChild(rect(18, 18, 944, 724, { rx: 18, fill: 'rgba(255,255,255,0.025)', stroke: 'rgba(255,255,255,0.10)' }));
         svg.appendChild(text(44, 46, '典型通信压力 = 哪类 Tensor 在哪些 rank 之间移动', { anchor: 'start', size: 13, weight: 700 }));
         svg.appendChild(text(936, 46, 'A: activation · dA/dW: gradient · KV: attention state', { anchor: 'end', class: 'svg-mono', size: 10.5 }));
 
         const panels = [
-          { id: 'dp', title: 'DP', sub: '多份模型副本各算一批数据', pressure: '梯度同步 · All-Reduce', color: COLORS.dp, x: 44, y: 78, w: 276, h: 214 },
-          { id: 'tp', title: 'TP', sub: '一层矩阵切到多张卡', pressure: '层内高频同步 · low latency', color: COLORS.tp, x: 352, y: 78, w: 276, h: 214 },
-          { id: 'pp', title: 'PP', sub: '模型层切成 stage', pressure: 'activation 与 dA 双向传递', color: COLORS.pp, x: 660, y: 78, w: 276, h: 214 },
-          { id: 'ep', title: 'EP', sub: '专家放到不同设备', pressure: 'token 分发 / 汇聚 · All-to-All', color: COLORS.ep, x: 196, y: 334, w: 276, h: 214 },
-          { id: 'cp', title: 'CP/SP', sub: '长序列或上下文维切开', pressure: 'Attention 状态 / KV 交换', color: COLORS.cp, x: 508, y: 334, w: 276, h: 214 }
+          { id: 'dp', title: 'DP', sub: '多份模型副本各算一批数据', pressure: '梯度同步 · All-Reduce', color: COLORS.dp, x: 42, y: 92, w: 288, h: 268 },
+          { id: 'tp', title: 'TP', sub: '一层矩阵切到多张卡', pressure: '层内高频同步 · low latency', color: COLORS.tp, x: 346, y: 92, w: 288, h: 268 },
+          { id: 'pp', title: 'PP', sub: '模型层切成 stage', pressure: 'activation 与 dA 双向传递', color: COLORS.pp, x: 650, y: 92, w: 288, h: 268 },
+          { id: 'ep', title: 'EP', sub: '专家放到不同设备', pressure: 'token 分发 / 汇聚 · All-to-All', color: COLORS.ep, x: 194, y: 392, w: 288, h: 268 },
+          { id: 'cp', title: 'CP/SP', sub: '长序列或上下文维切开', pressure: 'Attention 状态 / KV 交换', color: COLORS.cp, x: 498, y: 392, w: 288, h: 268 }
         ];
 
         panels.forEach((panel) => {
           svg.appendChild(rect(panel.x, panel.y, panel.w, panel.h, { rx: 16, fill: alpha(panel.color, 0.075), stroke: alpha(panel.color, 0.44) }));
-          svg.appendChild(text(panel.x + 16, panel.y + 24, panel.title, { anchor: 'start', size: 18, weight: 800, fill: panel.color }));
-          svg.appendChild(text(panel.x + 16, panel.y + 49, panel.sub, { anchor: 'start', class: 'svg-muted', size: 10.5 }));
-          svg.appendChild(text(panel.x + panel.w - 16, panel.y + 24, panel.pressure, { anchor: 'end', class: 'svg-muted', size: 10.2 }));
+          svg.appendChild(text(panel.x + 18, panel.y + 27, panel.title, { anchor: 'start', size: 20, weight: 800, fill: panel.color }));
+          svg.appendChild(text(panel.x + 18, panel.y + 54, panel.sub, { anchor: 'start', class: 'svg-muted', size: 11 }));
+          svg.appendChild(text(panel.x + 18, panel.y + 77, panel.pressure, { anchor: 'start', size: 10.2, weight: 700, fill: panel.color }));
         });
 
         drawDpPressure(svg, panels[0]);
@@ -1911,20 +1913,20 @@
 
       function drawDpPressure(svg, panel) {
         const replicas = [
-          [panel.x + 24, panel.y + 86, 'Replica 0'],
-          [panel.x + 104, panel.y + 86, 'Replica 1'],
-          [panel.x + 184, panel.y + 86, 'Replica 2']
+          [panel.x + 28, panel.y + 112, 'Replica 0'],
+          [panel.x + 107, panel.y + 112, 'Replica 1'],
+          [panel.x + 186, panel.y + 112, 'Replica 2']
         ];
         replicas.forEach(([x, y, label], index) => {
-          drawDeviceCell(svg, x, y, 68, 58, label, `dW${index}`, panel.color, index === 1);
+          drawDeviceCell(svg, x, y, 74, 64, label, `dW${index}`, panel.color, index === 1);
           for (let i = 0; i < 3; i += 1) {
-            svg.appendChild(rect(x + 12 + i * 15, y + 40, 10, 8, { rx: 2, fill: alpha(panel.color, 0.20 + i * 0.06), stroke: alpha(panel.color, 0.25) }));
+            svg.appendChild(rect(x + 14 + i * 16, y + 44, 11, 8, { rx: 2, fill: alpha(panel.color, 0.20 + i * 0.06), stroke: alpha(panel.color, 0.25) }));
           }
         });
-        svg.appendChild(rect(panel.x + 65, panel.y + 164, 146, 34, { rx: 10, fill: alpha(panel.color, 0.16), stroke: alpha(panel.color, 0.50) }));
-        svg.appendChild(text(panel.x + 138, panel.y + 181, 'All-Reduce Grad Buckets', { size: 10.5, weight: 700, fill: panel.color }));
+        svg.appendChild(rect(panel.x + 58, panel.y + 211, 172, 38, { rx: 10, fill: alpha(panel.color, 0.16), stroke: alpha(panel.color, 0.50) }));
+        svg.appendChild(text(panel.x + 144, panel.y + 230, 'All-Reduce Grad Buckets', { size: 11, weight: 700, fill: panel.color }));
         replicas.forEach(([x, y]) => {
-          svg.appendChild(path(`M${x + 34},${y + 58} C${x + 34},${panel.y + 154} ${panel.x + 138},${panel.y + 148} ${panel.x + 138},${panel.y + 164}`, {
+          svg.appendChild(path(`M${x + 37},${y + 64} C${x + 37},${panel.y + 196} ${panel.x + 144},${panel.y + 192} ${panel.x + 144},${panel.y + 211}`, {
             stroke: panel.color,
             width: 1.6,
             marker: 'arrow-pressure',
@@ -1935,97 +1937,97 @@
 
       function drawTpPressure(svg, panel) {
         const mx = panel.x + 28;
-        const my = panel.y + 92;
+        const my = panel.y + 119;
         svg.appendChild(text(mx, my - 16, 'Linear / Attention Weight', { anchor: 'start', size: 10.5, weight: 700, fill: panel.color }));
         for (let i = 0; i < 4; i += 1) {
-          svg.appendChild(rect(mx + i * 44, my, 38, 64, { rx: 5, fill: alpha(panel.color, 0.12 + i * 0.04), stroke: alpha(panel.color, 0.42) }));
-          svg.appendChild(text(mx + i * 44 + 19, my + 25, `TP${i}`, { size: 9.5, weight: 700, fill: panel.color }));
-          svg.appendChild(text(mx + i * 44 + 19, my + 44, `Y${i}`, { class: 'svg-muted', size: 9 }));
+          svg.appendChild(rect(mx + i * 44, my, 38, 78, { rx: 5, fill: alpha(panel.color, 0.12 + i * 0.04), stroke: alpha(panel.color, 0.42) }));
+          svg.appendChild(text(mx + i * 44 + 19, my + 31, `TP${i}`, { size: 9.8, weight: 700, fill: panel.color }));
+          svg.appendChild(text(mx + i * 44 + 19, my + 52, `Y${i}`, { class: 'svg-muted', size: 9 }));
         }
-        svg.appendChild(rect(panel.x + 184, panel.y + 110, 66, 46, { rx: 10, fill: alpha(panel.color, 0.16), stroke: alpha(panel.color, 0.50) }));
-        svg.appendChild(text(panel.x + 217, panel.y + 128, 'All-Reduce', { size: 9.5, weight: 700, fill: panel.color }));
-        svg.appendChild(text(panel.x + 217, panel.y + 144, 'partial Y', { class: 'svg-muted', size: 8.8 }));
+        svg.appendChild(rect(panel.x + 210, panel.y + 133, 58, 52, { rx: 10, fill: alpha(panel.color, 0.16), stroke: alpha(panel.color, 0.50) }));
+        svg.appendChild(text(panel.x + 239, panel.y + 152, 'All-Reduce', { size: 8.6, weight: 700, fill: panel.color }));
+        svg.appendChild(text(panel.x + 239, panel.y + 169, 'partial Y', { class: 'svg-muted', size: 8.4 }));
         for (let i = 0; i < 4; i += 1) {
           const sx = mx + i * 44 + 38;
-          const sy = my + 32;
-          svg.appendChild(line(sx, sy, panel.x + 184, panel.y + 133, { stroke: panel.color, width: 1.35, marker: 'arrow-pressure', opacity: 0.58 }));
+          const sy = my + 39;
+          svg.appendChild(line(sx, sy, panel.x + 210, panel.y + 159, { stroke: panel.color, width: 1.35, marker: 'arrow-pressure', opacity: 0.58 }));
         }
-        svg.appendChild(text(panel.x + 29, panel.y + 186, '压力点：每层反复发生，尾时延进关键路径', { anchor: 'start', class: 'svg-muted', size: 9.7 }));
+        svg.appendChild(text(panel.x + 29, panel.y + 236, '每层反复发生，尾时延进关键路径', { anchor: 'start', class: 'svg-muted', size: 10 }));
       }
 
       function drawPpPressure(svg, panel) {
         const stages = [
-          [panel.x + 22, panel.y + 104, 'Stage k'],
-          [panel.x + 104, panel.y + 104, 'Stage k+1'],
-          [panel.x + 188, panel.y + 104, 'Stage k+2']
+          [panel.x + 24, panel.y + 128, 'Stage k'],
+          [panel.x + 108, panel.y + 128, 'Stage k+1'],
+          [panel.x + 192, panel.y + 128, 'Stage k+2']
         ];
         stages.forEach(([x, y, label], index) => {
-          drawDeviceCell(svg, x, y, 66, 58, label, index === 1 ? 'rank_299' : 'layers', panel.color, index === 1);
+          drawDeviceCell(svg, x, y, 72, 64, label, index === 1 ? 'rank_299' : 'layers', panel.color, index === 1);
         });
-        svg.appendChild(path(`M${panel.x + 88},${panel.y + 116} C${panel.x + 102},${panel.y + 92} ${panel.x + 116},${panel.y + 92} ${panel.x + 132},${panel.y + 116}`, {
+        svg.appendChild(path(`M${panel.x + 96},${panel.y + 141} C${panel.x + 112},${panel.y + 108} ${panel.x + 126},${panel.y + 108} ${panel.x + 144},${panel.y + 141}`, {
           stroke: panel.color,
           width: 2.2,
           marker: 'arrow-pressure'
         }));
-        svg.appendChild(text(panel.x + 110, panel.y + 91, 'activation A', { size: 9.7, weight: 700, fill: panel.color }));
-        svg.appendChild(path(`M${panel.x + 170},${panel.y + 150} C${panel.x + 152},${panel.y + 176} ${panel.x + 118},${panel.y + 176} ${panel.x + 88},${panel.y + 150}`, {
+        svg.appendChild(text(panel.x + 121, panel.y + 107, 'activation A', { size: 9.8, weight: 700, fill: panel.color }));
+        svg.appendChild(path(`M${panel.x + 180},${panel.y + 180} C${panel.x + 160},${panel.y + 216} ${panel.x + 120},${panel.y + 216} ${panel.x + 96},${panel.y + 180}`, {
           stroke: COLORS.dp,
           width: 2.0,
           marker: 'arrow-pressure'
         }));
-        svg.appendChild(text(panel.x + 132, panel.y + 181, 'gradient dA', { size: 9.7, weight: 700, fill: COLORS.dp }));
-        svg.appendChild(line(panel.x + 170, panel.y + 116, panel.x + 188, panel.y + 116, { stroke: panel.color, width: 1.5, marker: 'arrow-pressure', opacity: 0.68 }));
-        svg.appendChild(line(panel.x + 188, panel.y + 150, panel.x + 170, panel.y + 150, { stroke: COLORS.dp, width: 1.5, marker: 'arrow-pressure', opacity: 0.68 }));
-        svg.appendChild(text(panel.x + 25, panel.y + 194, 'A 是前向 hidden_states；dA 是反向传回来的激活梯度', { anchor: 'start', class: 'svg-muted', size: 9.4 }));
+        svg.appendChild(text(panel.x + 138, panel.y + 220, 'gradient dA', { size: 9.8, weight: 700, fill: COLORS.dp }));
+        svg.appendChild(line(panel.x + 180, panel.y + 141, panel.x + 192, panel.y + 141, { stroke: panel.color, width: 1.5, marker: 'arrow-pressure', opacity: 0.68 }));
+        svg.appendChild(line(panel.x + 192, panel.y + 180, panel.x + 180, panel.y + 180, { stroke: COLORS.dp, width: 1.5, marker: 'arrow-pressure', opacity: 0.68 }));
+        svg.appendChild(text(panel.x + 25, panel.y + 246, 'A 前向传 hidden_states；dA 反向传激活梯度', { anchor: 'start', class: 'svg-muted', size: 9.6 }));
       }
 
       function drawEpPressure(svg, panel) {
         const rx = panel.x + 28;
-        const ry = panel.y + 96;
-        svg.appendChild(rect(rx, ry, 72, 54, { rx: 12, fill: alpha(panel.color, 0.14), stroke: alpha(panel.color, 0.46) }));
-        svg.appendChild(text(rx + 36, ry + 20, 'Router', { size: 10.5, weight: 700, fill: panel.color }));
-        svg.appendChild(text(rx + 36, ry + 38, 'top-8', { class: 'svg-muted', size: 9 }));
+        const ry = panel.y + 120;
+        svg.appendChild(rect(rx, ry, 78, 60, { rx: 12, fill: alpha(panel.color, 0.14), stroke: alpha(panel.color, 0.46) }));
+        svg.appendChild(text(rx + 39, ry + 23, 'Router', { size: 10.8, weight: 700, fill: panel.color }));
+        svg.appendChild(text(rx + 39, ry + 42, 'top-8', { class: 'svg-muted', size: 9 }));
         for (let i = 0; i < 12; i += 1) {
-          svg.appendChild(svgEl('circle', { cx: rx + 11 + (i % 6) * 10, cy: ry + 68 + Math.floor(i / 6) * 10, r: 3.2, fill: alpha(panel.color, 0.55 + (i % 3) * 0.10) }));
+          svg.appendChild(svgEl('circle', { cx: rx + 12 + (i % 6) * 11, cy: ry + 76 + Math.floor(i / 6) * 11, r: 3.4, fill: alpha(panel.color, 0.55 + (i % 3) * 0.10) }));
         }
         const experts = [
-          [panel.x + 142, panel.y + 88, 'E0-7'],
-          [panel.x + 205, panel.y + 112, 'E152-159'],
-          [panel.x + 142, panel.y + 152, 'E248-255']
+          [panel.x + 148, panel.y + 111, 'E0-7'],
+          [panel.x + 218, panel.y + 143, 'E152-159'],
+          [panel.x + 148, panel.y + 188, 'E248-255']
         ];
         experts.forEach(([x, y, label], index) => {
-          drawDeviceCell(svg, x, y, 54, 34, label, `EP${index === 1 ? 19 : index}`, panel.color, index === 1);
-          svg.appendChild(path(`M${rx + 72},${ry + 26} C${rx + 112},${ry + 20 + index * 18} ${x - 20},${y + 17} ${x},${y + 17}`, {
+          drawDeviceCell(svg, x, y, 58, 38, label, `EP${index === 1 ? 19 : index}`, panel.color, index === 1);
+          svg.appendChild(path(`M${rx + 78},${ry + 30} C${rx + 118},${ry + 24 + index * 24} ${x - 20},${y + 19} ${x},${y + 19}`, {
             stroke: panel.color,
             width: index === 1 ? 2.1 : 1.3,
             marker: 'arrow-pressure',
             opacity: 0.72
           }));
         });
-        svg.appendChild(text(panel.x + 28, panel.y + 194, 'dispatch 送 token；combine 把 expert output 收回', { anchor: 'start', class: 'svg-muted', size: 9.6 }));
+        svg.appendChild(text(panel.x + 28, panel.y + 247, 'dispatch 送 token；combine 收回 expert output', { anchor: 'start', class: 'svg-muted', size: 9.6 }));
       }
 
       function drawCpPressure(svg, panel) {
         const sx = panel.x + 24;
-        const sy = panel.y + 96;
+        const sy = panel.y + 123;
         for (let i = 0; i < 4; i += 1) {
-          svg.appendChild(rect(sx + i * 55, sy, 48, 36, { rx: 8, fill: alpha(panel.color, 0.12 + i * 0.04), stroke: alpha(panel.color, 0.42) }));
-          svg.appendChild(text(sx + i * 55 + 24, sy + 15, `seq${i}`, { size: 9.5, weight: 700, fill: panel.color }));
-          svg.appendChild(text(sx + i * 55 + 24, sy + 29, i === 0 ? 'CP0' : `CP${i}`, { class: 'svg-muted', size: 8.5 }));
+          svg.appendChild(rect(sx + i * 61, sy, 54, 42, { rx: 8, fill: alpha(panel.color, 0.12 + i * 0.04), stroke: alpha(panel.color, 0.42) }));
+          svg.appendChild(text(sx + i * 61 + 27, sy + 17, `seq${i}`, { size: 9.8, weight: 700, fill: panel.color }));
+          svg.appendChild(text(sx + i * 61 + 27, sy + 33, i === 0 ? 'CP0' : `CP${i}`, { class: 'svg-muted', size: 8.6 }));
         }
         for (let i = 0; i < 3; i += 1) {
-          svg.appendChild(line(sx + i * 55 + 48, sy + 18, sx + (i + 1) * 55, sy + 18, { stroke: panel.color, width: 1.6, marker: 'arrow-pressure' }));
+          svg.appendChild(line(sx + i * 61 + 54, sy + 21, sx + (i + 1) * 61, sy + 21, { stroke: panel.color, width: 1.6, marker: 'arrow-pressure' }));
         }
-        svg.appendChild(rect(panel.x + 70, panel.y + 162, 136, 34, { rx: 10, fill: alpha(panel.color, 0.16), stroke: alpha(panel.color, 0.50) }));
-        svg.appendChild(text(panel.x + 138, panel.y + 176, 'KV / Attention State', { size: 10, weight: 700, fill: panel.color }));
-        svg.appendChild(text(panel.x + 138, panel.y + 190, 'ring / gather / p2p', { class: 'svg-muted', size: 8.8 }));
-        svg.appendChild(path(`M${panel.x + 138},${panel.y + 162} C${panel.x + 92},${panel.y + 146} ${panel.x + 54},${panel.y + 142} ${sx + 24},${sy + 36}`, {
+        svg.appendChild(rect(panel.x + 66, panel.y + 206, 156, 40, { rx: 10, fill: alpha(panel.color, 0.16), stroke: alpha(panel.color, 0.50) }));
+        svg.appendChild(text(panel.x + 144, panel.y + 222, 'KV / Attention State', { size: 10, weight: 700, fill: panel.color }));
+        svg.appendChild(text(panel.x + 144, panel.y + 238, 'ring / gather / p2p', { class: 'svg-muted', size: 8.8 }));
+        svg.appendChild(path(`M${panel.x + 144},${panel.y + 206} C${panel.x + 96},${panel.y + 190} ${panel.x + 56},${panel.y + 187} ${sx + 27},${sy + 42}`, {
           stroke: panel.color,
           width: 1.4,
           marker: 'arrow-pressure',
           opacity: 0.68
         }));
-        svg.appendChild(path(`M${panel.x + 138},${panel.y + 162} C${panel.x + 190},${panel.y + 146} ${panel.x + 232},${panel.y + 142} ${sx + 189},${sy + 36}`, {
+        svg.appendChild(path(`M${panel.x + 144},${panel.y + 206} C${panel.x + 196},${panel.y + 190} ${panel.x + 242},${panel.y + 187} ${sx + 210},${sy + 42}`, {
           stroke: panel.color,
           width: 1.4,
           marker: 'arrow-pressure',
@@ -2403,7 +2405,7 @@
         }
         if (persist) {
           try {
-            localStorage.setItem('pangu-moe-whitepaper-theme', nextTheme);
+            localStorage.setItem('pangu-moe-whitepaper-theme-v2', nextTheme);
           } catch (error) {
             /* localStorage can be unavailable in private or restricted contexts. */
           }
