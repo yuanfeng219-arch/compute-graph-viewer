@@ -532,6 +532,20 @@ body.is-header-collapsed .side-nav {
   padding: 0;
 }
 
+.preview-duo {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--surface-2);
+}
+
+.preview-duo img {
+  min-width: 0;
+  object-position: left top;
+}
+
 .card-preview iframe {
   pointer-events: none;
   transform: scale(0.82);
@@ -1071,6 +1085,21 @@ const launchItems = [
     ]
   },
   {
+    title: "Pangu 训练时空透视",
+    sub: "算子 × 硬件 × 时间 · 3D 舞台",
+    group: "模型训练推理",
+    status: "hi-fi",
+    desc: "把 Pangu MoE 算子语义、rank 通信、3D 模型结构和 1F1B swimlane 放到同一条时间轴上联动查看。",
+    href: "pangu-moe-trainviz/op-rank-time.html?theme=light",
+    preview: "assets/pangu-op-rank-time-light.png",
+    previewDark: "assets/pangu-op-rank-time-dark.png",
+    tags: ["Pangu MoE", "3D", "Timeline"],
+    variants: [
+      { label: "Light", href: "pangu-moe-trainviz/op-rank-time.html?theme=light" },
+      { label: "Dark", href: "pangu-moe-trainviz/op-rank-time.html?theme=dark" }
+    ]
+  },
+  {
     title: "训练任务管理",
     group: "模型训练推理",
     status: "hi-fi",
@@ -1336,6 +1365,14 @@ function renderPreview(item) {
 
   if (item.preview) {
     const fitClass = item.fit === "contain" ? " class=\"is-contain\"" : "";
+    if (item.previewDark) {
+      return `
+        <div class="preview-duo">
+          <img${fitClass} src="${item.preview}" alt="${item.title} 浅色静态预览" loading="lazy" decoding="async">
+          <img${fitClass} src="${item.previewDark}" alt="${item.title} 深色静态预览" loading="lazy" decoding="async">
+        </div>
+      `;
+    }
     return `<img${fitClass} src="${item.preview}" alt="${item.title} 静态预览" loading="lazy" decoding="async">`;
   }
 

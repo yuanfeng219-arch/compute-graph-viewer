@@ -1,0 +1,170 @@
+{
+  "schema": "pto.strict-1f1b-trace-sim.v1",
+  "title": "Simulated strict 1F1B training schedule, DP2 x PP2 x TP8",
+  "fidelity": "schedule-simulated-not-profiler-measured",
+  "note": "Each tick is one PP-stage chunk. The page uses opFocus as a representative architecture node for 3D highlighting; this JSON is a deterministic schedule simulation, not a measured kernel trace.",
+  "defaultTick": 4,
+  "config": {
+    "dp": 2,
+    "pp": 2,
+    "tp": 8,
+    "microbatches": 8,
+    "schedule": "non-interleaved 1F1B with warmup, steady state, and drain",
+    "stageRanges": {
+      "0": [0, 30],
+      "1": [31, 60]
+    }
+  },
+  "lanes": [
+    { "id": "d0p0", "dp": 0, "stage": 0, "label": "D0 · PP0", "rankRange": "0-7" },
+    { "id": "d0p1", "dp": 0, "stage": 1, "label": "D0 · PP1", "rankRange": "8-15" },
+    { "id": "d1p0", "dp": 1, "stage": 0, "label": "D1 · PP0", "rankRange": "16-23" },
+    { "id": "d1p1", "dp": 1, "stage": 1, "label": "D1 · PP1", "rankRange": "24-31" }
+  ],
+  "ticks": [
+    {
+      "tick": 0,
+      "region": "warmup",
+      "stages": {
+        "0": { "phase": "F", "micro": 0, "layerRange": [0, 30], "opFocus": { "layer": 0, "step": "embedding" }, "stepIndex": 1, "stepTotal": 31, "label": "F m0 · L0-L30", "dependsOn": ["input:D*:m0"], "produces": ["hidden:D*:m0:L30_to_L31"], "explain": "PP0 starts the first forward micro-batch and fills the pipeline." },
+        "1": { "phase": "bubble", "label": "bubble", "dependsOn": ["hidden:D*:m0:L30_to_L31"], "produces": [], "explain": "PP1 waits for the first hidden state from PP0." }
+      }
+    },
+    {
+      "tick": 1,
+      "region": "warmup",
+      "stages": {
+        "0": { "phase": "F", "micro": 1, "layerRange": [0, 30], "opFocus": { "layer": 12, "step": "mla" }, "stepIndex": 12, "stepTotal": 31, "label": "F m1 · L0-L30", "dependsOn": ["input:D*:m1"], "produces": ["hidden:D*:m1:L30_to_L31"], "explain": "PP0 accepts the next micro-batch while PP1 consumes m0." },
+        "1": { "phase": "F", "micro": 0, "layerRange": [31, 60], "opFocus": { "layer": 31, "step": "mla" }, "stepIndex": 1, "stepTotal": 30, "label": "F m0 · L31-L60", "comm": "pp", "dependsOn": ["hidden:D*:m0:L30_to_L31"], "produces": ["loss:D*:m0"], "explain": "PP1 receives m0 hidden state and runs the last pipeline stage forward." }
+      }
+    },
+    {
+      "tick": 2,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "F", "micro": 2, "layerRange": [0, 30], "opFocus": { "layer": 30, "step": "moe_residual" }, "stepIndex": 31, "stepTotal": 31, "label": "F m2 · L0-L30", "dependsOn": ["input:D*:m2"], "produces": ["hidden:D*:m2:L30_to_L31"], "explain": "PP0 continues feeding new forward work." },
+        "1": { "phase": "B", "micro": 0, "layerRange": [31, 60], "opFocus": { "layer": 60, "step": "lm_head" }, "stepIndex": 30, "stepTotal": 30, "label": "B m0 · L60-L31", "dependsOn": ["loss:D*:m0"], "produces": ["grad:D*:m0:L31_to_L30"], "explain": "PP1 starts backward for m0 and will send activation gradients back to PP0." }
+      }
+    },
+    {
+      "tick": 3,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "B", "micro": 0, "layerRange": [0, 30], "opFocus": { "layer": 30, "step": "moe_residual" }, "stepIndex": 31, "stepTotal": 31, "label": "B m0 · L30-L0", "comm": "pp", "dependsOn": ["grad:D*:m0:L31_to_L30"], "produces": ["grad:D*:m0:input"], "explain": "PP0 receives m0 gradient from PP1 and backprops through its layer range." },
+        "1": { "phase": "F", "micro": 1, "layerRange": [31, 60], "opFocus": { "layer": 40, "step": "a2a_dispatch" }, "stepIndex": 10, "stepTotal": 30, "label": "F m1 · L31-L60", "comm": "pp", "dependsOn": ["hidden:D*:m1:L30_to_L31"], "produces": ["loss:D*:m1"], "explain": "PP1 switches to forward m1 after producing m0 gradients." }
+      }
+    },
+    {
+      "tick": 4,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "F", "micro": 3, "layerRange": [0, 30], "opFocus": { "layer": 24, "step": "experts" }, "stepIndex": 25, "stepTotal": 31, "label": "F m3 · L0-L30", "dependsOn": ["input:D*:m3"], "produces": ["hidden:D*:m3:L30_to_L31"], "explain": "Steady state: PP0 runs forward for a newer micro-batch while PP1 runs backward for an older one." },
+        "1": { "phase": "B", "micro": 1, "layerRange": [31, 60], "opFocus": { "layer": 40, "step": "a2a_combine" }, "stepIndex": 21, "stepTotal": 30, "label": "B m1 · L60-L31", "dependsOn": ["loss:D*:m1"], "produces": ["grad:D*:m1:L31_to_L30"], "explain": "PP1 backprops m1 and prepares gradients for PP0." }
+      }
+    },
+    {
+      "tick": 5,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "B", "micro": 1, "layerRange": [0, 30], "opFocus": { "layer": 24, "step": "a2a_combine" }, "stepIndex": 24, "stepTotal": 31, "label": "B m1 · L30-L0", "comm": "pp", "dependsOn": ["grad:D*:m1:L31_to_L30"], "produces": ["grad:D*:m1:input"], "explain": "PP0 consumes the gradient sent by PP1 for m1." },
+        "1": { "phase": "F", "micro": 2, "layerRange": [31, 60], "opFocus": { "layer": 50, "step": "gate" }, "stepIndex": 20, "stepTotal": 30, "label": "F m2 · L31-L60", "comm": "pp", "dependsOn": ["hidden:D*:m2:L30_to_L31"], "produces": ["loss:D*:m2"], "explain": "PP1 receives hidden state for m2 and runs forward." }
+      }
+    },
+    {
+      "tick": 6,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "F", "micro": 4, "layerRange": [0, 30], "opFocus": { "layer": 30, "step": "moe_residual" }, "stepIndex": 31, "stepTotal": 31, "label": "F m4 · L0-L30", "dependsOn": ["input:D*:m4"], "produces": ["hidden:D*:m4:L30_to_L31"], "explain": "PP0 keeps the forward stream full." },
+        "1": { "phase": "B", "micro": 2, "layerRange": [31, 60], "opFocus": { "layer": 50, "step": "experts" }, "stepIndex": 20, "stepTotal": 30, "label": "B m2 · L60-L31", "dependsOn": ["loss:D*:m2"], "produces": ["grad:D*:m2:L31_to_L30"], "explain": "PP1 alternates to backward for m2." }
+      }
+    },
+    {
+      "tick": 7,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "B", "micro": 2, "layerRange": [0, 30], "opFocus": { "layer": 18, "step": "gate" }, "stepIndex": 19, "stepTotal": 31, "label": "B m2 · L30-L0", "comm": "pp", "dependsOn": ["grad:D*:m2:L31_to_L30"], "produces": ["grad:D*:m2:input"], "explain": "PP0 alternates to backward for m2." },
+        "1": { "phase": "F", "micro": 3, "layerRange": [31, 60], "opFocus": { "layer": 60, "step": "lm_head" }, "stepIndex": 30, "stepTotal": 30, "label": "F m3 · L31-L60", "comm": "pp", "dependsOn": ["hidden:D*:m3:L30_to_L31"], "produces": ["loss:D*:m3"], "explain": "PP1 forwards m3 and produces its loss." }
+      }
+    },
+    {
+      "tick": 8,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "F", "micro": 5, "layerRange": [0, 30], "opFocus": { "layer": 8, "step": "mla" }, "stepIndex": 9, "stepTotal": 31, "label": "F m5 · L0-L30", "dependsOn": ["input:D*:m5"], "produces": ["hidden:D*:m5:L30_to_L31"], "explain": "PP0 forwards m5." },
+        "1": { "phase": "B", "micro": 3, "layerRange": [31, 60], "opFocus": { "layer": 60, "step": "final_norm" }, "stepIndex": 29, "stepTotal": 30, "label": "B m3 · L60-L31", "dependsOn": ["loss:D*:m3"], "produces": ["grad:D*:m3:L31_to_L30"], "explain": "PP1 backprops m3." }
+      }
+    },
+    {
+      "tick": 9,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "B", "micro": 3, "layerRange": [0, 30], "opFocus": { "layer": 12, "step": "a2a_dispatch" }, "stepIndex": 13, "stepTotal": 31, "label": "B m3 · L30-L0", "comm": "pp", "dependsOn": ["grad:D*:m3:L31_to_L30"], "produces": ["grad:D*:m3:input"], "explain": "PP0 backprops m3." },
+        "1": { "phase": "F", "micro": 4, "layerRange": [31, 60], "opFocus": { "layer": 45, "step": "experts" }, "stepIndex": 15, "stepTotal": 30, "label": "F m4 · L31-L60", "comm": "pp", "dependsOn": ["hidden:D*:m4:L30_to_L31"], "produces": ["loss:D*:m4"], "explain": "PP1 forwards m4." }
+      }
+    },
+    {
+      "tick": 10,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "F", "micro": 6, "layerRange": [0, 30], "opFocus": { "layer": 30, "step": "moe_residual" }, "stepIndex": 31, "stepTotal": 31, "label": "F m6 · L0-L30", "dependsOn": ["input:D*:m6"], "produces": ["hidden:D*:m6:L30_to_L31"], "explain": "PP0 forwards m6." },
+        "1": { "phase": "B", "micro": 4, "layerRange": [31, 60], "opFocus": { "layer": 45, "step": "a2a_combine" }, "stepIndex": 16, "stepTotal": 30, "label": "B m4 · L60-L31", "dependsOn": ["loss:D*:m4"], "produces": ["grad:D*:m4:L31_to_L30"], "explain": "PP1 backprops m4." }
+      }
+    },
+    {
+      "tick": 11,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "B", "micro": 4, "layerRange": [0, 30], "opFocus": { "layer": 5, "step": "moe_prenorm" }, "stepIndex": 6, "stepTotal": 31, "label": "B m4 · L30-L0", "comm": "pp", "dependsOn": ["grad:D*:m4:L31_to_L30"], "produces": ["grad:D*:m4:input"], "explain": "PP0 backprops m4." },
+        "1": { "phase": "F", "micro": 5, "layerRange": [31, 60], "opFocus": { "layer": 55, "step": "a2a_dispatch" }, "stepIndex": 25, "stepTotal": 30, "label": "F m5 · L31-L60", "comm": "pp", "dependsOn": ["hidden:D*:m5:L30_to_L31"], "produces": ["loss:D*:m5"], "explain": "PP1 forwards m5." }
+      }
+    },
+    {
+      "tick": 12,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "F", "micro": 7, "layerRange": [0, 30], "opFocus": { "layer": 2, "step": "dense" }, "stepIndex": 3, "stepTotal": 31, "label": "F m7 · L0-L30", "dependsOn": ["input:D*:m7"], "produces": ["hidden:D*:m7:L30_to_L31"], "explain": "PP0 forwards the final micro-batch." },
+        "1": { "phase": "B", "micro": 5, "layerRange": [31, 60], "opFocus": { "layer": 55, "step": "a2a_combine" }, "stepIndex": 26, "stepTotal": 30, "label": "B m5 · L60-L31", "dependsOn": ["loss:D*:m5"], "produces": ["grad:D*:m5:L31_to_L30"], "explain": "PP1 backprops m5." }
+      }
+    },
+    {
+      "tick": 13,
+      "region": "steady",
+      "stages": {
+        "0": { "phase": "B", "micro": 5, "layerRange": [0, 30], "opFocus": { "layer": 0, "step": "dense" }, "stepIndex": 1, "stepTotal": 31, "label": "B m5 · L30-L0", "comm": "pp", "dependsOn": ["grad:D*:m5:L31_to_L30"], "produces": ["grad:D*:m5:input"], "explain": "PP0 backprops m5 while PP1 forwards m6." },
+        "1": { "phase": "F", "micro": 6, "layerRange": [31, 60], "opFocus": { "layer": 31, "step": "mla" }, "stepIndex": 1, "stepTotal": 30, "label": "F m6 · L31-L60", "comm": "pp", "dependsOn": ["hidden:D*:m6:L30_to_L31"], "produces": ["loss:D*:m6"], "explain": "PP1 forwards m6." }
+      }
+    },
+    {
+      "tick": 14,
+      "region": "drain",
+      "stages": {
+        "0": { "phase": "bubble", "label": "bubble", "dependsOn": ["grad:D*:m6:L31_to_L30"], "produces": [], "explain": "PP0 has no new forward micro-batch and waits for m6 gradient." },
+        "1": { "phase": "B", "micro": 6, "layerRange": [31, 60], "opFocus": { "layer": 31, "step": "moe_residual" }, "stepIndex": 1, "stepTotal": 30, "label": "B m6 · L60-L31", "dependsOn": ["loss:D*:m6"], "produces": ["grad:D*:m6:L31_to_L30"], "explain": "Drain begins: PP1 backprops remaining micro-batches." }
+      }
+    },
+    {
+      "tick": 15,
+      "region": "drain",
+      "stages": {
+        "0": { "phase": "B", "micro": 6, "layerRange": [0, 30], "opFocus": { "layer": 30, "step": "moe_residual" }, "stepIndex": 31, "stepTotal": 31, "label": "B m6 · L30-L0", "comm": "pp", "dependsOn": ["grad:D*:m6:L31_to_L30"], "produces": ["grad:D*:m6:input"], "explain": "PP0 receives and backprops m6." },
+        "1": { "phase": "F", "micro": 7, "layerRange": [31, 60], "opFocus": { "layer": 60, "step": "lm_head" }, "stepIndex": 30, "stepTotal": 30, "label": "F m7 · L31-L60", "comm": "pp", "dependsOn": ["hidden:D*:m7:L30_to_L31"], "produces": ["loss:D*:m7"], "explain": "PP1 runs forward for the final micro-batch." }
+      }
+    },
+    {
+      "tick": 16,
+      "region": "drain",
+      "stages": {
+        "0": { "phase": "bubble", "label": "bubble", "dependsOn": ["grad:D*:m7:L31_to_L30"], "produces": [], "explain": "PP0 waits for the final gradient." },
+        "1": { "phase": "B", "micro": 7, "layerRange": [31, 60], "opFocus": { "layer": 60, "step": "lm_head" }, "stepIndex": 30, "stepTotal": 30, "label": "B m7 · L60-L31", "dependsOn": ["loss:D*:m7"], "produces": ["grad:D*:m7:L31_to_L30"], "explain": "PP1 backprops the final micro-batch." }
+      }
+    },
+    {
+      "tick": 17,
+      "region": "drain",
+      "stages": {
+        "0": { "phase": "B", "micro": 7, "layerRange": [0, 30], "opFocus": { "layer": 0, "step": "dense" }, "stepIndex": 1, "stepTotal": 31, "label": "B m7 · L30-L0", "comm": "pp", "dependsOn": ["grad:D*:m7:L31_to_L30"], "produces": ["grad:D*:m7:input"], "explain": "PP0 drains the final backward pass." },
+        "1": { "phase": "bubble", "label": "bubble", "dependsOn": [], "produces": [], "explain": "PP1 is done for this simulated mini-batch." }
+      }
+    }
+  ]
+}

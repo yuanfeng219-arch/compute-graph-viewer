@@ -306,6 +306,21 @@ body {
   -webkit-user-drag: none;
 }
 
+.card-poster-duo {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: #11131a;
+}
+
+.card-poster-duo img {
+  min-width: 0;
+  object-fit: cover;
+  object-position: left top;
+}
+
 .card-poster--scaled-half {
   transform: scale(0.72);
   transform-origin: center center;
@@ -752,6 +767,28 @@ body {
       </div>
       <div class="card-frame-body">
         <img class="card-poster--contain" src="assets/trainscope-pangu-moe-trainviz.png" alt="TrainScope 盘古训练透视静态预览" loading="lazy" decoding="async">
+      </div>
+    </article>
+
+    <article class="card card--frame card--split" tabindex="0">
+      <div class="card-frame-header">
+        <h3 class="card-title">Pangu 训练时空透视</h3>
+        <div class="card-tags">
+          <span class="tag tag--hifi">hi-fi</span>
+          <span class="tag tag--module">Pangu MoE</span>
+          <span class="tag tag--module">3D</span>
+          <span class="tag tag--module">Timeline</span>
+        </div>
+      </div>
+      <div class="card-frame-body">
+        <div class="card-poster-duo" aria-hidden="true">
+          <img src="assets/pangu-op-rank-time-light.png" alt="" loading="lazy" decoding="async">
+          <img src="assets/pangu-op-rank-time-dark.png" alt="" loading="lazy" decoding="async">
+        </div>
+        <div class="card-split-overlay">
+          <a class="card-split-btn" href="pangu-moe-trainviz/op-rank-time.html?theme=light">Light</a>
+          <a class="card-split-btn card-split-btn--alt" href="pangu-moe-trainviz/op-rank-time.html?theme=dark">Dark</a>
+        </div>
       </div>
     </article>
 

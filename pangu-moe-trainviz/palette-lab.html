@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>openPangu MoE · Palette Lab</title>
+<link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css" />
+<link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css" />
+<link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css" />
+<link rel="stylesheet" href="../vendor/pto-design-system/css/style.css" />
+<link rel="stylesheet" href="../vendor/pto-design-system/patterns/swimlane-task/pattern.css" />
+<style>
+  *{box-sizing:border-box}
+  html,body{min-height:100%;margin:0;background:var(--background);color:var(--foreground);font-family:var(--font-sans)}
+  body{overflow:auto}
+  .lab-page{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
+  .lab-topbar{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--background) 94%,transparent);border-bottom:1px solid var(--border-subtle);backdrop-filter:var(--surface-backdrop-filter-soft)}
+  .lab-brand{display:flex;align-items:center;gap:10px;min-width:0}
+  .lab-mark{width:10px;height:10px;border-radius:var(--radius-pill);background:var(--foreground);opacity:.86;flex:none}
+  .lab-title{font:var(--text-title-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lab-sub{font:var(--text-mono);color:var(--foreground-muted);white-space:nowrap}
+  .lab-main{width:min(1440px,100%);margin:0 auto;padding:18px;display:grid;gap:14px}
+  .lab-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end}
+  .lab-copy{display:grid;gap:6px}
+  .lab-copy h1{margin:0;font:var(--text-display);letter-spacing:0}
+  .lab-copy p{margin:0;color:var(--foreground-secondary);font:var(--text-body)}
+  .lab-controls{display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+  .lab-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .palette-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--card-radius);padding:var(--card-padding);display:grid;gap:14px;min-width:0}
+  .palette-card.is-selected{border-color:var(--foreground)}
+  .palette-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .palette-title{display:grid;gap:4px;min-width:0}
+  .palette-title h2{margin:0;font:var(--text-title-2);letter-spacing:0}
+  .palette-title span{color:var(--foreground-muted);font:var(--text-body-sm)}
+  .palette-preview{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .preview-pane{background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px;display:grid;gap:12px;min-width:0}
+  .preview-pane[data-mode="dark"]{background:#101010;color:rgba(255,255,255,.9);border-color:rgba(255,255,255,.1)}
+  .preview-pane[data-mode="light"]{background:#f5f5f5;color:rgba(0,0,0,.9);border-color:rgba(0,0,0,.12)}
+  .pane-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font:var(--text-label);text-transform:uppercase;color:var(--foreground-muted)}
+  .preview-pane[data-mode="dark"] .pane-head{color:rgba(255,255,255,.48)}
+  .preview-pane[data-mode="light"] .pane-head{color:rgba(0,0,0,.48)}
+  .swatches{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:7px}
+  .swatch{height:34px;border-radius:var(--radius-sm);border:0}
+  .mini-arch{display:grid;gap:9px}
+  .arch-row{display:grid;grid-template-columns:64px 1fr;gap:8px;align-items:center}
+  .arch-label{font:var(--text-label);color:currentColor;opacity:.66}
+  .arch-nodes{height:22px;display:flex;gap:7px;align-items:center}
+  .arch-node{height:22px;border-radius:5px;flex:1;border:0}
+  .arch-node.mini{flex:.52}
+  .swim-mock{display:grid;gap:7px}
+  .lane{height:22px;display:flex;align-items:center;gap:7px}
+  .lane-label{width:28px;font:var(--text-label);opacity:.56}
+  .bar{height:14px;border-radius:4px;min-width:14px}
+  .bar.compute{height:16px}
+  .bar.comm{height:7px;align-self:end}
+  .light-section{display:grid;gap:12px;margin-top:4px}
+  .section-head{display:flex;justify-content:space-between;gap:12px;align-items:end}
+  .section-title{display:grid;gap:4px}
+  .section-title h2{margin:0;font:var(--text-title-2);letter-spacing:0}
+  .section-title span{font:var(--text-body-sm);color:var(--foreground-muted)}
+  .light-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+  .light-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--card-radius);padding:12px;display:grid;gap:12px;min-width:0}
+  .light-card.is-selected{border-color:var(--foreground)}
+  .light-card .preview-pane{border:0;padding:12px;background:#f5f5f5;color:rgba(0,0,0,.9)}
+  .light-card .palette-head{align-items:center}
+  .metrics{display:flex;gap:6px;flex-wrap:wrap}
+  .metric{display:inline-flex;align-items:center;min-height:20px;padding:0 8px;border-radius:var(--radius-pill);border:1px solid var(--border-default);color:var(--foreground-secondary);font:var(--text-label)}
+  .token-badge{display:inline-flex;align-items:center;min-height:20px;padding:0 8px;border-radius:var(--tag-radius);border:1px solid var(--comp-tag-border);background:var(--comp-tag-bg);color:var(--comp-tag-fg);font:var(--text-label)}
+  @media (max-width:980px){
+    .lab-summary{grid-template-columns:1fr}
+    .lab-controls{justify-content:flex-start}
+    .lab-grid,.palette-preview,.light-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="lab-page">
+  <header class="layout-header lab-topbar">
+    <div class="layout-header-left">
+      <div class="lab-brand">
+        <span class="lab-mark"></span>
+        <span class="lab-title">openPangu MoE Palette Lab</span>
+        <span class="lab-sub">dark / light semantic colormap</span>
+      </div>
+    </div>
+    <div class="layout-header-right">
+      <div class="segmented-control segmented-control-muted" aria-label="theme">
+        <button class="btn btn-sm is-selected" type="button" data-theme-choice="dark">Dark</button>
+        <button class="btn btn-sm" type="button" data-theme-choice="light">Light</button>
+      </div>
+      <a class="btn btn-ghost" href="./op-rank-time.html">Open Viz</a>
+    </div>
+  </header>
+
+  <main class="lab-main">
+    <section class="lab-summary">
+      <div class="lab-copy">
+        <h1>Palette selection</h1>
+        <p>Dense、MoE、rank 各保留自己的色相家族；护栏只回避纯红/纯绿，暖琥珀与橙色仍可用。Light 模式取色为<strong>低饱和 + 高明度</strong>柔和 pastel（饱和低于 dark、明度高于 dark）。选「Use」后回到 Viz 刷新即生效。</p>
+      </div>
+      <div class="lab-controls" id="activeReadout"></div>
+    </section>
+    <section class="lab-grid" id="paletteGrid"></section>
+    <section class="light-section">
+      <div class="section-head">
+        <div class="section-title">
+          <h2 id="lightTitle">Light variants</h2>
+          <span>Selected palette dark anchors stay unchanged.</span>
+        </div>
+      </div>
+      <div class="light-grid" id="lightVariantGrid"></div>
+    </section>
+  </main>
+</div>
+
+<script src="../js/colormap.js"></script>
+<script src="./pangu-palette.js"></script>
+<script>
+const CATEGORY_ROWS=[
+  {id:'dense',label:'Dense',widths:[50,28,18]},
+  {id:'moe',label:'MoE',widths:[18,36,18,12]},
+  {id:'rank0',label:'R0',widths:[22,10,30,12]},
+  {id:'rank7',label:'R7',widths:[18,26,20,10]},
+  {id:'rank16',label:'R16',widths:[13,36,20,13]}
+];
+const ROLE_LABELS={dense:'Dense',moe:'MoE',rank0:'R0',rank7:'R7',rank16:'R16'};
+const PALETTES=window.getPanguPaletteProfiles();
+const LIGHT_VARIANTS=window.getPanguLightVariants();
+function validPaletteId(id){
+  return PALETTES.some(p=>p.id===id)?id:'balanced';
+}
+function validLightId(id){
+  return LIGHT_VARIANTS.some(v=>v.id===id)?id:'clear';
+}
+function rowColors(palette,mode,row,lightVariantId){
+  return row.widths.map((_,i)=>window.getPanguCategoryColor(row.id,i,{paletteId:palette.id,theme:mode,lightVariantId}));
+}
+function bar(color,width,cls=''){
+  return `<span class="bar ${cls}" style="width:${width}%;background:${color}"></span>`;
+}
+function renderPane(palette,mode,lightVariantId='clear'){
+  const rows=CATEGORY_ROWS.map(row=>({...row,colors:rowColors(palette,mode,row,lightVariantId)}));
+  const sw=rows.flatMap(row=>row.colors.slice(0,2).map((color,i)=>`<span class="swatch" title="${row.label} v${i}" style="background:${color}"></span>`)).join('');
+  const dense=rows.find(row=>row.id==='dense');
+  const moe=rows.find(row=>row.id==='moe');
+  return `<div class="preview-pane" data-mode="${mode}">
+    <div class="pane-head"><span>${mode}</span><span>${mode==='light'?LIGHT_VARIANTS.find(v=>v.id===lightVariantId)?.name||'Light':'base contrast'}</span></div>
+    <div class="swatches">${sw}</div>
+    <div class="mini-arch">
+      <div class="arch-row"><span class="arch-label">Dense</span><span class="arch-nodes">${dense.colors.map((color,i)=>`<span class="arch-node ${i>0?'mini':''}" style="background:${color}"></span>`).join('')}</span></div>
+      <div class="arch-row"><span class="arch-label">MoE</span><span class="arch-nodes">${moe.colors.map((color,i)=>`<span class="arch-node ${i!==1?'mini':''}" style="background:${color}"></span>`).join('')}</span></div>
+    </div>
+    <div class="swim-mock">
+      ${rows.filter(row=>row.id.startsWith('rank')).map(row=>`<div class="lane"><span class="lane-label">${row.label}</span>${row.colors.map((color,i)=>bar(color,row.widths[i],i===row.colors.length-1?'comm':'compute')).join('')}</div>`).join('')}
+    </div>
+  </div>`;
+}
+function renderLightVariants(active,selectedLight){
+  document.getElementById('lightTitle').textContent=`Light variants · ${active.name}`;
+  document.getElementById('lightVariantGrid').innerHTML=LIGHT_VARIANTS.map(variant=>`
+    <article class="light-card ${variant.id===selectedLight?'is-selected':''}">
+      <div class="palette-head">
+        <div class="palette-title"><h2>${variant.name}</h2><span>${variant.note}</span></div>
+        <button class="btn ${variant.id===selectedLight?'btn-solid':''}" type="button" data-use-light-variant="${variant.id}">${variant.id===selectedLight?'Selected':'Use'}</button>
+      </div>
+      ${renderPane(active,'light',variant.id)}
+    </article>`).join('');
+}
+function render(){
+  const selected=validPaletteId(localStorage.getItem('pangu-moe-palette')||'balanced');
+  const selectedLight=validLightId(localStorage.getItem('pangu-moe-light-variant')||'clear');
+  document.getElementById('paletteGrid').innerHTML=PALETTES.map(p=>`
+    <article class="palette-card ${p.id===selected?'is-selected':''}" data-palette-card="${p.id}">
+      <div class="palette-head">
+        <div class="palette-title"><h2>${p.name}</h2><span>${p.note}</span></div>
+        <button class="btn ${p.id===selected?'btn-solid':''}" type="button" data-use-palette="${p.id}">${p.id===selected?'Selected':'Use'}</button>
+      </div>
+      <div class="palette-preview">${renderPane(p,'dark')}${renderPane(p,'light',selectedLight)}</div>
+      <div class="metrics">
+        ${CATEGORY_ROWS.map(row=>`<span class="token-badge">${ROLE_LABELS[row.id]}</span>`).join('')}
+      </div>
+    </article>`).join('');
+  const active=PALETTES.find(p=>p.id===selected)||PALETTES[0];
+  const activeLight=LIGHT_VARIANTS.find(v=>v.id===selectedLight)||LIGHT_VARIANTS[0];
+  document.getElementById('activeReadout').innerHTML=`<span class="metric">active: ${active.name}</span><span class="metric">light: ${activeLight.name}</span><span class="metric">avoid: pure red/green</span>`;
+  renderLightVariants(active,selectedLight);
+}
+document.addEventListener('click',event=>{
+  const theme=event.target.closest('[data-theme-choice]');
+  if(theme){
+    document.documentElement.dataset.theme=theme.dataset.themeChoice;
+    document.querySelectorAll('[data-theme-choice]').forEach(btn=>btn.classList.toggle('is-selected',btn===theme));
+  }
+  const use=event.target.closest('[data-use-palette]');
+  if(use){
+    localStorage.setItem('pangu-moe-palette',use.dataset.usePalette);
+    render();
+  }
+  const light=event.target.closest('[data-use-light-variant]');
+  if(light){
+    localStorage.setItem('pangu-moe-light-variant',light.dataset.useLightVariant);
+    render();
+  }
+});
+const savedTheme=localStorage.getItem('op-rank-time-theme')||'dark';
+document.documentElement.dataset.theme=savedTheme;
+document.querySelectorAll('[data-theme-choice]').forEach(btn=>btn.classList.toggle('is-selected',btn.dataset.themeChoice===savedTheme));
+render();
+</script>
+</body>
+</html>
