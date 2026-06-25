@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>openPangu-Ultra-MoE-718B · 算子 × 硬件 × 时间</title>
+<title>openPangu-Ultra-MoE-718B-V1.1 · 算子 × 硬件 × 时间</title>
+<link rel="icon" href="data:," />
 
 <!-- PTO 设计系统：tokens + 共享 patterns（ide-frame / swimlane-task / floating-playback / workbench-shell） -->
 <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css" />
@@ -33,10 +34,6 @@
   .pto-ide-frame__host-chip span{font:var(--ide-frame-title-font);color:var(--foreground)}
   .pto-ide-frame__host-chip b{color:var(--accent)}
   #traceMeta{font:var(--ide-frame-meta-font);color:var(--foreground-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .opv-theme-toggle{min-height:28px;padding:0 12px;border:1px solid var(--ide-frame-control-border);border-radius:var(--radius-sm);
-    background:var(--ide-frame-control-bg);color:var(--foreground-secondary);font:var(--ide-frame-meta-font);cursor:pointer}
-  .opv-theme-toggle:hover{color:var(--foreground);border-color:var(--border-strong)}
-  :root[data-theme='light'] .pto-ide-frame__window-actions .btn,
   :root[data-theme='light'] .opv-theme-toggle,
   :root[data-theme='light'] .opv-icon-btn{color:#0f0f10!important}
   .opv-icon-btn{width:28px;height:28px;display:inline-grid;place-items:center;border:1px solid transparent;border-radius:var(--radius-sm);
@@ -44,6 +41,9 @@
   .opv-icon-btn:hover{background:var(--state-hover);color:var(--foreground-secondary)}
   .opv-icon-btn.is-active{background:var(--ide-frame-control-bg);border-color:var(--ide-frame-control-border);color:var(--foreground)}
   .opv-icon-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .pto-ide-frame[data-inspector-open="false"] [data-ide-pane="inspector"]{display:none}
+  .pto-ide-frame[data-inspector-open="false"] [data-ide-split="standalone-main"]>[data-ide-pane="editor-preview"]{flex:1 1 100%!important;width:100%!important}
+  .pto-ide-frame[data-inspector-open="false"] [data-ide-split="standalone-main"]>[data-split-direction="horizontal"].pto-workbench-shell__split-gutter{display:none}
 
   /* 说明/图例/坐标系 弹窗（右上角 info icon 打开） */
   .opv-popup{position:fixed;top:52px;right:14px;z-index:150;width:340px;max-height:calc(100vh - 96px);overflow:auto;
@@ -97,6 +97,7 @@
   #app{position:absolute;inset:0}
   .opv-stage-tools{position:absolute;top:12px;right:12px;z-index:40;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
   .opv-stage-tools>*{pointer-events:auto}
+  .opv-stage-toolbar{display:flex;align-items:flex-start;justify-content:flex-end;gap:8px}
   .opv-zoom-control{display:flex;align-items:center;gap:6px;
     padding:6px;border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);border-radius:999px;
     background:color-mix(in srgb,var(--ide-frame-pane-bg) 82%,transparent);box-shadow:0 10px 34px rgba(0,0,0,.18);
@@ -109,20 +110,48 @@
   .opv-zoom-slider{width:112px;height:28px;margin:0;accent-color:#4f6df6;cursor:pointer}
   .opv-zoom-value{min-width:40px;text-align:center;color:var(--foreground-secondary);font:var(--text-label);font-variant-numeric:tabular-nums}
   .opv-axis-overlay{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
-  .opv-axis-overlay .opv-axis-figure{background:color-mix(in srgb,var(--ide-frame-pane-bg) 82%,transparent);box-shadow:0 10px 34px rgba(0,0,0,.16);
-    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .opv-axis-overlay .opv-axis-figure{width:104px;height:92px;border:0;border-radius:0;background:transparent;box-shadow:none;
+    backdrop-filter:none;-webkit-backdrop-filter:none;overflow:visible}
   .opv-view-btns{display:flex;align-items:center;gap:6px;padding:6px;border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);
     border-radius:999px;background:color-mix(in srgb,var(--ide-frame-pane-bg) 82%,transparent);box-shadow:0 10px 34px rgba(0,0,0,.18);
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
   .opv-view-btn{width:42px;height:28px;border-radius:999px;font:700 12px/1 var(--font-sans);white-space:nowrap;letter-spacing:0}
   .opv-view-btn[data-view="iso"]{width:48px}
   .opv-view-btn.is-active{background:#4f6df6;color:#fff}
+  .opv-filter-toggle{width:42px;height:42px;padding:0;border-color:color-mix(in srgb,var(--foreground) 13%,transparent);
+    background:color-mix(in srgb,var(--ide-frame-pane-bg) 82%,transparent);box-shadow:0 10px 34px rgba(0,0,0,.18);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .opv-filter-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .opv-filter-toggle.is-active{background:#4f6df6;border-color:#4f6df6;color:#fff}
+  .opv-object-panel{position:absolute;right:12px;top:66px;z-index:42;width:284px;max-height:min(480px,calc(100% - 90px));overflow:auto;
+    padding:10px;border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);border-radius:12px;
+    background:color-mix(in srgb,var(--ide-frame-pane-bg) 86%,transparent);box-shadow:0 16px 44px rgba(0,0,0,.18);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  .opv-object-panel[hidden]{display:none}
+  .opv-object-panel__head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .opv-object-panel__title{font:var(--text-label);font-weight:700;color:var(--foreground)}
+  .opv-object-panel__reset{border:0;background:transparent;color:var(--foreground-secondary);font:var(--text-label);cursor:pointer;padding:2px 4px}
+  .opv-object-panel__group{margin-top:8px}
+  .opv-object-panel__label{font:var(--text-label);color:var(--foreground-muted);margin:0 0 5px}
+  .opv-object-panel__items{display:flex;flex-wrap:wrap;gap:5px}
+  .opv-object-btn{height:25px;padding:0 8px;border:1px solid color-mix(in srgb,var(--foreground) 12%,transparent);border-radius:999px;
+    background:color-mix(in srgb,var(--foreground) 4%,transparent);color:var(--foreground-secondary);font:700 11px/1 var(--font-sans);
+    cursor:pointer;letter-spacing:0;white-space:nowrap}
+  .opv-object-btn:hover{color:var(--foreground);background:color-mix(in srgb,var(--foreground) 8%,transparent)}
+  .opv-object-btn.is-active{background:#4f6df6;border-color:#4f6df6;color:#fff}
+  [data-ide-pane="swimlane"]>.pto-ide-frame__pane-header{display:flex;align-items:center;gap:8px}
+  .opv-comm-toggle{margin-left:auto;flex:none}
   :root[data-theme='light'] .opv-zoom-control{background:rgba(255,255,255,.86);border-color:rgba(15,15,16,.14)}
   :root[data-theme='light'] .opv-zoom-btn{color:#0f0f10;background:rgba(15,15,16,.06)}
   :root[data-theme='light'] .opv-zoom-value{color:#0f0f10}
-  :root[data-theme='light'] .opv-axis-overlay .opv-axis-figure,
-  :root[data-theme='light'] .opv-view-btns{background:rgba(255,255,255,.86);border-color:rgba(15,15,16,.14)}
+  :root[data-theme='light'] .opv-view-btns,
+  :root[data-theme='light'] .opv-filter-toggle,
+  :root[data-theme='light'] .opv-object-panel{background:rgba(255,255,255,.9);border-color:rgba(15,15,16,.14)}
+  :root[data-theme='light'] .opv-axis-overlay .opv-axis-figure{background:transparent;border-color:transparent}
   :root[data-theme='light'] .opv-view-btn.is-active{background:#4f6df6;color:#fff}
+  :root[data-theme='light'] .opv-filter-toggle.is-active{background:#4f6df6;border-color:#4f6df6;color:#fff}
+  :root[data-theme='light'] .opv-object-panel__reset,
+  :root[data-theme='light'] .opv-object-btn{color:#0f0f10}
 
   /* 底部 swimlane（32 rank 行，单 canvas，内部纵向滚动） */
   .opv-swimlane{position:relative;display:flex;flex-direction:column;height:100%;padding:6px 8px}
@@ -145,12 +174,13 @@
     .pto-ide-frame__topbar-center{display:none}
     .pto-ide-frame__host-chip span{max-width:178px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .pto-ide-frame__window-actions{gap:2px}
-    .pto-ide-frame__window-actions .btn{min-height:26px;padding-inline:8px}
-    .opv-theme-toggle{min-height:26px;padding:0 8px}
     [data-ide-pane="inspector"],
     [data-split-direction="horizontal"].pto-workbench-shell__split-gutter{display:none}
     [data-ide-split="standalone-main"]>[data-ide-pane="editor-preview"]{flex:1 1 100%!important;width:100%!important}
     .opv-stage-tools{top:8px;right:8px}
+    .opv-stage-toolbar{gap:5px}
+    .opv-object-panel{right:8px;top:58px;width:min(260px,calc(100% - 16px));max-height:320px;padding:8px}
+    .opv-object-btn{height:24px;padding:0 7px;font-size:10px}
     .opv-zoom-slider{width:72px}
     .opv-zoom-value{display:none}
     .opv-axis-overlay .opv-axis-figure{width:86px;height:72px}
@@ -162,12 +192,12 @@
 </head>
 <body>
 
-<section class="pto-ide-frame" data-ide-frame data-host="standalone" data-hide-activity-rail="true" aria-label="openPangu MoE 训练透视">
+<section class="pto-ide-frame" data-ide-frame data-host="standalone" data-hide-activity-rail="true" data-inspector-open="true" aria-label="openPangu MoE 训练透视">
   <header class="pto-ide-frame__topbar pto-ide-frame__standalone-chrome">
     <div class="pto-ide-frame__topbar-left">
       <div class="pto-ide-frame__host-chip">
         <svg class="pto-ide-frame__host-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="m7 9 3 3-3 3"></path><path d="M12 15h5"></path></svg>
-        <span>openPangu-Ultra-MoE-718B · <b>算子 × 硬件 × 时间</b></span>
+        <span>openPangu-Ultra-MoE-718B-V1.1 · <b>算子 × 硬件 × 时间</b></span>
       </div>
     </div>
     <div class="pto-ide-frame__topbar-center">
@@ -178,8 +208,12 @@
         <button id="infoToggle" class="opv-icon-btn" type="button" aria-expanded="false" aria-controls="infoPanel" title="说明 · 图例 · 坐标系" aria-label="说明 · 图例 · 坐标系">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 7.5h.01"></path></svg>
         </button>
-        <a class="btn btn-ghost btn-sm" href="./palette-lab.html">Palette</a>
-        <button id="themeToggle" class="opv-theme-toggle" type="button" aria-pressed="false">Light</button>
+        <button id="themeToggle" class="opv-icon-btn opv-theme-toggle" type="button" aria-pressed="false" title="切换主题" aria-label="切换主题">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6.5 6.5 0 0 0 7.8 8.8A8 8 0 1 1 12 3z"></path></svg>
+        </button>
+        <button id="inspectorToggle" class="opv-icon-btn is-active" type="button" aria-expanded="true" aria-controls="inspectPane" title="隐藏 Inspect 面板" aria-label="隐藏 Inspect 面板">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1.5"></rect><path d="M14 4v16"></path></svg>
+        </button>
       </div>
     </div>
   </header>
@@ -192,34 +226,81 @@
           <div class="pto-ide-frame__split" data-ide-split="standalone-main" data-split-direction="horizontal" data-sizes="72,28" data-min-size="380,260">
 
             <section class="pto-ide-frame__pane" data-ide-pane="editor-preview">
-              <header class="pto-ide-frame__pane-header">
-                <span class="pto-ide-frame__pane-title">算子 × 硬件 × 时间 · 3D 舞台</span>
-                <span class="pto-ide-frame__pane-meta">拖拽旋转 · ⌘拖拽平移 · 滚轮缩放 · 点卡片/节点聚焦</span>
-              </header>
               <div class="pto-ide-frame__pane-body opv-stage">
                 <div id="app"></div>
-                <div class="opv-stage-tools" aria-label="3D 视图工具">
-                  <div class="opv-zoom-control" aria-label="3D 视图缩放">
-                    <button id="zoomOut" class="opv-zoom-btn" type="button" title="缩小" aria-label="缩小">−</button>
-                    <input id="zoomSlider" class="opv-zoom-slider" type="range" min="0" max="100" step="1" aria-label="3D 视图缩放">
-                    <button id="zoomIn" class="opv-zoom-btn" type="button" title="放大" aria-label="放大">+</button>
-                    <button id="zoomReset" class="opv-zoom-btn" type="button" title="重置视图" aria-label="重置视图">↺</button>
-                    <output id="zoomValue" class="opv-zoom-value">100%</output>
+                <div class="opv-object-panel" id="objectPanel" aria-label="对象筛选与高亮" hidden>
+                  <div class="opv-object-panel__head">
+                    <span class="opv-object-panel__title">对象聚焦</span>
+                    <button class="opv-object-panel__reset" type="button" data-focus-object="all">Reset</button>
                   </div>
-                  <div class="opv-axis-overlay" aria-label="坐标系与视角">
-                    <div class="opv-axis-figure"><div id="axisViewport" aria-hidden="true"></div></div>
+                  <div class="opv-object-panel__group">
+                    <div class="opv-object-panel__label">Layers</div>
+                    <div class="opv-object-panel__items">
+                      <button class="opv-object-btn is-active" type="button" data-focus-object="all">All</button>
+                      <button class="opv-object-btn" type="button" data-focus-object="layer:dense">Dense</button>
+                      <button class="opv-object-btn" type="button" data-focus-object="layer:moe">MoE</button>
+                    </div>
+                  </div>
+                  <div class="opv-object-panel__group">
+                    <div class="opv-object-panel__label">Operators</div>
+                    <div class="opv-object-panel__items">
+                      <button class="opv-object-btn" type="button" data-focus-object="op:mla">MLA</button>
+                      <button class="opv-object-btn" type="button" data-focus-object="op:router">Router</button>
+                      <button class="opv-object-btn" type="button" data-focus-object="op:experts">Experts</button>
+                      <button class="opv-object-btn" type="button" data-focus-object="op:norm">Norm</button>
+                    </div>
+                  </div>
+                  <div class="opv-object-panel__group">
+                    <div class="opv-object-panel__label">Dataflow</div>
+                    <div class="opv-object-panel__items">
+                      <button class="opv-object-btn" type="button" data-focus-object="data:hidden">Hidden</button>
+                      <button class="opv-object-btn" type="button" data-focus-object="data:dispatch">Dispatch</button>
+                      <button class="opv-object-btn" type="button" data-focus-object="data:logits">Logits</button>
+                    </div>
+                  </div>
+                  <div class="opv-object-panel__group">
+                    <div class="opv-object-panel__label">Communication</div>
+                    <div class="opv-object-panel__items">
+                      <button class="opv-object-btn" type="button" data-focus-object="comm:tp">TP All-Reduce</button>
+                      <button class="opv-object-btn" type="button" data-focus-object="comm:ep">EP All-to-All</button>
+                      <button class="opv-object-btn" type="button" data-focus-object="comm:pp">PP Send/Recv</button>
+                      <button class="opv-object-btn" type="button" data-focus-object="comm:logits">Logits Gather</button>
+                    </div>
+                  </div>
+                  <div class="opv-object-panel__group">
+                    <div class="opv-object-panel__label">Hardware</div>
+                    <div class="opv-object-panel__items">
+                      <button class="opv-object-btn" type="button" data-focus-object="hw:cards">Ranks / Cards</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="opv-stage-tools" aria-label="3D 视图工具">
+                  <div class="opv-stage-toolbar">
+                    <div class="opv-zoom-control" aria-label="3D 视图缩放">
+                      <button id="zoomOut" class="opv-zoom-btn" type="button" title="缩小" aria-label="缩小">−</button>
+                      <input id="zoomSlider" class="opv-zoom-slider" type="range" min="0" max="100" step="1" aria-label="3D 视图缩放">
+                      <button id="zoomIn" class="opv-zoom-btn" type="button" title="放大" aria-label="放大">+</button>
+                      <button id="zoomReset" class="opv-zoom-btn" type="button" title="重置视图" aria-label="重置视图">↺</button>
+                      <output id="zoomValue" class="opv-zoom-value">100%</output>
+                    </div>
                     <div class="opv-view-btns" role="group" aria-label="视角预设">
                       <button id="viewIso" class="opv-zoom-btn opv-view-btn is-active" data-view="iso" type="button" title="正交轴测视图" aria-label="正交轴测视图">轴测</button>
                       <button id="viewFront" class="opv-zoom-btn opv-view-btn" data-view="front" type="button" title="正视图" aria-label="正视图">正视</button>
                       <button id="viewRight" class="opv-zoom-btn opv-view-btn" data-view="right" type="button" title="右侧视图" aria-label="右侧视图">侧视</button>
                     </div>
+                    <button id="filterToggle" class="opv-zoom-btn opv-filter-toggle" type="button" aria-expanded="false" aria-controls="objectPanel" title="对象聚焦筛选" aria-label="对象聚焦筛选">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18"></path><path d="M7 12h10"></path><path d="M10 19h4"></path></svg>
+                    </button>
+                  </div>
+                  <div class="opv-axis-overlay" aria-label="坐标系">
+                    <div class="opv-axis-figure"><div id="axisViewport" aria-hidden="true"></div></div>
                   </div>
                 </div>
                 <div class="pto-ide-frame__floating-playback-mount" id="playbackMount"></div>
               </div>
             </section>
 
-            <aside class="pto-ide-frame__pane" data-ide-pane="inspector">
+            <aside id="inspectPane" class="pto-ide-frame__pane" data-ide-pane="inspector">
               <header class="pto-ide-frame__pane-header"><span class="pto-ide-frame__pane-title">聚焦 / focused rank</span></header>
               <div class="pto-ide-frame__pane-body opv-pane-body opv-focus">
                 <div>
@@ -242,6 +323,8 @@
           <header class="pto-ide-frame__pane-header">
             <span class="pto-ide-frame__pane-title">1F1B simulated training trace · swimlane</span>
             <span class="pto-ide-frame__pane-meta" id="swimMeta">DP2 × PP2 × TP8 · chunk-level schedule</span>
+            <button id="commModeToggle" class="opv-object-btn opv-comm-toggle" type="button" aria-pressed="false"
+              title="通信展示：细条子轨 ⇄ 与计算同款双轨（行高×2）">通信双轨</button>
           </header>
           <div class="pto-ide-frame__pane-body"><div id="swimlaneView" class="opv-swimlane"></div></div>
         </section>
@@ -262,7 +345,7 @@
   </div>
   <div>
     <div class="opv-section-label">说明</div>
-    <p class="opv-note">上方是<b>真实完整架构图</b>：local XY 图立成竖板；Embedding 与 Final/Head 只出现一次；中间 <b>L0–L60 全部 decode layers</b> 沿世界 Y 展开，<b>L0–L2 是 Dense</b>（first_k_dense_replace=3），<b>L3–L60 是 MoE</b>。下方 32 卡按 1F1B 流水满载，竖线连到当前算子的卡。</p>
+    <p class="opv-note">上方是<b>真实完整架构图</b>：local XY 图立成竖板；Embedding 与 Final/Head 只出现一次；中间 <b>L0–L60 全部 decode layers</b> 沿世界 Y 展开，<b>L0–L2 是 Dense</b>（num_dense_layers=3），<b>L3–L60 是 MoE</b>；config 声明 num_mtp_layers=1，但当前 forward 未构建 MTP head，所以主图不画 MTP。下方 32 卡按 1F1B 流水满载，竖线连到当前算子的卡。</p>
     <p class="opv-note" style="margin-top:6px">代表配置 <em>DP2 × PP2 × TP8 = 32 卡</em>（真实 DP32/PP16/TP8/EP32·4096 卡的缩放示意）。</p>
   </div>
   <div>
@@ -275,7 +358,7 @@
       <div class="row"><span class="dot" data-sem="sem:moe"></span>Expert FFN</div>
       <div class="row"><span class="dot" data-sem="sem:comm"></span>All-to-All(算子)</div>
       <div class="row"><span class="dot" data-sem="sem:norm"></span>Norm</div>
-      <div class="row"><span class="dot" data-sem="sem:residual"></span>Residual</div>
+      <div class="row"><span class="dot" data-sem="sem:norm"></span>Post-MLP RMSNorm</div>
     </div>
   </div>
   <div>
@@ -289,7 +372,6 @@
   <div>
     <div class="opv-section-label">坐标系 / z-up axes</div>
     <div class="opv-axis">
-      <div class="opv-axis-figure" aria-hidden="true"></div>
       <div class="opv-axis-copy">
         <div><b class="x">X</b> = 地面左右 / 模型 local X</div>
         <div><b class="y">Y</b> = 地面深度 / MoE 层复制方向</div>
@@ -310,17 +392,17 @@
 <script src="./pangu-palette.js"></script>
 
 <!-- 真实架构数据(经典脚本,只读) -->
-<script src="data/graph-ultramoe-718b.js"></script>
+<script src="data/graph-ultramoe-718b.js?v=20260625-v11-arch"></script>
 
 <script type="importmap">
-{ "imports": { "three": "./vendor/three/build/three.module.min.js" } }
+{ "imports": { "three": "../hpc-topology-viewer-main/node_modules/three/build/three.module.min.js" } }
 </script>
 
 <script type="module">
 import * as THREE from 'three';
-import {Line2} from './vendor/three/examples/jsm/lines/Line2.js';
-import {LineGeometry} from './vendor/three/examples/jsm/lines/LineGeometry.js';
-import {LineMaterial} from './vendor/three/examples/jsm/lines/LineMaterial.js';
+import {Line2} from '../hpc-topology-viewer-main/node_modules/three/examples/jsm/lines/Line2.js';
+import {LineGeometry} from '../hpc-topology-viewer-main/node_modules/three/examples/jsm/lines/LineGeometry.js';
+import {LineMaterial} from '../hpc-topology-viewer-main/node_modules/three/examples/jsm/lines/LineMaterial.js';
 
 /* ===== 粗连线（Line2，真实像素宽度，浏览器不会忽略） ===== */
 const LINE_RES=new THREE.Vector2(1,1), fatMats=new Set();
@@ -365,6 +447,43 @@ let pbOpname=null,pbCounter=null,pbScrubber=null,statusLeft=null,statusRight=nul
 
 /* ===== UI 主题 ===== */
 const themeBtn=document.getElementById('themeToggle');
+const ideFrame=document.querySelector('[data-ide-frame]');
+const inspectorToggle=document.getElementById('inspectorToggle');
+const inspectorPane=document.getElementById('inspectPane');
+const THEME_TOGGLE_ICONS={
+  toDark:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6.5 6.5 0 0 0 7.8 8.8A8 8 0 1 1 12 3z"></path></svg>',
+  toLight:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>'
+};
+function syncThemeToggle(theme){
+  const toDark=theme==='light';
+  themeBtn.innerHTML=toDark?THEME_TOGGLE_ICONS.toDark:THEME_TOGGLE_ICONS.toLight;
+  themeBtn.title=toDark?'切换到暗色模式':'切换到浅色模式';
+  themeBtn.setAttribute('aria-label',themeBtn.title);
+  themeBtn.setAttribute('aria-pressed',theme==='dark'?'true':'false');
+}
+function refreshAfterInspectorToggle(){
+  requestAnimationFrame(()=>{
+    if(typeof sizeRenderer==='function')sizeRenderer();
+    if(typeof resizeAxisRenderer==='function')resizeAxisRenderer();
+    if(typeof paintSwimlane==='function')paintSwimlane();
+    if(typeof redraw==='function')redraw();
+  });
+}
+function setInspectorOpen(open){
+  ideFrame.dataset.inspectorOpen=open?'true':'false';
+  inspectorPane?.setAttribute('aria-hidden',open?'false':'true');
+  inspectorToggle.classList.toggle('is-active',open);
+  inspectorToggle.setAttribute('aria-expanded',open?'true':'false');
+  inspectorToggle.title=open?'隐藏 Inspect 面板':'打开 Inspect 面板';
+  inspectorToggle.setAttribute('aria-label',inspectorToggle.title);
+  refreshAfterInspectorToggle();
+}
+inspectorToggle.addEventListener('click',event=>{
+  event.stopPropagation();
+  const next=ideFrame.dataset.inspectorOpen!=='true';
+  localStorage.setItem('op-rank-time-inspector-open',next?'true':'false');
+  setInspectorOpen(next);
+});
 const SCENE_THEMES={
   dark:{
     bg:0x0e1116,fog:0x0e1116,fogDensity:0.004,
@@ -384,14 +503,14 @@ let refreshVizTheme=()=>{};
 let refreshArchColors=()=>{};
 function applyUiTheme(theme){
   document.documentElement.dataset.theme=theme;
-  themeBtn.textContent=theme==='light'?'Dark':'Light';
-  themeBtn.setAttribute('aria-pressed',theme==='light'?'true':'false');
+  syncThemeToggle(theme);
   applyThreeTheme(theme);
 }
 const themeParam=new URLSearchParams(location.search).get('theme');
 const savedTheme=(themeParam==='light'||themeParam==='dark')?themeParam:(localStorage.getItem('op-rank-time-theme')||'dark');
 localStorage.setItem('op-rank-time-theme',savedTheme);
 applyUiTheme(savedTheme);
+setInspectorOpen(localStorage.getItem('op-rank-time-inspector-open')!=='false');
 themeBtn.onclick=()=>{
   const next=document.documentElement.dataset.theme==='light'?'dark':'light';
   localStorage.setItem('op-rank-time-theme',next);
@@ -431,7 +550,7 @@ const SEMANTIC_KEYS=[
 const ROLE_LABEL={
   'sem:embedding':'Embedding','module:decoder':'Dense','sem:attention':'MLA','sem:norm':'Norm',
   'sem:gate':'Router','sem:comm':'All-to-All','sem:moe':'Experts','sem:mlp':'Shared Expert',
-  'sem:residual':'Residual','sem:head':'Head','io:input':'Input','io:parameter':'Parameter',
+  'sem:residual':'Post-MLP Norm','sem:head':'Head','io:input':'Input','io:parameter':'Parameter',
   'io:output':'Output','pipeline:bubble':'Bubble'
 };
 // 正式页固定使用方案一，避免 palette-lab 的旧 localStorage 选择污染当前视觉。
@@ -512,12 +631,12 @@ const STEP_META={
   a2a_dispatch:{label:'All-to-All 分发', sem:'sem:comm', comm:'ep', nodes:['a2a_dispatch']},
   experts:{label:'当前 MoE 层专家池:256 路由专家 + 共享专家', sem:'sem:moe', comm:null, nodes:EXPERT_IDS.concat(['shared_expert','w_expert'])},
   a2a_combine:{label:'All-to-All 汇聚', sem:'sem:comm', comm:'ep', nodes:['a2a_combine']},
-  moe_residual:{label:'残差 + RMSNorm', sem:'sem:residual', comm:null, nodes:['moe_residual']},
+  moe_residual:{label:'Post-MLP RMSNorm', sem:'sem:norm', comm:null, nodes:['moe_residual']},
   final_norm:{label:'Final RMSNorm', sem:'sem:norm', comm:null, nodes:['final_norm']},
   lm_head:{label:'LM Head', sem:'sem:head', comm:'tp', nodes:['lm_head','lm_head_weight']},
 };
 const STEP_DESC={
-  experts:'当前 MoE layer 内的一个 Expert Pool block:256 个 routed experts 按 EP 切分执行;它和 Router、All-to-All 分发/汇聚、Shared Expert、Residual 共同构成这一层 MoE。'
+  experts:'当前 MoE layer 内的一个 Expert Pool block:256 个 routed experts 按 EP 切分执行;它和 Router、All-to-All 分发/汇聚、Shared Expert、Post-MLP RMSNorm 共同构成这一层 MoE。'
 };
 const descOf=step=>STEP_DESC[step]??(()=>{const id=STEP_META[step].nodes[0];return byId.get(id)?.desc||'';})();
 const semColor=step=>SEM_COLOR[STEP_META[step].sem]??GRAY;
@@ -544,6 +663,7 @@ const ZOOM_MIN=DEFAULT_CAM.r/ZOOM_RATIO_MAX, ZOOM_MAX=DEFAULT_CAM.r/ZOOM_RATIO_M
 const cam={...DEFAULT_CAM};
 const camRight=new THREE.Vector3(), camUp=new THREE.Vector3();
 let cameraMode='perspective', activeView='iso';
+let objectFocus='all';
 const cameraZoomRatio=()=>DEFAULT_CAM.r/cam.r;
 function updateCameraProjection(){
   const w=Math.max(1,app.clientWidth||innerWidth), h=Math.max(1,app.clientHeight||innerHeight), aspect=w/h;
@@ -577,7 +697,47 @@ function setCameraMode(mode){
 function setActiveView(view){
   activeView=view;
   document.querySelectorAll('.opv-view-btn').forEach(btn=>btn.classList.toggle('is-active',btn.dataset.view===view));
+  if(typeof applyViewPresentation==='function')applyViewPresentation();
 }
+const objectPanel=document.getElementById('objectPanel');
+const filterToggle=document.getElementById('filterToggle');
+function syncObjectFocusControls(){
+  objectPanel?.querySelectorAll('[data-focus-object]').forEach(btn=>{
+    btn.classList.toggle('is-active',btn.dataset.focusObject===objectFocus);
+  });
+  const active=objectFocus&&objectFocus!=='all';
+  filterToggle?.classList.toggle('is-active',active);
+  filterToggle?.setAttribute('aria-pressed',String(active));
+}
+function setObjectPanelOpen(open){
+  if(!objectPanel)return;
+  objectPanel.hidden=!open;
+  filterToggle?.setAttribute('aria-expanded',String(open));
+}
+function setObjectFocus(id){
+  objectFocus=id||'all';
+  syncObjectFocusControls();
+  if(typeof applyViewPresentation==='function')applyViewPresentation();
+  if(typeof redraw==='function')redraw();
+}
+objectPanel?.addEventListener('click',event=>{
+  const btn=event.target.closest('[data-focus-object]');
+  if(!btn)return;
+  setObjectFocus(btn.dataset.focusObject);
+});
+filterToggle?.addEventListener('click',event=>{
+  event.stopPropagation();
+  setObjectPanelOpen(objectPanel?.hidden);
+});
+document.addEventListener('click',event=>{
+  if(!objectPanel||objectPanel.hidden)return;
+  if(objectPanel.contains(event.target)||filterToggle?.contains(event.target))return;
+  setObjectPanelOpen(false);
+});
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape')setObjectPanelOpen(false);
+});
+syncObjectFocusControls();
 const zoomOut=document.getElementById('zoomOut');
 const zoomIn=document.getElementById('zoomIn');
 const zoomReset=document.getElementById('zoomReset');
@@ -614,6 +774,7 @@ zoomSlider?.addEventListener('input',()=>{
   const v=Number(zoomSlider.value)||0;
   setCameraDistance(ZOOM_MAX-(v/100)*(ZOOM_MAX-ZOOM_MIN));
 });
+syncZoomControl();
 let viewTween=null;
 function setCameraView(view,theta,phi){
   if(viewTween)cancelAnimationFrame(viewTween);
@@ -633,7 +794,6 @@ function setCameraView(view,theta,phi){
 viewIso?.addEventListener('click',()=>setCameraView('iso',DEFAULT_CAM.theta,DEFAULT_CAM.phi));
 viewFront?.addEventListener('click',()=>setCameraView('front',0,Math.PI/2));
 viewRight?.addEventListener('click',()=>setCameraView('right',Math.PI/2,Math.PI/2));
-syncZoomControl();
 const hemi=new THREE.HemisphereLight(0xffffff,initialSceneTheme.ground,initialSceneTheme.hemi); scene.add(hemi);
 const key=new THREE.DirectionalLight(0xffffff,initialSceneTheme.key); key.position.set(8,20,12); scene.add(key);
 const fill=new THREE.DirectionalLight(0xffffff,initialSceneTheme.fill); fill.position.set(-8,8,-10); scene.add(fill);
@@ -663,13 +823,18 @@ function makeFixedTextMesh(cv,w,h,renderOrder=7){
 // 节点文字色：light=黑、dark=近白；都不描边（用户要求：居中、纯色、无白边）
 const nodeLabelColor=()=>curTheme()==='light'?0x0f0f10:0xeef2f7;
 function makeSprite(text,colorHex=sceneLabelColor(),scale){
-  const cv=document.createElement('canvas'); cv.width=512;cv.height=96;
+  const cv=document.createElement('canvas'); cv.width=768;cv.height=144;
   const g=cv.getContext('2d');
-  g.font='700 40px "JetBrains Mono",monospace';
+  g.font='700 56px "JetBrains Mono",monospace';
   g.textAlign='center'; g.textBaseline='middle';
   g.fillStyle='#'+((colorHex>>>0)&0xffffff).toString(16).padStart(6,'0');
-  g.fillText(text,256,52);
-  return makeFixedTextMesh(cv,scale,scale*96/512,7);
+  let fs=56;
+  while(g.measureText(text).width>cv.width*0.9&&fs>28){
+    fs-=2;
+    g.font=`700 ${fs}px "JetBrains Mono",monospace`;
+  }
+  g.fillText(text,cv.width/2,cv.height/2+4);
+  return makeFixedTextMesh(cv,scale,scale*144/768,7);
 }
 
 /* ===== 右上角:真实 3D 坐标轴小视图 ===== */
@@ -723,6 +888,7 @@ function syncAxisCamera(){
   axisLabels.forEach(sp=>sp.quaternion.copy(axisCamera.quaternion));
 }
 resizeAxisRenderer();
+requestAnimationFrame(resizeAxisRenderer);  // 常驻浮层：布局就绪后兜底定尺寸
 
 /* ===== 上方:真实架构 local XY 竖板 + L0-L60 decode layers 沿世界 Y 全展开 ===== */
 const clusterById=new Map(G.clusters.map(c=>[c.id,c]));
@@ -734,16 +900,19 @@ const MOE_NODE_IDS=new Set([
   'mla','moe_prenorm','gate','w_gate','a2a_dispatch','shared_expert','w_expert','a2a_combine','moe_residual',
   ...EXPERT_IDS
 ]);
-const STATIC_INPUT_IDS=['token_ids','input_embeds','position_ids','attn_mask','embedding','embedding_weight'];
-const STATIC_OUTPUT_IDS=['final_norm','lm_head','logits','mtp_head','mtp_logits','lm_head_weight'];
+const STATIC_INPUT_IDS=['token_ids','position_ids','attn_mask','embedding','embedding_weight'];
+const STATIC_OUTPUT_IDS=['final_norm','lm_head','logits_allgather','logits','lm_head_weight'];
+const DENSE_LAYER_BOX={x:340,y:120,width:560,height:180};
 const archPickables=[], archRecords=[], archByKey=new Map(), archRecordByMesh=new Map();
 const archKey=(layer,id)=>`${layer}:${id}`;
+let hoverArch=null, hoverNeighbors=[], hoverStage=null;
 // 架构连线：所有线统一的默认透明度（flat，不跟各自 base 走，避免有的实有的隐），只有 hover 节点接到的那几条变 solid。
 const archLineRecords=[], ARCH_LINE_DIM=0.14, ARCH_LINE_SOLID=0.92;
 function updateArchLineHover(){
   archLineRecords.forEach(rec=>{
     const lit=hoverArch&&(rec.aMesh===hoverArch||rec.bMesh===hoverArch);
-    rec.mat.uniforms.opacity.value=lit?ARCH_LINE_SOLID:ARCH_LINE_DIM;
+    const focusLit=focusActive()&&tagMatchesFocus(rec.tags);
+    rec.mat.uniforms.opacity.value=lit?ARCH_LINE_SOLID:(focusActive()?(focusLit?Math.max(ARCH_LINE_SOLID,rec.base):0.035):ARCH_LINE_DIM);
   });
 }
 // 深度沿数据流：input/Embedding 最前 → L0-L2(Dense) →（明显间隔）→ L3-L60(MoE) → Final/Head 最后。
@@ -765,7 +934,47 @@ const isMajorLayer=layer=>layer%10===0||layer===LAST_MOE_LAYER;  // 详细 MoE �
 const SOLID_LAYERS=new Set([0,LAST_MOE_LAYER]);  // 第一层(L0 Dense)+最后一层(L60 MoE)完全 solid：写深度、正确遮挡、完整架构可读
 const isSolidLayer=layer=>typeof layer==='number'&&SOLID_LAYERS.has(layer);
 const layerRenderOrder=layer=>typeof layer==='number'?20+layer:(layer==='output'?90:10);
+const ARCH_LABEL_MIN_SCALE=0.72;
+const ARCH_LAYER_LABEL=()=>curTheme()==='light'?0x111111:0xf8fafc;
 const lineMat=(color,opacity)=>new THREE.LineBasicMaterial({color,transparent:true,opacity});
+const expertPoolGridRecords=[];
+function archTagsFor(id,layer){
+  const tags=new Set();
+  if(objectFocus==='all')tags.add('all');
+  if(layer==='input'||['token_ids','position_ids','attn_mask','embedding','embedding_weight'].includes(id)){
+    tags.add('data:hidden'); tags.add('op:embedding');
+  }
+  if(id==='dense_block'||(typeof layer==='number'&&layer<FIRST_MOE_LAYER)){
+    tags.add('layer:dense'); tags.add('data:hidden'); tags.add('comm:tp');
+  }
+  if((typeof layer==='number'&&layer>=FIRST_MOE_LAYER)||id==='moe_layer'){
+    tags.add('layer:moe');
+  }
+  if(id==='mla'){tags.add('op:mla'); tags.add('comm:tp'); tags.add('data:hidden');}
+  if(['moe_prenorm','moe_residual','final_norm'].includes(id)){tags.add('op:norm'); tags.add('data:hidden');}
+  if(['gate','w_gate'].includes(id)){tags.add('op:router'); tags.add('data:dispatch');}
+  if(['a2a_dispatch','a2a_combine'].includes(id)){tags.add('comm:ep'); tags.add('data:dispatch');}
+  if(id==='expert_pool'||/^expert_group_/.test(id)||['w_expert','shared_expert'].includes(id)){
+    tags.add('op:experts'); tags.add('data:dispatch'); tags.add('comm:ep');
+  }
+  if(['lm_head','lm_head_weight'].includes(id)){tags.add('op:head'); tags.add('data:logits'); tags.add('comm:tp');}
+  if(id==='logits_allgather'){tags.add('comm:logits'); tags.add('data:logits');}
+  if(id==='logits'){tags.add('data:logits');}
+  return [...tags];
+}
+const focusActive=()=>objectFocus&&objectFocus!=='all';
+const tagMatchesFocus=tags=>!focusActive()||(tags||[]).includes(objectFocus);
+function archRecordMatchesFocus(rec){
+  if(!focusActive())return true;
+  return tagMatchesFocus(archTagsFor(rec.id,rec.layer));
+}
+function lineTagsFor(a,b,layerA,layerB){
+  const tags=new Set([...archTagsFor(a,layerA),...archTagsFor(b,layerB)]);
+  if((a==='a2a_dispatch'||b==='a2a_dispatch'||a==='a2a_combine'||b==='a2a_combine'))tags.add('comm:ep');
+  if((a==='lm_head'&&b==='logits_allgather')||a==='logits_allgather'||b==='logits_allgather')tags.add('comm:logits');
+  if((a==='dense_block'&&b==='dense_block')||(a==='dense_block'&&b==='mla')||(a==='moe_residual'&&b==='mla')||(a==='moe_residual'&&b==='final_norm'))tags.add('data:hidden');
+  return [...tags];
+}
 function rememberArch(mesh,id,layer,base,labelOverride,descOverride){
   mesh.userData={
     panel:true,id,layer,
@@ -777,7 +986,7 @@ function rememberArch(mesh,id,layer,base,labelOverride,descOverride){
     neighborHighlight:false
   };
   mesh.renderOrder=layerRenderOrder(layer);
-  const rec={mesh,id,layer,base};
+  const rec={mesh,id,layer,base,tags:archTagsFor(id,layer)};
   archPickables.push(mesh); archRecords.push(rec); archRecordByMesh.set(mesh,rec); archByKey.set(archKey(layer,id),mesh);
 }
 function refreshArchMesh(mesh){
@@ -794,14 +1003,26 @@ function refreshArchMesh(mesh){
   if(mesh.userData.activeHighlight){ei=Math.max(ei,0.78);op=Math.max(op,0.82);sc=Math.max(sc,1.04);}
   if(mesh.userData.hoverHighlight){ei=1;op=1;sc=1.09;}
   if(rec.base.hiCap!=null&&!mesh.userData.hoverHighlight)op=Math.min(op,rec.base.hiCap);  // 淡化的专家池：自动高亮也不许冲成大绿块
+  if(focusActive()){
+    if(archRecordMatchesFocus(rec)){ei=Math.max(ei,0.92);op=Math.max(op,0.86);sc=Math.max(sc,1.055);}
+    else {ei=Math.min(ei,0.04);op=Math.min(op,0.08);sc=Math.min(sc,0.98);}
+  }
+  const frontDense=activeView==='front'&&rec.id==='dense_block'&&typeof rec.layer==='number';
+  if(frontDense){
+    op=focusActive()&&archRecordMatchesFocus(rec)?Math.max(op,0.78):Math.min(op,0.38);
+    ei=Math.max(ei,0.36);
+  }
   if(lightMode&&mesh.material.emissive){
     ei=Math.max(ei,1);
     mesh.material.toneMapped=false;
-    mesh.material.needsUpdate=true;
   }
+  mesh.material.transparent=frontDense||op<0.995;
+  mesh.material.depthWrite=!frontDense&&op>=0.9;
+  mesh.material.needsUpdate=true;
   mesh.material.emissiveIntensity=ei;
   mesh.material.opacity=op;
   mesh.scale.set(sc,sc,sc);
+  syncExpertPoolGrid(mesh,rec);
 }
 function setArchState(mesh,key,value){
   if(!mesh||!mesh.userData)return;
@@ -812,12 +1033,80 @@ refreshArchColors=()=>archRecords.forEach(r=>refreshArchMesh(r.mesh));
 function mapExpertAliases(mesh,layer){
   EXPERT_IDS.forEach(id=>archByKey.set(archKey(layer,id),mesh));
 }
-function addArchLabel(text,p,colorHex,scale,renderOrder=7){
-  const sp=makeSprite(text,colorHex,scale);
-  sp.position.set(p.x,p.y,p.z+ARCH_FRONT*2.2);
+const archLabels=[];
+const staticFocusObjects=[];
+const staticFocusPickables=[];
+let hiddenRailTip=null;
+function applyStaticFocusObject(obj){
+  const only=obj.userData?.viewOnly||null;
+  obj.visible=!only||only===activeView;
+  if(!obj.material)return;
+  if(obj.userData?.staticTip){
+    obj.material.transparent=true;
+    obj.material.opacity=0;
+    obj.material.depthWrite=false;
+    obj.material.needsUpdate=true;
+    return;
+  }
+  const tags=obj.userData?.tags||[];
+  const match=tagMatchesFocus(tags);
+  const base=obj.userData?.baseOpacity??0.8;
+  const opacity=focusActive()?(match?Math.max(base,0.92):0.045):base;
+  if(obj.material.uniforms?.opacity)obj.material.uniforms.opacity.value=opacity;
+  else {obj.material.transparent=true; obj.material.opacity=opacity; obj.material.needsUpdate=true;}
+}
+function applyViewPresentation(){
+  if(typeof archLabels==='undefined')return;
+  archLabels.forEach(label=>{
+    const only=label.userData?.viewOnly||null;
+    const hideGenericFront=activeView==='front'&&!only&&!label.userData?.keepInFront;
+    label.visible=!hideGenericFront&&(!only||only===activeView);
+    if(label.material){
+      const tags=label.userData?.tags||[];
+      const opacity=focusActive()?(tagMatchesFocus(tags)?1:0.14):1;
+      label.material.transparent=true;
+      label.material.opacity=opacity;
+      label.material.needsUpdate=true;
+    }
+  });
+  staticFocusObjects.forEach(applyStaticFocusObject);
+  if(typeof archRecords!=='undefined')archRecords.forEach(r=>refreshArchMesh(r.mesh));
+  updateArchLineHover();
+}
+function addArchLabel(text,p,colorHex,scale,renderOrder=7,opts={}){
+  const s=Math.max(scale??ARCH_LABEL_MIN_SCALE,opts.minScale??ARCH_LABEL_MIN_SCALE);
+  const sp=makeSprite(text,colorHex,s);
+  if(opts.orientation==='right'){
+    sp.rotation.y=Math.PI/2;
+    sp.position.set(p.x+ARCH_FRONT*2.6,p.y,p.z);
+  }else{
+    sp.position.set(p.x,p.y,p.z+ARCH_FRONT*2.2);
+  }
   sp.renderOrder=renderOrder;
+  sp.userData={viewOnly:opts.viewOnly||null,tags:opts.tags||[],keepInFront:!!opts.keepInFront};
+  sp.visible=!sp.userData.viewOnly||sp.userData.viewOnly===activeView;
+  archLabels.push(sp);
   scene.add(sp);
   return sp;
+}
+function addStaticFocusLine(points,color,opacity,linewidth,tags,opts={}){
+  const line=fatLine(points,color,opacity,linewidth);
+  line.userData={viewOnly:opts.viewOnly||null,tags,baseOpacity:opacity};
+  staticFocusObjects.push(line);
+  scene.add(line);
+  applyStaticFocusObject(line);
+  return line;
+}
+function addStaticFocusHitBox(center,size,tags,{viewOnly=null,title='',body=''}={}){
+  const mat=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0,depthWrite:false});
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(size.x,size.y,size.z),mat);
+  mesh.position.copy(center);
+  mesh.userData={viewOnly,tags,title,body,baseOpacity:0,staticTip:true};
+  staticFocusObjects.push(mesh);
+  staticFocusPickables.push(mesh);
+  scene.add(mesh);
+  applyStaticFocusObject(mesh);
+  return mesh;
 }
 function addNodeNote(id,layer,text,colorHex,dx=0,dy=0,scale=1.0){
   const p=nodePos(id,layer); if(!p)return null;
@@ -838,7 +1127,8 @@ function addCluster(c,layer,opacity,{showLabel=true,labelText=null,labelScale=nu
   if(c.id==='expert_pool')addExpertPoolPanel(c,layer,{showLabel,labelText,solid});
   if(showLabel&&c.id!=='expert_pool'){
     const label=labelText??c.label;
-    addArchLabel(label,p.clone().add(new THREE.Vector3(0,c.height*ARCH_PS/2-0.12,0)),colorForNode(c),labelScale??Math.min(1.25,c.width*ARCH_PS*0.22),layerRenderOrder(layer)+0.1);
+    const labelColor=c.id==='moe_layer'?ARCH_LAYER_LABEL():colorForNode(c);
+    addArchLabel(label,p.clone().add(new THREE.Vector3(0,c.height*ARCH_PS/2-0.12,0)),labelColor,labelScale??Math.min(1.25,c.width*ARCH_PS*0.22),layerRenderOrder(layer)+0.1,{tags:archTagsFor(c.id,layer)});
   }
 }
 function addExpertPoolPanel(c,layer,{showLabel=true,labelText=null,solid=false}={}){
@@ -855,10 +1145,15 @@ function addExpertPoolPanel(c,layer,{showLabel=true,labelText=null,solid=false}=
   scene.add(panel);
   rememberArch(panel,'expert_pool',layer,base,'Expert Pool',
     '当前 MoE 层的专家池：32 个 EP bucket × 每桶 8 个 routed experts = 256 routed experts。它是一层内部结构，不是 32 层。');
+  addExpertPoolGrid(panel,c,layer);
   mapExpertAliases(panel,layer);
-  if(showLabel)addArchLabel(labelText??`Expert Pool · L${layer}`,p.clone().add(new THREE.Vector3(0,h*0.36,0)),0xfbbf24,0.5,layerRenderOrder(layer)+0.2);
+  if(showLabel)addArchLabel(labelText??`Expert Pool · L${layer}`,p.clone().add(new THREE.Vector3(0,h*0.36,0)),ARCH_LAYER_LABEL(),0.72,layerRenderOrder(layer)+0.2,{tags:archTagsFor('expert_pool',layer)});
 }
 function addNode(n,layer,{ghost=false,opaque=false,showLabel=true,labelText=null,descOverride=null,box=null}={}){
+  if(!n){
+    console.warn('[op-rank-time] skip missing graph node; graph data may be stale', {layer});
+    return null;
+  }
   if(/^expert_group_/.test(n.id))return;
   const gx=box?box.x+box.width/2:n.x, gy=box?box.y+box.height/2:n.y, gw=box?box.width:n.width, gh=box?box.height:n.height;
   const p=graphPos(gx,gy,layer), w=Math.max(gw*ARCH_PS,0.22), h=Math.max(gh*ARCH_PS,0.13);
@@ -871,14 +1166,15 @@ function addNode(n,layer,{ghost=false,opaque=false,showLabel=true,labelText=null
   const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,ARCH_THICK),mat);
   mesh.position.copy(p); scene.add(mesh); rememberArch(mesh,n.id,layer,base,labelText,descOverride);
   const expert=/^expert_group_/.test(n.id);
-  if(showLabel&&!expert)addArchLabel(labelText??n.label,p,nodeLabelColor(),Math.min(expert?0.28:0.76,w*0.92),layerRenderOrder(layer)+0.2);
+  if(showLabel&&!expert)addArchLabel(labelText??n.label,p,nodeLabelColor(),Math.min(expert?0.28:0.76,w*0.92),layerRenderOrder(layer)+0.2,{tags:archTagsFor(n.id,layer)});
+  return mesh;
 }
-function addArchLine(a,b,color,opacity,layerA=0,layerB=layerA){
+function addArchLine(a,b,color,opacity,layerA=0,layerB=layerA,tags=null){
   const pa=nodePos(a,layerA), pb=nodePos(b,layerB); if(!pa||!pb)return;
-  const rec=addArchLinePoints(pa,pb,color,opacity);
-  if(rec){rec.aMesh=archByKey.get(archKey(layerA,a))||null; rec.bMesh=archByKey.get(archKey(layerB,b))||null;}
+  const rec=addArchLinePoints(pa,pb,color,opacity,tags||lineTagsFor(a,b,layerA,layerB));
+  if(rec){rec.aMesh=archByKey.get(archKey(layerA,a))||null; rec.bMesh=archByKey.get(archKey(layerB,b))||null; rec.source=a; rec.target=b;}
 }
-function addArchLinePoints(pa,pb,color,opacity){
+function addArchLinePoints(pa,pb,color,opacity,tags=[]){
   if(!pa||!pb)return null;
   const front=ARCH_FRONT;
   const line=fatLine([
@@ -886,7 +1182,7 @@ function addArchLinePoints(pa,pb,color,opacity){
     pb.clone().add(new THREE.Vector3(0,0,front))
   ],color,opacity,LW.arch);
   line.material.uniforms.opacity.value=ARCH_LINE_DIM;  // 统一默认透明（flat），hover 时由 updateArchLineHover 提亮
-  const rec={mat:line.material,base:opacity,aMesh:null,bMesh:null};
+  const rec={mat:line.material,base:opacity,aMesh:null,bMesh:null,tags};
   archLineRecords.push(rec); scene.add(line);
   return rec;
 }
@@ -898,23 +1194,95 @@ function drawGraphEdges(layer,{moeOnly=false,opacity=0.18}={}){
     addArchLine(e.source,e.target,EDGE_COL[e.edgeType]||0x4369ef,e.dashed?opacity*0.55:opacity,layer);
   });
 }
+function expertGridLineGeometry(w,h,{cols=16,rows=16,bucketCols=8,bucketRows=4,bucketOnly=false}={}){
+  const pad=Math.min(w,h)*0.055;
+  const left=-w/2+pad,right=w/2-pad,bottom=-h/2+pad,top=h/2-pad;
+  const verts=[];
+  const pushLine=(x1,y1,x2,y2)=>verts.push(x1,y1,0,x2,y2,0);
+  if(bucketOnly){
+    for(let i=0;i<=bucketCols;i++){
+      const x=left+(right-left)*i/bucketCols;
+      pushLine(x,bottom,x,top);
+    }
+    for(let j=0;j<=bucketRows;j++){
+      const y=bottom+(top-bottom)*j/bucketRows;
+      pushLine(left,y,right,y);
+    }
+  }else{
+    for(let i=1;i<cols;i++){
+      const x=left+(right-left)*i/cols;
+      pushLine(x,bottom,x,top);
+    }
+    for(let j=1;j<rows;j++){
+      const y=bottom+(top-bottom)*j/rows;
+      pushLine(left,y,right,y);
+    }
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+  return geo;
+}
+function addExpertPoolGrid(panel,c,layer){
+  const w=c.width*ARCH_PS,h=c.height*ARCH_PS;
+  const group=new THREE.Group();
+  group.position.copy(panel.position);
+  group.position.z+=ARCH_THICK*0.42;
+  group.renderOrder=layerRenderOrder(layer)+0.36;
+  group.visible=false;
+  const fineMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false,toneMapped:false});
+  const bucketMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false,toneMapped:false});
+  const fine=new THREE.LineSegments(expertGridLineGeometry(w,h),fineMat);
+  const buckets=new THREE.LineSegments(expertGridLineGeometry(w,h,{bucketOnly:true}),bucketMat);
+  fine.renderOrder=group.renderOrder;
+  buckets.renderOrder=group.renderOrder+0.01;
+  group.add(fine,buckets);
+  scene.add(group);
+  const grid={panel,group,fineMat,bucketMat,layer,tags:archTagsFor('expert_pool',layer)};
+  panel.userData.expertGrid=grid;
+  expertPoolGridRecords.push(grid);
+  syncExpertPoolGrid(panel,archRecordByMesh.get(panel));
+}
+function syncExpertPoolGrid(mesh,rec){
+  const grid=mesh?.userData?.expertGrid;
+  if(!grid||!rec)return;
+  const layer=rec.layer;
+  const focusMatch=focusActive()&&archRecordMatchesFocus(rec);
+  const directHighlight=!!(mesh.userData.hoverHighlight||mesh.userData.activeHighlight||mesh.userData.neighborHighlight||mesh.userData.trailHighlight);
+  const contextualFocus=focusMatch&&(objectFocus==='layer:moe'||objectFocus==='op:experts'||objectFocus==='data:dispatch'||objectFocus==='comm:ep');
+  const representative=typeof layer==='number'&&(isMajorLayer(layer)||isSolidLayer(layer));
+  const visible=directHighlight||(contextualFocus&&representative);
+  const high=mesh.userData.hoverHighlight?1:(mesh.userData.activeHighlight?0.82:(mesh.userData.neighborHighlight?0.58:(mesh.userData.trailHighlight?0.42:(contextualFocus?0.5:0))));
+  grid.group.visible=visible;
+  grid.group.position.copy(mesh.position);
+  grid.group.position.z+=ARCH_THICK*0.42;
+  grid.group.scale.copy(mesh.scale);
+  const lineColor=curTheme()==='light'?0x0f172a:0xffffff;
+  const bucketColor=curTheme()==='light'?0x111827:0xf8fafc;
+  grid.fineMat.color.setHex(lineColor);
+  grid.bucketMat.color.setHex(bucketColor);
+  grid.fineMat.opacity=visible?Math.min(0.46,0.16+high*0.24):0;
+  grid.bucketMat.opacity=visible?Math.min(0.78,0.32+high*0.32):0;
+  grid.fineMat.needsUpdate=true;
+  grid.bucketMat.needsUpdate=true;
+}
 function addExpertFan(layer,opacity=0.18){
   const c=G.clusters.find(cl=>cl.id==='expert_pool');
   const pool=c?graphPos(c.x+c.width/2,c.y+c.height/2,layer):null;
-  addArchLinePoints(nodePos('a2a_dispatch',layer),pool,EDGE_COL.communication,opacity);
-  addArchLinePoints(pool,nodePos('a2a_combine',layer),EDGE_COL.communication,opacity);
+  addArchLinePoints(nodePos('a2a_dispatch',layer),pool,EDGE_COL.communication,opacity,['comm:ep','data:dispatch','layer:moe','op:experts']);
+  addArchLinePoints(pool,nodePos('a2a_combine',layer),EDGE_COL.communication,opacity,['comm:ep','data:dispatch','layer:moe','op:experts']);
 }
 function addLayerMarker(layer,text,colorHex,major=false){
   if(!(major||layer<5||layer%5===0||layer===LAST_MOE_LAYER))return;
   const y=layer<FIRST_MOE_LAYER?470:430;
-  addArchLabel(text,graphPos(132,y,layer),colorHex,major?0.48:0.38,layerRenderOrder(layer)+0.25);
+  const labelColor=layer>=FIRST_MOE_LAYER?ARCH_LAYER_LABEL():colorHex;
+  addArchLabel(text,graphPos(132,y,layer),labelColor,major?0.74:0.64,layerRenderOrder(layer)+0.25,{tags:archTagsFor(layer<FIRST_MOE_LAYER?'dense_block':'moe_layer',layer)});
 }
 function addDenseLayer(layer){
   const n=byId.get('dense_block');
-  const desc=`Dense decoder layer L${layer}：前 3 个解码层之一（first_k_dense_replace=3），没有 Router、All-to-All、Expert Pool 或 Shared Expert；hidden state 直接传给下一层。`;
-  // 单个实心块，与 MoE 层同宽但更扁（无路由/专家）：高度约 MoE cluster（840×970）的 1/3；不套透明外壳。
+  const desc=`Dense decoder layer L${layer}：前 3 个解码层之一（num_dense_layers=3），没有 Router、All-to-All、Expert Pool 或 Shared Expert；hidden state 直接传给下一层。`;
+  // 单个实心块：宽度和 MoE 保持同一层级，但在 local-Z 上低于 MoE 专家区，正视图不会互相遮挡。
   addNode(n,layer,{opaque:true,labelText:`Dense L${layer}`,descOverride:desc,showLabel:true,
-    box:{x:380,y:765,width:560,height:240}});
+    box:DENSE_LAYER_BOX});
   addLayerMarker(layer,`L${layer} Dense`,0x38bdf8,true);
 }
 function addMoeLayer(layer){
@@ -936,7 +1304,6 @@ function drawStaticInputOutput(){
   STATIC_INPUT_IDS.forEach(id=>addNode(byId.get(id),'input',{opaque:true,showLabel:true}));
   STATIC_OUTPUT_IDS.forEach(id=>addNode(byId.get(id),'output',{opaque:true,showLabel:true}));
   addArchLine('token_ids','embedding',EDGE_COL.activation,0.62,'input','input');
-  addArchLine('input_embeds','embedding',EDGE_COL.activation,0.26,'input','input');
   addArchLine('embedding_weight','embedding',EDGE_COL.parameter,0.25,'input','input');
   addArchLine('embedding','dense_block',EDGE_COL.activation,0.72,'input',0);
   ['position_ids','attn_mask'].forEach(id=>{
@@ -945,12 +1312,11 @@ function drawStaticInputOutput(){
     addArchLine(id,'mla',EDGE_COL.activation,0.08,'input',LAST_MOE_LAYER);
   });
   addArchLine('final_norm','lm_head',EDGE_COL.activation,0.58,'output','output');
-  addArchLine('lm_head','logits',EDGE_COL.activation,0.58,'output','output');
-  addArchLine('final_norm','mtp_head',EDGE_COL.activation,0.36,'output','output');
-  addArchLine('mtp_head','mtp_logits',EDGE_COL.activation,0.36,'output','output');
+  addArchLine('lm_head','logits_allgather',EDGE_COL.communication,0.44,'output','output');
+  addArchLine('logits_allgather','logits',EDGE_COL.activation,0.58,'output','output');
   addArchLine('lm_head_weight','lm_head',EDGE_COL.parameter,0.24,'output','output');
-  addArchLabel('Embedding: not copied',nodePos('embedding','input').clone().add(new THREE.Vector3(0.95,0,0)),0xa78bfa,0.62,layerRenderOrder('input')+0.2);
-  addArchLabel('Final / Head: not copied',nodePos('final_norm','output').clone().add(new THREE.Vector3(1.05,0,0)),0xfb923c,0.62,layerRenderOrder('output')+0.2);
+  addArchLabel('Embedding: not copied',nodePos('embedding','input').clone().add(new THREE.Vector3(0.95,0,0)),0xa78bfa,0.62,layerRenderOrder('input')+0.2,{tags:['data:hidden','op:embedding']});
+  addArchLabel('Final / Head: single output path',nodePos('final_norm','output').clone().add(new THREE.Vector3(1.05,0,0)),0xfb923c,0.62,layerRenderOrder('output')+0.2,{tags:['data:logits','op:head','comm:logits']});
 }
 function drawHiddenStateChain(){
   addArchLine('dense_block','dense_block',0x93c5fd,0.58,0,1);
@@ -961,16 +1327,77 @@ function drawHiddenStateChain(){
   }
   addArchLine('moe_residual','final_norm',0x93c5fd,0.7,LAST_MOE_LAYER,'output');
   addArchLabel('hidden state flows L0 → L60 along world Y toward the back',
-    graphPos(G.width-210,420,34),0x93c5fd,0.78,layerRenderOrder(34)+0.3);
+    graphPos(G.width-210,420,34),0x93c5fd,0.78,layerRenderOrder(34)+0.3,{tags:['data:hidden']});
+}
+function addSideViewAnnotations(){
+  const color=ARCH_LAYER_LABEL();
+  const zDense=(archDepth(0)+archDepth(2))*0.5;
+  const denseY=graphPos(DENSE_LAYER_BOX.x+DENSE_LAYER_BOX.width/2,DENSE_LAYER_BOX.y+DENSE_LAYER_BOX.height/2,1).y;
+  const zMoeStart=archDepth(FIRST_MOE_LAYER);
+  const zMoeEnd=archDepth(LAST_MOE_LAYER);
+  const zMoeMid=(zMoeStart+zMoeEnd)*0.5;
+  const zOut=archDepth('output');
+  const zIn=archDepth('input');
+  const inputY=(nodePos('token_ids','input')?.y??graphPos(420,88,'input').y)-0.22;
+  const outputY=(nodePos('logits','output')?.y??graphPos(620,G.height-80,'output').y)+0.22;
+  const moeY=graphPos(620,760,34).y;
+  const x=2.9;
+  const railX=x+0.08;
+  const railPts=[
+    new THREE.Vector3(railX,inputY,zIn),
+    new THREE.Vector3(railX,denseY,zDense),
+    new THREE.Vector3(railX,moeY,zMoeStart),
+    new THREE.Vector3(railX,moeY,zMoeEnd),
+    new THREE.Vector3(railX,outputY,zOut)
+  ];
+  hiddenRailTip={
+    points:railPts,
+    title:'Hidden state main path',
+    body:'这条蓝色轨道表示 hidden state 在整网主链路中的流动：Embedding -> Dense L0-L2 -> MoE L3-L60 -> Final RMSNorm / LM Head。侧视图把层深度展开，因此它是理解 layer 顺序和 PP stage range 的主参照线。'
+  };
+  addStaticFocusLine(railPts,0x2563eb,0.78,5.5,['data:hidden'],{viewOnly:'right'});
+  const railMinY=Math.min(...railPts.map(p=>p.y)), railMaxY=Math.max(...railPts.map(p=>p.y));
+  addStaticFocusHitBox(
+    new THREE.Vector3(railX,(railMinY+railMaxY)/2,(zIn+zOut)*0.5),
+    new THREE.Vector3(1.4,(railMaxY-railMinY)+1.1,Math.abs(zOut-zIn)+1.2),
+    ['data:hidden'],
+    {
+      viewOnly:'right',
+      title:'Hidden state main path',
+      body:'这条蓝色轨道表示 hidden state 在整网主链路中的流动：Embedding -> Dense L0-L2 -> MoE L3-L60 -> Final RMSNorm / LM Head。侧视图把层深度展开，因此它是理解 layer 顺序和 PP stage range 的主参照线。'
+    }
+  );
+  railPts.forEach(p=>{
+    addStaticFocusLine([
+      new THREE.Vector3(railX,p.y-0.26,p.z),
+      new THREE.Vector3(railX,p.y+0.26,p.z)
+    ],0x2563eb,0.72,3.2,['data:hidden'],{viewOnly:'right'});
+  });
+  addArchLabel('INPUT',new THREE.Vector3(x,inputY,zIn),color,2.75,130,{orientation:'right',viewOnly:'right',minScale:2.5,tags:['data:hidden','op:embedding']});
+  addArchLabel('DENSE L0-L2',new THREE.Vector3(x,denseY,zDense),color,2.75,130,{orientation:'right',viewOnly:'right',minScale:2.4,tags:['layer:dense','data:hidden']});
+  addArchLabel('MOE L3-L60',new THREE.Vector3(x,ARCH_HEIGHT_CENTER+2.35,zMoeMid),color,3.1,130,{orientation:'right',viewOnly:'right',minScale:2.7,tags:['layer:moe','data:hidden']});
+  addArchLabel('HIDDEN L0 -> L60',new THREE.Vector3(x,ARCH_HEIGHT_CENTER-1.95,zMoeMid),0x2563eb,3.0,130,{orientation:'right',viewOnly:'right',minScale:2.6,tags:['data:hidden']});
+  addArchLabel('OUTPUT / LOGITS',new THREE.Vector3(x,outputY,zOut),color,2.75,130,{orientation:'right',viewOnly:'right',minScale:2.5,tags:['data:logits','comm:logits']});
+}
+function addFrontViewAnnotations(){
+  const color=ARCH_LAYER_LABEL();
+  addArchLabel('INPUT / EMBEDDING',graphPos(1010,210,'input'),color,1.28,130,{viewOnly:'front',minScale:1.12,tags:['data:hidden','op:embedding']});
+  addArchLabel('DENSE L0-L2',graphPos(1010,128,1),0x0f172a,1.46,130,{viewOnly:'front',minScale:1.22,tags:['layer:dense','data:hidden']});
+  addArchLabel('MOE L3-L60',graphPos(1020,430,36),color,1.56,130,{viewOnly:'front',minScale:1.28,tags:['layer:moe','data:hidden']});
+  addArchLabel('HIDDEN STATE FLOW',graphPos(1010,300,22),0x2563eb,1.34,130,{viewOnly:'front',minScale:1.16,tags:['data:hidden']});
+  addArchLabel('FINAL / LOGITS',graphPos(1010,G.height-96,'output'),color,1.28,130,{viewOnly:'front',minScale:1.12,tags:['data:logits','comm:logits']});
 }
 function buildArchitecturePreview(){
   drawStaticInputOutput();
   DENSE_LAYER_IDS.forEach(addDenseLayer);
   MOE_LAYER_IDS.forEach(addMoeLayer);
   drawHiddenStateChain();
+  addSideViewAnnotations();
+  addFrontViewAnnotations();
   addArchLabel('L0-L2: Dense decode layers, no experts',graphPos(1040,308,1),0x38bdf8,0.62,layerRenderOrder(1)+0.3);
-  addArchLabel('L3-L60: each layer has Router + Dispatch + Expert Pool + Shared Expert + Combine + Residual',
+  addArchLabel('L3-L60: MLA + Router + Dispatch + Expert Pool + Shared Expert + Combine + Post-MLP RMSNorm',
     graphPos(1050,470,32),0xa78bfa,0.72,layerRenderOrder(32)+0.3);
+  applyViewPresentation();
 }
 function resetArchitecture(){
   archRecords.forEach(r=>{
@@ -1001,6 +1428,9 @@ function highlightArchitecture(stage,step,prog){
     const mesh=archByKey.get(archKey(layer,id))||archByKey.get(archKey(0,id));
     setArchState(mesh,'activeHighlight',true);
   });
+  if(typeof layer==='number'&&layer>=FIRST_MOE_LAYER&&LAYER_STEPS.includes(step)){
+    setArchState(archByKey.get(archKey(layer,'expert_pool')),'activeHighlight',true);
+  }
   const mesh=archMeshForStep(prog,step);
   return mesh?mesh.position.clone():new THREE.Vector3(0,ARCH_HEIGHT_CENTER,archDepth(typeof layer==='number'?layer:0));
 }
@@ -1092,8 +1522,16 @@ applyThreeTheme(savedTheme);
 /* ===== 动态层(光柱 + 通信连线) ===== */
 const dyn=new THREE.Group(); scene.add(dyn);
 function clearDyn(){while(dyn.children.length){const o=dyn.children.pop();o.geometry?.dispose();o.material?.dispose();}}
-// 动态线两档：只有「正在播放」且当前活跃(bright, op≥0.34)才 solid；暂停/默认一律透明（焦点光柱、op-trail 也不再默认 solid）。
-const lineLvl=op=>(playing&&op>=0.34)?ARCH_LINE_SOLID:ARCH_LINE_DIM;
+// 动态线两档：对象聚焦时只让匹配语义的通信/dispatch 线变亮；硬件聚焦下通信线必须退到背景。
+function lineLvl(op){
+  if(focusActive()){
+    if(/^hw:/.test(objectFocus))return 0.025;
+    if(objectFocus==='comm:ep'||objectFocus==='data:dispatch')return op>=0.38?Math.max(op,0.5):0.035;
+    if(/^comm:/.test(objectFocus))return op>=0.58?Math.max(op,ARCH_LINE_SOLID):0.035;
+    return 0.035;
+  }
+  return playing&&op>=0.34?Math.max(op,ARCH_LINE_SOLID):ARCH_LINE_DIM;
+}
 const addLine=(a,b,c,op,y)=>{const pa=y==null?a:new THREE.Vector3(a.x,y,a.z),pb=y==null?b:new THREE.Vector3(b.x,y,b.z);
   dyn.add(fatLine([pa,pb],c,lineLvl(op),LW.dyn));};
 const addArc=(a,b,c,op,lift)=>{const mid=a.clone().add(b).multiplyScalar(0.5);mid.y+=lift;
@@ -1149,6 +1587,35 @@ function eventComm(evt){
   if(isBubbleEvent(evt))return null;
   return evt.comm||STEP_META[eventStep(evt)]?.comm||null;
 }
+function eventTags(evt){
+  const tags=new Set(['hw:cards']);
+  if(isBubbleEvent(evt))return [...tags];
+  const step=eventStep(evt), layer=eventLayer(evt), comm=eventComm(evt);
+  tags.add(layer<FIRST_MOE_LAYER?'layer:dense':'layer:moe');
+  if(comm==='tp')tags.add('comm:tp');
+  if(comm==='ep')tags.add('comm:ep');
+  if(comm==='pp')tags.add('comm:pp');
+  if(step==='mla')tags.add('op:mla');
+  if(step==='gate')tags.add('op:router');
+  if(['a2a_dispatch','a2a_combine','experts'].includes(step)){tags.add('data:dispatch');tags.add('comm:ep');}
+  if(step==='experts')tags.add('op:experts');
+  if(['moe_prenorm','moe_residual','final_norm'].includes(step))tags.add('op:norm');
+  if(['embedding','dense','mla','moe_residual','final_norm'].includes(step))tags.add('data:hidden');
+  if(step==='lm_head'){tags.add('data:logits');tags.add('op:head');tags.add('comm:tp');}
+  return [...tags];
+}
+function boardMatchesObjectFocus(board){
+  if(!focusActive())return true;
+  if(objectFocus==='comm:pp')return true;
+  return tagMatchesFocus(eventTags(board.userData.event));
+}
+function applyBoardObjectFocus(board){
+  const match=boardMatchesObjectFocus(board);
+  board.material.transparent=focusActive()&&!match;
+  board.material.opacity=focusActive()?(match?1:0.16):1;
+  if(focusActive()&&match)board.material.emissiveIntensity=Math.max(board.material.emissiveIntensity,0.9);
+  board.material.needsUpdate=true;
+}
 
 /* ===== 渲染当前帧 ===== */
 let focusNode=0;   // 聚焦哪个硬件 node
@@ -1197,16 +1664,18 @@ function groupHalo(node,c,op,label){
 function commLines(node,evt,bright){
   const cards=nodeCards[node.id], yL=BASE_Y+0.32, comm=eventComm(evt);
   if(comm==='pp'){
-    groupHalo(node,LINE.pp,bright?0.58:0.2,null);
+    groupHalo(node,LINE.pp,(bright||objectFocus==='comm:pp')?0.58:0.2,null);
     return;
   }
   if(comm==='tp'){  // All-Reduce:TP 组内(8 卡)
-    for(let t=0;t<8;t++)addLine(cards[t].position,cards[(t+1)%8].position,LINE.tp,bright?0.85:0.3,yL);
-    groupHalo(node,LINE.tp,bright?0.65:0.22,null);
+    const hi=bright||objectFocus==='comm:tp';
+    for(let t=0;t<8;t++)addLine(cards[t].position,cards[(t+1)%8].position,LINE.tp,hi?0.85:0.3,yL);
+    groupHalo(node,LINE.tp,hi?0.65:0.22,null);
   }
   if(comm==='ep'){  // All-to-All:EP 组内(8 卡)全互联
-    for(let i=0;i<8;i++)for(let j=i+1;j<8;j++)addLine(cards[i].position,cards[j].position,LINE.ep,bright?0.4:0.12,yL+0.03);
-    groupHalo(node,LINE.ep,bright?0.65:0.22,null);
+    const hi=bright||objectFocus==='comm:ep'||objectFocus==='data:dispatch';
+    for(let i=0;i<8;i++)for(let j=i+1;j<8;j++)addLine(cards[i].position,cards[j].position,LINE.ep,hi?0.4:0.12,yL+0.03);
+    groupHalo(node,LINE.ep,hi?0.65:0.22,null);
   }
 }
 function neighborEvent(stage,dir){
@@ -1236,7 +1705,7 @@ function drawPpHandoffs(){
     const s0=eventForNode(nodeByDS(dp,0)), s1=eventForNode(nodeByDS(dp,1));
     const hidden=(s1.dependsOn||[]).some(x=>x.includes('hidden'))||(s0.produces||[]).some(x=>x.includes('hidden'));
     const grad=(s0.dependsOn||[]).some(x=>x.includes('grad'))||(s1.produces||[]).some(x=>x.includes('grad'));
-    if(hidden||grad)addArc(hidden?a:b,hidden?b:a,LINE.pp,0.92,1.4);
+    if(hidden||grad||objectFocus==='comm:pp')addArc(hidden?a:b,hidden?b:a,LINE.pp,objectFocus==='comm:pp'?0.98:0.92,1.4);
   });
 }
 const activePrim={};
@@ -1253,6 +1722,7 @@ function redraw(){
       b.userData.active=!isBubbleEvent(evt); b.userData.role=roleText(evt,t); b.userData.focus=isFocus; b.userData.event=evt;
       b.material.color.setHex(col); b.material.emissive.setHex(col);
       b.material.emissiveIntensity=isBubbleEvent(evt)?0:(isFocus?0.85:0.4); b.position.y=BASE_Y+(isFocus&&!isBubbleEvent(evt)?0.14*SC:0.05*SC);
+      applyBoardObjectFocus(b);
     });
     commLines(node,evt,isFocus);
   });
@@ -1424,14 +1894,28 @@ const gridLine=()=>lightT()?'rgba(15,23,42,0.16)':'rgba(255,255,255,0.16)';
 const accent=()=>toHex(LINE.tp);
 const fmtUs=u=>u>=1000?(u/1000).toFixed(2)+'ms':Math.round(u)+'µs';
 let swimTip=null, axisCanvas=null, bodyCanvas=null, scrollEl=null, swimBuilt=false;
+let commSplit=false;  // 通信展示模式：false=细条子轨；true=与计算同款双轨（行高×2，上计算/下通信）
 const hitRects=[];
 function swimRowTooltip(hit){
   const t=hit.task,r=hit.r;
   const row=(k,v,cls='')=>`<div class="pto-swimlane-task-tooltip__row"><span class="pto-swimlane-task-tooltip__key">${esc(k)}</span><span class="pto-swimlane-task-tooltip__value${cls?' '+cls:''}">${esc(v)}</span></div>`;
-  const kindName={F:'Forward',B:'Backward',tp:'TP All-Reduce',ep:'EP All-to-All',pp:'PP send/recv',bubble:'Pipeline bubble'}[t.kind]||t.kind;
+  const kindName={F:'Forward 前向',B:'Backward 反向',tp:'TP All-Reduce',ep:'EP All-to-All',pp:'PP send/recv',bubble:'Pipeline bubble'}[t.kind]||t.kind;
+  const isComm=t.kind==='tp'||t.kind==='ep'||t.kind==='pp';
+  const cat=isComm?'通信':(t.kind==='bubble'?'气泡':'计算');
+  const catCls=isComm?'is-warn':(t.kind==='bubble'?'is-bad':'is-ok');
+  const desc={
+    F:'前向计算：本 PP stage 负责的层区间前向传播。',
+    B:'反向计算：本 PP stage 反向传播、求梯度。',
+    tp:'张量并行 All-Reduce：TP 组内 8 卡同步分片结果，与计算重叠执行。',
+    ep:'专家并行 All-to-All：MoE token 的 dispatch / combine 路由通信，与计算重叠执行。',
+    pp:'流水线并行 send / recv：跨 PP stage 传递激活（前向）或梯度（反向）。',
+    bubble:'流水线气泡：等待跨 stage 依赖的空闲，warmup / 稳态空泡 / drain。'
+  }[t.kind]||'';
   return `<div class="pto-swimlane-task-tooltip__title">${esc(r.group)} · Rank ${r.rank}</div>`+
-    row('op',t.opName)+row('kind',kindName)+row('start',fmtUs(t.startUs))+row('dur',fmtUs(t.durUs))+
-    row('status',t.status,t.status==='overlap'?'is-warn':t.status==='wait'?'is-bad':'is-ok');
+    row('类别',cat,catCls)+row('op',t.opName)+row('kind',kindName)+
+    row('start',fmtUs(t.startUs))+row('dur',fmtUs(t.durUs))+
+    row('status',t.status,t.status==='overlap'?'is-warn':t.status==='wait'?'is-bad':'is-ok')+
+    (desc?`<div class="pto-swimlane-task-tooltip__row" style="margin-top:6px;display:block"><span class="pto-swimlane-task-tooltip__value" style="display:block;white-space:normal;line-height:1.5">${esc(desc)}</span></div>`:'');
 }
 function buildSwimlane(){
   swimHost.innerHTML='';
@@ -1468,7 +1952,8 @@ function paintAxis(){
   ctx.fillStyle=accent(); ctx.beginPath(); ctx.moveTo(px-4,2); ctx.lineTo(px+4,2); ctx.lineTo(px,9); ctx.closePath(); ctx.fill();
 }
 function paintBody(){
-  const W=Math.max(320,swimHost.clientWidth||320), dpr=Math.min(devicePixelRatio||1,2), bodyH=RT.ranks.length*ROW_H;
+  const rowH=commSplit?ROW_H*2:ROW_H;  // 双轨模式：行高翻倍，上半计算 / 下半通信
+  const W=Math.max(320,swimHost.clientWidth||320), dpr=Math.min(devicePixelRatio||1,2), bodyH=RT.ranks.length*rowH;
   bodyCanvas.style.height=bodyH+'px';
   bodyCanvas.width=Math.round(W*dpr); bodyCanvas.height=Math.round(bodyH*dpr);
   const ctx=bodyCanvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,bodyH);
@@ -1481,14 +1966,19 @@ function paintBody(){
   const T=RT.timeRangeUs[1], plotW=W-GUT-8, xOf=us=>GUT+plotW*(us/T), tCur=(traceIndex/lastTick)*T;
   const focus=NODE_DEFS[focusNode];
   RT.ranks.forEach((r,ri)=>{
-    const top=ri*ROW_H, related=focus&&focus.dp===r.dp&&focus.stage===r.stage, band=(r.dp*RT.config.pp+r.stage);
+    const top=ri*rowH, related=focus&&focus.dp===r.dp&&focus.stage===r.stage, band=(r.dp*RT.config.pp+r.stage);
     const bg=related?bandRel():(band%2?bandA():null);
-    if(bg){ctx.fillStyle=bg; ctx.fillRect(0,top,W,ROW_H);}
+    if(bg){ctx.fillStyle=bg; ctx.fillRect(0,top,W,rowH);}
     if(r.tp===0&&ri>0){ctx.strokeStyle=sepLine(); ctx.beginPath(); ctx.moveTo(0,top+0.5); ctx.lineTo(W,top+0.5); ctx.stroke();}
+    if(commSplit){ctx.save(); ctx.strokeStyle=sepLine(); ctx.globalAlpha=0.55; ctx.setLineDash([3,3]);  // 双轨：计算/通信分隔线
+      ctx.beginPath(); ctx.moveTo(GUT,top+rowH/2+0.5); ctx.lineTo(W,top+rowH/2+0.5); ctx.stroke(); ctx.restore();}
     ctx.font='600 10px JetBrains Mono, monospace'; ctx.textBaseline='middle';
-    ctx.textAlign='left'; ctx.fillStyle=r.tp===0?txtMain():txtMuted(); ctx.fillText(`R${r.rank}`,8,top+ROW_H/2);
+    ctx.textAlign='left'; ctx.fillStyle=r.tp===0?txtMain():txtMuted(); ctx.fillText(`R${r.rank}`,8,top+(commSplit?rowH/4:rowH/2));
     if(r.tp===0){ctx.font='600 9px JetBrains Mono, monospace'; ctx.textAlign='right'; ctx.fillStyle=txtMuted();
-      ctx.fillText(`D${r.dp}·PP${r.stage}`,GUT-8,top+ROW_H/2);}
+      ctx.fillText(`D${r.dp}·PP${r.stage}`,GUT-8,top+(commSplit?rowH/4:rowH/2));}
+    if(commSplit){ctx.font='600 9px JetBrains Mono, monospace'; ctx.textBaseline='middle';  // 双轨：上半标计算、下半标通信
+      ctx.textAlign='left'; ctx.fillStyle=txtMuted(); ctx.fillText('计算',38,top+rowH/4);
+      ctx.fillStyle=txtMain(); ctx.fillText('通信',8,top+rowH*3/4);}
     r.tasks.forEach(t=>{
       const x=xOf(t.startUs), compute=t.kind==='F'||t.kind==='B', w=Math.max(compute?2:4,xOf(t.startUs+t.durUs)-x);
       if(t.kind==='bubble'){
@@ -1506,8 +1996,13 @@ function paintBody(){
         SW.drawTaskBar(ctx,{x,y,width:w,height:h,baseColor:toHex(taskColor(t)),
           task:{label:t.label,opName:t.opName},isSelected:sel,isRelated:related,fontFamily:'JetBrains Mono, monospace'});
         hitRects.push({x,y,w:Math.max(w,3),h,task:t,r});
+      }else if(commSplit){  // 通信（TP All-Reduce / EP All-to-All / PP send-recv）：双轨模式下用与计算同款的 bar，画在行下半区
+        const y=top+rowH/2+3, h=13, sel=tCur>=t.startUs&&tCur<=t.startUs+t.durUs, cw=Math.max(w,3);
+        SW.drawTaskBar(ctx,{x,y,width:cw,height:h,baseColor:toHex(taskColor(t)),
+          task:{label:t.label,opName:t.opName},isSelected:sel,isRelated:related,fontFamily:'JetBrains Mono, monospace'});
+        hitRects.push({x,y,w:cw,h,task:t,r});
       }else{
-        const y=top+ROW_H-6, h=4; ctx.fillStyle=toHex(taskColor(t));  // 通信子轨：底部一条
+        const y=top+rowH-6, h=4; ctx.fillStyle=toHex(taskColor(t));  // 通信子轨：底部一条细线（弱化模式）
         if(ctx.roundRect){ctx.beginPath(); ctx.roundRect(x,y,w,h,2); ctx.fill();}else ctx.fillRect(x,y,w,h);
         hitRects.push({x,y:y-3,w:Math.max(w,4),h:h+5,task:t,r});
       }
@@ -1518,6 +2013,13 @@ function paintBody(){
   ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,bodyH); ctx.stroke(); ctx.globalAlpha=1;
 }
 function paintSwimlane(){ if(!swimBuilt)buildSwimlane(); paintAxis(); paintBody(); }
+const commToggleBtn=document.getElementById('commModeToggle');
+commToggleBtn?.addEventListener('click',()=>{
+  commSplit=!commSplit;
+  commToggleBtn.classList.toggle('is-active',commSplit);
+  commToggleBtn.setAttribute('aria-pressed',String(commSplit));
+  SW.hideTooltip(swimTip); paintSwimlane();
+});
 function renderSwimlane(){paintSwimlane();}
 
 /* ===== IDE frame + 浮动播放控制（floating-playback-control） ===== */
@@ -1607,7 +2109,25 @@ function setMouse(e){const r=renderer.domElement.getBoundingClientRect();
 function pick(e){setMouse(e);const hit=ray.intersectObjects(boardMeshes,false)[0];
   if(hit){focusNode=hit.object.userData.node;redraw();}}
 function esc(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
-let hoverArch=null, hoverNeighbors=[], hoverStage=null;
+function distPointToSegment(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,len2=dx*dx+dy*dy;
+  if(len2<=0)return Math.hypot(px-ax,py-ay);
+  const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/len2));
+  return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+}
+function projectToClient(v){
+  const r=renderer.domElement.getBoundingClientRect();
+  const p=v.clone().project(camera);
+  return {x:r.left+(p.x+1)*0.5*r.width,y:r.top+(1-p.y)*0.5*r.height};
+}
+function hiddenRailHoverInfo(e){
+  if(activeView!=='right'||!hiddenRailTip?.points?.length)return null;
+  const pts=hiddenRailTip.points.map(projectToClient);
+  for(let i=0;i<pts.length-1;i++){
+    if(distPointToSegment(e.clientX,e.clientY,pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y)<18)return hiddenRailTip;
+  }
+  return null;
+}
 function neighborMeshesOf(id,layer){
   const out=new Set();
   (G.edges||[]).forEach(e=>{
@@ -1650,10 +2170,11 @@ function layerName(layer){
 }
 function archObjectExplain(d){
   if(d.layer==='input')return '架构对象:模型入口与 Embedding,不随 decode layer 复制。';
-  if(d.layer==='output')return '架构对象:模型出口 Final RMSNorm / LM Head / MTP Head,只在 L60 之后执行一次。';
+  if(d.layer==='output')return '架构对象:模型出口 Final RMSNorm / LM Head / 条件 Logits All-Gather,只在 L60 之后执行一次。';
   if(d.id==='expert_pool')return `架构对象:${layerName(d.layer)} 的单个 Expert Pool block;它表示这一层内的 256 routed experts,不是 32 个层,也不是 32 个格子。`;
   if(d.id==='dense_layer_shell')return `架构对象:${layerName(d.layer)} 的 Dense layer 容器;它与 MoE layer 是同一层级,只是内部没有 Router、All-to-All 或 Expert Pool。`;
   if(d.id==='dense_block')return `架构对象:${layerName(d.layer)};前 3 层是 Dense decoder,没有 Router、All-to-All、Expert Pool、Shared Expert。`;
+  if(d.id==='moe_residual')return `架构对象:${layerName(d.layer)} 的 Post-MLP RMSNorm;源码使用 fused npu_add_rms_norm 处理 residual add + RMSNorm,主图不单独画 Add 节点。`;
   return `架构对象:${layerName(d.layer)} 里的 ${d.label};播放高亮表示当前硬件 stage 正在执行这个算子步骤。`;
 }
 function boardObjectExplain(d){
@@ -1675,6 +2196,23 @@ function onHover(e){
     tip.querySelector('.t-body').innerHTML=
       `<div class="t-explain">${esc(boardObjectExplain(d))}</div>`+
       (d.role?`<div class="t-task">▸ ${esc(d.role)}</div>`:`<div class="t-idle">▸ 空闲</div>`);
+    return;
+  }
+  const railTip=hiddenRailHoverInfo(e);
+  if(railTip){
+    setHoverArch(null);
+    tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';
+    tip.querySelector('.t-id').textContent=railTip.title;
+    tip.querySelector('.t-body').innerHTML=`<div class="t-explain">${esc(railTip.body)}</div>`;
+    return;
+  }
+  const hs=ray.intersectObjects(staticFocusPickables.filter(o=>o.visible),false)[0];
+  if(hs){
+    setHoverArch(null);
+    const d=hs.object.userData;
+    tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';
+    tip.querySelector('.t-id').textContent=d.title||'Hidden state';
+    tip.querySelector('.t-body').innerHTML=`<div class="t-explain">${esc(d.body||'Hidden state dataflow object.')}</div>`;
     return;
   }
   const hp=ray.intersectObjects(archPickables,false)[0];
