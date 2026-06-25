@@ -110,6 +110,20 @@
   .lib-tab{font-size:var(--font-size-body-sm);font-weight:var(--font-weight-semibold);padding:3px var(--space-3);border:none;border-radius:var(--radius-pill);background:transparent;color:var(--foreground-muted);cursor:pointer;transition:color var(--duration-base),background var(--duration-base)}
   .lib-tab:hover{color:var(--foreground)}
   .lib-tab.on{background:var(--primary);color:#fff}
+  /* ── Pangu 视图：只读锁定 + 隐藏训练态显存条 ── */
+  /* 滑块禁用但仍可点击行(pointer-events:none 让点击穿透到行 → 定位右侧代码) */
+  .pangu-view #ctrl input{cursor:not-allowed;pointer-events:none}
+  .pangu-view #ctrl .row,.pangu-view #ctrl .slabel{cursor:pointer}
+  .pangu-view .card-grid{pointer-events:none;opacity:.7}
+  .pangu-view .wdiag-mem{display:none}
+  /* TP=32 → 横向 32 卡:固定卡宽 + 横向滚动(贴图/流动不变) */
+  .pangu-view .wdiag-tp-row{overflow-x:auto;padding-bottom:6px}
+  .pangu-view .wdiag-card{flex:0 0 auto;min-width:118px}
+  /* 绿框右上角:展开/收起其余 TP 列的按钮 */
+  .pangu-col-btn{align-self:flex-end;margin-bottom:5px;font-size:var(--font-size-label-xs);font-weight:600;color:var(--success);background:rgba(4,215,147,.08);border:1px solid var(--success);border-radius:var(--radius-pill);padding:2px 10px;cursor:pointer;transition:background var(--duration-base)}
+  .pangu-col-btn:hover{background:rgba(4,215,147,.18)}
+  /* 折叠态的「其余 N 卡」占位 */
+  .wdiag-tp-more{flex:0 0 auto;align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-width:54px;color:var(--foreground-muted);font-size:var(--font-size-label-xs);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:6px 4px}
   input[type=range]{width:100%;accent-color:var(--primary)}
   .slabel{display:flex;justify-content:space-between;font-size:var(--font-size-body-sm);color:var(--foreground-secondary);margin-top:var(--space-2)}
   .slabel b{color:var(--foreground)}
@@ -157,6 +171,10 @@
   .wdiag-lb-moe{border-color:rgba(255,75,123,.55);color:rgba(255,75,123,.9)}
   .wdiag-lb-norm{border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.5)}
   .wdiag-lb-head{border-color:rgba(155,123,255,.6);color:rgba(155,123,255,.9)}
+  /* Pangu 卡内层分组标题(灰字 + 折叠箭头) */
+  .wdiag-group-head{display:flex;align-items:center;gap:4px;font-size:var(--font-size-label-xs);color:var(--foreground-muted);opacity:.7;margin:4px 0 1px;cursor:pointer;user-select:none;line-height:1.3;white-space:nowrap}
+  .wdiag-group-head:hover{opacity:1}
+  .wdiag-group-caret{font-size:9px;width:9px;display:inline-block;text-align:center;flex-shrink:0}
   /* DATA-VIZ: CNN layer type color encoding (stem/res/pool/fc) */
   .wdiag-lb-stem{border-color:rgba(232,201,90,.6);color:rgba(232,201,90,.9)}
   .wdiag-lb-res{border-color:rgba(67,105,239,.55);color:rgba(67,105,239,.9)}
@@ -261,6 +279,12 @@
   .card-tile.selected .card-tile-model{color:var(--primary)}
   .card-tile-mem{font-size:10px;color:var(--foreground-muted);background:var(--surface-3);border-radius:var(--radius-sm);padding:1px 5px;line-height:1.4}
   .card-tile.selected .card-tile-mem{color:var(--primary);background:rgba(67,105,239,.15)}
+  .card-env{margin-top:var(--space-2);background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:10px var(--space-2)}
+  .card-env-title{font-size:10px;font-weight:var(--font-weight-semibold);color:var(--foreground-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+  .card-env-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+  .card-env-list li{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:var(--font-size-body-sm);line-height:1.5}
+  .card-env-list li span{color:var(--foreground-muted)}
+  .card-env-list li b{color:var(--foreground);font-weight:var(--font-weight-semibold);font-family:var(--font-mono,monospace);text-align:right}
 
   /* ── Scrollbars: hover-reveal, no layout shift ── */
   .col, .col-code, .col-mid>.worldbox {
@@ -420,6 +444,7 @@
   <h1>🧩 并行训练可视化 Demo</h1>
   <div class="lib-tabs" id="libTabs">
     <button class="lib-tab on" data-lib="picotron">Transformer</button>
+    <button class="lib-tab" data-lib="pangu">Pangu 718B MoE</button>
     <button class="lib-tab" data-lib="pytorch-cifar">CNN</button>
   </div>
   <span class="sub" id="headerSub">基于 huggingface/picotron 真实逻辑</span>
@@ -477,56 +502,47 @@
     <div class="group">
       <div class="gh">训练卡</div>
       <div class="card-grid" id="cardGrid">
-        <div class="card-tile selected" data-gb="80" data-name="NVIDIA H100 80GB">
+        <div class="card-tile selected" data-gb="64" data-name="Ascend Atlas 800T A2 64GB">
           <img src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIzMi4wMDAwMDAiIGhlaWdodD0iMzIuMDAwMDAwIiBmaWxsPSJub25lIj4KCTxyZWN0IGlkPSJOUFUtMzIiIHdpZHRoPSIzMi4wMDAwMDAiIGhlaWdodD0iMzIuMDAwMDAwIiB4PSIwLjAwMDAwMCIgeT0iMC4wMDAwMDAiIC8+Cgk8cGF0aCBpZD0i5ZCI5bm2IiBkPSJNMjcuMTEwNSAxTDI5IDFMMjkgNi4xMDM0NEwyNy4xMTA1IDYuMTAzNDRMMjcuMTEwNSAyOUw2LjAzNDg4IDI5TDYuMDM0ODggMTkuNjIwN0w0LjQzNjA0IDE5LjYyMDdMNC40MzYwNCA5TDYuMDM0ODggOUw2LjAzNDg4IDYuMTAzNDRMNCA2LjEwMzQ0TDQgMy42MjA3TDI3LjExMDUgMy42MjA3TDI3LjExMDUgMVpNMjUuNjEwNSA1LjEyMDdMNy41MzQ4OCA1LjEyMDdMNy41MzQ4OCAxMC41TDUuOTM2MDQgMTAuNUw1LjkzNjA0IDE4LjEyMDdMNy41MzQ4OCAxOC4xMjA3TDcuNTM0ODggMjcuNUwyNS42MTA1IDI3LjVMMjUuNjEwNSA1LjEyMDdaIiBmaWxsPSJyZ2IoMjU1LDI1NSwyNTUpIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIC8+Cjwvc3ZnPgo=" width="32" height="32" alt="" class="card-tile-icon">
-          <span class="card-tile-brand">NVIDIA</span>
-          <span class="card-tile-model">H100</span>
-          <span class="card-tile-mem">80 GB</span>
-        </div>
-        <div class="card-tile" data-gb="80" data-name="NVIDIA A100 80GB">
-          <img src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIzMi4wMDAwMDAiIGhlaWdodD0iMzIuMDAwMDAwIiBmaWxsPSJub25lIj4KCTxyZWN0IGlkPSJOUFUtMzIiIHdpZHRoPSIzMi4wMDAwMDAiIGhlaWdodD0iMzIuMDAwMDAwIiB4PSIwLjAwMDAwMCIgeT0iMC4wMDAwMDAiIC8+Cgk8cGF0aCBpZD0i5ZCI5bm2IiBkPSJNMjcuMTEwNSAxTDI5IDFMMjkgNi4xMDM0NEwyNy4xMTA1IDYuMTAzNDRMMjcuMTEwNSAyOUw2LjAzNDg4IDI5TDYuMDM0ODggMTkuNjIwN0w0LjQzNjA0IDE5LjYyMDdMNC40MzYwNCA5TDYuMDM0ODggOUw2LjAzNDg4IDYuMTAzNDRMNCA2LjEwMzQ0TDQgMy42MjA3TDI3LjExMDUgMy42MjA3TDI3LjExMDUgMVpNMjUuNjEwNSA1LjEyMDdMNy41MzQ4OCA1LjEyMDdMNy41MzQ4OCAxMC41TDUuOTM2MDQgMTAuNUw1LjkzNjA0IDE4LjEyMDdMNy41MzQ4OCAxOC4xMjA3TDcuNTM0ODggMjcuNUwyNS42MTA1IDI3LjVMMjUuNjEwNSA1LjEyMDdaIiBmaWxsPSJyZ2IoMjU1LDI1NSwyNTUpIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIC8+Cjwvc3ZnPgo=" width="32" height="32" alt="" class="card-tile-icon">
-          <span class="card-tile-brand">NVIDIA</span>
-          <span class="card-tile-model">A100</span>
-          <span class="card-tile-mem">80 GB</span>
-        </div>
-        <div class="card-tile" data-gb="40" data-name="NVIDIA A100 40GB">
-          <img src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIzMi4wMDAwMDAiIGhlaWdodD0iMzIuMDAwMDAwIiBmaWxsPSJub25lIj4KCTxyZWN0IGlkPSJOUFUtMzIiIHdpZHRoPSIzMi4wMDAwMDAiIGhlaWdodD0iMzIuMDAwMDAwIiB4PSIwLjAwMDAwMCIgeT0iMC4wMDAwMDAiIC8+Cgk8cGF0aCBpZD0i5ZCI5bm2IiBkPSJNMjcuMTEwNSAxTDI5IDFMMjkgNi4xMDM0NEwyNy4xMTA1IDYuMTAzNDRMMjcuMTEwNSAyOUw2LjAzNDg4IDI5TDYuMDM0ODggMTkuNjIwN0w0LjQzNjA0IDE5LjYyMDdMNC40MzYwNCA5TDYuMDM0ODggOUw2LjAzNDg4IDYuMTAzNDRMNCA2LjEwMzQ0TDQgMy42MjA3TDI3LjExMDUgMy42MjA3TDI3LjExMDUgMVpNMjUuNjEwNSA1LjEyMDdMNy41MzQ4OCA1LjEyMDdMNy41MzQ4OCAxMC41TDUuOTM2MDQgMTAuNUw1LjkzNjA0IDE4LjEyMDdMNy41MzQ4OCAxOC4xMjA3TDcuNTM0ODggMjcuNUwyNS42MTA1IDI3LjVMMjUuNjEwNSA1LjEyMDdaIiBmaWxsPSJyZ2IoMjU1LDI1NSwyNTUpIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIC8+Cjwvc3ZnPgo=" width="32" height="32" alt="" class="card-tile-icon">
-          <span class="card-tile-brand">NVIDIA</span>
-          <span class="card-tile-model">A100</span>
-          <span class="card-tile-mem">40 GB</span>
-        </div>
-        <div class="card-tile" data-gb="64" data-name="Ascend 910B 64GB">
-          <img src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIzMi4wMDAwMDAiIGhlaWdodD0iMzIuMDAwMDAwIiBmaWxsPSJub25lIj4KCTxyZWN0IGlkPSJOUFUtMzIiIHdpZHRoPSIzMi4wMDAwMDAiIGhlaWdodD0iMzIuMDAwMDAwIiB4PSIwLjAwMDAwMCIgeT0iMC4wMDAwMDAiIC8+Cgk8cGF0aCBpZD0i5ZCI5bm2IiBkPSJNMjcuMTEwNSAxTDI5IDFMMjkgNi4xMDM0NEwyNy4xMTA1IDYuMTAzNDRMMjcuMTEwNSAyOUw2LjAzNDg4IDI5TDYuMDM0ODggMTkuNjIwN0w0LjQzNjA0IDE5LjYyMDdMNC40MzYwNCA5TDYuMDM0ODggOUw2LjAzNDg4IDYuMTAzNDRMNCA2LjEwMzQ0TDQgMy42MjA3TDI3LjExMDUgMy42MjA3TDI3LjExMDUgMVpNMjUuNjEwNSA1LjEyMDdMNy41MzQ4OCA1LjEyMDdMNy41MzQ4OCAxMC41TDUuOTM2MDQgMTAuNUw1LjkzNjA0IDE4LjEyMDdMNy41MzQ4OCAxOC4xMjA3TDcuNTM0ODggMjcuNUwyNS42MTA1IDI3LjVMMjUuNjEwNSA1LjEyMDdaIiBmaWxsPSJyZ2IoMjU1LDI1NSwyNTUpIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIC8+Cjwvc3ZnPgo=" width="32" height="32" alt="" class="card-tile-icon">
-          <span class="card-tile-brand">Ascend</span>
-          <span class="card-tile-model">910B</span>
+          <span class="card-tile-brand">Ascend 昇腾</span>
+          <span class="card-tile-model">Atlas 800T A2</span>
           <span class="card-tile-mem">64 GB</span>
         </div>
-        <div class="card-tile" data-gb="192" data-name="AMD MI300X 192GB">
-          <img src="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIzMi4wMDAwMDAiIGhlaWdodD0iMzIuMDAwMDAwIiBmaWxsPSJub25lIj4KCTxyZWN0IGlkPSJOUFUtMzIiIHdpZHRoPSIzMi4wMDAwMDAiIGhlaWdodD0iMzIuMDAwMDAwIiB4PSIwLjAwMDAwMCIgeT0iMC4wMDAwMDAiIC8+Cgk8cGF0aCBpZD0i5ZCI5bm2IiBkPSJNMjcuMTEwNSAxTDI5IDFMMjkgNi4xMDM0NEwyNy4xMTA1IDYuMTAzNDRMMjcuMTEwNSAyOUw2LjAzNDg4IDI5TDYuMDM0ODggMTkuNjIwN0w0LjQzNjA0IDE5LjYyMDdMNC40MzYwNCA5TDYuMDM0ODggOUw2LjAzNDg4IDYuMTAzNDRMNCA2LjEwMzQ0TDQgMy42MjA3TDI3LjExMDUgMy42MjA3TDI3LjExMDUgMVpNMjUuNjEwNSA1LjEyMDdMNy41MzQ4OCA1LjEyMDdMNy41MzQ4OCAxMC41TDUuOTM2MDQgMTAuNUw1LjkzNjA0IDE4LjEyMDdMNy41MzQ4OCAxOC4xMjA3TDcuNTM0ODggMjcuNUwyNS42MTA1IDI3LjVMMjUuNjEwNSA1LjEyMDdaIiBmaWxsPSJyZ2IoMjU1LDI1NSwyNTUpIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIC8+Cjwvc3ZnPgo=" width="32" height="32" alt="" class="card-tile-icon">
-          <span class="card-tile-brand">AMD</span>
-          <span class="card-tile-model">MI300X</span>
-          <span class="card-tile-mem">192 GB</span>
-        </div>
+      </div>
+      <div class="card-env" id="cardEnv">
+        <div class="card-env-title">配套环境（openPangu-Ultra-MoE-718B-V1.1）</div>
+        <ul class="card-env-list">
+          <li><span>硬件</span><b>Atlas 800T A2 · 64GB · ≥32 卡</b></li>
+          <li><span>CANN</span><b>8.1.RC1</b></li>
+          <li><span>OS</span><b>openEuler ≥ 24.03</b></li>
+          <li><span>Python</span><b>3.10</b></li>
+          <li><span>torch</span><b>2.1.0</b></li>
+          <li><span>torch-npu</span><b>2.1.0.post12</b></li>
+          <li><span>transformers</span><b>≥ 4.48.2</b></li>
+        </ul>
       </div>
     </div>
 
     <div class="group">
       <div class="gh">超参数</div>
-      <div class="slabel"><span>Batch Size (global)</span><b id="vBatch">32</b></div>
+      <div class="slabel"><span id="lblBatch">Batch Size (global)</span><b id="vBatch">32</b></div>
       <input type="range" id="batch" data-tab="launch" min="1" max="512" step="1" value="32">
-      <div class="slabel"><span>Steps</span><b id="vSteps">1000</b></div>
+      <div class="para-hint" id="hintBatch"></div>
+      <div class="slabel"><span id="lblSteps">Steps</span><b id="vSteps">1000</b></div>
       <input type="range" id="steps" data-tab="launch" min="100" max="10000" step="100" value="1000">
-      <div class="slabel"><span>学习率 (log)</span><b id="vLr">3.0e-4</b></div>
+      <div class="para-hint" id="hintSteps"></div>
+      <div class="slabel"><span id="lblLr">学习率 (log)</span><b id="vLr">3.0e-4</b></div>
       <input type="range" id="lr" data-tab="launch" min="0" max="100" value="62">
+      <div class="para-hint" id="hintLr"></div>
     </div>
   </div>
 
   <!-- ============ MIDDLE: VISUALIZATION ============ -->
   <div class="col col-mid">
-    <h2 style="margin:0 14px;padding:14px 0 6px;position:static;flex-shrink:0">训练拓扑及计算流动可视化</h2>
+    <h2 id="midTitle" style="margin:0 14px;padding:14px 0 6px;position:static;flex-shrink:0">训练拓扑及计算流动可视化</h2>
     <div class="worldbox">
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <span>总卡数 World Size = <b id="world">4</b></span>
+        <span id="worldHdrText">总卡数 World Size = <b id="world">4</b></span>
         <span class="pill" id="worldFormula"></span>
       </div>
       <div id="worldDiagram"></div>
@@ -575,7 +591,232 @@
 </div>
 
 <div id="wdiagTip"></div>
-<script src="cnn_model.js"></script>
+<script>
+/* ============================================================
+ * cnn_model.js —— CNN(ResNet)结构化层数据
+ * 任务 1.4(kind/配色)+ 1.5(按型号生成层数据)产出
+ *
+ * 数据源:kuangliu/pytorch-cifar/models/resnet.py(CIFAR 版,输入 3×32×32)
+ * 与 index.html 的对齐:沿用 { kind, name } 核心 schema,额外挂 meta/ops 供卡片下钻。
+ * CNN 视图下并行只用 DP + PP,无 TP/CP/MoE(故 ops 无列/行切,统一"复制 / 整段")。
+ * ============================================================ */
+
+/* ---------- 1.4 层类型(kind)与配色 ----------
+ * 块级 kind(右侧卡片每格一个):与 Transformer 的 6 色不冲突,语义对应:
+ *   stem ← 复用 emb 的黄(输入门户)   res ← 复用 attn 的蓝(主计算块)
+ *   pool ← 复用 mlp 的绿(聚合)        fc  ← 复用 head 的紫(分类输出)
+ */
+const CNN_KIND = {
+  stem: { label: 'Stem',     color: '#e8c95a' }, // conv1+bn1+relu,输入门户(黄)
+  res:  { label: 'ResBlock', color: '#4369ef' }, // 残差块,主计算单元(蓝)
+  pool: { label: 'AvgPool',  color: '#04d793' }, // 全局平均池化(绿)
+  fc:   { label: 'FC',       color: '#9b7bff' }, // 线性分类头(紫)
+};
+
+/* 块内算子(downdrill 到一个 ResBlock 内部时用) */
+const CNN_OP_COLOR = {
+  conv:     '#4369ef',             // 卷积(蓝)
+  bn:       'rgba(255,255,255,.5)',// BatchNorm(灰)
+  relu:     '#7C8DB8',             // 激活(accent)
+  shortcut: '#FFAA3B',             // 残差跳连(橙/warning,视觉上与主路区分)
+  add:      '#FFAA3B',             // 残差相加
+  pool:     '#04d793',
+  fc:       '#9b7bff',
+};
+
+/* CSS 类名约定(供 index.html 加 .wdiag-lb-*):
+ *   .wdiag-lb-stem / -res / -pool / -fc
+ * 颜色取上表;沿用既有 .wdiag-lb-norm 的灰给 bn(若需要单列)。 */
+
+/* ---------- 1.5 型号定义 ---------- */
+const CNN_VARIANTS = {
+  'ResNet-18': { block: 'basic',      num: [2, 2, 2, 2] },
+  'ResNet-34': { block: 'basic',      num: [3, 4, 6, 3] },
+  'ResNet-50': { block: 'bottleneck', num: [3, 4, 6, 3] },
+};
+const CNN_DEFAULT = 'ResNet-18';
+
+/* ---------- 1.5 块内算子生成 ---------- */
+// 一个 BasicBlock(E=1):conv3×3 → bn → relu → conv3×3 → bn → (+shortcut) → relu
+function basicOps(inC, planes, stride, proj) {
+  const ops = [
+    { op: 'conv 3×3', kind: 'conv', detail: `${inC}→${planes}, s${stride}, p1` },
+    { op: 'bn',       kind: 'bn',   detail: `${planes}` },
+    { op: 'relu',     kind: 'relu', detail: '逐元素' },
+    { op: 'conv 3×3', kind: 'conv', detail: `${planes}→${planes}, s1, p1` },
+    { op: 'bn',       kind: 'bn',   detail: `${planes}` },
+  ];
+  if (proj) ops.push(
+    { op: 'shortcut conv 1×1', kind: 'shortcut', detail: `${inC}→${planes}, s${stride}` },
+    { op: 'shortcut bn',       kind: 'shortcut', detail: `${planes}` });
+  ops.push({ op: '+ add (残差)', kind: 'add', detail: proj ? '主路 + 投影' : '主路 + 恒等' });
+  ops.push({ op: 'relu', kind: 'relu', detail: '逐元素' });
+  return ops;
+}
+
+// 一个 Bottleneck(E=4):conv1×1 → bn → relu → conv3×3 → bn → relu → conv1×1 → bn → (+shortcut) → relu
+function bottleneckOps(inC, planes, stride, proj) {
+  const outC = planes * 4;
+  const ops = [
+    { op: 'conv 1×1', kind: 'conv', detail: `${inC}→${planes}, s1` },
+    { op: 'bn',       kind: 'bn',   detail: `${planes}` },
+    { op: 'relu',     kind: 'relu', detail: '逐元素' },
+    { op: 'conv 3×3', kind: 'conv', detail: `${planes}→${planes}, s${stride}, p1` },
+    { op: 'bn',       kind: 'bn',   detail: `${planes}` },
+    { op: 'relu',     kind: 'relu', detail: '逐元素' },
+    { op: 'conv 1×1', kind: 'conv', detail: `${planes}→${outC}` },
+    { op: 'bn',       kind: 'bn',   detail: `${outC}` },
+  ];
+  if (proj) ops.push(
+    { op: 'shortcut conv 1×1', kind: 'shortcut', detail: `${inC}→${outC}, s${stride}` },
+    { op: 'shortcut bn',       kind: 'shortcut', detail: `${outC}` });
+  ops.push({ op: '+ add (残差)', kind: 'add', detail: proj ? '主路 + 投影' : '主路 + 恒等' });
+  ops.push({ op: 'relu', kind: 'relu', detail: '逐元素' });
+  return ops;
+}
+
+/* ---------- 1.5 主生成器:型号 → 层数据数组 ----------
+ * 返回数组,每项 = 一个可视化"格"(block 粒度):
+ *   { kind, name, stage, inC, outC, stride, spatial, shortcut, ops }
+ * stage: 0=stem, 1..4=layer1..4, 5=head(pool+fc)。供 1.6 的 PP 分段使用。
+ */
+function buildCnnLayers(variantName) {
+  const v = CNN_VARIANTS[variantName] || CNN_VARIANTS[CNN_DEFAULT];
+  const E = v.block === 'bottleneck' ? 4 : 1;
+  const mkOps = v.block === 'bottleneck' ? bottleneckOps : basicOps;
+  const layers = [];
+
+  // stem:conv1(3→64,3×3,s1) → bn1 → relu,输出 64×32×32
+  layers.push({
+    kind: 'stem', name: 'stem · conv1+bn1', stage: 0,
+    inC: 3, outC: 64, stride: 1, spatial: 32, shortcut: null,
+    ops: [
+      { op: 'conv 3×3', kind: 'conv', detail: '3→64, s1, p1' },
+      { op: 'bn',       kind: 'bn',   detail: '64' },
+      { op: 'relu',     kind: 'relu', detail: '逐元素' },
+    ],
+  });
+
+  // layer1..4
+  const planesList = [64, 128, 256, 512];
+  const spatialList = [32, 16, 8, 4]; // 各段输出空间尺寸(layer1 不下采样)
+  let inC = 64;
+  for (let li = 0; li < 4; li++) {
+    const planes = planesList[li];
+    const outC = planes * E;
+    const nblk = v.num[li];
+    for (let j = 0; j < nblk; j++) {
+      const stride = (j === 0 && li > 0) ? 2 : 1;          // layer1 首块 s1,其余段首块 s2
+      const proj = stride !== 1 || inC !== outC;            // 投影触发条件
+      layers.push({
+        kind: 'res', name: `layer${li + 1}.block${j}`, stage: li + 1,
+        inC, outC, stride, spatial: spatialList[li],
+        shortcut: proj ? 'proj' : 'identity',
+        ops: mkOps(inC, planes, stride, proj),
+      });
+      inC = outC;
+    }
+  }
+
+  // head:avg_pool2d(4) → flatten → linear(512·E → 10)
+  layers.push({
+    kind: 'pool', name: 'avgpool 4×4', stage: 5,
+    inC, outC: inC, stride: 1, spatial: 1, shortcut: null,
+    ops: [{ op: 'avg_pool2d(4)', kind: 'pool', detail: `${inC}×4×4 → ${inC}×1×1` }],
+  });
+  layers.push({
+    kind: 'fc', name: `linear ${inC}→10`, stage: 5,
+    inC, outC: 10, stride: 1, spatial: 1, shortcut: null,
+    ops: [{ op: 'linear', kind: 'fc', detail: `${inC} → 10 (CIFAR-10)` }],
+  });
+
+  return layers;
+}
+
+/* ---------- tooltip 文案(对齐 LAYER_DESC 风格) ---------- */
+const CNN_KIND_DESC = {
+  stem: '<b>Stem(conv1 + bn1 + relu)</b>:3×3 卷积把 3 通道输入提到 64 通道(CIFAR 版 stride1,不下采样),是网络的<b>输入门户</b>。',
+  res:  '<b>残差块(ResBlock)</b>:两/三个卷积的主路 + 一条 shortcut 跳连,输出 = relu(主路 + shortcut)。stride≠1 或通道改变时 shortcut 用 1×1 卷积投影,否则恒等直连。',
+  pool: '<b>全局平均池化(AvgPool)</b>:把 (C×4×4) 特征图在空间维平均成 (C×1×1),无可学习参数,为分类头压平特征。',
+  fc:   '<b>线性分类头(FC)</b>:把池化后的 C 维向量线性投影到 10 类(CIFAR-10)logits。',
+};
+
+/* ============================================================
+ * 1.6 并行切分规则(右侧卡片可视化的数据源)
+ *
+ * CNN 在本 demo 只用两种并行:
+ *   - DP(数据并行):整模型在每张卡【完整复制】,数据按 batch 维切分。
+ *   - PP(流水线并行):把 block 序列【按连续段】切给不同卡(沿用 picotron 逻辑)。
+ * 不用 TP/CP/MoE:卷积没有 Transformer 那种 Linear 列/行切诉求,
+ *   故每个算子的分片状态只有"复制(DP)"或"整段(PP 段内)"两种,无 all-reduce 列行切。
+ * ============================================================ */
+
+// PP 连续均分:与 index.html 的 distributeLayers 同构(前面的 rank 多拿余数)。
+// 输入层总数 N(= buildCnnLayers().length)与 pp,返回 ranges[ppRank] = [start,end)。
+function cnnDistributeLayers(N, pp) {
+  const per = [];
+  for (let i = 0; i < pp; i++) per.push(Math.floor(N / pp) + (i < N % pp ? 1 : 0));
+  const ranges = []; let start = 0;
+  for (let i = 0; i < pp; i++) { ranges.push([start, start + per[i]]); start += per[i]; }
+  return ranges;
+}
+
+// 取某个 PP rank(stage)分到的层(切片)。pp=1 时整模型在一张卡。
+function cnnStageLayers(layers, ppRank, pp) {
+  const [s, e] = cnnDistributeLayers(layers.length, pp)[ppRank];
+  return layers.slice(s, e);
+}
+
+// PP 的"天然边界"(语义切点,用于在图上画分隔/推荐切法):
+// stage 字段 0=stem,1..4=layer1..4,5=head → 共 6 段。pp≤6 时建议优先按这些边界切。
+const CNN_PP_NATURAL_STAGES = ['stem', 'layer1', 'layer2', 'layer3', 'layer4', 'head'];
+
+// DP:整模型复制 + 数据 batch 切分。返回每个 dp rank 的样本区间(与 index.html 的 wdiag-split 一致)。
+function cnnDataShards(batch, dp) {
+  const micro = Math.max(1, Math.round(batch / dp));
+  const shards = [];
+  for (let d = 0; d < dp; d++) {
+    const s = d * micro, e = Math.min(batch, s + micro) - 1;
+    shards.push({ rank: d, start: s, end: e });
+  }
+  return shards;
+}
+
+// 某算子在给定并行配置下的分片状态(CNN 版,统一"复制/整段",无列行切)。
+function cnnOpShard(op, { dp = 1, pp = 1 } = {}) {
+  // PP 下:算子整段落在持有该 block 的那张卡;DP 下:权重在每张卡复制。
+  if (dp > 1) return { shard: 'DP 复制(每卡完整权重)', cls: 'rep' };
+  if (pp > 1) return { shard: 'PP 整段(在所属 stage 卡)', cls: 'rep' };
+  return { shard: '整块', cls: 'rep' };
+}
+
+// CNN 单卡显存粗估:Σ 卷积权重(Cin×Cout×k×k)+ bn(2×Cout),按 PP 段内层求和;DP 不减显存。
+// 仅用于卡片上的近似显示,单位 GB(混合精度约 16 B/param)。
+function cnnCardMemGB(stageLayerSlice, B = 16) {
+  let params = 0;
+  for (const l of stageLayerSlice) {
+    for (const o of l.ops) {
+      if (o.kind !== 'conv' && o.kind !== 'shortcut') continue;
+      // 从 detail 里解析 "a→b" 通道,k 由 op 名 1×1/3×3 推断
+      const m = /(\d+)→(\d+)/.exec(o.detail || '');
+      if (!m) continue;
+      const cin = +m[1], cout = +m[2];
+      const k = /3×3/.test(o.op) ? 3 : 1;
+      params += cin * cout * k * k + 2 * cout; // conv 权重 + 对应 bn 的 scale/bias
+    }
+  }
+  return params * B / 1e9;
+}
+
+/* 浏览器 + Node 双导出(供 index.html <script> 直接用,或测试脚本 require) */
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    CNN_KIND, CNN_OP_COLOR, CNN_VARIANTS, CNN_DEFAULT, buildCnnLayers, CNN_KIND_DESC,
+    cnnDistributeLayers, cnnStageLayers, CNN_PP_NATURAL_STAGES, cnnDataShards, cnnOpShard, cnnCardMemGB,
+  };
+}
+
+</script>
 <script>
 const $ = id => document.getElementById(id);
 const state = {};
@@ -584,6 +825,40 @@ let currentLib = 'picotron';
 // =================== CNN helpers ===================
 // CNN(pytorch-cifar)模式:只用 DP + PP,不适用 TP/CP/MoE。层数据来自 cnn_model.js。
 function isCNN(){ return currentLib==='pytorch-cifar'; }
+// =================== Pangu helpers ===================
+// Pangu(openPangu-Ultra-MoE-718B-V1.1)模式:固定发布配置,左侧滑块只读锁定,中间复用世界图(贴图+流动)画结构,右侧显示真实文件。
+function isPangu(){ return currentLib==='pangu'; }
+const PANGU={ layers:61, dense:3, hidden:7680, routed:256, topk:8, shared:1, tp:32 };
+// Pangu 是推理发布包,非训练:超参数行复用为推理参数(对应 tp32.yaml 的 data_config / sampling_config)。
+const PANGU_INFER={ batch:1, maxNewTokens:28000, temperature:0.7 };
+let panguShowAll=false;   // Pangu 拓扑图:false=只展示 2 列,true=展开全部 32 列
+// Pangu 卡内层分组折叠:默认收起,只展示一个典型 (mla+mlp / mla+moe);展开后列出全部层
+let panguGroupCollapsed={dense:true, moe:true};
+// 复用 stageLayers 的 {kind,name} schema → 直接套用 cardLayerHTML 的格子/配色/贴图/流动。
+// 每个 decoder 层 = 1 个 attn(MLA) 子层 + 1 个 FFN 子层(前 3 层 Dense MLP，其余 MoE)。
+function panguAllLayers(){
+  const ls=[{kind:'emb',name:'Embedding · vocab 153600→7680'}];
+  for(let i=0;i<PANGU.layers;i++){
+    ls.push({kind:'attn',name:`L${i} · MLA Attention（128 头）`});
+    ls.push(i<PANGU.dense
+      ? {kind:'mlp',name:`L${i} · Dense MLP（inter 18432）`}
+      : {kind:'moe',name:`L${i} · MoE FFN（256 专家·top-8·共享1）`});
+  }
+  ls.push({kind:'norm',name:'Final RMSNorm'},{kind:'head',name:'LM Head · 7680→153600'});
+  return ls;
+}
+// 点击左侧(锁定的)表单 → 右侧定位到对应文件与关键字行。
+const PANGU_SCROLL={
+  enTP:{tab:'tp',hint:'attn_tp_size'},  tp:{tab:'tp',hint:'attn_tp_size'},  tpSlider:{tab:'tp',hint:'attn_tp_size'},
+  enMoE:{tab:'tp',hint:'moe_tp_size'},  ep:{tab:'tp',hint:'moe_tp_size'},   epSlider:{tab:'tp',hint:'moe_tp_size'},
+  enCP:{tab:'tp',hint:'embed_tp_size'}, cp:{tab:'tp',hint:'embed_tp_size'},  cpSlider:{tab:'tp',hint:'embed_tp_size'},
+  enDP:{tab:'tp',hint:'parallel_config'}, dp:{tab:'tp',hint:'parallel_config'}, dpSlider:{tab:'tp',hint:'parallel_config'},
+  enPP:{tab:'tp',hint:'parallel_config'}, pp:{tab:'tp',hint:'parallel_config'}, ppSlider:{tab:'tp',hint:'parallel_config'},
+  blocks:{tab:'cfg',hint:'"num_hidden_layers"'},
+  hidden:{tab:'cfg',hint:'"hidden_size"'},
+  experts:{tab:'cfg',hint:'"num_routed_experts"'},
+  batch:{tab:'tp',hint:'batch_size'}, steps:{tab:'tp',hint:'max_new_tokens'}, lr:{tab:'tp',hint:'temperature'},
+};
 function cnnVariant(){ const el=document.querySelector('input[name="cnnVariant"]:checked'); return el && el.value ? el.value : (typeof CNN_DEFAULT!=='undefined'?CNN_DEFAULT:'ResNet-18'); }
 function cnnAllLayers(){ return buildCnnLayers(cnnVariant()); }
 
@@ -605,6 +880,13 @@ function readState(){
     state.cnnVariant=cnnVariant();
     state.blocks=cnnAllLayers().length;
   }
+  // Pangu:固定发布配置 — 复用 Transformer 卡片渲染(贴图+流动)。
+  //        真实推理并行=张量并行 TP=32(attn/moe/embed_tp),故横向铺 32 张卡;无 DP/PP/CP。
+  if(isPangu()){
+    state.enDP=false; state.enPP=false; state.enCP=false; state.enTP=true; state.enMoE=true;
+    state.dp=1; state.pp=1; state.cp=1; state.tp=PANGU.tp; state.ep=1;
+    state.blocks=PANGU.layers; state.hidden=PANGU.hidden; state.experts=PANGU.routed;
+  }
   state.world=state.dp*state.pp*state.cp*state.tp;
 }
 
@@ -612,7 +894,7 @@ function readState(){
 // grid = arange(world).view(dp, pp, cp, tp) -> rank = ((d*pp+p)*cp+c)*tp+t
 function cardShortName(){
   // Extract model identifier: "NVIDIA H100 80GB" -> "H100", "Ascend 910B 64GB" -> "910B", "AMD MI300X 192GB" -> "MI300X"
-  const m=state.cardType.match(/H\d+X?|A\d+|910B|MI\d+X/i);
+  const m=state.cardType.match(/Atlas\s?800T|H\d+X?|A\d+|910B|MI\d+X/i);
   return m?m[0]:'GPU';
 }
 function rankOf(d,p,c,t){ return ((d*state.pp+p)*state.cp+c)*state.tp+t; }
@@ -625,6 +907,29 @@ const TENSOR_ICON=`<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" w
 
 function cardLayerHTML(p, t){
   const layers=stageLayers(p), tp=state.tp;
+  // Pangu:复用格子/贴图/流动。TP=32 → 每张卡持有各层的 1/32 分片(注意力按头、FFN/MoE 按中间维、emb/head 按词表)。
+  if(isPangu()){
+    const box=l=>{
+      const shard=(tp>1 && l.kind!=='norm')?` <span style="opacity:.6">(第${t+1}/${tp}片)</span>`:'';
+      return `<div class="wdiag-layer-box wdiag-lb-${l.kind}" data-kind="${l.kind}" data-bi="" data-p="${p}" data-t="${t}">${TENSOR_ICON}${l.name}${shard}</div>`;
+    };
+    const head=(g,text,n)=>{
+      const c=panguGroupCollapsed[g];
+      return `<div class="wdiag-group-head" data-group="${g}" title="点击${c?'展开':'折叠'}本组全部 ${n} 层"><span class="wdiag-group-caret">${c?'▸':'▾'}</span>${text}</div>`;
+    };
+    // 结构: [emb, (attn+mlp)×3 Dense, (attn+moe)×58 MoE, norm, head]
+    const emb=layers[0], tail=layers.slice(layers.length-2);
+    const dense=layers.slice(1, 1+PANGU.dense*2);
+    const moe=layers.slice(1+PANGU.dense*2, layers.length-2);
+    const moeN=PANGU.layers-PANGU.dense;
+    let out=box(emb);
+    out+=head('dense',`Dense × ${PANGU.dense}`,PANGU.dense);
+    out+=panguGroupCollapsed.dense ? box(dense[0])+box(dense[1]) : dense.map(box).join('');
+    out+=head('moe',`MoE × ${moeN}`,moeN);
+    out+=panguGroupCollapsed.moe ? box(moe[0])+box(moe[1]) : moe.map(box).join('');
+    out+=tail.map(box).join('');
+    return out;
+  }
   // CNN:每个 block 一格,无 TP 列/行切,直接显示层名 + kind 配色。
   if(isCNN()){
     return layers.map(l=>
@@ -680,7 +985,7 @@ function renderWorldDiagram(){
   {
     const micro=Math.max(1,Math.round(state.batch/dp));
     h+=`<div class="wdiag-split-top">`;
-    h+=`<div class="wdiag-batch-full">one step batch · ${state.batch} 训练样本</div>`;
+    h+=`<div class="wdiag-batch-full">${isPangu()?'输入 prompt · 一次前向（推理）':'one step batch · '+state.batch+' 训练样本'}</div>`;
     if(dp>1){
       h+=`<div class="wdiag-split-pieces">`;
       for(let d=0;d<dp;d++){const s=d*micro,e=Math.min(state.batch,s+micro)-1;h+=`<div class="wdiag-split-piece" id="wSplitPiece${d}">shard ${d}<br>${s}~${e}</div>`;}
@@ -694,19 +999,25 @@ function renderWorldDiagram(){
     h+=`<div class="wdiag-stage-row" data-p="${p}">`;
     // dp replicas for this stage
     h+='<div class="wdiag-dp-row">';
+    // Pangu:默认只展示 2 列 TP 卡,绿框右上角按钮可展开/收起其余列
+    const tpCollapsed=isPangu()&&!panguShowAll&&tp>2;
+    const tpN=tpCollapsed?2:tp;
     for(let d=0;d<dp;d++){
       h+=`<div class="wdiag-dp${p===0?' wdiag-dp-top':''}" id="wDpBox${d}_${p}">`;
+      if(isPangu()&&p===0&&d===0&&tp>2)
+        h+=`<button class="pangu-col-btn" id="panguColBtn">${panguShowAll?'收起':'展示剩下 '+(tp-2)+' 列'}</button>`;
       if(dp>1) h+=`<div class="wdiag-dp-label">DP ${d}</div>`;
       if(pp>1) h+=`<div class="wdiag-stage-label"><span class="wdiag-stage-icon"></span>Stage ${p}</div>`;
       for(let c=0;c<cp;c++){
         if(cp>1) h+=`<div class="wdiag-cp"><div class="wdiag-cp-label">CP ${c}</div>`;
         if(state.enMoE && state.ep>1 && dp*pp*cp>1) h+=`<div class="wdiag-ep-label">EP组${p*dp*cp+d*cp+c}</div>`;
         h+=`<div class="wdiag-tp-row">`;
-        for(let t=0;t<tp;t++){
+        for(let t=0;t<tpN;t++){
           if(t>0) h+=`<span class="wdiag-tp-arr">↔</span>`;
           const _r=rankOf(d,p,c,t),_gb=cardMemGB(p,t),_pct=Math.min(100,_gb/state.cardGB*100),_mc=_pct>100?'over':_pct>80?'warn':'';
           h+=`<div class="wdiag-card-outer"><div class="wdiag-g-label" title="rank ${_r}">${cardShortName()}_${_r}</div><div class="wdiag-card" data-d="${d}" data-p="${p}">${cardLayerHTML(p,t)}</div><div class="wdiag-mem mem-wrap" data-p="${p}" data-t="${t}">显存 ≈ <b>${_gb.toFixed(1)}</b> / ${state.cardGB} GB<div class="membar"><i class="${_mc}" style="width:${Math.min(100,_pct)}%"></i></div></div></div>`;
         }
+        if(tpCollapsed) h+=`<span class="wdiag-tp-arr">↔</span><div class="wdiag-tp-more">⋯<br>其余<br>${tp-2} 卡</div>`;
         h+=`</div>`;
         if(cp>1) h+=`</div>`;
       }
@@ -718,11 +1029,17 @@ function renderWorldDiagram(){
   h+=`</div>`; // wdiag-stages
 
   h+=`<div id="wLogitsArrow" class="wdiag-logits-arr">↓</div>`;
-  h+=`<div id="wLogitsCard" class="wdiag-logits-card">生成 logits 原始得分，计算 loss</div>`;
+  h+=`<div id="wLogitsCard" class="wdiag-logits-card">${isPangu()?'生成 logits → 采样下一个 token':'生成 logits 原始得分，计算 loss'}</div>`;
 
   h+=`<svg id="wSplitSvg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible"></svg>`;
   h+=`</div>`;
   el.innerHTML=h;
+  const colBtn=$('panguColBtn');
+  if(colBtn) colBtn.onclick=()=>{ panguShowAll=!panguShowAll; renderWorldDiagram(); };
+  el.querySelectorAll('.wdiag-group-head').forEach(gh=>{ gh.onclick=e=>{
+    e.stopPropagation();
+    const g=gh.dataset.group; panguGroupCollapsed[g]=!panguGroupCollapsed[g]; renderWorldDiagram();
+  };});
   setTimeout(initSplitArrows,30);
   setTimeout(applyNpuBg,30);
   bindWdiagTooltips();
@@ -731,13 +1048,15 @@ function renderWorldDiagram(){
 // picotron distribute_layers: 连续块均分，前面的 rank 多拿余数
 function distributeLayers(){
   const pp=state.pp;
-  const N=isCNN()?cnnAllLayers().length:state.blocks;
+  const N=isCNN()?cnnAllLayers().length:isPangu()?panguAllLayers().length:state.blocks;
   const per=[]; for(let i=0;i<pp;i++) per.push(Math.floor(N/pp)+(i<N%pp?1:0));
   const ranges=[]; let start=0;
   for(let i=0;i<pp;i++){ranges.push([start,start+per[i]]); start+=per[i];}
   return ranges; // ranges[pp_rank] = [startLayer, endLayer)
 }
 function stageLayers(p){
+  // Pangu:固定结构,单 stage(pp=1)返回完整层栈。
+  if(isPangu()) return panguAllLayers();
   // CNN:层数据来自 cnn_model.js（块级 {kind,name,ops}），按 PP 连续切段。
   if(isCNN()) return cnnStageLayers(cnnAllLayers(), p, state.pp);
   const [s,e]=distributeLayers()[p]; const layers=[];
@@ -1231,8 +1550,151 @@ output = model(input)`,
     } },
 };
 
+// =================== Pangu 真实文件（openPangu-Ultra-MoE-718B-V1.1） ===================
+const PANGU_SOURCES={
+  cfg:{ label:'config.json（超参）', file:'config.json',
+    code:
+`{
+  "architectures": ["PanguUltraMoEForCausalLM"],
+  "model_type": "pangu_ultra_moe",
+  "num_hidden_layers": 61,
+  "num_dense_layers": 3,
+  "hidden_size": 7680,
+  "intermediate_size": 18432,
+  "moe_intermediate_size": 2048,
+  "num_routed_experts": 256,
+  "num_shared_experts": 1,
+  "num_experts_per_tok": 8,
+  "routed_scaling_factor": 2.5,
+  "num_attention_heads": 128,
+  "num_key_value_heads": 128,
+  "attention_q_lora_dim": 1536,
+  "attention_kv_lora_dim": 512,
+  "attention_qk_dim": 128,
+  "attention_qk_rope_dim": 64,
+  "attention_v_dim": 128,
+  "num_mtp_layers": 1,
+  "sandwich_norm": true,
+  "hidden_act": "silu",
+  "rms_norm_eps": 1e-05,
+  "rope_theta": 25600000,
+  "max_position_embeddings": 131072,
+  "vocab_size": 153600,
+  "tie_word_embeddings": false,
+  "torch_dtype": "bfloat16"
+}`,
+    hl:()=>['"num_hidden_layers"','"num_routed_experts"','"hidden_size"'] },
+  model:{ label:'inference/model.py（模型正本）', file:'inference/model.py',
+    code:
+`class PanguUltraMoEDecoderLayer(nn.Module):
+    def __init__(self, config, runner_config, layer_idx):
+        super().__init__()
+        self.self_attn = PanguUltraMoEAttention(config, runner_config, layer_idx)
+        # 前 num_dense_layers(=3) 层用 Dense MLP，其余 58 层用 MoE
+        self.mlp = (
+            PanguUltraMoE(config, runner_config)
+            if layer_idx >= config.num_dense_layers
+            else MLP(config, runner_config)
+        )
+        self.input_layernorm          = PanguUltraMoERMSNorm(config.hidden_size)
+        self.post_attention_layernorm = PanguUltraMoERMSNorm(config.hidden_size)
+        if getattr(config, "sandwich_norm", False):     # 三明治归一化
+            self.sandwich_norm     = True
+            self.pre_mlp_layernorm  = PanguUltraMoERMSNorm(config.hidden_size)
+            self.post_mlp_layernorm = PanguUltraMoERMSNorm(config.hidden_size)
+
+    def forward(self, hidden_states, ..., past_residual=None):
+        hidden_states, residual = self.input_layernorm(hidden_states, past_residual)
+        hidden_states = self.self_attn(hidden_states=hidden_states, ...)   # MLA
+        if self.sandwich_norm:
+            hidden_states = self.post_attention_layernorm(hidden_states)
+            hidden_states, residual = self.pre_mlp_layernorm(hidden_states, residual)
+        hidden_states = self.mlp(hidden_states)          # Dense MLP 或 MoE FFN
+        if self.sandwich_norm:
+            hidden_states = self.post_mlp_layernorm(hidden_states)
+        return (residual, hidden_states)
+
+
+class PanguUltraMoEAttention(nn.Module):     # MLA：低秩压缩 + 解耦 RoPE
+    def __init__(self, config, runner_config, layer_idx):
+        self.attn_tp_size  = runner_config["parallel_config"].get("attn_tp_size", 1)
+        self.num_heads_per_rank = self.num_heads // self.attn_tp_size   # 128 / 32
+        self.q_a_proj  = Linear(hidden, config.attention_q_lora_dim)    # 1536
+        self.q_b_proj  = Linear(q_lora, num_heads * q_head_dim)
+        self.kv_a_proj_with_mqa = Linear(hidden, kv_lora + qk_rope)     # 512 + 64
+        self.o_proj    = Linear(num_heads * v_dim, hidden)             # 行切 → all-reduce
+
+
+class PanguUltraMoE(nn.Module):              # 256 路由专家 + 1 共享专家
+    def __init__(self, config, runner_config):
+        self.moe_tp_size = runner_config["parallel_config"].get("moe_tp_size", 1)
+        self.gate = MoEGate(config)          # sigmoid 打分 → top-8 → ×routed_scaling
+        self.experts = grouped_experts(config.num_routed_experts)      # 256
+        self.shared_experts = MLP(config, runner_config)               # 1`,
+    hl:()=>['self.mlp = (','if layer_idx >= config.num_dense_layers','class PanguUltraMoEAttention','class PanguUltraMoE'] },
+  tp:{ label:'runner_config/tp32.yaml（并行配置）', file:'inference/runner_config/tp32.yaml',
+    code:
+`model_name: "pangu_ultra_moe"
+model_path: "./model"
+exe_mode: "eager"          # ["dynamo", "eager"]
+
+model_config:
+  mla_backend: absorb      # MLA：吸收式（native / absorb）
+  with_ckpt: 1
+
+data_config:
+  input_max_len: 4096
+  max_new_tokens: 28000
+  batch_size: 1
+  max_position_embeddings: 32768
+
+parallel_config:           # 推理张量并行（World Size = 32）
+  attn_tp_size: 32         # 注意力按 128 头切分到 32 卡
+  moe_tp_size: 32          # FFN / MoE intermediate 切分
+  embed_tp_size: 32        # embedding / lm_head 按词表切分
+
+sampling_config:
+  temperature: 0.7
+  top_p: 1.0`,
+    hl:()=>['parallel_config:','attn_tp_size: 32','moe_tp_size: 32','embed_tp_size: 32'] },
+  cfgcls:{ label:'configuration_openpangu_moe.py', file:'configuration_openpangu_moe.py',
+    code:
+`class PanguUltraMoEConfig(PretrainedConfig):
+    model_type = "pangu_ultra_moe"
+
+    def __init__(
+        self,
+        vocab_size=153600,
+        hidden_size=7680,
+        intermediate_size=18432,
+        moe_intermediate_size=2048,
+        num_hidden_layers=61,
+        num_mtp_layers=1,
+        num_attention_heads=128,
+        num_shared_experts=1,
+        num_routed_experts=256,
+        routed_scaling_factor=2.5,
+        attention_kv_lora_dim=512,
+        attention_q_lora_dim=1536,
+        attention_qk_rope_dim=64,
+        attention_v_dim=128,
+        attention_qk_dim=128,
+        num_experts_per_tok=8,
+        num_dense_layers=3,
+        hidden_act="silu",
+        max_position_embeddings=131072,
+        rms_norm_eps=1e-5,
+        rope_theta=25600000,
+        tie_word_embeddings=False,
+        **kwargs,
+    ):
+        ...`,
+    hl:()=>['num_hidden_layers=61','num_routed_experts=256','num_experts_per_tok=8'] },
+};
+
 function currentSources(){
   if(currentLib==='pytorch-cifar') return CNN_SOURCES;
+  if(currentLib==='pangu') return PANGU_SOURCES;
   return SOURCES;
 }
 
@@ -1278,18 +1740,24 @@ function renderCode(scrollToHl, scrollCtrlId){
   const lines=codeStr.split('\n');
   const repoBase=currentLib==='pytorch-cifar'
     ?'https://github.com/kuangliu/pytorch-cifar/blob/master/'
+    :currentLib==='pangu'
+    ?'https://ai.gitcode.com/ascend-tribe/openPangu-Ultra-MoE-718B-V1.1/blob/main/'
     :'https://github.com/huggingface/picotron/blob/main/';
-  $('srcMeta').innerHTML=`<a href="${repoBase}${src.file}" target="_blank">${src.file}</a> · 高亮＝当前配置激活的代码`;
-  const isBash=activeTab==='launch';
+  const metaTail=currentLib==='pangu'?' · 固定发布配置（只读）':' · 高亮＝当前配置激活的代码';
+  $('srcMeta').innerHTML=`<a href="${repoBase}${src.file}" target="_blank">${src.file}</a>${metaTail}`;
+  // JSON/YAML 走纯文本渲染（不套 Python 高亮）
+  const isPlain=activeTab==='launch'||(isPangu()&&(activeTab==='cfg'||activeTab==='tp'));
   $('code').innerHTML=lines.map(line=>{
     const active=marks.some(m=>line.includes(m));
-    return `<span class="ln-row ${active?'hl':''}">${isBash?esc(line)||'&nbsp;':hlLine(line)||'&nbsp;'}</span>`;
+    return `<span class="ln-row ${active?'hl':''}">${isPlain?esc(line)||'&nbsp;':hlLine(line)||'&nbsp;'}</span>`;
   }).join('\n');
   if(scrollToHl){
     const all=[...$('code').querySelectorAll('.hl')];
     let target=null;
-    const hint=scrollCtrlId&&SCROLL_HINT[scrollCtrlId];
-    if(hint) target=all.find(el=>el.textContent.includes(hint));
+    // Pangu:用 PANGU_SCROLL 的关键字定位;先在高亮行找,再退回到全部行。
+    const hint=scrollCtrlId && (isPangu()?(PANGU_SCROLL[scrollCtrlId]||{}).hint:SCROLL_HINT[scrollCtrlId]);
+    if(hint){ target=all.find(el=>el.textContent.includes(hint))
+      || [...$('code').querySelectorAll('.ln-row')].find(el=>el.textContent.includes(hint)); }
     if(!target) target=all[all.length-1];
     if(target){
       target.scrollIntoView({block:'center',behavior:'smooth'});
@@ -1302,6 +1770,7 @@ function renderCode(scrollToHl, scrollCtrlId){
 // =================== HINTS ===================
 function renderHints(){
   const s=state;
+  // Pangu:控件虽锁定只读,但各表单的解释照常显示(基于锁定后的真实配置:tp=32、61 层、hidden=7680 等)。
   const micro=Math.max(1,Math.round(s.batch/(s.dp*s.cp)));
 
   // DP
@@ -1400,7 +1869,16 @@ function renderHints(){
   // Blocks
   const blocksEl=$('hintBlocks');
   blocksEl.className='para-hint on';
-  if(s.pp>1){
+  if(isPangu()){
+    blocksEl.innerHTML=`<b>${PANGU.layers}</b> 个 Transformer 层，每层 = 1 个 <b>MLA</b> 注意力子层 + 1 个 FFN 子层。`+
+      `<br><b>MLA</b> = <b>M</b>ulti-head <b>L</b>atent <b>A</b>ttention（多头潜在注意力）：把 K/V 压缩成一个低维潜在向量再缓存，`+
+      `推理时 KV Cache 显存远小于普通 MHA，是该模型省显存的关键。`+
+      `<br>FFN 按层位置分两类：前 <b>${PANGU.dense}</b> 层用 <b>Dense MLP</b>（稠密前馈，所有 token 走同一个 FFN）；`+
+      `其余 <b>${PANGU.layers-PANGU.dense}</b> 层用 <b>MoE</b>（${PANGU.routed} 专家·top-${PANGU.topk}·共享${PANGU.shared}，每个 token 只激活少数专家）。`+
+      `<br>为什么分 Dense / MoE：底部少数层放 Dense 更稳——早期层学的是通用底层特征，此时专家路由信号还不可靠，`+
+      `用稠密 FFN 可避免训练初期路由抖动、稳定收敛；上层改用 MoE 才能在不显著增加激活算力的前提下把<b>总参数量</b>撑到 718B，`+
+      `兼顾“大容量”与“低激活成本”（激活仅 39B）。这也是 DeepSeek-V3 等大 MoE 的通用做法。`;
+  } else if(s.pp>1){
     const ranges=distributeLayers();
     const stageDesc=ranges.map(([a,b],i)=>{
       const n=b-a;
@@ -1438,12 +1916,36 @@ function renderHints(){
     expertsEl.className='para-hint';
     expertsEl.innerHTML='';
   }
+
+  // 超参数行的解释:仅 Pangu 推理态显示(训练态留空隐藏,沿用原先无解释的形态)
+  const batchEl=$('hintBatch'), stepsEl=$('hintSteps'), lrEl=$('hintLr');
+  if(isPangu()){
+    batchEl.style.display=stepsEl.style.display=lrEl.style.display='';
+    batchEl.className='para-hint on';
+    batchEl.innerHTML=`<b>batch_size = ${PANGU_INFER.batch}。</b>一次推理同时处理的序列条数；发布配置按单条 prompt 推理设定（见右侧 tp32.yaml 的 <b>data_config</b>）`;
+    stepsEl.className='para-hint on';
+    stepsEl.innerHTML=`<b>生成 token 数（max_new_tokens = ${PANGU_INFER.maxNewTokens}）。</b>推理时自回归生成的新 token 数量上限——每步只生成 <b>1</b> 个 token 并追加回输入，循环直到命中结束符或达到该上限；这是<b>推理</b>概念，与训练的「Steps（参数更新步数）」无关`;
+    lrEl.className='para-hint on';
+    lrEl.innerHTML=`<b>采样温度（temperature = ${PANGU_INFER.temperature}）。</b>控制下一个 token 采样的随机性：先把 logits 除以温度再做 softmax——温度越低分布越尖锐、输出越确定，越高越发散有创意；这是<b>推理</b>采样参数，与训练的「学习率」无关`;
+  } else {
+    batchEl.style.display=stepsEl.style.display=lrEl.style.display='none';
+    batchEl.className=stepsEl.className=lrEl.className='para-hint';
+    batchEl.innerHTML=stepsEl.innerHTML=lrEl.innerHTML='';
+  }
 }
 
 // =================== PARALLEL CONCLUSION ===================
 function renderConclusion(){
   const s=state;
   const el=$('parallelConclusion'); if(!el) return;
+  // Pangu:固定推理发布配置 — 给出只读说明,不走训练态结论分支。
+  if(isPangu()){
+    el.className='conclusion-box';
+    el.innerHTML='<b>推理发布包（只读）。</b>左侧滑块锁定为 openPangu-Ultra-MoE-718B 的固定结构；'+
+      '真实部署＝<b>张量并行 TP=32</b>（attn/moe/embed_tp=32，见右侧 tp32.yaml），子层末尾 all-reduce/all-gather 缝合、<b>无</b>梯度同步；'+
+      '中间为<b>单卡逻辑结构视图</b>，不含训练用 DP/PP/EP。';
+    return;
+  }
   const hasTP=s.enTP&&s.tp>1, hasPP=s.enPP&&s.pp>1;
   const hasDP=s.enDP&&s.dp>1, hasCP=s.enCP&&s.cp>1;
   const hasMoE=s.enMoE;
@@ -2154,6 +2656,21 @@ function _moveTip(e){
 function renderModelDiagram(){
   const el=$('modelDiagram'); if(!el) return;
   const s=state;
+  // Pangu:高层压缩栈(Embed → Dense×3 → MoE×58 → Norm → Head),避免画满 61 个小块。
+  if(isPangu()){
+    let h='<div class="mdiag">';
+    h+='<div class="mdiag-card mdiag-emb" data-mini="emb"><span class="mdiag-card-lab">Embed</span></div>';
+    h+='<div class="mdiag-card mdiag-blk" data-mini="block"><span class="mdiag-blk-lab">Dense × 3</span>'+
+       '<div class="mdiag-blk-cells"><span class="mdiag-cell mdiag-cell-attn" data-mini="attn">MLA</span>'+
+       '<span class="mdiag-cell mdiag-cell-mlp" data-mini="mlp">MLP</span></div></div>';
+    h+='<div class="mdiag-card mdiag-blk" data-mini="block"><span class="mdiag-blk-lab">MoE × 58</span>'+
+       '<div class="mdiag-blk-cells"><span class="mdiag-cell mdiag-cell-attn" data-mini="attn">MLA</span>'+
+       '<span class="mdiag-cell mdiag-cell-moe" data-mini="moe">MoE</span></div></div>';
+    h+='<div class="mdiag-card mdiag-norm" data-mini="norm"><span class="mdiag-card-lab">Norm</span></div>';
+    h+='<div class="mdiag-card mdiag-head" data-mini="head"><span class="mdiag-card-lab">Head</span></div>';
+    h+='</div>';
+    el.innerHTML=h; bindMdiagTooltips(); return;
+  }
   // CNN:Stem → layer1~4(各含若干 ResBlock)→ Pool → FC
   if(isCNN()){
     const v=CNN_VARIANTS[cnnVariant()]||CNN_VARIANTS[CNN_DEFAULT];
@@ -2198,6 +2715,7 @@ function renderModelDiagram(){
 
 // =================== WIRE UP ===================
 function syncDisabled(){
+  if(isPangu()) return;   // Pangu:控件由 lockPangu 统一锁为只读,勿按勾选状态重新启用
   [['dp','enDP'],['pp','enPP'],['cp','enCP'],['tp','enTP'],['ep','enMoE']].forEach(([id,chk])=>{
     const dis=!$(chk).checked; $(id).disabled=dis; const sl=$(id+'Slider'); if(sl) sl.disabled=dis;
   });
@@ -2206,17 +2724,30 @@ function syncDisabled(){
 function update(scrollToHl, scrollCtrlId){
   syncDisabled(); readState();
   // EP 上限：每卡至少 1 个专家，且不能超过 world size（无法超出物理卡数）
-  if(state.enMoE){
+  if(state.enMoE && !isPangu()){
     const maxEP=Math.min(state.experts, state.world);
     const epNum=$('ep'), epSl=$('epSlider');
     epNum.max=maxEP; epSl.max=maxEP;
     if(state.ep>maxEP){ state.ep=maxEP; epNum.value=maxEP; epSl.value=maxEP; }
   }
-  $('world').textContent=state.world;
-  $('worldFormula').textContent=`dp=${state.dp}、pp=${state.pp}、cp=${state.cp}、tp=${state.tp}`;
+  // 中间区域头部:World Size。Pangu 即 32(纯推理张量并行 TP=32)。
+  if($('world')) $('world').textContent=state.world;
+  $('worldFormula').textContent=isPangu()
+    ? `推理张量并行 attn/moe/embed_tp = ${state.tp}（无 DP/PP/CP）`
+    : `dp=${state.dp}、pp=${state.pp}、cp=${state.cp}、tp=${state.tp}`;
   $('vBlocks').textContent=state.blocks; $('vHidden').textContent=state.hidden;
-  $('vExperts').textContent=state.experts; $('vBatch').textContent=state.batch;
-  $('vSteps').textContent=state.steps; $('vLr').textContent=state.lr.toExponential(1);
+  $('vExperts').textContent=state.experts;
+  // 超参数行:训练态显示训练超参;Pangu 推理态改用 tp32.yaml 的推理参数 + 改标签
+  if(isPangu()){
+    $('lblBatch').textContent='Batch Size'; $('lblSteps').textContent='生成 token 数'; $('lblLr').textContent='采样温度';
+    $('vBatch').textContent=PANGU_INFER.batch;
+    $('vSteps').textContent=PANGU_INFER.maxNewTokens;
+    $('vLr').textContent=PANGU_INFER.temperature;
+  } else {
+    $('lblBatch').textContent='Batch Size (global)'; $('lblSteps').textContent='Steps'; $('lblLr').textContent='学习率 (log)';
+    $('vBatch').textContent=state.batch;
+    $('vSteps').textContent=state.steps; $('vLr').textContent=state.lr.toExponential(1);
+  }
   renderCode(scrollToHl, scrollCtrlId); renderViz(); renderHints(); renderWorldDiagram(); renderModelDiagram(); renderConclusion();
   if(panelMode==='fnet') renderFnet();
 }
@@ -2228,6 +2759,19 @@ function onControlChange(e){
   update(scroll, e.target.id);
 }
 document.querySelectorAll('input:not(.par-slider),select').forEach(el=>{el.addEventListener('input',onControlChange);el.addEventListener('change',onControlChange);});
+// Pangu:控件已禁用(不触发 input 事件),改用整行点击 → 定位右侧代码对应行
+$('ctrl').addEventListener('click',e=>{
+  if(!isPangu()) return;
+  // 找到本次点击所属控件的 id:同一 .row 内的 input,或 .slabel 后紧邻的 input
+  let id=null;
+  const row=e.target.closest('.row');
+  if(row){ const i=row.querySelector('input[id]'); if(i) id=i.id; }
+  if(!id){ const sl=e.target.closest('.slabel'); if(sl){ let n=sl.nextElementSibling;
+    while(n && !(n.matches && n.matches('input[id]'))) n=n.nextElementSibling; if(n) id=n.id; } }
+  if(!id && e.target.matches && e.target.matches('input[id]')) id=e.target.id;
+  const map=id && PANGU_SCROLL[id];
+  if(map && currentSources()[map.tab]){ activeTab=map.tab; renderTabs(); renderCode(true,id); }
+});
 // 滑动条 → 更新数字输入并转发 input 事件；数字输入 → 回写滑动条位置
 [['dp','dpSlider'],['pp','ppSlider'],['cp','cpSlider'],['tp','tpSlider'],['ep','epSlider']].forEach(([nid,sid])=>{
   const num=$(nid),sl=$(sid); if(!num||!sl) return;
@@ -2240,37 +2784,76 @@ document.querySelectorAll('.card-tile').forEach(tile=>{tile.onclick=()=>{documen
 const DEFAULTS=[...document.querySelectorAll('#ctrl input,#ctrl select')].map(el=>({el,
   v:el.type==='checkbox'?el.checked:el.value}));
 $('resetBtn').onclick=()=>{
-  DEFAULTS.forEach(d=>{ if(d.el.type==='checkbox') d.el.checked=d.v; else d.el.value=d.v; });
+  if(_prePangu) unlockPangu();   // 若处于 Pangu 锁定态,先还原控件可编辑性
+  DEFAULTS.forEach(d=>{ if(d.el.type==='checkbox') d.el.checked=d.v; else d.el.value=d.v; d.el.disabled=false; });
   document.querySelectorAll('.card-tile').forEach((t,i)=>t.classList.toggle('selected',i===0));
   currentLib='picotron';
   activeTab='pgm'; renderTabs(); update(false); updateLibUI();
 };
 
+// ── Pangu:把现有滑块锁定为只读发布配置（保留 Transformer 控件形态，仅禁用 + 改值）──
+const _SYNC=[['dp','dpSlider'],['pp','ppSlider'],['cp','cpSlider'],['tp','tpSlider'],['ep','epSlider']];
+let _prePangu=null;
+function _syncSliders(){ _SYNC.forEach(([n,s])=>{const sl=$(s),nu=$(n); if(sl&&nu){sl.max=nu.max; sl.value=nu.value; sl.disabled=nu.disabled;}}); }
+function lockPangu(){
+  if(_prePangu) return;
+  panguShowAll=false;   // 每次进入 Pangu 默认折叠为 2 列
+  _prePangu=[...document.querySelectorAll('#ctrl input')].map(el=>({el,value:el.value,max:el.max,checked:el.checked,disabled:el.disabled}));
+  const setv=(id,v,max)=>{const e=$(id); if(!e)return; if(max!=null)e.max=max; e.value=v;};
+  // 并行：仅张量并行（推理 TP=32），DP/PP/CP=1
+  $('enDP').checked=false; setv('dp',1);  $('enPP').checked=false; setv('pp',1);
+  $('enCP').checked=false; setv('cp',1);  $('enTP').checked=true;  setv('tp',PANGU.tp,PANGU.tp);
+  $('enMoE').checked=true; setv('ep',1);
+  // 模型结构：61 层、hidden 7680、256 路由专家
+  setv('blocks',PANGU.layers,PANGU.layers); setv('hidden',PANGU.hidden); setv('experts',PANGU.routed,PANGU.routed);
+  // 超参数行复用为推理参数(batch_size / max_new_tokens),滑块位置与显示值对齐;lr 行改作温度,数值另由 update() 覆盖
+  setv('batch',PANGU_INFER.batch); setv('steps',PANGU_INFER.maxNewTokens,PANGU_INFER.maxNewTokens);
+  $('expRow').style.display='flex'; $('experts').style.display='block';
+  _syncSliders();
+  document.querySelectorAll('#ctrl input').forEach(i=>i.disabled=true);  // 全部只读
+}
+function unlockPangu(){
+  if(!_prePangu) return;
+  _prePangu.forEach(s=>{ s.el.max=s.max; s.el.value=s.value; s.el.checked=s.checked; s.el.disabled=s.disabled; });
+  _prePangu=null; _syncSliders();
+}
+
 // ── 库切换胶囊 Tab ──
 function updateLibUI(){
-  const cnn=isCNN();
+  const cnn=isCNN(), pangu=isPangu();
+  document.body.classList.toggle('pangu-view',pangu);
   document.querySelectorAll('.lib-tab').forEach(t=>t.classList.toggle('on',t.dataset.lib===currentLib));
   if($('headerSub')) $('headerSub').textContent=
-    currentLib==='picotron' ? '基于 huggingface/picotron 真实逻辑'
+    pangu ? '基于 openPangu-Ultra-MoE-718B-V1.1 推理发布包（控件锁定只读）'
+    : currentLib==='picotron' ? '基于 huggingface/picotron 真实逻辑'
     : '基于 kuangliu/pytorch-cifar 真实逻辑（CNN：DP + PP）';
-  // CNN 模式:隐藏 TP/CP/MoE 与 Transformer 专属控件,显示 ResNet 型号下拉
   const show=(id,on)=>{ const el=$(id); if(el) el.style.display=on?'':'none'; };
+  // Pangu 与 Transformer 同属「非 CNN」：沿用同一套控件显隐（CNN 才隐藏 TP/CP/MoE）
   show('ctrlCP',!cnn); show('ctrlTP',!cnn); show('ctrlMoE',!cnn);
   show('txBlocksRow',!cnn); show('blocks',!cnn); show('hintBlocks',!cnn);
   show('txHiddenRow',!cnn); show('hidden',!cnn); show('hintHidden',!cnn);
   show('cnnVariantRow',cnn); show('cnnVariant',cnn);
-  if($('parallelPill')) $('parallelPill').textContent=cnn
-    ? '(CNN：数据并行 DP + 流水线并行 PP)'
+  // 右侧「整网算子图」仅训练视图有意义，Pangu 锁为真实源码
+  show('panelModeTabs',!pangu);
+  if(pangu && panelMode!=='code') setPanelMode('code');
+  if($('parallelPill')) $('parallelPill').textContent=pangu
+    ? '(推理张量并行 · 锁定只读)'
+    : cnn ? '(CNN：数据并行 DP + 流水线并行 PP)'
     : '(picotron 网格 dp×pp×cp×tp)';
+  // 中间区域标题(World Size / worldFormula 文案统一由 update() 写,#world 始终保留)
+  if($('midTitle')) $('midTitle').textContent=pangu
+    ? '盘古模型结构 · 推理张量并行 TP=32（横向 32 卡）'
+    : '训练拓扑及计算流动可视化';
 }
 $('libTabs').addEventListener('click',e=>{
   const btn=e.target.closest('.lib-tab'); if(!btn) return;
   const lib=btn.dataset.lib; if(lib===currentLib) return;
-  const prevCNN=isCNN();
+  const prevLib=currentLib;
   currentLib=lib;
-  if(currentLib==='picotron'&&activeTab==='moe') activeTab='pgm';
-  // 进出 CNN 时切换默认 Tab(CNN 用 resnet/train/pipe,其余用 pgm)
-  if(isCNN()!==prevCNN) activeTab=isCNN()?'resnet':'pgm';
+  if(prevLib==='pangu' && lib!=='pangu') unlockPangu();   // 离开 Pangu：还原滑块
+  if(lib==='pangu' && prevLib!=='pangu') lockPangu();     // 进入 Pangu：锁定滑块
+  // 切库后若当前 Tab 不属于新库的文件集,回落到该库的首个 Tab
+  if(!currentSources()[activeTab]) activeTab=Object.keys(currentSources())[0];
   updateLibUI(); update(false); renderTabs();
 });
 
