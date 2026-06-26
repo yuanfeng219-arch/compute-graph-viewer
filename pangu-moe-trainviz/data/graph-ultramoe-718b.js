@@ -1,4 +1,4 @@
-/* openPangu-Ultra-MoE-718B 计算轴架构图 · 图数据 builder（SPEC §3）
+/* openPangu-Ultra-MoE-718B-V1.1 计算轴架构图 · 图数据 builder（SPEC §3）
    只画健康拓扑。布局对齐 model-graphviz / DeepSeek V3.2：单列从上到下、禁止折叠模块间多条平行代表边。
 
    设计约定（本轮重构）：
@@ -15,44 +15,39 @@ window.buildUltraMoE718BGraph = (function () {
 
   // ── 输入行（收进「模型输入」parent cluster，居中对齐主轴）──
   const inputs = [
-    { id: 'token_ids',    label: 'Token IDs',      typeLabel: 'Input', kind: 'tensor', x: 355, y: 88, width: 150, height: 46, colorKey: 'io:input', desc: '输入 token 序列的整数 ID（词表索引）。' },
-    { id: 'input_embeds', label: 'Input Embeds',   typeLabel: 'Input', kind: 'tensor', x: 533, y: 88, width: 160, height: 46, colorKey: 'io:input', desc: '可选的外部嵌入输入，提供时绕过 Embedding 查表。' },
-    { id: 'position_ids', label: 'Position IDs',   typeLabel: 'Input', kind: 'tensor', x: 711, y: 88, width: 150, height: 46, colorKey: 'io:input', desc: '位置索引，供 RoPE 旋转位置编码使用。' },
-    { id: 'attn_mask',    label: 'Attention Mask', typeLabel: 'Input', kind: 'tensor', x: 889, y: 88, width: 160, height: 46, colorKey: 'io:input', desc: '注意力掩码，标记可见 / 填充位置。' },
+    { id: 'token_ids',    label: 'Token IDs',      typeLabel: 'Input', kind: 'tensor', x: 420, y: 88, width: 150, height: 46, colorKey: 'io:input', desc: '输入 token 序列的整数 ID（词表索引）。' },
+    { id: 'position_ids', label: 'Position IDs',   typeLabel: 'Input', kind: 'tensor', x: 620, y: 88, width: 150, height: 46, colorKey: 'io:input', desc: '位置索引，供 RoPE 旋转位置编码使用。' },
+    { id: 'attn_mask',    label: 'Attention Mask', typeLabel: 'Input', kind: 'tensor', x: 820, y: 88, width: 160, height: 46, colorKey: 'io:input', desc: '注意力掩码，标记可见 / 填充位置。' },
   ];
   const inputsCluster = { id: 'inputs_group', label: '模型输入', x: 258, y: 44, width: 736, height: 96, colorKey: 'module:model' };
 
   // ── 主干上半：Embedding → Dense×3 ──
   const trunkTop = [
     { id: 'embedding',   label: 'Parallel Embedding', typeLabel: 'Op', kind: 'op', x: CX, y: 210, width: 250, height: 56, colorKey: 'sem:embedding', desc: 'Parallel Embedding：按词表维切分的词嵌入查表，输出 hidden_states。' },
-    { id: 'dense_block', label: 'Dense 解码层 × 3', typeLabel: 'Module', kind: 'op', x: CX, y: 308, width: 320, height: 60, colorKey: 'module:decoder', desc: '前 3 层稠密解码层（first_k_dense_replace=3）：MLA 注意力 + 稠密 SwiGLU MLP，不做专家路由。' },
-    { id: 'embedding_weight', label: 'Embedding Weight', typeLabel: 'Parameter', kind: 'tensor', x: 270, y: 210, width: 188, height: 48, colorKey: 'io:parameter', desc: '词嵌入权重矩阵 [vocab, hidden]，可与 LM Head 共享。' },
+    { id: 'dense_block', label: 'Dense 解码层 × 3', typeLabel: 'Module', kind: 'op', x: CX, y: 308, width: 320, height: 60, colorKey: 'module:decoder', desc: '前 3 层稠密解码层（num_dense_layers=3）：MLA 注意力 + 稠密 SwiGLU MLP，不做专家路由。' },
+    { id: 'embedding_weight', label: 'Embedding Weight', typeLabel: 'Parameter', kind: 'tensor', x: 270, y: 210, width: 188, height: 48, colorKey: 'io:parameter', desc: '词嵌入权重矩阵 [vocab, hidden]；V1.1 中 tie_word_embeddings=false，LM Head 权重单独存在。' },
   ];
   const trunkTopEdges = [
     { source: 'token_ids',    target: 'embedding',  tag: 'IDS', edgeType: 'activation' },
-    { source: 'input_embeds', target: 'embedding',  tag: 'EMB', edgeType: 'activation', dashed: true },
     { source: 'embedding_weight', target: 'embedding', tag: 'W', edgeType: 'parameter', dashed: true },
     { source: 'embedding',    target: 'dense_block', tag: 'ACT', edgeType: 'activation' },
   ];
 
-  // ── 主干下半：Final RMSNorm → 左 LM Head / 右 MTP 头（Δy>=Δx 保证竖直，不连侧面）──
+  // ── 主干下半：Final RMSNorm → LM Head → conditional Logits All-Gather → Logits ──
   function trunkBottom(yTop) {
-    const yNorm = yTop, yHead = yTop + 132, yOut = yTop + 244;
-    const XL = 505, XR = 735;  // 对称于 CX=620，Δx=115 <= Δy=132 → 顶/底进出；间隔 35 不重叠
+    const yNorm = yTop, yHead = yTop + 118, yGather = yTop + 226, yOut = yTop + 334;
     return {
       nodes: [
-        { id: 'final_norm', label: 'Final RMSNorm', typeLabel: 'Op',     kind: 'op',     x: CX, y: yNorm, width: 210, height: 54, colorKey: 'sem:norm', desc: 'Final RMSNorm：输出投影前的最终归一化。' },
-        { id: 'lm_head',    label: 'LM Head',        typeLabel: 'Op',     kind: 'op',     x: XL, y: yHead, width: 200, height: 54, colorKey: 'sem:head', desc: 'LM Head：hidden → vocab logits 的线性投影。' },
-        { id: 'logits',     label: 'Logits',         typeLabel: 'Output', kind: 'tensor', x: XL, y: yOut,  width: 170, height: 48, colorKey: 'io:output', desc: '下一个 token 的预测分布（vocab 维 logits）。' },
-        { id: 'mtp_head',   label: 'MTP 头 × 1',     typeLabel: 'Module', kind: 'op',     x: XR, y: yHead, width: 200, height: 54, colorKey: 'sem:head', desc: 'Multi-Token Prediction 头（num_nextn_predict_layers=1）：训练时额外预测下一个 token，提升样本效率。' },
-        { id: 'mtp_logits', label: 'MTP Logits',     typeLabel: 'Output', kind: 'tensor', x: XR, y: yOut,  width: 170, height: 48, colorKey: 'io:output', desc: 'MTP 头预测的 logits。' },
-        { id: 'lm_head_weight', label: 'LM Head Weight', typeLabel: 'Parameter', kind: 'tensor', x: 250, y: yHead, width: 188, height: 48, colorKey: 'io:parameter', desc: 'LM Head 权重 [hidden, vocab]，可与词嵌入共享。' },
+        { id: 'final_norm', label: 'Final RMSNorm', typeLabel: 'Op',     kind: 'op',     x: CX, y: yNorm,   width: 210, height: 54, colorKey: 'sem:norm', desc: 'Final RMSNorm：输出投影前的最终归一化。' },
+        { id: 'lm_head',    label: 'LM Head',        typeLabel: 'Op',     kind: 'op',     x: CX, y: yHead,   width: 200, height: 54, colorKey: 'sem:head', desc: 'LM Head：hidden → vocab logits 的线性投影。' },
+        { id: 'logits_allgather', label: 'Logits All-Gather', typeLabel: 'Comm', kind: 'op', x: CX, y: yGather, width: 230, height: 50, colorKey: 'sem:comm', desc: 'Logits All-Gather：embed_tp_size > 1 时跨词表分片收集 logits；并行度为 1 时等价 no-op。' },
+        { id: 'logits',     label: 'Logits',         typeLabel: 'Output', kind: 'tensor', x: CX, y: yOut,    width: 170, height: 48, colorKey: 'io:output', desc: '下一个 token 的预测分布（vocab 维 logits）。' },
+        { id: 'lm_head_weight', label: 'LM Head Weight', typeLabel: 'Parameter', kind: 'tensor', x: 335, y: yHead, width: 188, height: 48, colorKey: 'io:parameter', desc: 'LM Head 权重 [hidden, vocab]；V1.1 中 tie_word_embeddings=false，不与 Embedding 权重共享。' },
       ],
       edges: [
         { source: 'final_norm', target: 'lm_head',    tag: 'NEXT', edgeType: 'activation' },
-        { source: 'final_norm', target: 'mtp_head',   tag: 'MTP',  edgeType: 'activation' },
-        { source: 'lm_head',    target: 'logits',     tag: 'LOGITS', edgeType: 'activation' },
-        { source: 'mtp_head',   target: 'mtp_logits', tag: 'ACT',  edgeType: 'activation' },
+        { source: 'lm_head',    target: 'logits_allgather', tag: 'gather', edgeType: 'communication' },
+        { source: 'logits_allgather', target: 'logits', tag: 'LOGITS', edgeType: 'activation' },
         { source: 'lm_head_weight', target: 'lm_head', tag: 'W', edgeType: 'parameter', dashed: true },
       ],
     };
@@ -147,7 +142,7 @@ window.buildUltraMoE718BGraph = (function () {
 
     const tailNodes = [
       { id: 'a2a_combine',  label: 'All-to-All 汇聚', typeLabel: 'Comm', kind: 'op', x: CX, y: yCombine, width: 200, height: 50, colorKey: 'sem:comm', desc: 'All-to-All 汇聚：把各 rank 算完的专家输出按 token 收回并加权合并（通信事件，投影到物理轴）。' },
-      { id: 'moe_residual', label: '残差 + RMSNorm', typeLabel: 'Op', kind: 'op', x: CX, y: yCombine + 84, width: 220, height: 52, colorKey: 'sem:residual', desc: '残差连接 + 后置 RMSNorm（sandwich-norm 的后半）。' },
+      { id: 'moe_residual', label: 'Post-MLP RMSNorm', typeLabel: 'Op', kind: 'op', x: CX, y: yCombine + 84, width: 220, height: 52, colorKey: 'sem:norm', desc: 'Post-MLP RMSNorm：源码通过 fused npu_add_rms_norm 处理 residual add + RMSNorm，不单独画 Add 节点。' },
     ];
     const yTrunk = yCombine + 84 + 120;
     const bottom = trunkBottom(yTrunk);
