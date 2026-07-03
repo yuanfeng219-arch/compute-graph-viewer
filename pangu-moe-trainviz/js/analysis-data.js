@@ -251,6 +251,123 @@ export function buildCardLoadViewModel(rankViewModel, collapse = 0) {
   };
 }
 
+// ===== Layer Scan：逐层 × 逐 step 异常分（单跑自身信号，非双跑 diff） =====
+// 语义：分值 0..1 = 该层该 step 的「异常强度」，由单跑自身信号（grad_norm 贡献 / 激活范数 / 负载偏移）合成。
+// 故事自洽于 timeseries.js 的故障链：faultStep 起，faultLayer（Router 所在 MoE 层）最先点亮，
+// 误差沿层深向下游累积（accumulation），collapseStep 后在故障带饱和。
+const LAYER_SCAN_OPS_MOE = [
+  { op: 'mla', label: 'MLA', sem: 'sem:attention', w: 0.07 },
+  { op: 'moe_prenorm', label: 'Pre-RMSNorm', sem: 'sem:norm', w: 0.05 },
+  { op: 'gate', label: 'Router', sem: 'sem:gate', w: 0.30 },
+  { op: 'a2a_dispatch', label: 'A2A dispatch', sem: 'sem:comm', w: 0.14 },
+  { op: 'experts', label: 'Experts', sem: 'sem:moe', w: 0.24 },
+  { op: 'a2a_combine', label: 'A2A combine', sem: 'sem:comm', w: 0.14 },
+  { op: 'moe_residual', label: 'Post-RMSNorm', sem: 'sem:norm', w: 0.06 },
+];
+const LAYER_SCAN_OPS_DENSE = [
+  { op: 'mla', label: 'MLA', sem: 'sem:attention', w: 0.34 },
+  { op: 'dense', label: 'Dense FFN', sem: 'module:decoder', w: 0.50 },
+  { op: 'norm', label: 'RMSNorm', sem: 'sem:norm', w: 0.16 },
+];
+
+export function buildLayerScanMetrics({
+  steps,
+  faultStep,
+  collapseStep,
+  totalLayers = 61,
+  firstMoeLayer = 3,
+  lastMoeLayer = 60,
+  faultLayer = 47,
+  warnThreshold = 0.35,
+} = {}) {
+  const stepCount = steps.length;
+  const lastStep = steps[stepCount - 1];
+  const scores = new Float32Array(totalLayers * stepCount);
+  const layers = [];
+  for (let layer = 0; layer < totalLayers; layer++) {
+    const isMoe = layer >= firstMoeLayer && layer <= lastMoeLayer;
+    layers.push({ layer, isMoe, isDense: !isMoe });
+  }
+  const gauss = (x, mu, sigma) => Math.exp(-((x - mu) ** 2) / (2 * sigma * sigma));
+
+  for (let layer = 0; layer < totalLayers; layer++) {
+    const isMoe = layers[layer].isMoe;
+    const origin = gauss(layer, faultLayer, 3.2);   // 故障层邻域（尖锐峰）
+    const downstream = layer > faultLayer ? clamp01((layer - faultLayer) / Math.max(1, lastMoeLayer - faultLayer)) : 0;  // 向下游累积
+    for (let si = 0; si < stepCount; si++) {
+      const s = steps[si];
+      const base = 0.05 + hash01(layer, s, 5) * 0.05;   // 健康基线噪声
+      let score = base;
+      if (isMoe && s >= faultStep) {
+        const ramp = clamp01((s - faultStep) / Math.max(1, collapseStep - faultStep));                       // fault→collapse 爬升
+        const post = s >= collapseStep ? clamp01((s - collapseStep) / Math.max(1, lastStep - collapseStep)) : 0;  // 坍缩后累积
+        const noise = (hash01(layer, s, 23) - 0.5) * 0.06;
+        score = base
+          + ramp * (0.50 * origin + 0.28 * downstream)
+          + post * (0.42 * origin + 0.50 * downstream + 0.08)
+          + (ramp + post) * noise;
+      }
+      scores[layer * stepCount + si] = clamp01(score);
+    }
+  }
+
+  // 逐层：首超标 step / 峰值
+  const perLayer = layers.map(({ layer, isMoe }) => {
+    let firstDivergeStep = null, peak = 0, peakStep = steps[0];
+    for (let si = 0; si < stepCount; si++) {
+      const v = scores[layer * stepCount + si];
+      if (firstDivergeStep == null && v >= warnThreshold) firstDivergeStep = steps[si];
+      if (v > peak) { peak = v; peakStep = steps[si]; }
+    }
+    return { layer, isMoe, firstDivergeStep, peak, peakStep };
+  });
+  // epicenter = 最早超标的层（并列取峰值更高）；无超标则取全局峰值层
+  const diverged = perLayer.filter(l => l.firstDivergeStep != null);
+  const epicenter = diverged.length
+    ? diverged.reduce((best, l) => (l.firstDivergeStep < best.firstDivergeStep
+        || (l.firstDivergeStep === best.firstDivergeStep && l.peak > best.peak)) ? l : best)
+    : perLayer.reduce((best, l) => l.peak > best.peak ? l : best, perLayer[0]);
+  const maxPeak = perLayer.reduce((m, l) => Math.max(m, l.peak), 0);
+
+  const scoreAt = (layer, step) => {
+    const si = steps.indexOf(step);
+    if (si < 0 || layer < 0 || layer >= totalLayers) return 0;
+    return scores[layer * stepCount + si];
+  };
+  // 层内算子分解：把该层该 step 的异常分按算子权重摊开。
+  // share = 占该层异常的比例（条长）；score = 强度 0..1（颜色，主导算子≈该层分值）。
+  const opBreakdown = (layer, step) => {
+    const total = scoreAt(layer, step);
+    const defs = layers[layer]?.isMoe ? LAYER_SCAN_OPS_MOE : LAYER_SCAN_OPS_DENSE;
+    const raw = defs.map(d => ({ ...d, w2: d.w * (0.82 + hash01(layer, step, d.op.length * 7) * 0.36) }));
+    const sum = raw.reduce((acc, d) => acc + d.w2, 0) || 1;
+    const maxW2 = raw.reduce((m, d) => Math.max(m, d.w2), 0) || 1;
+    return raw.map(d => ({
+      op: d.op, label: d.label, sem: d.sem,
+      share: d.w2 / sum,
+      score: clamp01(total * (d.w2 / maxW2)),
+    }));
+  };
+
+  return {
+    schema: 'pangu.layer-scan.mock.v1',
+    steps, stepCount, totalLayers, firstMoeLayer, lastMoeLayer,
+    faultStep, collapseStep, faultLayer, warnThreshold,
+    scores, layers, perLayer, epicenter, maxPeak,
+    scoreAt, opBreakdown,
+    title: 'Layer Scan',
+    meta: `L0-L${lastMoeLayer} × ${stepCount} steps · 逐层异常分（单跑信号）`,
+    stats: [
+      { label: '首问题层', value: `L${epicenter.layer}` },
+      { label: '首超标', value: epicenter.firstDivergeStep != null ? `step ${epicenter.firstDivergeStep}` : '—' },
+      { label: '峰值分', value: maxPeak.toFixed(2) },
+      { label: '超标层数', value: `${diverged.length}` },
+      { label: '故障算子', value: 'Router' },
+      { label: 'MoE 层', value: `L${firstMoeLayer}-L${lastMoeLayer}` },
+    ],
+  };
+}
+
 function compDuration(stage, type, microbatch, forwardBaseUs, backwardBaseUs) {
   const base = type === 'F' ? forwardBaseUs : backwardBaseUs;
   const stageWeight = stage === 0 ? 0.9 : 1.08;

@@ -200,6 +200,24 @@
   .opv-analysis-detail-grid{display:grid;grid-template-columns:86px minmax(0,1fr);gap:6px 8px;font:var(--text-label)}
   .opv-analysis-detail-grid span{color:var(--foreground-muted)}
   .opv-analysis-detail-grid b{color:var(--foreground);font-family:var(--font-mono);font-size:11px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  /* Layer Scan（第2/3段）：逐层×step 热力图 + 层内算子分解 */
+  .opv-scan-heatmap{display:block;width:100%;height:100%;border:1px solid var(--border-subtle);
+    border-radius:var(--radius-md);background:color-mix(in srgb,var(--foreground) 2.5%,transparent);cursor:pointer}
+  .opv-scan-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:none;font:var(--text-label);color:var(--foreground-muted)}
+  .opv-scan-key{display:inline-flex;align-items:center;gap:3px}
+  .opv-scan-key i{width:12px;height:10px;border-radius:2px}
+  .opv-scan-epi{color:var(--danger);font-weight:700}
+  .opv-scan-spark{margin:2px 0 8px;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);
+    background:color-mix(in srgb,var(--foreground) 3%,transparent);line-height:0}
+  .opv-scan-oplabel{margin:10px 0 6px;font:var(--text-label);color:var(--foreground-muted)}
+  .opv-scan-ops{display:flex;flex-direction:column;gap:4px}
+  .opv-scan-op{display:grid;grid-template-columns:96px minmax(0,1fr) 30px;align-items:center;gap:6px}
+  .opv-scan-op__name{display:inline-flex;align-items:center;gap:5px;font:var(--text-label);color:var(--foreground-secondary);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .opv-scan-op__name i{width:8px;height:8px;border-radius:2px;flex:none}
+  .opv-scan-op__bar{height:9px;border-radius:var(--radius-pill);background:var(--surface-disabled);overflow:hidden}
+  .opv-scan-op__bar i{display:block;height:100%;border-radius:inherit;min-width:2px}
+  .opv-scan-op__val{font:var(--text-mono);font-size:10px;color:var(--foreground-secondary);text-align:right}
   .opv-analysis-tooltip{position:absolute;left:0;top:0;z-index:80;display:flex;flex-direction:column;gap:5px;width:220px;
     pointer-events:none;border:1px solid var(--border-strong);border-radius:var(--radius-md);background:var(--surface-3);
     color:var(--foreground);box-shadow:var(--shadow-md);padding:8px 10px;font:var(--text-body-sm)}
@@ -572,6 +590,7 @@
               </section>
               <section id="analysisPanelMoe" class="opv-analysis-panel" data-analysis-panel="moe-load"></section>
               <section id="analysisPanelCard" class="opv-analysis-panel" data-analysis-panel="card-load"></section>
+              <section id="analysisPanelLayer" class="opv-analysis-panel" data-analysis-panel="layer-scan"></section>
             </div>
           </div>
         </section>
@@ -662,11 +681,13 @@ import {
   buildRankLoadViewModel,
   buildCardLoadViewModel,
   buildSimulated1F1BRuntime,
+  buildLayerScanMetrics,
 } from './js/analysis-data.js';
 import {
   createAnalysisDock,
   createMoeLoadView,
   createCardLoadView,
+  createLayerScanView,
 } from './js/analysis-dock.js';
 
 /* ===== 粗连线（Line2，真实像素宽度，浏览器不会忽略） ===== */
@@ -2417,7 +2438,8 @@ const analysisPanels={
   loss:document.getElementById('analysisPanelLoss'),
   timeline:document.getElementById('analysisPanelTimeline'),
   moe:document.getElementById('analysisPanelMoe'),
-  card:document.getElementById('analysisPanelCard')
+  card:document.getElementById('analysisPanelCard'),
+  layer:document.getElementById('analysisPanelLayer')
 };
 // moeMetrics / moeLoadViewModel 随 Loss 主时间(step)重算 → 用 let
 let moeMetrics=buildMoeRuntimeMetrics({
@@ -2531,6 +2553,11 @@ onContext(()=>{if(lossCtrl){lossCtrl.setCursor(focusContext.step);renderLossRead
 function handleAnalysisSelection(selection){
   if(selection?.type==='expert')dispatch({source:'moe',layer:selection.layer,op:'experts',metric:selection.metricId});
   else if(selection?.type==='rank'||selection?.type==='card')dispatch({source:selection.type,rank:selection.rank,dp:selection.dp,stage:selection.stage,tp:selection.tp});
+  else if(selection?.type==='layer'){
+    dispatch({source:'layer-scan',step:selection.step,layer:selection.layer});
+    document.getElementById('statusRight').textContent=`Layer Scan · L${selection.layer} · step ${selection.step} · 异常分 ${Number(selection.score||0).toFixed(2)}`;
+    return;
+  }
   if(selection?.type==='expert'){
     setObjectFocus('op:experts');
     const value=Number(selection.value||0);
@@ -2549,6 +2576,16 @@ function handleAnalysisSelection(selection){
 }
 const moeView=createMoeLoadView({panel:analysisPanels.moe,viewModel:moeLoadViewModel,onSelect:handleAnalysisSelection});
 const cardView=createCardLoadView({panel:analysisPanels.card,viewModel:cardLoadViewModel,onSelect:handleAnalysisSelection});
+// Layer Scan（第2/3段）：epicenter 取坍缩态负载最重的 MoE 层，让首问题层与 MoE Load 的 worst layer 同源
+const scanFaultLayer=(()=>{
+  const m=buildMoeRuntimeMetrics({firstMoeLayer:FIRST_MOE_LAYER,lastMoeLayer:LAST_MOE_LAYER,expertsPerLayer:256,step:TS.collapseStep+2,collapse:1});
+  return m.layers.reduce((b,l)=>l.maxLoadRatio>b.maxLoadRatio?l:b,m.layers[0]).layer;
+})();
+const layerScanModel=buildLayerScanMetrics({
+  steps:TS.steps,faultStep:TS.faultStep,collapseStep:TS.collapseStep,
+  totalLayers:TOTAL_LAYERS,firstMoeLayer:FIRST_MOE_LAYER,lastMoeLayer:LAST_MOE_LAYER,faultLayer:scanFaultLayer
+});
+const layerScanView=createLayerScanView({panel:analysisPanels.layer,model:layerScanModel,onSelect:handleAnalysisSelection,getStep:()=>focusContext.step});
 // step(主时间) → MoE 热力/异常派生：loop 内按帧合并，重 DOM 重挂只在 MoE tab 活动时做
 let moeStepPending=focusContext.step, moeStepApplied=null, moeViewDirty=false;
 // 坍缩强度 = load_balance_loss 从健康基线(0.42)掉了多少 → 0(均衡)..1(坍缩)。loss 与 MoE 同源。
@@ -2571,6 +2608,7 @@ onContext(()=>{moeStepPending=focusContext.step;});
 // step → 卡占用重算：坍缩强度令牌路由重分布，DOM 轻量(32 卡)每 step 直接刷
 function refreshCardLoad(){cardLoadViewModel=buildCardLoadViewModel(rankLoadViewModel,collapseIntensity(focusContext.step));cardView.setViewModel(cardLoadViewModel);}
 onContext(refreshCardLoad);
+onContext(()=>{if(activeAnalysisView==='layer-scan')layerScanView.render();});
 refreshCardLoad();
 analysisDockController=createAnalysisDock({
   tabsRoot:document.getElementById('analysisTabs'),
@@ -2602,6 +2640,13 @@ analysisDockController=createAnalysisDock({
       title:cardLoadViewModel.title,
       meta:()=>cardLoadViewModel.meta,
       ...cardView
+    },
+    {
+      id:'layer-scan',
+      label:'Layer Scan',
+      title:layerScanModel.title,
+      meta:()=>layerScanModel.meta,
+      ...layerScanView
     }
   ],
   onViewChange(id){

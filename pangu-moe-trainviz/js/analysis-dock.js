@@ -380,3 +380,220 @@ export function createCardLoadView({ panel, viewModel, onSelect }) {
     setViewModel(next) { viewModel = next; if (!panel.hidden) paintCards(); },
   };
 }
+
+// 层内算子小圆点色（按语义）——独立于 3D 场景色，仅用于详情栏图例
+const LAYER_SCAN_SEM_DOT = {
+  'sem:attention': '#38bdf8',
+  'sem:norm': '#94a3b8',
+  'sem:gate': '#f59e0b',
+  'sem:comm': '#10b981',
+  'sem:moe': '#a78bfa',
+  'module:decoder': '#7dd3fc',
+};
+
+// ===== 第 2 段（层级）+ 第 3 段（算子）：逐层 × step 异常热力图 + 层内算子分解 =====
+export function createLayerScanView({ panel, model, onSelect, getStep }) {
+  let canvas, detail, tooltip;
+  let hover = null;
+  let selLayer = model.epicenter.layer;   // 选中层贯穿始终；step 始终跟随全局播放头
+  const L = 42, T = 10, R = 8, B = 20;     // 热力图内边距
+
+  const stepNow = () => {
+    const s = typeof getStep === 'function' ? getStep() : null;
+    return s ?? model.epicenter.firstDivergeStep ?? model.steps[0];
+  };
+
+  function scanColor(v) {
+    const theme = document.documentElement.dataset.theme || 'dark';
+    const cold = theme === 'light' ? '#e7edf4' : '#1c232e';
+    const calm = theme === 'light' ? '#8fb7a6' : '#2f7d63';
+    const warn = theme === 'light' ? '#e8ce69' : '#d6aa35';
+    const hot = theme === 'light' ? '#e2564e' : '#e5484d';
+    if (v <= 0.06) return cold;
+    if (v < 0.35) return mixColor(cold, calm, (v - 0.06) / 0.29);
+    if (v < 0.7) return mixColor(calm, warn, (v - 0.35) / 0.35);
+    return mixColor(warn, hot, Math.min(1, (v - 0.7) / 0.3));
+  }
+
+  function gridBox() {
+    const wrap = panel.querySelector('[data-scan-wrap]');
+    const wb = wrap.getBoundingClientRect();
+    const width = Math.max(360, wb.width - 250 - 8);   // 减去 detail(250) + gap(8)
+    const height = Math.max(220, wb.height - 2);
+    return { width, height, gridW: width - L - R, gridH: height - T - B };
+  }
+
+  function cellAt(event) {
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left, y = event.clientY - rect.top;
+    const gridW = rect.width - L - R, gridH = rect.height - T - B;
+    if (x < L || x > L + gridW || y < T || y > T + gridH) return null;
+    const layer = Math.min(model.totalLayers - 1, Math.max(0, Math.floor((y - T) / gridH * model.totalLayers)));
+    const si = Math.min(model.stepCount - 1, Math.max(0, Math.floor((x - L) / gridW * model.stepCount)));
+    return { layer, step: model.steps[si], si };
+  }
+
+  function draw() {
+    if (!canvas || panel.hidden) return;
+    const { width, height, gridW, gridH } = gridBox();
+    const ctx = resizeCanvas(canvas, width, height);
+    const rows = model.totalLayers, cols = model.stepCount;
+    const rowH = gridH / rows, colW = gridW / cols;
+    ctx.clearRect(0, 0, width, height);
+
+    for (let layer = 0; layer < rows; layer++) {
+      const y = T + layer * rowH;
+      for (let si = 0; si < cols; si++) {
+        ctx.fillStyle = scanColor(model.scores[layer * cols + si]);
+        ctx.fillRect(L + si * colW, y, Math.max(1, colW + 0.4), Math.max(1, rowH + 0.4));
+      }
+    }
+    ctx.strokeStyle = readCssVar('--border-default', 'rgba(255,255,255,0.12)');
+    ctx.strokeRect(L, T, gridW, gridH);
+
+    // 层轴标签（每 8 层）
+    ctx.fillStyle = readCssVar('--foreground-muted', 'rgba(255,255,255,0.45)');
+    ctx.font = '600 9px JetBrains Mono, monospace';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let layer = 0; layer < rows; layer += 8) ctx.fillText(`L${layer}`, L - 6, T + (layer + 0.5) * rowH);
+
+    // 分区分隔线：Dense↔MoE 边界
+    const moeY = T + model.firstMoeLayer * rowH;
+    ctx.strokeStyle = readCssVar('--border-strong', 'rgba(255,255,255,0.28)');
+    ctx.setLineDash([2, 2]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(L, moeY); ctx.lineTo(L + gridW, moeY); ctx.stroke(); ctx.setLineDash([]);
+
+    // step 轴标签（首 / fault / collapse / 末）
+    const mapX = step => L + (model.steps.indexOf(step) + 0.5) * colW;
+    ctx.fillStyle = readCssVar('--foreground-muted', 'rgba(255,255,255,0.45)');
+    ctx.font = '9px JetBrains Mono, monospace'; ctx.textBaseline = 'top';
+    ctx.textAlign = 'left'; ctx.fillText(String(model.steps[0]), L, T + gridH + 5);
+    ctx.textAlign = 'right'; ctx.fillText(String(model.steps[cols - 1]), L + gridW, T + gridH + 5);
+
+    // 故障 / 坍缩竖线
+    const danger = readCssVar('--danger', '#e5484d');
+    [[model.faultStep, '故障', readCssVar('--warning', '#d6aa35')], [model.collapseStep, '坍缩', danger]].forEach(([st, name, col]) => {
+      const cx = mapX(st);
+      ctx.strokeStyle = col; ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx, T); ctx.lineTo(cx, T + gridH); ctx.stroke(); ctx.setLineDash([]);
+    });
+
+    // 首问题层 (epicenter)：行高亮 + ◆ 标记在首超标 step
+    const epi = model.epicenter;
+    const ey = T + (epi.layer + 0.5) * rowH;
+    ctx.strokeStyle = danger; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(L, ey); ctx.lineTo(L + gridW, ey); ctx.stroke();
+    if (epi.firstDivergeStep != null) {
+      const dx = mapX(epi.firstDivergeStep);
+      ctx.fillStyle = danger;
+      ctx.beginPath();
+      ctx.moveTo(dx, ey - 4); ctx.lineTo(dx + 4, ey); ctx.lineTo(dx, ey + 4); ctx.lineTo(dx - 4, ey); ctx.closePath();
+      ctx.fill();
+    }
+
+    // 全局 step 游标（竖线）
+    const cursorX = mapX(stepNow());
+    ctx.strokeStyle = readCssVar('--foreground-secondary', 'rgba(255,255,255,0.62)'); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cursorX, T); ctx.lineTo(cursorX, T + gridH); ctx.stroke();
+
+    // 选中层 + hover 描边
+    const primary = tokenColor('--primary', '#4369ef');
+    const outlineRow = (layer, lw) => {
+      ctx.strokeStyle = primary; ctx.lineWidth = lw;
+      ctx.strokeRect(L, T + layer * rowH, gridW, Math.max(2, rowH));
+    };
+    if (hover && hover.layer !== selLayer) outlineRow(hover.layer, 1);
+    outlineRow(selLayer, 1.8);
+  }
+
+  function renderSpark(el, layer, step) {
+    if (!el) return;
+    const w = 226, h = 42, pad = 3, n = model.stepCount;
+    const xs = i => pad + (n > 1 ? i / (n - 1) : 0) * (w - 2 * pad);
+    const ys = v => (h - pad) - v * (h - 2 * pad);
+    let d = '';
+    for (let i = 0; i < n; i++) d += (i ? 'L' : 'M') + xs(i).toFixed(1) + ' ' + ys(model.scores[layer * n + i]).toFixed(1) + ' ';
+    const thrY = ys(model.warnThreshold);
+    const ci = Math.max(0, model.steps.indexOf(step));
+    const cx = xs(ci), cv = model.scores[layer * n + ci];
+    el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" aria-label="L${layer} 异常分随 step">
+      <line x1="${pad}" x2="${w - pad}" y1="${thrY.toFixed(1)}" y2="${thrY.toFixed(1)}" stroke="var(--warning)" stroke-dasharray="3 3" stroke-width="1" opacity="0.7"/>
+      <path d="${d}" fill="none" stroke="var(--danger)" stroke-width="1.4"/>
+      <line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${pad}" y2="${h - pad}" stroke="var(--foreground-secondary)" stroke-width="1"/>
+      <circle cx="${cx.toFixed(1)}" cy="${ys(cv).toFixed(1)}" r="2.4" fill="var(--danger)"/>
+    </svg>`;
+  }
+
+  function renderDetail() {
+    if (!detail) return;
+    const step = stepNow();
+    const layer = selLayer;
+    const info = model.layers[layer];
+    const pl = model.perLayer[layer];
+    const score = model.scoreAt(layer, step);
+    const ops = [...model.opBreakdown(layer, step)].sort((a, b) => b.share - a.share);
+    const bars = ops.map(o => `
+      <div class="opv-scan-op">
+        <span class="opv-scan-op__name"><i style="background:${LAYER_SCAN_SEM_DOT[o.sem] || '#888'}"></i>${esc(o.label)}</span>
+        <div class="opv-scan-op__bar"><i style="width:${(o.share * 100).toFixed(0)}%;background:${scanColor(o.score)}"></i></div>
+        <span class="opv-scan-op__val">${(o.share * 100).toFixed(0)}%</span>
+      </div>`).join('');
+    detail.innerHTML = `
+      <div class="opv-analysis-detail-title">L${layer} · step ${step}</div>
+      <div class="opv-scan-spark" data-scan-spark></div>
+      <div class="opv-analysis-detail-grid">
+        <span>异常分</span><b>${score.toFixed(2)}</b>
+        <span>层类型</span><b>${info.isMoe ? 'MoE' : 'Dense'}</b>
+        <span>首超标</span><b>${pl.firstDivergeStep != null ? 'step ' + pl.firstDivergeStep : '—'}</b>
+        <span>峰值</span><b>${pl.peak.toFixed(2)} @${pl.peakStep}</b>
+      </div>
+      <div class="opv-scan-oplabel">算子分解 · 占该层异常</div>
+      <div class="opv-scan-ops">${bars}</div>`;
+    renderSpark(detail.querySelector('[data-scan-spark]'), layer, step);
+  }
+
+  function mount() {
+    panel.innerHTML = `
+      <div class="opv-analysis-view">
+        ${makeStatGrid(model.stats)}
+        <div class="opv-scan-legend">
+          <span>行 = 层 L0–L${model.lastMoeLayer}</span>
+          <span>列 = step（时间）</span>
+          <span class="opv-scan-key">低<i style="background:${scanColor(0.2)}"></i><i style="background:${scanColor(0.5)}"></i><i style="background:${scanColor(0.9)}"></i>高</span>
+          <span class="opv-scan-epi">◆ 首问题层 L${model.epicenter.layer}${model.epicenter.firstDivergeStep != null ? ' @ step ' + model.epicenter.firstDivergeStep : ''}</span>
+        </div>
+        <div class="opv-analysis-grid-wrap" data-scan-wrap>
+          <canvas class="opv-scan-heatmap" aria-label="逐层 × step 异常热力图"></canvas>
+          <aside class="opv-analysis-detail" data-scan-detail></aside>
+        </div>
+      </div>`;
+    canvas = panel.querySelector('.opv-scan-heatmap');
+    detail = panel.querySelector('[data-scan-detail]');
+    tooltip = makeTooltip(panel.querySelector('[data-scan-wrap]'));
+    canvas.addEventListener('pointermove', event => {
+      hover = cellAt(event);
+      if (!hover) { tooltip.hide(); draw(); return; }
+      const score = model.scoreAt(hover.layer, hover.step);
+      const info = model.layers[hover.layer];
+      tooltip.show(event, `
+        <b>L${hover.layer} · step ${hover.step}</b>
+        <span>异常分 ${score.toFixed(2)} · ${info.isMoe ? 'MoE' : 'Dense'}</span>
+        <span>点击下钻该层算子分解</span>`);
+      draw();
+    });
+    canvas.addEventListener('pointerleave', () => { hover = null; tooltip.hide(); draw(); });
+    canvas.addEventListener('click', event => {
+      const cell = cellAt(event);
+      if (!cell) return;
+      selLayer = cell.layer;
+      onSelect?.({ type: 'layer', layer: cell.layer, step: cell.step, score: model.scoreAt(cell.layer, cell.step) });
+      draw(); renderDetail();
+    });
+  }
+
+  return {
+    panel, mount,
+    render() { draw(); renderDetail(); },
+    resize() { draw(); },
+  };
+}
