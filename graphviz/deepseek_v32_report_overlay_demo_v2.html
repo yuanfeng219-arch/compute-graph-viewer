@@ -1218,7 +1218,8 @@
         activeFileId: "model",
         annotationsVisible: true,
         selectedSourceLine: -1,
-        inspectorOpen: false
+        inspectorOpen: false,
+        sideInputsFitApplied: false
       };
 
       const playbackIds = {
@@ -2308,18 +2309,8 @@
         return { minLeft, maxRight, avgY };
       }
 
-      function sideInputGraphBounds() {
-        const bounds = graphGroups().map(renderedNodeBounds).filter(Boolean);
-        if (!bounds.length) return null;
-        return {
-          minLeft: Math.min(...bounds.map((item) => item.cx - item.width / 2)),
-          maxRight: Math.max(...bounds.map((item) => item.cx + item.width / 2))
-        };
-      }
-
       function computeSideInputPlacements(entries) {
         const bySide = new Map();
-        const graphBounds = sideInputGraphBounds();
         entries.forEach((entry) => {
           const side = entry.config.side || "left";
           if (!bySide.has(side)) bySide.set(side, []);
@@ -2335,16 +2326,11 @@
           const laneX = side === "right"
             ? maxRight + laneGap + maxWidth / 2
             : minLeft - laneGap - maxWidth / 2;
-          const clampedLaneX = graphBounds
-            ? (side === "right"
-              ? Math.min(laneX, graphBounds.maxRight - maxWidth / 2 - 28)
-              : Math.max(laneX, graphBounds.minLeft + maxWidth / 2 + 28))
-            : laneX;
 
           sideEntries.sort((a, b) => a.baseY - b.baseY);
           const spacing = 64;
           sideEntries.forEach((entry) => {
-            entry.x = clampedLaneX;
+            entry.x = laneX;
             entry.y = snapSideInputY(entry.baseY);
           });
 
@@ -2432,7 +2418,61 @@
         layer.appendChild(node);
       }
 
-      function augmentSideInputs() {
+      function ensureSideInputsVisible(entries) {
+        const svg = graphSvg();
+        const inner = graphInner(svg);
+        const d3 = window.d3;
+        if (!svg || !inner || !d3 || !entries.length) return;
+
+        const boxes = graphGroups().map(renderedNodeBounds).filter(Boolean).map((item) => ({
+          minX: item.cx - item.width / 2,
+          minY: item.cy - item.height / 2,
+          maxX: item.cx + item.width / 2,
+          maxY: item.cy + item.height / 2
+        }));
+
+        entries.forEach((entry) => {
+          boxes.push({
+            minX: entry.x - entry.width / 2,
+            minY: entry.y - 19,
+            maxX: entry.x + entry.width / 2,
+            maxY: entry.y + 19
+          });
+        });
+
+        if (!boxes.length) return;
+
+        const pad = 36;
+        const minX = Math.min(...boxes.map((box) => box.minX)) - pad;
+        const maxX = Math.max(...boxes.map((box) => box.maxX)) + pad;
+        const boundsWidth = Math.max(1, maxX - minX);
+        const width = svg.clientWidth || els.architectureRoot.clientWidth || 800;
+        const height = svg.clientHeight || els.architectureRoot.clientHeight || 600;
+        const current = svg.__zoom || d3.zoomTransform(svg);
+        const currentScale = Number(current.k) || 1;
+        const maxVisibleWidth = Math.max(1, width - pad * 2);
+        const nextScale = boundsWidth * currentScale > maxVisibleWidth
+          ? Math.max(0.18, maxVisibleWidth / boundsWidth)
+          : currentScale;
+        const centerGraphX = (width / 2 - current.x) / currentScale;
+        const centerGraphY = (height / 2 - current.y) / currentScale;
+        let nextX = width / 2 - centerGraphX * nextScale;
+        const nextY = height / 2 - centerGraphY * nextScale;
+
+        const screenMinX = minX * nextScale + nextX;
+        const screenMaxX = maxX * nextScale + nextX;
+        if (screenMinX < pad) nextX += pad - screenMinX;
+        if (screenMaxX > width - pad) nextX -= screenMaxX - (width - pad);
+
+        const transform = d3.zoomIdentity
+          .translate(nextX, nextY)
+          .scale(nextScale);
+
+        svg.__zoom = transform;
+        inner.setAttribute("transform", transform.toString());
+      }
+
+      function augmentSideInputs(options = {}) {
         const svg = graphSvg();
         const inner = graphInner(svg);
         if (!svg || !inner || !graphGroups().length) return;
@@ -2464,6 +2504,7 @@
         computeSideInputPlacements(entries);
         entries.forEach((entry) => drawSideInput(layer, entry, markerId));
         inner.appendChild(layer);
+        if (options.fit === true) ensureSideInputsVisible(entries);
       }
 
       function scheduleAugmentSideInputs() {
@@ -2832,7 +2873,20 @@
           applySelectedState();
           updateCounts();
           setStatus("inline architecture graph ready");
-          if (state.overlayEnabled) window.setTimeout(() => focusSourceNode(state.selectedNodeId), 120);
+          const fitSideInputsOnce = () => {
+            if (state.sideInputsFitApplied) return;
+            augmentSideInputs({ fit: true });
+            state.sideInputsFitApplied = true;
+            applySelectedState();
+          };
+          if (state.overlayEnabled) {
+            window.setTimeout(() => {
+              focusSourceNode(state.selectedNodeId);
+              fitSideInputsOnce();
+            }, 120);
+          } else {
+            fitSideInputsOnce();
+          }
           return;
         }
         if (attempt > 160) {
