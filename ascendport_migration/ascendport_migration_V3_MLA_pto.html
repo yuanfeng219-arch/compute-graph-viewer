@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AscendPort · PTO Migration Workbench</title>
+  <title>AscendPort · 昇腾迁移工作台</title>
   <script>
     if (new URLSearchParams(location.search).has('preview')) {
       document.documentElement.dataset.preview = 'card';
@@ -260,7 +260,7 @@
     }
     .etb-path b { color: var(--foreground-secondary); }
     .etb-spacer { flex: 1; }
-    .etb-btn, .fb-btn, .tp-anim, .pp-play, .perf-play, .acc-apply {
+    .etb-btn, .fb-btn, .tp-anim, .pp-play, .perf-play, .acc-apply, .analysis-tab {
       min-height: 30px;
       display: inline-flex;
       align-items: center;
@@ -275,11 +275,11 @@
       font: var(--button-font);
       cursor: pointer;
     }
-    .etb-btn:hover, .fb-btn:hover, .tp-anim:hover, .pp-play:hover, .perf-play:hover, .acc-apply:hover {
+    .etb-btn:hover, .fb-btn:hover, .tp-anim:hover, .pp-play:hover, .perf-play:hover, .acc-apply:hover, .analysis-tab:hover {
       background: var(--button-secondary-bg-hover);
       color: var(--foreground);
     }
-    .etb-btn.on, .fb-btn.on {
+    .etb-btn.on, .fb-btn.on, .analysis-tab.on {
       background: var(--state-selected);
       color: var(--foreground);
     }
@@ -288,32 +288,134 @@
     .edit-split {
       min-height: 0;
       min-width: 0;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 0 0 0 0;
-      transition: grid-template-columns var(--duration-slow) var(--easing-default);
+      display: flex;
+      flex-direction: row;
       overflow: hidden;
     }
-    .edit-split.graph-open { grid-template-columns: minmax(0, 1fr) minmax(340px, 42%) 0 0 0; }
-    .edit-split.compare-open { grid-template-columns: minmax(0, 1fr) 0 minmax(420px, 1fr) 0 0; }
-    .edit-split.tiling-open { grid-template-columns: minmax(0, 1fr) 0 0 minmax(360px, 44%) 0; }
-    .edit-split.pipe-open { grid-template-columns: minmax(0, 1fr) 0 0 0 minmax(380px, 46%); }
 
-    .codewrap, .graphpane, .tilingpane, .pipepane {
+    .codewrap, .analysispane, .graphpane, .tilingpane, .pipepane {
       min-width: 0;
       min-height: 0;
       overflow: hidden;
       background: color-mix(in srgb, var(--ide-frame-pane-bg) 74%, transparent);
     }
     .codewrap { position: relative; overflow: auto; }
+    .analysispane {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      opacity: 0;
+      pointer-events: none;
+      border-radius: var(--radius-md) 0 0 var(--radius-md);
+      transition: opacity var(--duration-base) var(--easing-default);
+    }
+    .edit-split:not(.analysis-open) .analysispane {
+      display: none !important;
+    }
+    .edit-split.analysis-open .analysispane {
+      display: grid;
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .analysis-head {
+      min-height: 37px;
+      display: grid;
+      grid-template-columns: minmax(110px, auto) minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 0 10px;
+      background: var(--ide-frame-pane-header-fill);
+      color: var(--foreground-secondary);
+      font: var(--ide-frame-meta-font);
+      backdrop-filter: var(--ide-frame-pane-backdrop-filter);
+    }
+    .analysis-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      color: var(--foreground);
+      font: var(--ide-frame-title-font);
+      white-space: nowrap;
+    }
+    .analysis-title svg {
+      width: 15px;
+      height: 15px;
+      color: var(--primary);
+    }
+    .analysis-tabs {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .analysis-tabs::-webkit-scrollbar { display: none; }
+    .analysis-tab {
+      min-height: 26px;
+      padding: 0 9px;
+      border-radius: var(--radius-sm);
+      box-shadow: none;
+      font-size: 12px;
+      flex: 0 0 auto;
+    }
+    .analysis-close {
+      width: 26px;
+      min-height: 26px;
+      padding: 0;
+      border-radius: var(--radius-sm);
+    }
+    .analysis-body {
+      min-height: 0;
+      min-width: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .analysis-body > .diffpane,
+    .analysis-body > .graphpane,
+    .analysis-body > .tilingpane,
+    .analysis-body > .pipepane,
+    .analysis-body > .flowpane,
+    .analysis-body > .accpane,
+    .analysis-body > .perfpane {
+      display: none;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      min-width: 0;
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .analysis-body > .diffpane {
+      flex-direction: column;
+      overflow: auto;
+    }
+    .analysispane[data-analysis-view="generated"] .diffpane,
+    .analysispane[data-analysis-view="graph"] .graphpane,
+    .analysispane[data-analysis-view="tiling"] .tilingpane,
+    .analysispane[data-analysis-view="pipeline"] .pipepane {
+      display: flex;
+    }
+    .analysispane[data-analysis-view="flow"] .flowpane {
+      display: flex;
+    }
+    .analysispane[data-analysis-view="accuracy"] .accpane,
+    .analysispane[data-analysis-view="performance"] .perfpane {
+      display: block;
+    }
+    .analysispane .gp-head,
+    .analysispane .tp-head {
+      display: none;
+    }
     .diffpane, .graphpane, .tilingpane, .pipepane {
       opacity: 0;
       pointer-events: none;
       transition: opacity var(--duration-base) var(--easing-default);
     }
-    .edit-split.compare-open .diffpane,
-    .edit-split.graph-open .graphpane,
-    .edit-split.tiling-open .tilingpane,
-    .edit-split.pipe-open .pipepane {
+    .analysispane[data-analysis-view="generated"] .diffpane,
+    .analysispane[data-analysis-view="graph"] .graphpane,
+    .analysispane[data-analysis-view="tiling"] .tilingpane,
+    .analysispane[data-analysis-view="pipeline"] .pipepane {
       opacity: 1;
       pointer-events: auto;
     }
@@ -670,7 +772,7 @@
       font-size: 12px;
     }
     .ptab .cnt.err { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
-    .term, .probs, .flowpane, .accpane, .perfpane {
+    .term, .outputpane, .probs, .flowpane, .accpane, .perfpane {
       min-height: 0;
       overflow: auto;
     }
@@ -679,6 +781,12 @@
       padding: 8px 14px;
       color: var(--foreground-secondary);
       font: 500 14px / 1.45 var(--font-mono);
+    }
+    .outputpane {
+      padding: 8px 14px;
+      color: var(--foreground-secondary);
+      font-size: 14px;
+      line-height: 1.5;
     }
     .tl { white-space: pre-wrap; word-break: break-word; }
     .tl .g { color: var(--success); }
@@ -1100,10 +1208,10 @@
 <body>
   <div class="mobile-note">
     <b>请在桌面端打开</b>
-    <span>AscendPort 迁移工作台是多 pane IDE 布局，需要较宽屏幕才能完整呈现文件树、编辑器、计算图和迁移向导。</span>
+    <span>AscendPort 迁移工作台是多分栏编辑布局，需要较宽屏幕才能完整呈现文件树、编辑器、计算图和迁移向导。</span>
   </div>
 
-  <section class="pto-ide-frame mla-frame" data-ide-frame data-host="standalone" aria-label="AscendPort PTO migration workbench">
+  <section class="pto-ide-frame mla-frame" data-ide-frame data-host="standalone" aria-label="AscendPort 迁移工作台">
     <header class="pto-ide-frame__topbar pto-ide-frame__standalone-chrome">
       <div class="pto-ide-frame__topbar-left">
         <div class="pto-ide-frame__host-chip">
@@ -1114,27 +1222,27 @@
           </svg>
           <span class="mla-host-chip-text"><span class="mla-status-dot"></span>AscendPort 已连接 · Atlas 800T A2</span>
         </div>
-        <div class="pto-ide-frame__workspace">flash_mla_decode.cu — deepseek-v3 · Flash MLA</div>
+        <div class="pto-ide-frame__workspace">稀疏解码算子 · 源码迁移</div>
       </div>
       <div class="pto-ide-frame__topbar-center">
-        <div class="pto-ide-frame__search" aria-label="Workbench context">
+        <div class="pto-ide-frame__search" aria-label="工作台上下文">
           <svg class="pto-ide-frame__search-icon" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="11" cy="11" r="8"></circle>
             <path d="m21 21-4.3-4.3"></path>
           </svg>
-          <span class="mla-search-copy">GPU → AscendC migration · CANN 8.0 · FP8 e4m3</span>
+          <span class="mla-search-copy">源端到昇腾迁移 · CANN 8.0 · FP8 e4m3</span>
         </div>
       </div>
       <div class="pto-ide-frame__topbar-right">
-        <div class="pto-ide-frame__window-actions" aria-label="Window controls">
-          <button class="pto-ide-frame__window-action is-selected" type="button" data-ide-toggle="terminal" aria-label="Toggle terminal panel" aria-controls="terminal-view" aria-expanded="true" aria-pressed="true" id="topTerminalBtn" title="Terminal">
+        <div class="pto-ide-frame__window-actions" aria-label="窗口控制">
+          <button class="pto-ide-frame__window-action is-selected" type="button" data-ide-toggle="terminal" aria-label="切换终端面板" aria-controls="terminal-view" aria-expanded="true" aria-pressed="true" id="topTerminalBtn" title="终端">
             <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="5" width="18" height="14" rx="2"></rect>
               <path d="m7 9 3 3-3 3"></path>
               <path d="M12 15h5"></path>
             </svg>
           </button>
-          <button class="pto-ide-frame__window-action is-selected" type="button" data-ide-toggle="inspector" aria-label="Toggle inspector panel" aria-controls="inspector-pane" aria-expanded="true" aria-pressed="true" id="topInspectorBtn" title="Inspector">
+          <button class="pto-ide-frame__window-action is-selected" type="button" data-ide-toggle="inspector" aria-label="切换检查器面板" aria-controls="inspector-pane" aria-expanded="true" aria-pressed="true" id="topInspectorBtn" title="检查器">
             <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="4" width="18" height="16" rx="2"></rect>
               <path d="M15 4v16"></path>
@@ -1143,7 +1251,7 @@
               <path d="M7 16h4"></path>
             </svg>
           </button>
-          <button class="pto-ide-frame__window-action" type="button" aria-label="Reset migration" id="topResetBtn" title="Reset">
+          <button class="pto-ide-frame__window-action" type="button" aria-label="重置迁移流程" id="topResetBtn" title="重置">
             <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M3 12a9 9 0 1 0 3-6.7"></path>
               <path d="M3 3v6h6"></path>
@@ -1154,17 +1262,17 @@
     </header>
 
     <div class="pto-ide-frame__body">
-      <nav class="pto-ide-frame__activity-rail pto-ide-frame__standalone-chrome" aria-label="Activity rail">
-        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button is-selected" type="button" data-ide-toggle="explorer" aria-label="Toggle file explorer" aria-controls="explorer-pane" aria-expanded="true" aria-pressed="true" title="Explorer">
+      <nav class="pto-ide-frame__activity-rail pto-ide-frame__standalone-chrome" aria-label="活动栏">
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button is-selected" type="button" data-ide-toggle="explorer" aria-label="切换资源管理器" aria-controls="explorer-pane" aria-expanded="true" aria-pressed="true" title="资源管理器">
           <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9l-.81-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
         </button>
-        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Search" title="Search">
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="搜索" title="搜索">
           <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
         </button>
-        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Source control" title="Source control">
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="源码控制" title="源码控制">
           <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><path d="M13 6h3a2 2 0 0 1 2 2v7"></path><path d="M6 9v12"></path></svg>
         </button>
-        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Terminal" title="Terminal" id="railTerminalBtn">
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="终端" title="终端" id="railTerminalBtn">
           <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m7 9 3 3-3 3"></path><path d="M12 15h5"></path></svg>
         </button>
       </nav>
@@ -1191,58 +1299,83 @@
                   </div>
                 </header>
                 <div class="pto-ide-frame__pane-body pto-ide-frame__split editor-pane-body" data-ide-split="editor-bottom" data-split-direction="vertical" data-sizes="76,24" data-min-size="360,154" data-storage-key="ascendport-mla-pto-editor-bottom-v1">
-                  <div class="edit-split" id="split" data-ide-pane="editor-main">
-                    <div class="codewrap" id="codewrap">
+                  <div class="edit-split pto-ide-frame__split" id="split" data-ide-pane="editor-main" data-ide-split="source-analysis" data-split-direction="horizontal" data-sizes="58,42" data-min-size="430,440" data-storage-key="ascendport-mla-source-analysis-v1">
+                    <div class="codewrap" id="codewrap" data-ide-pane="source-code">
                       <div class="pane-h" id="leftPaneH" style="display:none">
-                        <span class="dot-c" style="background:var(--cube)"></span><b>flash_mla_decode.cu</b><span class="pane-tag cuda">CUDA · GPU</span>
+                        <span class="dot-c" style="background:var(--cube)"></span><b>flash_mla_decode.cu</b><span class="pane-tag cuda">源端代码</span>
                         <span class="link-hint">悬停/点击代码 ↔ 联动对侧</span>
                       </div>
                       <div class="code"><div class="gutter" id="gutter"></div><div class="codelines" id="codelines"></div></div>
                     </div>
 
-                    <div class="graphpane" id="graphpane">
-                      <div class="gp-head">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" aria-hidden="true"><circle cx="6" cy="6" r="2.5"></circle><circle cx="18" cy="6" r="2.5"></circle><circle cx="12" cy="18" r="2.5"></circle><path d="M7.5 7.5 11 15m6-8.5L13 15"></path></svg>
-                        <div><b>算子计算图</b> <span class="sub">解析结果 · Flash MLA Sparse Decode</span></div>
-                        <div class="gp-close" id="gclose" title="收起">x</div>
+                    <div class="analysispane" id="analysisPane" data-ide-pane="analysis" data-analysis-view="graph">
+                      <div class="analysis-head">
+                        <div class="analysis-title">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="6" cy="6" r="2.5"></circle><circle cx="18" cy="6" r="2.5"></circle><circle cx="12" cy="18" r="2.5"></circle><path d="M7.5 7.5 11 15m6-8.5L13 15"></path></svg>
+                          <span id="analysisTitle">计算图</span>
+                        </div>
+                        <div class="analysis-tabs" aria-label="分析视图">
+                          <button class="analysis-tab on" type="button" data-analysis="graph">计算图</button>
+                          <button class="analysis-tab" type="button" data-analysis="generated">生成代码</button>
+                          <button class="analysis-tab" type="button" data-analysis="tiling">分块</button>
+                          <button class="analysis-tab" type="button" data-analysis="flow">数据流</button>
+                          <button class="analysis-tab" type="button" data-analysis="pipeline">流水</button>
+                          <button class="analysis-tab" type="button" data-analysis="accuracy">精度</button>
+                          <button class="analysis-tab" type="button" data-analysis="performance">性能</button>
+                        </div>
+                        <button class="analysis-tab analysis-close" type="button" id="analysisClose" aria-label="关闭分析视图">×</button>
                       </div>
-                      <div class="legend">
-                        <span><i style="background:var(--mem)"></i>片上搬运</span>
-                        <span><i style="background:var(--cube)"></i>Cube 矩阵</span>
-                        <span><i style="background:var(--vec)"></i>Vector 向量</span>
-                        <span><i style="background:var(--scalar)"></i>Scalar 标量</span>
-                        <span><i style="background:var(--risk)"></i>GPU-only · 无直接适配</span>
-                      </div>
-                      <div class="gcanvas" id="gcanvas"></div>
-                      <div class="gp-detail" id="gdetail">
-                        <b>点击任意节点查看解析详情</b><br>
-                        <span>计算图由 S1 从 CUDA AST 自动抽取，节点颜色为工具推断的目标昇腾执行单元。</span>
-                      </div>
-                    </div>
+                      <div class="analysis-body">
+                        <div class="graphpane" id="graphpane">
+                          <div class="gp-head">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.8" aria-hidden="true"><circle cx="6" cy="6" r="2.5"></circle><circle cx="18" cy="6" r="2.5"></circle><circle cx="12" cy="18" r="2.5"></circle><path d="M7.5 7.5 11 15m6-8.5L13 15"></path></svg>
+                            <div><b>算子计算图</b> <span class="sub">解析结果 · 稀疏解码</span></div>
+                            <div class="gp-close" id="gclose" title="收起">×</div>
+                          </div>
+                          <div class="legend">
+                            <span><i style="background:var(--mem)"></i>片上搬运</span>
+                            <span><i style="background:var(--cube)"></i>矩阵单元</span>
+                            <span><i style="background:var(--vec)"></i>向量单元</span>
+                            <span><i style="background:var(--scalar)"></i>标量单元</span>
+                            <span><i style="background:var(--risk)"></i>仅源端支持</span>
+                          </div>
+                          <div class="gcanvas" id="gcanvas"></div>
+                          <div class="gp-detail" id="gdetail">
+                            <b>点击任意节点查看解析详情</b><br>
+                            <span>计算图由 S1 从源码抽取，节点颜色表示目标执行单元。</span>
+                          </div>
+                        </div>
 
-                    <div class="codewrap diffpane" id="diffwrap">
-                      <div class="pane-h">
-                        <span class="dot-c" style="background:var(--primary)"></span><b id="diffFile">flash_mla_decode.cpp</b><span class="pane-tag asc">AscendC · 昇腾</span>
-                      </div>
-                      <div class="code"><div class="gutter" id="diffGutter"></div><div class="codelines" id="diffLines"></div></div>
-                    </div>
+                        <div class="codewrap diffpane" id="diffwrap">
+                          <div class="pane-h">
+                            <span class="dot-c" style="background:var(--primary)"></span><b id="diffFile">flash_mla_decode.cpp</b><span class="pane-tag asc">昇腾代码</span>
+                          </div>
+                          <div class="code"><div class="gutter" id="diffGutter"></div><div class="codelines" id="diffLines"></div></div>
+                        </div>
 
-                    <div class="tilingpane" id="tilingpane">
-                      <div class="tp-head">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--vec)" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M3 15h18M9 3v18"></path></svg>
-                        <div><b>Tiling 可视化</b> <span class="sub">key(S 维)分块 · 缓冲占用</span></div>
-                        <div class="tp-close" id="tpClose" title="收起">x</div>
-                      </div>
-                      <div class="tp-body" id="tpBody"></div>
-                    </div>
+                        <div class="tilingpane" id="tilingpane">
+                          <div class="tp-head">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--vec)" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M3 15h18M9 3v18"></path></svg>
+                            <div><b>分块可视化</b> <span class="sub">维度分块 · 缓冲占用</span></div>
+                            <div class="tp-close" id="tpClose" title="收起">×</div>
+                          </div>
+                          <div class="tp-body" id="tpBody"></div>
+                        </div>
 
-                    <div class="pipepane" id="pipepane">
-                      <div class="tp-head">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--mem)" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
-                        <div><b>流水线编排 · 前后对比</b> <span class="sub">串行 → 双缓冲重叠</span></div>
-                        <div class="tp-close" id="ppClose" title="收起">x</div>
+                        <div class="flowpane" id="flowpane"></div>
+
+                        <div class="pipepane" id="pipepane">
+                          <div class="tp-head">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--mem)" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+                            <div><b>流水线编排 · 前后对比</b> <span class="sub">串行 → 双缓冲重叠</span></div>
+                            <div class="tp-close" id="ppClose" title="收起">×</div>
+                          </div>
+                          <div class="tp-body" id="ppBody"></div>
+                        </div>
+
+                        <div class="accpane" id="accpane"></div>
+                        <div class="perfpane" id="perfpane"></div>
                       </div>
-                      <div class="tp-body" id="ppBody"></div>
                     </div>
                   </div>
                 </div>
@@ -1257,8 +1390,8 @@
                   <div class="wizard-shell">
                     <div class="wz-h">
                       <div class="kick">AscendPort</div>
-                      <h1>GPU → 昇腾 · 八阶段流水</h1>
-                      <p>逐步把 CUDA 算子迁移为 AscendC。每一步都可介入，底部按钮执行当前阶段。</p>
+                      <h1>源端到昇腾 · 八阶段流水</h1>
+                      <p>逐步把源端算子迁移为昇腾算子。每一步都可介入，底部按钮执行当前阶段。</p>
                     </div>
                     <div class="prog" id="prog"></div>
                     <div class="plabels" id="plabels"></div>
@@ -1274,47 +1407,37 @@
           </section>
 
           <section class="pto-ide-frame__pane pto-ide-frame__bottom-dock" data-ide-pane="bottom-panel" data-ide-bottom-dock>
-            <button type="button" id="bottomVisualizationToggle" data-ide-toggle="visualization" hidden aria-hidden="true">Visualization</button>
+            <button type="button" id="bottomVisualizationToggle" data-ide-toggle="visualization" hidden aria-hidden="true">问题</button>
             <div class="pto-ide-frame__bottom-view" data-ide-bottom-panel="visualization" hidden aria-hidden="true">
-              <div class="panel-body">
-                <div class="panel-tabs">
-                  <div class="ptab" data-p="probs" data-ide-toggle="visualization" aria-controls="probs">问题<span class="cnt err" id="probCnt">2</span></div>
-                  <div class="ptab" data-p="flow" data-ide-toggle="visualization" aria-controls="flowpane" id="flowTab" style="display:none">数据流 <span class="cnt" style="background:color-mix(in srgb, var(--success) 14%, transparent);color:var(--success)">S4</span></div>
-                  <div class="ptab" data-p="acc" data-ide-toggle="visualization" aria-controls="accpane" id="accTab" style="display:none">精度报告 <span class="cnt" id="accCnt" style="background:color-mix(in srgb, var(--success) 14%, transparent);color:var(--success)">S7</span></div>
-                  <div class="ptab" data-p="perf" data-ide-toggle="visualization" aria-controls="perfpane" id="perfTab" style="display:none">性能报告 <span class="cnt" style="background:color-mix(in srgb, var(--success) 14%, transparent);color:var(--success)">S8</span></div>
-                  <div style="margin-left:auto;color:var(--foreground-muted);font-size:12px;align-self:center">ascendport ▸ analysis</div>
-                </div>
-                <div class="probs" id="probs"></div>
-                <div class="flowpane" id="flowpane" style="display:none"></div>
-                <div class="accpane" id="accpane" style="display:none"></div>
-                <div class="perfpane" id="perfpane" style="display:none"></div>
-              </div>
             </div>
             <div class="pto-ide-frame__bottom-view" data-ide-bottom-panel="terminal" id="terminal-view">
               <div class="panel-body">
                 <div class="panel-tabs">
+                  <div class="ptab" data-p="probs" aria-controls="probs">问题<span class="cnt err" id="probCnt">2</span></div>
                   <div class="ptab on" data-p="term">终端</div>
                   <div class="ptab" data-p="term2">输出</div>
-                  <div style="margin-left:auto;color:var(--foreground-muted);font-size:12px;align-self:center">ascendport ▸ migrate</div>
-                  <button class="pto-ide-frame__window-action" type="button" data-ide-close="terminal" aria-label="Close terminal" title="Close terminal">
+                  <div style="margin-left:auto;color:var(--foreground-muted);font-size:12px;align-self:center">迁移日志</div>
+                  <button class="pto-ide-frame__window-action" type="button" data-ide-close="terminal" aria-label="关闭终端" title="关闭终端">
                     <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M18 6 6 18"></path>
                       <path d="m6 6 12 12"></path>
                     </svg>
                   </button>
                 </div>
+                <div class="probs" id="probs"></div>
                 <div class="term" id="term"></div>
+                <div class="outputpane" id="outputpane" style="display:none">暂无输出。</div>
               </div>
             </div>
           </section>
         </div>
 
         <footer class="pto-ide-frame__status-strip pto-ide-frame__standalone-chrome">
-          <span class="s">migrate/lightning-indexer</span>
+          <span class="s">迁移任务</span>
           <span class="s" id="sbStep">S1 · 已完成</span>
-          <span class="s">AscendC · CANN 8.0</span>
+          <span class="s">昇腾代码 · CANN 8.0</span>
           <span class="mla-status-right">
-            <span class="s" id="sbAicore">aicore —</span>
+            <span class="s" id="sbAicore">算力核 —</span>
             <span class="s">FP8 · e4m3</span>
             <span class="s">UTF-8</span>
           </span>
@@ -1357,10 +1480,10 @@
       };
       const graphUnitLabel = {
         mem: '片上搬运',
-        cube: 'Cube 矩阵',
-        vector: 'Vector 向量',
-        scalar: 'Scalar 标量',
-        risk: 'GPU-only · 无直接适配'
+        cube: '矩阵单元',
+        vector: '向量单元',
+        scalar: '标量单元',
+        risk: '仅源端支持 · 无直接适配'
       };
       const graphColorKey = {
         mem: 'sem:comm',
@@ -1394,8 +1517,8 @@
             id: node.id,
             label: node.t,
             typeLabel: rewritten && isGpuOnly
-              ? 'GPU-only → Vector 替代'
-              : (isGpuOnly ? 'GPU-only · 无直接适配' : (isTensor ? node.s : graphUnitLabel[unit])),
+              ? '仅源端支持 → 向量归约替代'
+              : (isGpuOnly ? '仅源端支持 · 无直接适配' : (isTensor ? node.s : graphUnitLabel[unit])),
             kind: isTensor ? 'tensor' : 'op',
             hideTypeLabel: !isTensor && !isGpuOnly,
             x: ox + (node.x + node.w / 2) * sx,
@@ -1437,7 +1560,7 @@
         const col = unitColor(unit);
         let note = node.d;
         if (graphMapped && node.unit === 'risk') {
-          note = '【已在 S2 改写】' + node.d.replace(/S2 决策.*$/, '现映射为 Vector 片上归约，见 S6 的 SelectTopK / TopK 原语。');
+          note = '【已在 S2 改写】' + node.d.replace(/S2 决策.*$/, '现映射为向量单元片上归约，见 S6 的 SelectTopK / TopK 原语。');
         }
         detail.innerHTML =
           `<span class="badge" style="background:${col}22;color:${col}">${graphUnitLabel[unit]}</span>` +
@@ -1463,7 +1586,7 @@
         if (!canvas || !modelGraph?.renderController) return;
         graphController?.destroy?.();
         graphController = modelGraph.renderController(canvas, buildPatternGraph(), {
-          ariaLabel: 'AscendPort Flash MLA operator graph',
+          ariaLabel: 'AscendPort 稀疏解码算子计算图',
           interaction: { selectableClusters: false },
           overlays: { edgeTags: false, evidence: false },
           fitMode: 'full',
@@ -1474,7 +1597,7 @@
         decorateGpuOnlyGraphNodes();
         const detail = document.getElementById('gdetail');
         if (detail) {
-          detail.innerHTML = '<b>点击任意节点查看解析详情</b><br><span>计算图由 model-graphviz pattern 渲染，节点语义映射到昇腾执行单元。</span>';
+          detail.innerHTML = '<b>点击任意节点查看解析详情</b><br><span>计算图由共享图谱组件渲染，节点语义映射到昇腾执行单元。</span>';
         }
       };
 
@@ -1505,9 +1628,9 @@
         if (!root) return;
         const total = Math.max(1, model.total || 1);
         const rows = [
-          ['mte', 'MTE 搬运', model.rows.mte || []],
-          ['cube', 'Cube', model.rows.cube || []],
-          ['vec', 'Vector', model.rows.vec || []]
+          ['mte', '搬运单元', model.rows.mte || []],
+          ['cube', '矩阵单元', model.rows.cube || []],
+          ['vec', '向量单元', model.rows.vec || []]
         ];
         const fontFamily = getComputedStyle(document.documentElement).getPropertyValue('--font-sans').trim() || 'sans-serif';
         rows.forEach(([key, label, cells]) => {
@@ -1552,11 +1675,11 @@
 
       window.swimHTML = swimHTML = function swimHTMLPto(model, play) {
         const id = `swim-${++swimId}`;
-        const axis = `<div class="swim-axis"><span>t=0</span><span>时间(cycle)→</span><span>t=${model.total}</span></div>`;
-        const legend = '<div class="swim-legend"><span><i style="background:var(--mem)"></i>MTE 搬运</span><span><i style="background:var(--cube)"></i>Cube</span><span><i style="background:var(--vec)"></i>Vector</span><span><i style="background:repeating-linear-gradient(45deg,rgba(255,255,255,.28),rgba(255,255,255,.28) 3px,transparent 3px,transparent 6px)"></i>空转 idle</span></div>';
+        const axis = `<div class="swim-axis"><span>t=0</span><span>时间(周期)→</span><span>t=${model.total}</span></div>`;
+        const legend = '<div class="swim-legend"><span><i style="background:var(--mem)"></i>搬运单元</span><span><i style="background:var(--cube)"></i>矩阵单元</span><span><i style="background:var(--vec)"></i>向量单元</span><span><i style="background:repeating-linear-gradient(45deg,rgba(255,255,255,.28),rgba(255,255,255,.28) 3px,transparent 3px,transparent 6px)"></i>空转</span></div>';
         const row = (key, label) => `<div class="swim-row pto-pattern-swimlane-task__row"><div class="swim-lbl pto-pattern-swimlane-task__label">${label}</div><div class="swim-track"><canvas class="swim-canvas pto-pattern-swimlane-task__canvas" data-row="${key}"></canvas></div></div>`;
         requestAnimationFrame(() => drawPatternSwim(id, model, play));
-        return `<div class="swim pto-pattern-swimlane-task" data-swim-id="${id}">${row('mte', 'MTE 搬运')}${row('cube', 'Cube')}${row('vec', 'Vector')}${axis}${legend}</div>`;
+        return `<div class="swim pto-pattern-swimlane-task" data-swim-id="${id}">${row('mte', '搬运单元')}${row('cube', '矩阵单元')}${row('vec', '向量单元')}${axis}${legend}</div>`;
       };
 
       window.timelineHTML = timelineHTML = function timelineHTMLPto(model, play) {
@@ -1620,13 +1743,13 @@
             <span class="fb-step">步骤 <b id="flowNo">1</b>/${FLOW_STEPS.length} · <span id="flowTitle">${FLOW_STEPS[0].t}</span></span>
             <span class="fb-spacer"></span>
             <span class="fb-legend">
-              <span><i style="background:var(--mem)"></i>MTE 搬运</span>
-              <span><i style="background:var(--cube)"></i>Cube 矩阵</span>
-              <span><i style="background:var(--vec)"></i>Vector 向量</span>
+              <span><i style="background:var(--mem)"></i>搬运单元</span>
+              <span><i style="background:var(--cube)"></i>矩阵单元</span>
+              <span><i style="background:var(--vec)"></i>向量单元</span>
             </span>
           </div>
           <div class="flow-arch" id="flowMemoryArch">
-            <div class="flow-arch__head"><span>memory-architecture · Ascend 910B</span><span>路径焦点随步骤同步</span></div>
+            <div class="flow-arch__head"><span>内存架构 · 昇腾 910B</span><span>路径焦点随步骤同步</span></div>
             <div class="pto-memory-architecture-viewport" data-pto-mem-arch-viewport>
               <div class="pto-memory-architecture-sizer" data-pto-mem-arch-sizer>
                 <div class="pto-memory-architecture-canvas" data-pto-mem-arch-canvas>
@@ -1668,7 +1791,7 @@
         requestAnimationFrame(() => {
           const frame = document.querySelector('[data-ide-frame]');
           if (!frame?.dataset.ideFrameReady) return;
-          const terminalMode = panel === 'term' || panel === 'term2';
+          const terminalMode = panel === 'term' || panel === 'term2' || panel === 'probs';
           if (terminalMode && frame.dataset.bottomPanelMode !== 'terminal') {
             document.getElementById('topTerminalBtn')?.click();
           }

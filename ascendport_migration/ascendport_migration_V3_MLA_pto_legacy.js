@@ -195,12 +195,12 @@ public:
     }
     __aicore__ inline void Process() {
         if (batchIdx >= B || headIdx >= numHeads) return;
-        ComputeAttention();     // QK^T (Cube) → Softmax (Vector) → 累加 V
+        ComputeAttention();     // QK^T(矩阵单元) → Softmax(向量单元) → 累加 V
     }
 private:
-    // TODO(S4): QK^T 走 Cube, Softmax 与 V 累加走 Vector
+    // TODO(S4): QK^T 走矩阵单元,Softmax 与 V 累加走向量单元
     __aicore__ inline void ComputeAttention() { /* 待 S4 填充 */ }
-    // TODO(S6): 替代 block_reduce_max/sum (warp shuffle) → Vector 规约
+    // TODO(S6): 替代 block_reduce_max/sum(warp shuffle) → 向量单元规约
 
     GlobalTensor<fp8_t>   qGm, kvCacheGm;
     GlobalTensor<int32_t> indicesGm;
@@ -266,7 +266,7 @@ public:
             ComputeTile(q, tile, outAcc, mPrev, lPrev);
         }
         // 归一化并写回
-        Div(outAcc, outAcc, lPrev, HEAD_DIM_V);                      // Vector: out /= lPrev
+        Div(outAcc, outAcc, lPrev, HEAD_DIM_V);                      // 向量单元: out /= lPrev
         DataCopy(outGm[(batchIdx * numHeads + headIdx) * HEAD_DIM_V], outAcc, HEAD_DIM_V);
         float lseVal = logf(lPrev) + mPrev;
         DataCopy(lseGm[batchIdx * numHeads + headIdx], &lseVal, 1); // 写 LSE
@@ -287,24 +287,24 @@ private:
         kL1.EnQue(kLoc);
         LocalTensor<fp8_t> k = kL1.DeQue<fp8_t>();
 
-        // Cube: QK^T
+        // 矩阵单元: QK^T
         LocalTensor<float> logits = cO.AllocTensor<float>();
         Mmad(logits, q, k, {1, tileSize, HEAD_DIM});                // [1, BLOCK_N, HEAD_DIM] → [1, BLOCK_N]
         Muls(logits, logits, softmaxScale, tileSize);               // logits *= scale
         cO.EnQue(logits);
         LocalTensor<float> lg = cO.DeQue<float>();
 
-        // Softmax: 更新 max 与 sum (Vector 规约)
+        // Softmax: 更新 max 与 sum(向量单元规约)
         LocalTensor<float> qkScores = ubQK.Get<float>();
         DataCopy(qkScores, lg, tileSize);
-        float mCurr = ReduceMax(qkScores, tileSize);                // Vector: max
+        float mCurr = ReduceMax(qkScores, tileSize);                // 向量单元: max
         float mNew  = fmaxf(mPrev, mCurr);
         float alpha = expf(mPrev - mNew);
         Muls(outAcc, outAcc, alpha, HEAD_DIM_V);                    // outAcc *= alpha
 
         Subs(qkScores, qkScores, mNew, tileSize);                   // qk -= mNew
         Exp(qkScores, qkScores, tileSize);                          // qk = exp(qk)
-        float localSum = ReduceSum(qkScores, tileSize);             // Vector: sum
+        float localSum = ReduceSum(qkScores, tileSize);             // 向量单元: sum
         float lNew = lPrev * alpha + localSum;
 
         // 加载 V 并累加
@@ -346,7 +346,7 @@ using namespace AscendC;
 constexpr int32_t HEAD_DIM   = 576;
 constexpr int32_t HEAD_DIM_V = 512;
 constexpr int32_t BLOCK_N    = 128;
-constexpr int32_t DEPTH      = 2;              // ← 双缓冲深度(Ping-Pong)
+constexpr int32_t DEPTH      = 2;              // ← 双缓冲深度
 
 class FlashMLADecode {
 public:
@@ -381,11 +381,11 @@ public:
         SetValue(outAcc, HEAD_DIM_V, 0.f);
         float mPrev = -CUDART_INF_F, lPrev = 0.f;
 
-        // ---- 软件流水:预取 n+1  ∥  Cube/Vector 计算 n  ∥  V 累加 ----
+        // ---- 软件流水:预取 n+1  ∥  矩阵/向量计算 n  ∥  V 累加 ----
         CopyInKV(0);                                        // 预热:载入第 0 块
         for (int32_t tile = 0; tile < nTile; ++tile) {
             if (tile + 1 < nTile) CopyInKV(tile + 1);       // 预取下一块(与计算重叠)
-            ComputeTile(q, tile, outAcc, mPrev, lPrev);     // Cube QK^T → Vector Softmax
+            ComputeTile(q, tile, outAcc, mPrev, lPrev);     // 矩阵 QK^T → 向量 Softmax
         }
         // 归一化并写回
         Div(outAcc, outAcc, lPrev, HEAD_DIM_V);
@@ -420,22 +420,22 @@ private:
 
         LocalTensor<fp8_t> k = kL1.DeQue<fp8_t>();          // 取上一轮预取的块
         LocalTensor<float> logits = cO.AllocTensor<float>();
-        Mmad(logits, q, k, {1, tileSize, HEAD_DIM});        // Cube
+        Mmad(logits, q, k, {1, tileSize, HEAD_DIM});        // 矩阵单元
         Muls(logits, logits, softmaxScale, tileSize);
         cO.EnQue(logits);
         LocalTensor<float> lg = cO.DeQue<float>();
 
         LocalTensor<float> qkScores = ubQK.AllocTensor<float>();
         DataCopy(qkScores, lg, tileSize);
-        // block_reduce_max/sum 在昇腾无对应物 → 改写为 Vector 片上归约
-        float mCurr = ReduceMax(qkScores, tileSize);        // Vector 规约
+        // block_reduce_max/sum 在昇腾无对应物 → 改写为向量单元片上归约
+        float mCurr = ReduceMax(qkScores, tileSize);        // 向量单元规约
         float mNew  = fmaxf(mPrev, mCurr);
         float alpha = expf(mPrev - mNew);
         Muls(outAcc, outAcc, alpha, HEAD_DIM_V);
 
         Subs(qkScores, qkScores, mNew, tileSize);
         Exp(qkScores, qkScores, tileSize);
-        float localSum = ReduceSum(qkScores, tileSize);     // Vector 规约
+        float localSum = ReduceSum(qkScores, tileSize);     // 向量单元规约
         float lNew = lPrev * alpha + localSum;
 
         LocalTensor<fp8_t> v = vL1.DeQue<fp8_t>();
@@ -451,8 +451,8 @@ private:
 
     TPipe pipe;
     TQue<TPosition::A1, 1>        qL1;
-    TQue<TPosition::B1, DEPTH>    kL1;      // ← Ping-Pong
-    TQue<TPosition::VECIN, DEPTH> vL1;      // ← Ping-Pong
+    TQue<TPosition::B1, DEPTH>    kL1;      // ← 双缓冲
+    TQue<TPosition::VECIN, DEPTH> vL1;      // ← 双缓冲
     TQue<TPosition::CO1, DEPTH>   cO;
     TQue<TPosition::VECOUT,DEPTH> ubQK;
     TBuf<TPosition::VECCALC>      ubOut;
@@ -509,7 +509,7 @@ END_TILING_DATA_DEF;
 REGISTER_TILING_DATA_CLASS(flash_mla_sparse_decode, FlashMLATiling)
 
 // ---- 自动 Tiling:在 L0C / UB 容量约束下选定 BLOCK_N ----
-constexpr int32_t BLOCK_N = ${(c==='A')?128:(c==='B')?256:512};  // UB 利用率 ${ubUtil}% · cycles ${cyc}×
+constexpr int32_t BLOCK_N = ${(c==='A')?128:(c==='B')?256:512};  // UB 利用率 ${ubUtil}% · 周期 ${cyc}×
 ${note}
 static ge::graphStatus TilingFunc(gert::TilingContext* ctx) {
     FlashMLATiling t;
@@ -581,14 +581,64 @@ function renderDiff(key){
     setTimeout(()=>news.forEach(el=>el.classList.remove('flash')),1100);
   }
 }
-// 开启 CUDA ↔ AscendC 同屏对比：左 CUDA、右生成的 cpp
+const ANALYSIS_LABELS={
+  graph:'计算图',
+  generated:'生成代码',
+  tiling:'分块',
+  flow:'数据流',
+  pipeline:'流水',
+  accuracy:'精度',
+  performance:'性能',
+};
+function currentAnalysisView(){
+  return document.getElementById('analysisPane')?.dataset.analysisView || '';
+}
+function analysisGutter(){
+  const pane=document.getElementById('analysisPane');
+  if(!pane) return null;
+  const prev=pane.previousElementSibling;
+  return prev?.matches?.('.pto-workbench-shell__split-gutter') ? prev : null;
+}
+function setAnalysisView(view){
+  const sp=document.getElementById('split');
+  const pane=document.getElementById('analysisPane');
+  if(!sp||!pane) return;
+  sp.classList.remove('graph-open','compare-open','tiling-open','pipe-open');
+  sp.classList.add('analysis-open');
+  pane.hidden=false;
+  const gutter=analysisGutter();
+  if(gutter) gutter.hidden=false;
+  if(view==='graph') sp.classList.add('graph-open');
+  if(view==='generated') sp.classList.add('compare-open');
+  if(view==='tiling') sp.classList.add('tiling-open');
+  if(view==='pipeline') sp.classList.add('pipe-open');
+  pane.dataset.analysisView=view;
+  const title=document.getElementById('analysisTitle');
+  if(title) title.textContent=ANALYSIS_LABELS[view]||'分析';
+  document.querySelectorAll('.analysis-tab[data-analysis]').forEach(tab=>tab.classList.toggle('on',tab.dataset.analysis===view));
+  syncParseBtn();
+}
+function closeAnalysisView(){
+  const sp=document.getElementById('split');
+  if(!sp) return;
+  sp.classList.remove('analysis-open','graph-open','compare-open','tiling-open','pipe-open','link-active');
+  const pane=document.getElementById('analysisPane');
+  if(pane) pane.hidden=true;
+  const gutter=analysisGutter();
+  if(gutter) gutter.hidden=true;
+  clearLinkHot();
+  const h=document.getElementById('leftPaneH');
+  if(h) h.style.display='none';
+  syncParseBtn();
+}
+// 开启源码对比：左侧源端代码，右侧生成代码
 function openCompare(diffKey){
   closeGraph(); closeTiling(); closePipe();        // 关闭计算图 / tiling / 流水对比
   activeTab='cuda';
   renderCode('cuda');                             // 左侧固定为 CUDA
   document.getElementById('leftPaneH').style.display='flex';
   renderDiff(diffKey);                            // 右侧为生成的 AscendC
-  document.getElementById('split').classList.add('compare-open');
+  setAnalysisView('generated');
   renderTabs(); renderTree();
   const f=document.getElementById('etbFile'); if(f) f.textContent='lightning_indexer.cu ↔ .cpp';
   tagLinkGroups(diffKey);                          // 建立相同计算过程的联动呼应
@@ -598,6 +648,7 @@ function closeCompare(){
   sp.classList.remove('compare-open'); sp.classList.remove('link-active');
   clearLinkHot();
   document.getElementById('leftPaneH').style.display='none';
+  if(currentAnalysisView()==='generated') closeAnalysisView();
 }
 
 /* ---------- S3 对比联动：相同计算过程的代码片段互相呼应 ---------- */
@@ -609,7 +660,7 @@ const LINKMAP={
     {label:'grid → 分核 (blockIdx.x=t)', cuda:[44,44], asc:[16,18]},
     {label:'外层 query 循环', cuda:[57,57], asc:[27,32]},
     {label:'QKᵀ 点积 + ReLU·w 归约', cuda:[60,72], asc:[34,35]},
-    {label:'warp 双调排序 → Vector Top-K', cuda:[76,83], asc:[36,37]},
+    {label:'warp 双调排序 → 向量单元 TopK', cuda:[76,83], asc:[36,37]},
     {label:'warp_bitonic_sort (SIMT 专属)', cuda:[17,32], asc:[36,37]},
     {label:'Top-K 输出', cuda:[87,94], asc:[22,23]},
   ],
@@ -618,18 +669,18 @@ const LINKMAP={
     {label:'头权重 __shared__ → UB', cuda:[48,51], asc:[30,30]},
     {label:'causal 分块循环 (s<=t)', cuda:[57,57], asc:[31,32]},
     {label:'kI / qI 载入 GM→L1', cuda:[62,63], asc:[38,45]},
-    {label:'QKᵀ 点积 → Cube (Mmad)', cuda:[65,70], asc:[47,50]},
-    {label:'ReLU → Vector', cuda:[71,71], asc:[53,53]},
-    {label:'跨头加权归约 → Vector', cuda:[60,72], asc:[54,54]},
+    {label:'QKᵀ 点积 → 矩阵单元 (Mmad)', cuda:[65,70], asc:[47,50]},
+    {label:'ReLU → 向量单元', cuda:[71,71], asc:[53,53]},
+    {label:'跨头加权归约 → 向量单元', cuda:[60,72], asc:[54,54]},
   ],
   s6:[
     {label:'causal 分块 + 软件流水', cuda:[57,57], asc:[29,40]},
     {label:'预取下一块 (双缓冲)', cuda:[57,57], asc:[33,37]},
     {label:'kI 载入 (CopyIn)', cuda:[62,63], asc:[42,46]},
-    {label:'QKᵀ 点积 → Cube (Mmad)', cuda:[65,70], asc:[47,51]},
-    {label:'ReLU → Vector', cuda:[71,71], asc:[54,54]},
-    {label:'跨头加权归约 → Vector', cuda:[60,72], asc:[55,55]},
-    {label:'warp 双调排序 → Vector TopK', cuda:[76,83], asc:[60,66]},
+    {label:'QKᵀ 点积 → 矩阵单元 (Mmad)', cuda:[65,70], asc:[47,51]},
+    {label:'ReLU → 向量单元', cuda:[71,71], asc:[54,54]},
+    {label:'跨头加权归约 → 向量单元', cuda:[60,72], asc:[55,55]},
+    {label:'warp 双调排序 → 向量单元 TopK', cuda:[76,83], asc:[60,66]},
     {label:'warp_bitonic_sort (SIMT 专属)', cuda:[17,32], asc:[60,66]},
     {label:'Top-K 输出 UB→GM', cuda:[87,94], asc:[64,65]},
   ],
@@ -696,14 +747,14 @@ function bindLinkHover(lns, side){
 /* ============================ S4 硬件数据流动画 ============================ */
 // 达芬奇内存层次 + 执行单元。坐标基于 viewBox 780×188。
 const FUNITS={
-  gm:  {x:14,  y:70, w:78, h:48, c:'--mem',    t:'Global Mem', s:'GM · HBM'},
-  l1:  {x:150, y:70, w:74, h:48, c:'--mem',    t:'L1 Buffer',  s:'片上缓存'},
-  l0a: {x:280, y:14, w:74, h:40, c:'--cube',   t:'L0A',        s:'Cube 输入·q'},
-  l0b: {x:280, y:134,w:74, h:40, c:'--cube',   t:'L0B',        s:'Cube 输入·k'},
-  cube:{x:410, y:60, w:86, h:66, c:'--cube',   t:'Cube',       s:'Mmad · QKᵀ'},
-  l0c: {x:540, y:60, w:74, h:48, c:'--cube',   t:'L0C',        s:'矩阵输出·logits'},
-  ub:  {x:664, y:14, w:102,h:48, c:'--vec',    t:'Unified Buffer', s:'UB · 头权重/打分'},
-  vec: {x:664, y:118,w:102,h:52, c:'--vec',    t:'Vector',     s:'ReLU · Σw·(·)'},
+  gm:  {x:14,  y:70, w:78, h:48, c:'--mem',    t:'全局内存', s:'GM · 高带宽内存'},
+  l1:  {x:150, y:70, w:74, h:48, c:'--mem',    t:'一级缓存',  s:'片上缓存'},
+  l0a: {x:280, y:14, w:74, h:40, c:'--cube',   t:'L0A',        s:'矩阵输入 q'},
+  l0b: {x:280, y:134,w:74, h:40, c:'--cube',   t:'L0B',        s:'矩阵输入 k'},
+  cube:{x:410, y:60, w:86, h:66, c:'--cube',   t:'矩阵单元',   s:'Mmad · QKᵀ'},
+  l0c: {x:540, y:60, w:74, h:48, c:'--cube',   t:'L0C',        s:'矩阵输出'},
+  ub:  {x:664, y:14, w:102,h:48, c:'--vec',    t:'统一缓冲', s:'UB · 头权重/打分'},
+  vec: {x:664, y:118,w:102,h:52, c:'--vec',    t:'向量单元', s:'ReLU · Σw·(·)'},
 };
 const FEDGES={
   gm_l1:  ['gm','l1'], l1_l0a:['l1','l0a'], l1_l0b:['l1','l0b'],
@@ -712,18 +763,18 @@ const FEDGES={
 };
 // 每一步：亮起的单元、走的边、说明、颜色、对应 S4 代码行
 const FLOW_STEPS=[
-  {t:'DataCopy 头权重 GM→UB', units:['gm','ub'], edges:['gm_ub'], code:[30,30], col:'--mem',
-   note:'w[t,·] 头权重从 Global Memory 搬入 Unified Buffer,供后续加权归约使用。'},
-  {t:'DataCopy kI GM→L1→L0B', units:['gm','l1','l0b'], edges:['gm_l1','l1_l0b'], code:[38,40], col:'--mem',
-   note:'key 分块 kI[s0:] 逐级搬运:GM → L1 → L0B,进入 Cube 的 B 矩阵入口。'},
-  {t:'DataCopy qI GM→L1→L0A', units:['gm','l1','l0a'], edges:['gm_l1','l1_l0a'], code:[42,45], col:'--mem',
-   note:'query qI[t] 同样 GM → L1 → L0A,进入 Cube 的 A 矩阵入口。'},
-  {t:'Mmad 矩阵乘 → L0C', units:['l0a','l0b','cube','l0c'], edges:['l0a_cube','l0b_cube','cube_l0c'], code:[47,50], col:'--cube',
-   note:'Cube 单元执行 QKᵀ = q·kᵀ(FP8),结果 logits 落入 L0C。这是算力主体。'},
-  {t:'Relu 激活 · L0C→UB→Vector', units:['l0c','vec','ub'], edges:['l0c_vec'], code:[52,53], col:'--vec',
-   note:'Vector 单元对 logits 做 ReLU(fmaxf(·,0)),逐元素激活,写入 UB。'},
+  {t:'头权重搬运 GM→UB', units:['gm','ub'], edges:['gm_ub'], code:[30,30], col:'--mem',
+   note:'w[t,·] 头权重从全局内存搬入统一缓冲,供后续加权归约使用。'},
+  {t:'键分块搬运 GM→L1→L0B', units:['gm','l1','l0b'], edges:['gm_l1','l1_l0b'], code:[38,40], col:'--mem',
+   note:'键分块 kI[s0:] 逐级搬运:GM → L1 → L0B,进入矩阵单元的 B 侧入口。'},
+  {t:'查询向量搬运 GM→L1→L0A', units:['gm','l1','l0a'], edges:['gm_l1','l1_l0a'], code:[42,45], col:'--mem',
+   note:'查询向量 qI[t] 同样 GM → L1 → L0A,进入矩阵单元的 A 侧入口。'},
+  {t:'矩阵乘写入 L0C', units:['l0a','l0b','cube','l0c'], edges:['l0a_cube','l0b_cube','cube_l0c'], code:[47,50], col:'--cube',
+   note:'矩阵单元执行 QKᵀ = q·kᵀ(FP8),结果写入 L0C。这是算力主体。'},
+  {t:'激活搬运 L0C→UB→向量单元', units:['l0c','vec','ub'], edges:['l0c_vec'], code:[52,53], col:'--vec',
+   note:'向量单元对打分结果做 ReLU(fmaxf(·,0)),逐元素激活,写入统一缓冲。'},
   {t:'WeightedHeadReduce 加权归约', units:['ub','vec'], edges:['ub_vec'], code:[54,54], col:'--vec',
-   note:'Vector 单元读 UB 中的头权重 w,做 Σ_j w[j]·ReLU(·) 跨头加权求和,得到每个 key 的分数。'},
+   note:'向量单元读取统一缓冲中的头权重 w,做跨头加权求和,得到每个键的分数。'},
 ];
 let flowIdx=0, flowTimer=null, flowPlaying=false;
 
@@ -780,9 +831,9 @@ function renderFlow(){
       <span class="fb-step">步骤 <b id="flowNo">1</b>/${FLOW_STEPS.length} · <span id="flowTitle">${FLOW_STEPS[0].t}</span></span>
       <span class="fb-spacer"></span>
       <span class="fb-legend">
-        <span><i style="background:var(--mem)"></i>片上搬运 (MTE)</span>
-        <span><i style="background:var(--cube)"></i>Cube 矩阵</span>
-        <span><i style="background:var(--vec)"></i>Vector 向量</span>
+        <span><i style="background:var(--mem)"></i>搬运单元</span>
+        <span><i style="background:var(--cube)"></i>矩阵单元</span>
+        <span><i style="background:var(--vec)"></i>向量单元</span>
       </span>
     </div>
     <div class="flow-stage" id="flowStage"></div>
@@ -843,19 +894,15 @@ function stopFlow(){
 }
 // 供面板 tab 调用
 function openFlowPanel(autoplay){
-  document.getElementById('flowTab').style.display='';
-  activatePanelTab('flow');
+  setAnalysisView('flow');
   renderFlow();
   if(autoplay) startFlow();
 }
 function activatePanelTab(p){
   document.querySelectorAll('.ptab').forEach(x=>x.classList.toggle('on',x.dataset.p===p));
-  const showTerm = (p==='term'||p==='term2');
-  document.getElementById('term').style.display=showTerm?'block':'none';
+  document.getElementById('term').style.display=p==='term'?'block':'none';
+  document.getElementById('outputpane').style.display=p==='term2'?'block':'none';
   document.getElementById('probs').style.display=p==='probs'?'block':'none';
-  document.getElementById('flowpane').style.display=p==='flow'?'flex':'none';
-  document.getElementById('accpane').style.display=p==='acc'?'block':'none';
-  document.getElementById('perfpane').style.display=p==='perf'?'block':'none';
 }
 
 /* ============================ S7 精度报告 ============================ */
@@ -863,11 +910,11 @@ function activatePanelTab(p){
 let accFixed=false;
 const ACC_OPS=[
   {op:'DataCopy (GM→L1/UB)', kind:'搬运', err:'0',      pass:true},
-  {op:'Mmad · QKᵀ',          kind:'Cube', err:'2.4e-4', pass:true},
-  {op:'Relu',                kind:'Vector',err:'0',     pass:true},
-  {op:'WeightedHeadReduce',  kind:'Vector',err:'3.1e-2',pass:false,   // ← 异常算子
+  {op:'Mmad · QKᵀ',          kind:'矩阵单元', err:'2.4e-4', pass:true},
+  {op:'Relu',                kind:'向量单元',err:'0',     pass:true},
+  {op:'WeightedHeadReduce',  kind:'向量单元',err:'3.1e-2',pass:false,   // ← 异常算子
     fixedErr:'8.0e-4', anomaly:true},
-  {op:'TopK · Top-K 规约',   kind:'Vector',err:'—',     pass:true, note:'命中率 100%(2048/2048)'},
+  {op:'TopK · Top-K 规约',   kind:'向量单元',err:'—',     pass:true, note:'命中率 100%(2048/2048)'},
 ];
 function accStats(){
   const anomaly = ACC_OPS.find(o=>o.anomaly);
@@ -896,15 +943,15 @@ function renderAccReport(){
   const a=st.anomaly;
   const anomalyBlock = accFixed ? `
     <div class="acc-card ok">
-      <div class="ac-h">✓ 精度对齐通过 <span class="tag" style="background:#48d59722;color:var(--ok);border:1px solid #48d59755">FIXED</span></div>
-      <div class="ac-row"><div class="ac-k">复测</div><div class="ac-v">max_abs_err <code>8.0e-4</code> · cos_sim <code>0.99987</code>,已达 rtol 1e-3 阈值。</div></div>
+      <div class="ac-h">✓ 精度对齐通过 <span class="tag" style="background:#48d59722;color:var(--ok);border:1px solid #48d59755">已修复</span></div>
+      <div class="ac-row"><div class="ac-k">复测</div><div class="ac-v">最大绝对误差 <code>8.0e-4</code> · 余弦相似度 <code>0.99987</code>,已达 rtol 1e-3 阈值。</div></div>
       <div class="ac-row"><div class="ac-k">Top-K</div><div class="ac-v">命中一致率 <code>100%</code> (2048/2048),并列分数顺序已对齐。</div></div>
     </div>` : `
     <div class="acc-card">
-      <div class="ac-h">⚠ 检测到精度异常算子 <span class="tag risk">FAIL</span></div>
+      <div class="ac-h">⚠ 检测到精度异常算子 <span class="tag risk">异常</span></div>
       <div class="ac-row"><div class="ac-k">算子</div><div class="ac-v"><code>${a.op}</code>(${a.kind})</div></div>
-      <div class="ac-row"><div class="ac-k">现象</div><div class="ac-v">max_abs_err <code>${a.err}</code>,超出 rtol <code>1e-3</code> 阈值 ~30×。</div></div>
-      <div class="ac-row"><div class="ac-k">根因</div><div class="ac-v"><b>FP8 累加顺序不一致</b>:CUDA 里各 head 的 <code>Σ w·ReLU</code> 在 FP32 寄存器串行累加;昇腾 Vector 归约按不同次序、且中间以 <b>FP8/FP16 累加</b>,舍入误差在跨 head 求和时被放大。</div></div>
+      <div class="ac-row"><div class="ac-k">现象</div><div class="ac-v">最大绝对误差 <code>${a.err}</code>,超出 rtol <code>1e-3</code> 阈值约 30×。</div></div>
+      <div class="ac-row"><div class="ac-k">根因</div><div class="ac-v"><b>FP8 累加顺序不一致</b>:源端各头的 <code>Σ w·ReLU</code> 在 FP32 寄存器串行累加;昇腾向量单元按不同次序归约、且中间以 <b>FP8/FP16 累加</b>,舍入误差在跨头求和时被放大。</div></div>
       <div class="ac-fix">
         <div class="fh">🔧 修复方案 · 累加提升 FP32 + 对齐归约次序</div>
         <div class="acc-diff"><span class="ctx">    // WeightedHeadReduce(sc, w, sTile);</span><span class="del">-   ReduceSum&lt;fp16_t&gt;(sc, prod, sTile);          // FP16 累加,舍入放大</span><span class="add">+   ReduceSum&lt;float&gt;(sc, prod, sTile);            // 提升 FP32 累加</span><span class="add">+   SetReduceOrder(HEAD_ORDER_FIXED);              // 对齐 CUDA head 归约次序</span></div>
@@ -914,13 +961,13 @@ function renderAccReport(){
 
   pane.innerHTML=`
     <div class="acc-top">
-      <div class="acc-kpi"><div class="kv" style="color:${accFixed?'var(--ok)':'var(--risk)'}">${st.maxErr}</div><div class="kk">max_abs_err</div><div class="kd" style="color:${accFixed?'var(--ok)':'var(--risk)'}">阈值 rtol 1e-3</div></div>
-      <div class="acc-kpi"><div class="kv" style="color:${accFixed?'var(--ok)':'var(--warn)'}">${st.cos}</div><div class="kk">cos_sim</div><div class="kd" style="color:var(--dim)">越接近 1 越好</div></div>
+      <div class="acc-kpi"><div class="kv" style="color:${accFixed?'var(--ok)':'var(--risk)'}">${st.maxErr}</div><div class="kk">最大绝对误差</div><div class="kd" style="color:${accFixed?'var(--ok)':'var(--risk)'}">阈值 rtol 1e-3</div></div>
+      <div class="acc-kpi"><div class="kv" style="color:${accFixed?'var(--ok)':'var(--warn)'}">${st.cos}</div><div class="kk">余弦相似度</div><div class="kd" style="color:var(--dim)">越接近 1 越好</div></div>
       <div class="acc-kpi"><div class="kv">${st.passN}/${st.total}</div><div class="kk">算子通过</div><div class="kd" style="color:${accFixed?'var(--ok)':'var(--risk)'}">${accFixed?'全部通过':'1 个异常'}</div></div>
     </div>
-    <div class="acc-sec-h">逐算子精度对齐 · golden = CUDA</div>
+    <div class="acc-sec-h">逐算子精度对齐 · 基准为源端</div>
     <table class="acc-table">
-      <thead><tr><th>算子</th><th>单元</th><th>max_abs_err</th><th>状态</th></tr></thead>
+      <thead><tr><th>算子</th><th>单元</th><th>最大绝对误差</th><th>状态</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     ${anomalyBlock}`;
@@ -928,41 +975,44 @@ function renderAccReport(){
   const ap=document.getElementById('accApply');
   if(ap) ap.onclick=()=>{
     accFixed=true; setProblems(0);
-    document.getElementById('accCnt').textContent='✓';
+    const accCnt=document.getElementById('accCnt');
+    if(accCnt) accCnt.textContent='✓';
     renderAccReport();
-    notify('✓ 精度修复已应用','累加提升 FP32 · cos_sim 0.99987 · 问题清零','ok');
+    notify('✓ 精度修复已应用','累加提升 FP32 · 余弦相似度 0.99987 · 问题清零','ok');
   };
 }
 function openAccPanel(){
-  document.getElementById('accTab').style.display='';
-  document.getElementById('accCnt').textContent = accFixed?'✓':'!';
-  document.getElementById('accCnt').style.background = accFixed?'#48d59722':'#ff547033';
-  document.getElementById('accCnt').style.color = accFixed?'var(--ok)':'#ff8ba0';
-  activatePanelTab('acc');
+  const accCnt=document.getElementById('accCnt');
+  if(accCnt){
+    accCnt.textContent = accFixed?'✓':'!';
+    accCnt.style.background = accFixed?'#48d59722':'#ff547033';
+    accCnt.style.color = accFixed?'var(--ok)':'#ff8ba0';
+  }
+  setAnalysisView('accuracy');
   renderAccReport();
 }
 
 /* ============================ S8 性能报告 ============================ */
 // 泳道图:每条泳道一个硬件单元,cell 为 {s起, w宽, cls, l标签}。时间以格为单位。
-// 直译版(before):串行,单元间大量 idle 空转。
+// 直译版:串行,单元间大量空转。
 function perfSwimBefore(){
   const rows={mte:[],cube:[],vec:[]}; let t=0;
   for(let n=0;n<3;n++){
     rows.mte.push({s:t,w:3,cls:'mte',l:`搬${n}`});
-    rows.cube.push({s:t,w:3,cls:'idle',l:''});          // Cube 空等搬运
-    rows.cube.push({s:t+3,w:2,cls:'cube',l:`Cube${n}`});
-    rows.vec.push({s:t,w:5,cls:'idle',l:''});           // Vector 长时间空等
-    rows.vec.push({s:t+5,w:1,cls:'vec',l:`V${n}`});
+    rows.cube.push({s:t,w:3,cls:'idle',l:''});          // 矩阵单元空等搬运
+    rows.cube.push({s:t+3,w:2,cls:'cube',l:`矩${n}`});
+    rows.vec.push({s:t,w:5,cls:'idle',l:''});           // 向量单元长时间空等
+    rows.vec.push({s:t+5,w:1,cls:'vec',l:`向${n}`});
     t+=6;
   }
   return {rows,total:t};
 }
-// 优化版(after):双缓冲重叠,MTE 隐藏在计算下,单元密排。
+// 优化版:双缓冲重叠,搬运隐藏在计算下,单元密排。
 function perfSwimAfter(){
   const rows={mte:[],cube:[],vec:[]};
   for(let n=0;n<3;n++) rows.mte.push({s:n*2,w:2,cls:'mte',l:`搬${n}`});
-  for(let n=0;n<3;n++) rows.cube.push({s:2+n*2,w:2,cls:'cube',l:`Cube${n}`});
-  for(let n=0;n<3;n++) rows.vec.push({s:4+n*2,w:1,cls:'vec',l:`V${n}`});
+  for(let n=0;n<3;n++) rows.cube.push({s:2+n*2,w:2,cls:'cube',l:`矩${n}`});
+  for(let n=0;n<3;n++) rows.vec.push({s:4+n*2,w:1,cls:'vec',l:`向${n}`});
   return {rows,total:4+3*2};
 }
 function swimRow(label, cells, total, play){
@@ -974,11 +1024,11 @@ function swimRow(label, cells, total, play){
 function swimHTML(model, play){
   const {rows,total}=model;
   return `<div class="swim">
-    ${swimRow('MTE 搬运', rows.mte, total, play)}
-    ${swimRow('Cube', rows.cube, total, play)}
-    ${swimRow('Vector', rows.vec, total, play)}
-    <div class="swim-axis"><span>t=0</span><span>时间(cycle)→</span><span>t=${total}</span></div>
-    <div class="swim-legend"><span><i style="background:var(--mem)"></i>MTE 搬运</span><span><i style="background:var(--cube)"></i>Cube</span><span><i style="background:var(--vec)"></i>Vector</span><span><i style="background:repeating-linear-gradient(45deg,#ffffff30,#ffffff30 3px,transparent 3px,transparent 6px)"></i>空转 idle</span></div>
+    ${swimRow('搬运单元', rows.mte, total, play)}
+    ${swimRow('矩阵单元', rows.cube, total, play)}
+    ${swimRow('向量单元', rows.vec, total, play)}
+    <div class="swim-axis"><span>t=0</span><span>时间(周期)→</span><span>t=${total}</span></div>
+    <div class="swim-legend"><span><i style="background:var(--mem)"></i>搬运单元</span><span><i style="background:var(--cube)"></i>矩阵单元</span><span><i style="background:var(--vec)"></i>向量单元</span><span><i style="background:repeating-linear-gradient(45deg,#ffffff30,#ffffff30 3px,transparent 3px,transparent 6px)"></i>空转</span></div>
   </div>`;
 }
 // 利用率对比条
@@ -996,40 +1046,39 @@ function renderPerfReport(play){
   pane.innerHTML=`
     <div class="perf-top">
       <div class="perf-kpi"><div class="kv" style="color:var(--ok)">3.1×</div><div class="kk">端到端加速</div></div>
-      <div class="perf-kpi"><div class="kv"><span style="color:var(--risk)">31%</span><span class="arw">→</span><span style="color:var(--ok)">82%</span></div><div class="kk">aicore 利用率</div></div>
-      <div class="perf-kpi"><div class="kv" style="color:var(--ok)">76%</div><div class="kk">Cube 占用</div></div>
-      <div class="perf-kpi"><div class="kv" style="color:var(--ok)">94%</div><div class="kk">MTE 隐藏</div></div>
+      <div class="perf-kpi"><div class="kv"><span style="color:var(--risk)">31%</span><span class="arw">→</span><span style="color:var(--ok)">82%</span></div><div class="kk">算力核利用率</div></div>
+      <div class="perf-kpi"><div class="kv" style="color:var(--ok)">76%</div><div class="kk">矩阵单元占用</div></div>
+      <div class="perf-kpi"><div class="kv" style="color:var(--ok)">94%</div><div class="kk">搬运隐藏率</div></div>
     </div>
 
     <div class="perf-sec-h">流水泳道图 · msProf<span class="tag old">直译版</span></div>
     <div class="perf-play" id="perfPlay">▶ 播放泳道时序</div>
     ${swimHTML(before, play)}
-    <div style="font-size:14px;color:var(--dim);margin:2px 0 0">串行搬运-计算,Cube/Vector 大量空转(斜纹),总耗时 ${before.total} cycle。</div>
+    <div style="font-size:14px;color:var(--dim);margin:2px 0 0">串行搬运-计算,矩阵单元和向量单元大量空转(斜纹),总耗时 ${before.total} 个周期。</div>
 
     <div class="perf-sec-h">流水泳道图 · msProf<span class="tag new">优化版</span></div>
     ${swimHTML(after, play)}
-    <div style="font-size:14px;color:var(--dim);margin:2px 0 0">双缓冲重叠,MTE 搬运隐藏在计算下,总耗时 ${after.total} cycle(约 ${speedup}× 缩短)。</div>
+    <div style="font-size:14px;color:var(--dim);margin:2px 0 0">双缓冲重叠,搬运隐藏在计算下,总耗时 ${after.total} 个周期(约 ${speedup}× 缩短)。</div>
 
     <div class="perf-sec-h">利用率对比 · 直译 → 优化</div>
-    ${cmpBar('aicore 总利用率', 31, 82)}
-    ${cmpBar('Cube 占用率', 22, 76)}
-    ${cmpBar('MTE 隐藏率', 12, 94)}
+    ${cmpBar('算力核总利用率', 31, 82)}
+    ${cmpBar('矩阵单元占用率', 22, 76)}
+    ${cmpBar('搬运隐藏率', 12, 94)}
 
     <div class="perf-sec-h">调优发现与建议</div>
     <div class="perf-tune">
       <div class="pt-item"><span class="ic" style="color:var(--ok)">✓</span><div><b>双缓冲重叠</b> <span class="pv">已消除搬运气泡,流水气泡 21%→4%(见 S6)。</span></div></div>
-      <div class="pt-item"><span class="ic" style="color:var(--ok)">✓</span><div><b>Cube FP8 满流水</b> <span class="pv">Mmad 连续无断流,Cube 占用 76%。</span></div></div>
-      <div class="pt-item"><span class="ic" style="color:var(--warn)">◐</span><div><b>Vector 仍有空隙</b> <span class="pv">ReLU/归约与 Cube 存在轻微串行,可进一步用 UB Ping-Pong 重叠(潜在 +6%)。</span></div></div>
-      <div class="pt-item"><span class="ic" style="color:var(--warn)">◐</span><div><b>末块尾效应</b> <span class="pv">nTile 末块无预取对象,建议按 sTile 对齐 S 长度以摊薄尾延迟。</span></div></div>
+      <div class="pt-item"><span class="ic" style="color:var(--ok)">✓</span><div><b>矩阵单元满流水</b> <span class="pv">Mmad 连续无断流,矩阵单元占用 76%。</span></div></div>
+      <div class="pt-item"><span class="ic" style="color:var(--warn)">◐</span><div><b>向量单元仍有空隙</b> <span class="pv">ReLU/归约与矩阵单元存在轻微串行,可进一步用统一缓冲双缓冲重叠(潜在 +6%)。</span></div></div>
+      <div class="pt-item"><span class="ic" style="color:var(--warn)">◐</span><div><b>末块尾效应</b> <span class="pv">末块无预取对象,建议按分块长度对齐序列长度以摊薄尾延迟。</span></div></div>
     </div>
 
-    <div class="perf-reg"><b>✓ 已注册 aclNN 算子:</b> <code>aclnnLightningIndexer</code> —— 可供图层直接调用。端到端相较直译版 <b>3.1×</b> 加速,精度 cos_sim 0.99987。</div>`;
+    <div class="perf-reg"><b>✓ 已注册 aclNN 算子:</b> <code>aclnnLightningIndexer</code> —— 可供图层直接调用。端到端相较直译版 <b>3.1×</b> 加速,精度余弦相似度 0.99987。</div>`;
   const pb=document.getElementById('perfPlay');
   if(pb) pb.onclick=()=>renderPerfReport(true);
 }
 function openPerfPanel(){
-  document.getElementById('perfTab').style.display='';
-  activatePanelTab('perf');
+  setAnalysisView('performance');
   renderPerfReport(true);
 }
 
@@ -1042,10 +1091,10 @@ const TILING_OPTS={
 const S_TOTAL=2048; // 演示用 key 总长
 function openTiling(){
   closeGraph(); closeCompare(); closePipe();
-  document.getElementById('split').classList.add('tiling-open');
+  setAnalysisView('tiling');
   renderTilingViz();
 }
-function closeTiling(){ document.getElementById('split').classList.remove('tiling-open'); }
+function closeTiling(){ if(currentAnalysisView()==='tiling') closeAnalysisView();else document.getElementById('split').classList.remove('tiling-open'); }
 function renderTilingViz(){
   const c=state.choices['S5']||'B';
   const o=TILING_OPTS[c];
@@ -1062,7 +1111,7 @@ function renderTilingViz(){
   const body=document.getElementById('tpBody');
   body.innerHTML=`
     <div class="tp-sec">
-      <div class="h">分块方案 · sTile</div>
+      <div class="h">分块方案 · 分块长度</div>
       <div class="tp-opts">
         ${Object.entries(TILING_OPTS).map(([k,v])=>`
           <div class="tp-opt ${k===c?'on':''}" data-v="${k}">
@@ -1073,31 +1122,31 @@ function renderTilingViz(){
     </div>
 
     <div class="tp-sec">
-      <div class="h">key(S=${S_TOTAL}) 维分块 · nTile = ⌈S/sTile⌉ = ${nTile}</div>
+      <div class="h">键序列长度 ${S_TOTAL} · 分块数 = ${nTile}</div>
       <div class="tp-anim" id="tpPlay">▶ 演示分块搬运过程</div>
       <div class="sbar" id="sbar">${blks}</div>
-      <div class="sbar-cap"><span>← 沿 key 维流式载入,每块 sTile=${o.sTile}</span><span>${tail>0?`末块 ${tail}`:'整除'}</span></div>
+      <div class="sbar-cap"><span>← 沿键维流式载入,每块长度 ${o.sTile}</span><span>${tail>0?`末块 ${tail}`:'整除'}</span></div>
     </div>
 
     <div class="tp-sec">
       <div class="h">片上缓冲占用 · 容量约束</div>
       <div class="util">
-        <div class="ul"><span>Unified Buffer (UB)</span><b style="color:${ubCol}">${o.ub}%</b></div>
+        <div class="ul"><span>统一缓冲 (UB)</span><b style="color:${ubCol}">${o.ub}%</b></div>
         <div class="track"><div class="fill" style="width:${Math.min(o.ub,100)}%;background:${ubCol}"></div><div class="cap-line" style="left:100%"></div></div>
       </div>
       <div class="util">
         <div class="ul"><span>L0C (矩阵输出)</span><b style="color:${l0cCol}">${o.l0c}%</b></div>
         <div class="track"><div class="fill" style="width:${Math.min(o.l0c,100)}%;background:${l0cCol}"></div><div class="cap-line" style="left:100%"></div></div>
       </div>
-      ${o.ub>100||o.l0c>100?`<div style="font-size:14px;color:var(--risk);margin-top:4px">⚠ 超出片上容量 → 触发回退搬运(spill),cycles 反而升高</div>`:`<div style="font-size:14px;color:var(--ok);margin-top:4px">✓ 恰好贴合片上容量,驻留最大化</div>`}
+      ${o.ub>100||o.l0c>100?`<div style="font-size:14px;color:var(--risk);margin-top:4px">⚠ 超出片上容量 → 触发回退搬运,周期反而升高</div>`:`<div style="font-size:14px;color:var(--ok);margin-top:4px">✓ 恰好贴合片上容量,驻留最大化</div>`}
     </div>
 
     <div class="tp-sec">
       <div class="h">代价评估</div>
       <div class="tp-metrics">
         <div class="tp-metric"><div class="mv">${nTile}</div><div class="mk">回 GM 次数 / 行</div></div>
-        <div class="tp-metric"><div class="mv" style="color:${o.cyc==='0.72'?'var(--ok)':'#eef'}">${o.cyc}×</div><div class="mk">相对 cycles</div></div>
-        <div class="tp-metric"><div class="mv">${o.sTile}</div><div class="mk">sTile</div></div>
+        <div class="tp-metric"><div class="mv" style="color:${o.cyc==='0.72'?'var(--ok)':'#eef'}">${o.cyc}×</div><div class="mk">相对周期</div></div>
+        <div class="tp-metric"><div class="mv">${o.sTile}</div><div class="mk">分块长度</div></div>
       </div>
     </div>`;
   // 选项联动:更新选择 → 重渲染 tiling.h 与可视化
@@ -1124,31 +1173,31 @@ function animateTiling(nTile){
 }
 
 /* ============================ S6 流水线前后对比可视化 ============================ */
-// 三个 tile,时间以「格」为单位。op:mte(搬运2格)/cube(2格)/vec(1格)
+// 三个分块,时间以「格」为单位。op:mte(搬运2格)/cube(2格)/vec(1格)
 const PIPE_TILES=3;
-// 串行:每 tile 依次 MTE→Cube→Vec,单元间空档形成气泡
+// 串行:每块依次搬运→矩阵→向量,单元间空档形成气泡
 function buildSerial(){
   const rows={mte:[],cube:[],vec:[]}; let t=0;
   for(let n=0;n<PIPE_TILES;n++){
     rows.mte.push({s:t,w:2,l:`搬${n}`,cls:'mte'});
-    // Cube 需等 MTE 完成 → 气泡
-    rows.cube.push({s:t,w:2,l:'',cls:'bub'});          // Cube 空转等待
-    rows.cube.push({s:t+2,w:2,l:`Cube${n}`,cls:'cube'});
-    rows.vec.push({s:t+4,w:1,l:`Vec${n}`,cls:'vec'});
+    // 矩阵单元需等搬运完成 → 气泡
+    rows.cube.push({s:t,w:2,l:'',cls:'bub'});          // 矩阵单元空转等待
+    rows.cube.push({s:t+2,w:2,l:`矩${n}`,cls:'cube'});
+    rows.vec.push({s:t+4,w:1,l:`向${n}`,cls:'vec'});
     t+=5;
   }
   return {rows,total:t};
 }
-// 双缓冲流水:MTE 连续预取,Cube 紧接上一块搬运后连续执行,Vec 跟随
+// 双缓冲流水:搬运连续预取,矩阵单元紧接上一块搬运后连续执行,向量单元跟随
 function buildPipe(){
   const rows={mte:[],cube:[],vec:[]};
-  // MTE 预热块0(2格),之后每块提前预取,连续排布
+  // 搬运单元预热块0(2格),之后每块提前预取,连续排布
   for(let n=0;n<PIPE_TILES;n++) rows.mte.push({s:n*2,w:2,l:`搬${n}`,cls:'mte'});
-  // Cube 从块0搬完(t=2)起连续执行,每块2格
-  for(let n=0;n<PIPE_TILES;n++) rows.cube.push({s:2+n*2,w:2,l:`Cube${n}`,cls:'cube'});
-  // Vec 跟在各自 Cube 之后
-  for(let n=0;n<PIPE_TILES;n++) rows.vec.push({s:4+n*2,w:1,l:`Vec${n}`,cls:'vec'});
-  const total=4+PIPE_TILES*2; // 末块 Cube 结束 + Vec
+  // 矩阵单元从块0搬完(t=2)起连续执行,每块2格
+  for(let n=0;n<PIPE_TILES;n++) rows.cube.push({s:2+n*2,w:2,l:`矩${n}`,cls:'cube'});
+  // 向量单元跟在各自矩阵计算之后
+  for(let n=0;n<PIPE_TILES;n++) rows.vec.push({s:4+n*2,w:1,l:`向${n}`,cls:'vec'});
+  const total=4+PIPE_TILES*2; // 末块矩阵与向量结束
   return {rows,total};
 }
 function tlRowHTML(label, cells, total, play){
@@ -1162,18 +1211,18 @@ function tlRowHTML(label, cells, total, play){
 function timelineHTML(model, play){
   const {rows,total}=model;
   return `<div class="tl-rows">
-    ${tlRowHTML('MTE 搬运', rows.mte, total, play)}
-    ${tlRowHTML('Cube', rows.cube, total, play)}
-    ${tlRowHTML('Vector', rows.vec, total, play)}
+    ${tlRowHTML('搬运单元', rows.mte, total, play)}
+    ${tlRowHTML('矩阵单元', rows.cube, total, play)}
+    ${tlRowHTML('向量单元', rows.vec, total, play)}
   </div>
   <div class="tl-axis"><span>t=0</span><span>时间 →</span><span>t=${total}</span></div>`;
 }
 function openPipe(){
   closeGraph(); closeCompare(); closeTiling();
-  document.getElementById('split').classList.add('pipe-open');
+  setAnalysisView('pipeline');
   renderPipeViz(false);
 }
-function closePipe(){ document.getElementById('split').classList.remove('pipe-open'); }
+function closePipe(){ if(currentAnalysisView()==='pipeline') closeAnalysisView();else document.getElementById('split').classList.remove('pipe-open'); }
 function renderPipeViz(play){
   const ser=buildSerial(), pip=buildPipe();
   const serBubbles=ser.rows.cube.filter(c=>c.cls==='bub').length;
@@ -1183,12 +1232,12 @@ function renderPipeViz(play){
     <div class="pp-block">
       <div class="h"><span class="badge old">编排前</span>串行:搬运→计算 顺序执行</div>
       ${timelineHTML(ser, play)}
-      <div style="font-size:14px;color:var(--dim);margin-top:5px">Cube 每块都要空等 MTE 搬运完成(斜纹为气泡),单元利用率低。</div>
+      <div style="font-size:14px;color:var(--dim);margin-top:5px">矩阵单元每块都要空等搬运完成(斜纹为气泡),单元利用率低。</div>
     </div>
     <div class="pp-block">
-      <div class="h"><span class="badge new">编排后</span>双缓冲 Ping-Pong:预取 n+1 ∥ 计算 n</div>
+      <div class="h"><span class="badge new">编排后</span>双缓冲:预取 n+1 ∥ 计算 n</div>
       ${timelineHTML(pip, play)}
-      <div style="font-size:14px;color:var(--dim);margin-top:5px">TQue 深度 1→2,MTE 预取与 Cube/Vector 计算重叠,气泡几乎消除。</div>
+      <div style="font-size:14px;color:var(--dim);margin-top:5px">TQue 深度 1→2,搬运预取与矩阵/向量计算重叠,气泡几乎消除。</div>
     </div>
     <div class="pp-metrics">
       <div class="pp-metric"><div class="mv"><span style="color:var(--risk)">${ser.total}</span><span class="arw">→</span><span style="color:var(--ok)">${pip.total}</span></div><div class="mk">总周期(格)</div></div>
@@ -1202,15 +1251,15 @@ function renderPipeViz(play){
 /* ============================ 计算图 ============================ */
 // unit: mem|cube|vector|scalar|risk
 const GNODES=[
-  {id:'q', x:26,  y:86,  w:120,h:40, unit:'mem', t:'Q[b,q,h] · FP8', s:'GM→L1→L0A', d:'Query 向量,FP8 e4m3,每个 (batch, head) 对加载一个 query。搬入 L1 后进 L0A 供 Cube 读取。', lines:[20,25]},
-  {id:'kv', x:200, y:14,  w:120,h:40, unit:'mem', t:'KV Cache · FP8', s:'GM→L1→L0B', d:'FP8 量化的 KV cache,每个 token 656 字节(512B NoPE + 16B scale + 128B RoPE)。按 TopK 稀疏索引分块载入。', lines:[28,32]},
-  {id:'idx', x:26,  y:14, w:120,h:40, unit:'mem', t:'indices[b,topk]', s:'GM→UB', d:'稀疏 TopK 索引,指示每个 query 应该 attend 到哪些 KV。原为 CPU/GPU 预计算,昇腾映射到 Unified Buffer。', lines:[28,32]},
-  {id:'qk', x:200, y:86,  w:120,h:44, unit:'cube', t:'QK^T 点积', s:'Cube · Mmad', d:'Q·K^T 的 FP8 矩阵乘,是算力主体。CUDA 里是手写循环累加,昇腾直接映射到 Cube 矩阵单元(Mmad)。', lines:[35,45]},
-  {id:'sm', x:200, y:158, w:120,h:44, unit:'vector', t:'Softmax', s:'Vector · Exp/Reduce', d:'在线 Softmax:逐块更新 max 与 sum,exp 归一化。CUDA 用 __shfl_xor_sync 规约,昇腾映射到 Vector ReduceMax/Sum。', lines:[48,60]},
-  {id:'shf',x:26, y:158, w:120,h:44, unit:'risk', gpuOnly:true, t:'block_reduce 规约', s:'GPU-only · 无直接适配', d:'依赖 warp 内 lane 间硬件 shuffle 做 max/sum 规约。达芬奇无线程/warp 概念,不是可直接映射的昇腾算子,S2 决策需替代为 Vector 片上归约。', lines:[16,28]},
-  {id:'sync',x:26, y:230, w:120,h:40, unit:'risk', gpuOnly:true, t:'__syncthreads', s:'GPU-only · 无直接适配', d:'CUDA 线程块级同步屏障。昇腾无线程块同步模型,不是可直接映射的昇腾算子,需改写为 EnQue/DeQue 的流水同步(见 S6)。', lines:[30,45]},
-  {id:'vac', x:200, y:230, w:120,h:44, unit:'vector', t:'V 累加', s:'Vector · Axpy', d:'加权累加 V:out += weight * V[k]。逐 token 累加,映射到 Vector 单元的 Axpy 操作。', lines:[62,70]},
-  {id:'out',x:200,y:300, w:120,h:44, unit:'mem', t:'Output + LSE', s:'UB→GM', d:'注意力输出与 log-sum-exp 写回 Global Memory。LSE 用于后续层或 loss 计算。', lines:[72,76]},
+  {id:'q', x:26,  y:86,  w:120,h:40, unit:'mem', t:'Q 向量 · FP8', s:'GM→L1→L0A', d:'查询向量,FP8 e4m3,每个批次与头加载一个向量。搬入 L1 后进入 L0A,供矩阵单元读取。', lines:[20,25]},
+  {id:'kv', x:200, y:14,  w:120,h:40, unit:'mem', t:'键值缓存 · FP8', s:'GM→L1→L0B', d:'FP8 量化的键值缓存,每个 token 656 字节(512B NoPE + 16B scale + 128B RoPE)。按 TopK 稀疏索引分块载入。', lines:[28,32]},
+  {id:'idx', x:26,  y:14, w:120,h:40, unit:'mem', t:'稀疏索引', s:'GM→UB', d:'稀疏 TopK 索引,指示每个查询向量应该访问哪些键值缓存。原为源端预计算,昇腾映射到统一缓冲。', lines:[28,32]},
+  {id:'qk', x:200, y:86,  w:120,h:44, unit:'cube', t:'QK^T 点积', s:'矩阵单元 · Mmad', d:'Q·K^T 的 FP8 矩阵乘,是算力主体。源端是手写循环累加,昇腾直接映射到矩阵单元(Mmad)。', lines:[35,45]},
+  {id:'sm', x:200, y:158, w:120,h:44, unit:'vector', t:'Softmax 归一化', s:'向量单元 · Exp/Reduce', d:'在线 Softmax:逐块更新最大值与求和,再做指数归一化。源端用 __shfl_xor_sync 规约,昇腾映射到向量单元 ReduceMax/Sum。', lines:[48,60]},
+  {id:'shf',x:26, y:158, w:120,h:44, unit:'risk', gpuOnly:true, t:'block_reduce 规约', s:'仅源端支持 · 无直接适配', d:'依赖 warp 内 lane 间硬件 shuffle 做最大值/求和规约。达芬奇无线程/warp 概念,不是可直接映射的昇腾算子,S2 决策需替代为向量单元片上归约。', lines:[16,28]},
+  {id:'sync',x:26, y:230, w:120,h:40, unit:'risk', gpuOnly:true, t:'__syncthreads', s:'仅源端支持 · 无直接适配', d:'源端线程块级同步屏障。昇腾无线程块同步模型,不是可直接映射的昇腾算子,需改写为 EnQue/DeQue 的流水同步(见 S6)。', lines:[30,45]},
+  {id:'vac', x:200, y:230, w:120,h:44, unit:'vector', t:'V 累加', s:'向量单元 · Axpy', d:'加权累加 V:out += weight * V[k]。逐 token 累加,映射到向量单元的 Axpy 操作。', lines:[62,70]},
+  {id:'out',x:200,y:300, w:120,h:44, unit:'mem', t:'输出 + LSE', s:'UB→GM', d:'注意力输出与 log-sum-exp 写回全局内存。LSE 用于后续层或损失计算。', lines:[72,76]},
 ];
 const GEDGES=[['q','qk'],['kv','qk'],['idx','kv'],['qk','sm'],['sm','vac'],['kv','vac'],['shf','sm'],['sync','sm'],['vac','out']];
 const UNITC={mem:'--mem',cube:'--cube',vector:'--vec',scalar:'--scalar',risk:'--risk'};
@@ -1251,10 +1300,10 @@ function renderGraph(animate){
 function selectNode(id){
   document.querySelectorAll('.gnode').forEach(e=>e.classList.toggle('sel',e.dataset.id===id));
   const n=GNODES.find(x=>x.id===id); let u=n.unit; if(graphMapped&&u==='risk')u='vector';
-  const label={mem:'片上搬运',cube:'Cube 矩阵',vector:'Vector 向量',scalar:'Scalar 标量',risk:'GPU-only · 无直接适配'}[u];
+  const label={mem:'片上搬运',cube:'矩阵单元',vector:'向量单元',scalar:'标量单元',risk:'仅源端支持 · 无直接适配'}[u];
   const col=unitColor(u);
   let note=n.d;
-  if(graphMapped&&n.unit==='risk') note='【已在 S2 改写】'+n.d.replace(/S2 决策.*$/,'现映射为 Vector 片上归约,见 S6 的 SelectTopK / TopK 原语。');
+  if(graphMapped&&n.unit==='risk') note='【已在 S2 改写】'+n.d.replace(/S2 决策.*$/,'现映射为向量单元片上归约,见 S6 的 SelectTopK / TopK 原语。');
   document.getElementById('gdetail').innerHTML=
     `<span class="badge" style="background:${col}22;color:${col};border:1px solid ${col}66">${label}</span>`+
     `<b>${n.t}</b> · <code style="font-family:var(--mono);font-size:13px">${n.s}</code><br>`+
@@ -1274,13 +1323,13 @@ const OPMAP=[
   {cuda:'Q·K^T 手写循环累加', op:'Mmad', unit:'cube', node:'qk', rewrite:false},
   {cuda:'Exp(logits - max)', op:'Exp', unit:'vector', node:'sm', rewrite:false},
   {cuda:'Axpy: out += w·V', op:'Axpy', unit:'vector', node:'vac', rewrite:false},
-  {cuda:'FP8 KV cache 解析', op:'DataCopy + 地址计算', unit:'mem', node:'kv', rewrite:false},
-  {cuda:'indices[b,topk] 索引', op:'Unified Buffer', unit:'mem', node:'idx', rewrite:false},
+  {cuda:'FP8 键值缓存解析', op:'DataCopy + 地址计算', unit:'mem', node:'kv', rewrite:false},
+  {cuda:'indices[b,topk] 索引', op:'统一缓冲', unit:'mem', node:'idx', rewrite:false},
   {cuda:'GM 载入 Q / KV', op:'DataCopy (GM→L1→L0)', unit:'mem', node:'q', rewrite:false},
   {cuda:'__shfl_xor_sync 规约', op:null, unit:'risk', node:'shf', rewrite:true},
   {cuda:'__syncthreads 同步', op:null, unit:'risk', node:'sync', rewrite:true},
 ];
-const UNIT_LABEL={mem:'片上搬运',cube:'Cube 矩阵',vector:'Vector 向量',scalar:'Scalar 标量',risk:'GPU-only · 无直接适配'};
+const UNIT_LABEL={mem:'片上搬运',cube:'矩阵单元',vector:'向量单元',scalar:'标量单元',risk:'仅源端支持 · 无直接适配'};
 function renderOpMapTable(){
   const choice = state.choices['S2'] || 'vector';
   let rows='';
@@ -1288,8 +1337,8 @@ function renderOpMapTable(){
     let unit=m.unit, op=m.op, st, stCls, isRw=false;
     if(m.rewrite){
       // 依据 S2 决策决定重写目标
-      if(choice==='scalar'){ unit='scalar'; op='Scalar 逐元素模拟'; }
-      else { unit='vector'; op=(m.node==='bit')?'Vector 归约 + TopK 原语':'Vector 片上归约'; }
+      if(choice==='scalar'){ unit='scalar'; op='标量单元逐元素模拟'; }
+      else { unit='vector'; op=(m.node==='bit')?'向量单元归约 + TopK 原语':'向量单元片上归约'; }
       st='需重写'; stCls='rw'; isRw=true;
     } else {
       st='直接映射'; stCls='ok';
@@ -1304,17 +1353,17 @@ function renderOpMapTable(){
   });
   const rwN=OPMAP.filter(m=>m.rewrite).length, okN=OPMAP.length-rwN;
   return `<div class="opmap">
-    <div class="opmap-h">🗺 算子映射清单 · CUDA → 昇腾<span class="cnt">${okN} 直接映射 · ${rwN} 需重写</span></div>
+    <div class="opmap-h">🗺 算子映射清单 · 源端 → 昇腾<span class="cnt">${okN} 直接映射 · ${rwN} 需重写</span></div>
     <table>
-      <thead><tr><th>CUDA 算子</th><th>昇腾算子</th><th>执行单元</th><th>状态</th></tr></thead>
+      <thead><tr><th>源端算子</th><th>昇腾算子</th><th>执行单元</th><th>状态</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   </div>`;
 }
-function syncParseBtn(){const open=document.getElementById('split').classList.contains('graph-open');
-  document.getElementById('parseBtn').classList.toggle('on',open);}
-function openGraph(){closeCompare();closeTiling();closePipe();document.getElementById('split').classList.add('graph-open');renderGraph(true);syncParseBtn();}
-function closeGraph(){document.getElementById('split').classList.remove('graph-open');syncParseBtn();}
+function syncParseBtn(){const open=currentAnalysisView()==='graph'&&document.getElementById('split')?.classList.contains('analysis-open');
+  document.getElementById('parseBtn')?.classList.toggle('on',open);}
+function openGraph(){closeCompare();closeTiling();closePipe();setAnalysisView('graph');renderGraph(true);}
+function closeGraph(){if(currentAnalysisView()==='graph') closeAnalysisView();else syncParseBtn();}
 
 // 源码高亮联动函数
 function highlightCodeLines(startLine, endLine){
@@ -1363,8 +1412,8 @@ function renderTree(){
    <div class="node"><svg class="fic" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.6"><path d="m6 9 6 6 6-6"/></svg><b style="font-weight:600;color:#cfd6ea">DEEPSEEK-V3 · FLASH MLA</b></div>
    <div class="node ind"><svg class="fic" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.5"><path d="m6 9 6 6 6-6"/></svg>ops/</div>
    <div class="node ind2 ${activeTab==='cuda'?'sel':''}" data-open="cuda"><span class="dot-c" style="background:var(--cube)"></span>flash_mla_decode.cu</div>
-   ${hasCpp?`<div class="node ind2 ${(activeTab!=='cuda'&&activeTab!=='tiling')?'sel':''}" data-open="cpp"><span class="dot-c" style="background:var(--acc)"></span>flash_mla_decode.cpp<span class="tag new">NEW</span></div>`:''}
-   ${tilingReady?`<div class="node ind2 ${activeTab==='tiling'?'sel':''}" data-open="tiling"><span class="dot-c" style="background:var(--vec)"></span>tiling.h<span class="tag new">NEW</span></div>`:''}
+   ${hasCpp?`<div class="node ind2 ${(activeTab!=='cuda'&&activeTab!=='tiling')?'sel':''}" data-open="cpp"><span class="dot-c" style="background:var(--acc)"></span>flash_mla_decode.cpp<span class="tag new">新</span></div>`:''}
+   ${tilingReady?`<div class="node ind2 ${activeTab==='tiling'?'sel':''}" data-open="tiling"><span class="dot-c" style="background:var(--vec)"></span>tiling.h<span class="tag new">新</span></div>`:''}
    <div class="node ind2"><span class="dot-c" style="background:var(--dim2)"></span>mla_ref.py</div>
    <div class="node ind"><svg class="fic" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.5"><path d="m9 18 6-6-6-6"/></svg>tests/</div>
    ${hasCpp?`<div class="node ind"><svg class="fic" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" stroke-width="1.5"><path d="m9 18 6-6-6-6"/></svg>build/</div>`:''}
@@ -1432,13 +1481,13 @@ function flashCodeLines(a,b){
 
 /* ============================ 步骤定义 ============================ */
 const STEPS=[
- {n:'S1',t:'解析算子',sub:'CUDA AST → 计算图',
+ {n:'S1',t:'解析算子',sub:'源码语法树 → 计算图',
   body:`扫描 <code>fused_lightning_indexer_kernel</code>,抽取算子结构并生成计算图。识别为<b>「indexer 打分 + Top-K 选择」融合算子</b>:QKᵀ 点积 + ReLU + 跨头加权归约,再做 warp 双调排序取 Top-K。
   <div class="inspector-soft-card is-info" style="margin-top:12px">
     <div style="font-size:14px;color:var(--dim);margin-bottom:6px">💡 提示</div>
     <div style="font-size:14px;color:var(--txt)">点击右上角「解析算子 · 计算图」按钮打开计算图画布，然后点击各个节点可查看对应的源码位置</div>
   </div>`,
-  risk:{h:'检测到 SIMT 专属结构',p:'<code>__shfl_xor_sync</code> warp 洗牌、<code>warp_bitonic_sort</code> 双调排序、<code>cg::thread_block</code> 与 <code>__shared__</code> —— 均依赖 GPU 线程/warp 硬件模型,昇腾达芬奇架构<b>无直接对应物</b>,须在 S2 决策改写。'},
+  risk:{h:'检测到源端专属结构',p:'<code>__shfl_xor_sync</code> warp 洗牌、<code>warp_bitonic_sort</code> 双调排序、<code>cg::thread_block</code> 与 <code>__shared__</code> —— 均依赖源端线程/warp 硬件模型,昇腾达芬奇架构<b>无直接对应物</b>,须在 S2 决策改写。'},
   log:[['','ascendport migrate ./ops/lightning_indexer.cu','p'],
        ['解析 CUDA translation unit … 148 行','d'],
        ['✓ 识别 kernel: fused_lightning_indexer_kernel','g'],
@@ -1451,97 +1500,97 @@ const STEPS=[
   run(){ hasCpp=false; graphMapped=false; renderTree(); renderTabs(); switchTab('cuda'); openGraph(); }},
 
  {n:'S2',t:'算子映射',sub:'算子 → 达芬奇执行单元',
-  body:`把计算图里的每个 CUDA 算子映射到目标昇腾算子与达芬奇执行单元。下方清单列出全部映射结果 —— 多数可直接映射,仅 SIMT 专属的 warp 洗牌 + 双调排序<b>无对应物、需重写</b>。`,
-  choice:{q:'warp shuffle 规约 + 双调排序 Top-K 如何在昇腾重写?',
+  body:`把计算图里的每个源端算子映射到目标昇腾算子与达芬奇执行单元。下方清单列出全部映射结果 —— 多数可直接映射,仅源端专属的 warp 洗牌 + 双调排序<b>无对应物、需重写</b>。`,
+  choice:{q:'warp 洗牌规约 + 双调排序 Top-K 如何在昇腾重写?',
     opts:[
-     {v:'vector',rec:'推荐',title:'重写为 Vector 片上归约 + TopK 原语',
-      desc:'用 Vector 单元的树形归约替代 lane-shuffle,Top-K 用 AscendC TopK 原语。充分利用向量算力,吞吐最高。'},
-     {v:'scalar',warn:'不推荐',title:'Scalar 单元逐元素模拟',
-      desc:'用标量循环逐个比较模拟 shuffle。语义等价但 Vector 单元闲置,严重浪费算力。'}]},
+     {v:'vector',rec:'推荐',title:'重写为向量单元片上归约 + TopK 原语',
+      desc:'用向量单元的树形归约替代 lane-shuffle,Top-K 用 AscendC TopK 原语。充分利用向量算力,吞吐最高。'},
+     {v:'scalar',warn:'不推荐',title:'标量单元逐元素模拟',
+      desc:'用标量循环逐个比较模拟 shuffle。语义等价但向量单元闲置,严重浪费算力。'}]},
   log:[['','ascendport map --target davinci','p'],
        ['映射计算图节点 → 执行单元 …','d'],
-       ['  QKᵀ 点积         → Cube  (Mmad, FP8)','g'],
-       ['  ReLU / 加权归约   → Vector','g'],
-       ['  Causal 掩码       → Vector','g'],
-       ['  头权重 __shared__ → Unified Buffer','g']],
-  logVector:[['  warp shuffle + 双调排序 → Vector 片上归约 + TopK 原语','g'],
-       ['✓ 计算图 risk 节点已更新: SIMT → Vector','a'],
-       ['⚠ 注意:并列分数下 Top-K 顺序可能与 GPU 不同 → S7 校验命中率','y']],
-  logScalar:[['  warp shuffle + 双调排序 → Scalar 逐元素模拟','y'],
-       ['⚠ Vector 单元将闲置,预计算力利用率 < 40% —— 不推荐','r']]},
+       ['  QKᵀ 点积         → 矩阵单元 (Mmad, FP8)','g'],
+       ['  ReLU / 加权归约   → 向量单元','g'],
+       ['  Causal 掩码       → 向量单元','g'],
+       ['  头权重 __shared__ → 统一缓冲','g']],
+  logVector:[['  warp shuffle + 双调排序 → 向量单元片上归约 + TopK 原语','g'],
+       ['✓ 计算图风险节点已更新: 源端专属 → 向量单元','a'],
+       ['⚠ 注意:并列分数下 Top-K 顺序可能与源端不同 → S7 校验命中率','y']],
+  logScalar:[['  warp shuffle + 双调排序 → 标量单元逐元素模拟','y'],
+       ['⚠ 向量单元将闲置,预计算力利用率 < 40% —— 不推荐','r']]},
 
- {n:'S3',t:'代码生成',sub:'SIMT → SPMD 分核',
-  body:`生成 AscendC 骨架 <code>lightning_indexer.cpp</code>,并在编辑器<b>左 CUDA · 右 AscendC 同屏对比</b>。<code>blockIdx.x=t</code> 的 grid 映射为按 AI Core 分核(<code>GetBlockIdx()</code> 认领 query 行);warp/lane 内的打分循环改为核内分块循环。<code>SelectTopK</code> 以 Vector 归约桩替代 warp 双调排序。`,
+ {n:'S3',t:'代码生成',sub:'线程模型 → 分核模型',
+  body:`生成 AscendC 骨架 <code>lightning_indexer.cpp</code>,并在编辑器<b>左源端 · 右昇腾</b>同屏对比。<code>blockIdx.x=t</code> 的 grid 映射为按算力核分核(<code>GetBlockIdx()</code> 认领查询行);warp/lane 内的打分循环改为核内分块循环。<code>SelectTopK</code> 以向量单元归约桩替代 warp 双调排序。`,
   log:[['','ascendport codegen --arch ascend910b','p'],
        ['生成 AscendC kernel 类 …','d'],
        ['✓ 新建 lightning_indexer.cpp','g'],
        ['  ├─ Init/Process/ComputeScores/SelectTopK','d'],
        ['  ├─ grid(blockIdx.x) → GetBlockIdx() 分核','g'],
-       ['  └─ warp 双调排序 → SelectTopK() 桩 (Vector)','g'],
+       ['  └─ warp 双调排序 → SelectTopK() 桩 (向量单元)','g'],
        ['插入 2 处 TODO 标记 (S4 内存 / S6 Top-K)','y'],
-       ['✓ 已开启 CUDA ↔ AscendC 同屏对比视图 (计算图已收起)','a']],
+       ['✓ 已开启源端 ↔ 昇腾同屏对比视图 (计算图已收起)','a']],
   run(){ hasCpp=true; renderTree(); renderTabs(); openCompare('s3'); }},
 
  {n:'S4',t:'内存层次映射',sub:'显式片上缓冲 + DataCopy',
-  body:`为每处数据流动生成逐级搬运:<code>kI</code> FP8 走 GM→L1→L0B、<code>qI</code>→L0A、<code>QKᵀ</code> logits 落 L0C、ReLU/归约在 UB。这是 GPU 隐式缓存与昇腾显式缓冲的核心落差。右侧 AscendC 中<b>新注入的内存层次代码已高亮标记</b>,底部「数据流」面板以硬件单元为基础动画演示数据如何在 GM ↔ L1 ↔ L0 ↔ Cube ↔ UB ↔ Vector 之间流动。`,
+  body:`为每处数据流动生成逐级搬运:<code>kI</code> FP8 走 GM→L1→L0B、<code>qI</code>→L0A、<code>QKᵀ</code> 打分结果落 L0C、ReLU/归约在 UB。这是源端隐式缓存与昇腾显式缓冲的核心落差。右侧 AscendC 中<b>新注入的内存层次代码已高亮标记</b>,右侧「数据流」视图以硬件单元为基础动画演示数据如何在 GM ↔ L1 ↔ L0 ↔ 矩阵单元 ↔ UB ↔ 向量单元之间流动。`,
   log:[['','ascendport memmap --emit-datacopy','p'],
        ['分析数据生命周期 … 5 个张量','d'],
        ['✓ 注入 InitBuffer × 5 (L1/L0A/L0B/L0C/UB)','g'],
        ['✓ 注入 DataCopy: kI GM→L1, qI GM→L1, w GM→UB','g'],
        ['✓ Mmad→L0C, Relu/WeightedHeadReduce→UB','g'],
        ['✓ 新注入代码已在 AscendC 侧高亮','a'],
-       ['▶ 已生成硬件数据流动画 → 底部「数据流」面板','a'],
+       ['▶ 已生成硬件数据流动画 → 右侧「数据流」视图','a'],
        ['当前为串行搬运-计算,S6 将做双缓冲重叠','y']],
   run(){ openCompare('s4'); }},
 
- {n:'S5',t:'自动 Tiling',sub:'贴合缓冲容量的分块',
-  body:`沿 key(S 维)搜索分块长度 <code>sTile</code>,在 L1/L0/UB 容量约束下最大化片上驻留、最小化回 GM 次数,结果写入 <code>tiling.h</code>(默认打开)。右侧 <b>Tiling 可视化</b>直观呈现:S 维如何被切成 nTile 块、各方案的缓冲占用与代价。给出候选,由你确认:`,
-  choice:{q:'选择 key 维分块方案 sTile:',
+ {n:'S5',t:'自动分块',sub:'贴合缓冲容量的分块',
+  body:`沿键维搜索分块长度,在 L1/L0/UB 容量约束下最大化片上驻留、最小化回 GM 次数,结果写入 <code>tiling.h</code>(默认打开)。右侧 <b>分块可视化</b>直观呈现:S 维如何被切成多个分块、各方案的缓冲占用与代价。给出候选,由你确认:`,
+  choice:{q:'选择键维分块方案:',
     opts:[
-     {v:'A',title:'sTile = 128',desc:'UB 利用率 61% · 回 GM 次数多 · cycles 基线 1.00×'},
-     {v:'B',rec:'推荐',title:'sTile = 256',desc:'UB 利用率 88% · L0C 恰好容纳 · cycles 0.72× —— 综合最优'},
-     {v:'C',warn:'溢出风险',title:'sTile = 512',desc:'UB 利用率 103% · 超 L0C 容量 → 触发回退搬运,cycles 0.95×'}]},
+     {v:'A',title:'分块长度 = 128',desc:'UB 利用率 61% · 回 GM 次数多 · 周期基线 1.00×'},
+     {v:'B',rec:'推荐',title:'分块长度 = 256',desc:'UB 利用率 88% · L0C 恰好容纳 · 周期 0.72× —— 综合最优'},
+     {v:'C',warn:'溢出风险',title:'分块长度 = 512',desc:'UB 利用率 103% · 超 L0C 容量 → 触发回退搬运,周期 0.95×'}]},
   log:[['','ascendport tiling --search --constraint l0c,ub','p'],
-       ['枚举 sTile ∈ {128,256,512} …','d'],
-       ['  sTile=128 → UB 61%  cycles 1.00×','d'],
-       ['  sTile=256 → UB 88%  cycles 0.72×  ★','g'],
-       ['  sTile=512 → UB 103% 溢出回退 0.95×','y']],
-  logDone:[['✓ tiling.h 已生成 (sTile 写入 TilingData)','a'],
-       ['▶ 已打开 tiling.h 并生成 Tiling 可视化 → 右侧','a']],
+       ['枚举分块长度 ∈ {128,256,512} …','d'],
+       ['  分块长度=128 → UB 61%  周期 1.00×','d'],
+       ['  分块长度=256 → UB 88%  周期 0.72×  ★','g'],
+       ['  分块长度=512 → UB 103% 溢出回退 0.95×','y']],
+  logDone:[['✓ tiling.h 已生成 (分块长度写入 TilingData)','a'],
+       ['▶ 已打开 tiling.h 并生成分块可视化 → 右侧','a']],
   run(){ tilingReady=true; renderTree(); renderTabs(); }},
 
- {n:'S6',t:'流水线编排',sub:'双缓冲 Ping-Pong 重叠',
-  body:`把串行的「搬运→计算」重排为软件流水:<b>预取 n+1 ∥ 计算 n ∥ 写回 n-1</b>。<code>TQue</code> 深度 1→2,让 MTE 搬运与 Cube/Vector 计算重叠 —— 这是开箱性能翻倍的关键。同时把 <code>SelectTopK</code> 落地为 Vector <code>TopK</code> 原语。完成后定位回 <code>lightning_indexer.cpp</code>,<b>高亮新增流水代码</b>,右侧给出编排前后的流水时序对比。`,
+ {n:'S6',t:'流水线编排',sub:'双缓冲重叠',
+  body:`把串行的「搬运→计算」重排为软件流水:<b>预取 n+1 ∥ 计算 n ∥ 写回 n-1</b>。<code>TQue</code> 深度 1→2,让搬运与矩阵/向量计算重叠 —— 这是开箱性能翻倍的关键。同时把 <code>SelectTopK</code> 落地为向量单元 <code>TopK</code> 原语。完成后定位回 <code>lightning_indexer.cpp</code>,<b>高亮新增流水代码</b>,右侧给出编排前后的流水时序对比。`,
   log:[['','ascendport pipeline --double-buffer','p'],
        ['构建软件流水 …','d'],
-       ['✓ TQue depth 1→2 (kL1/cO/ubS) Ping-Pong','g'],
+       ['✓ TQue 深度 1→2 (kL1/cO/ubS) 双缓冲','g'],
        ['✓ 预取 CopyIn(n+1) 与 Compute(n) 重叠','g'],
-       ['✓ SelectTopK 落地: warp 双调排序 → Vector TopK 原语','g'],
+       ['✓ SelectTopK 落地: warp 双调排序 → 向量单元 TopK 原语','g'],
        ['✓ 已定位回 AscendC 源码并高亮新增流水代码','a'],
        ['▶ 流水前后对比 → 右侧面板','a'],
        ['流水气泡 21% → 4%','a']],
   run(){ /* 完成后在回调中定位源码 */ }},
 
- {n:'S7',t:'精度对齐',sub:'以 GPU 为黄金基准',
-  body:`用相同输入跑昇腾 kernel 与 CUDA 参考,逐元素比对,生成<b>精度报告</b>(见底部页签)。报告会定位精度异常的算子、给出根因与修复方案 —— 一键应用修复即可复测通过。`,
+ {n:'S7',t:'精度对齐',sub:'以源端为基准',
+  body:`用相同输入跑昇腾 kernel 与源端参考,逐元素比对,生成<b>精度报告</b>(见右侧「精度」视图)。报告会定位精度异常的算子、给出根因与修复方案 —— 一键应用修复即可复测通过。`,
   log:[['','ascendport verify --golden cuda --rtol 1e-3','p'],
-       ['运行昇腾 kernel vs CUDA 参考 …','d'],
+       ['运行昇腾 kernel 对比源端参考 …','d'],
        ['逐算子比对 … 5 个算子','d'],
        ['  Mmad·QKᵀ 2.4e-4 ✓ · Relu 0 ✓ · DataCopy 0 ✓','g'],
-       ['✗ WeightedHeadReduce: max_abs_err 3.1e-2 (超阈值 30×)','r'],
+       ['✗ WeightedHeadReduce: 最大绝对误差 3.1e-2 (超阈值 30×)','r'],
        ['  根因: FP8 累加顺序不一致 → 误差放大','y'],
-       ['▶ 精度报告已生成 → 底部「精度报告」页签,可查看根因与修复方案','a']],
+       ['▶ 精度报告已生成 → 右侧「精度」视图,可查看根因与修复方案','a']],
   run(){ /* 报告在完成回调中打开 */ }},
 
  {n:'S8',t:'性能剖析与调优',sub:'msProf → aclNN 注册',
-  body:`采集硬件流水,定位瓶颈并给出调优建议,最后把算子注册为 <code>aclNN</code> 供图层调用。完成后生成<b>性能报告</b>(见底部页签):含 msProf <b>流水泳道图</b>(直译 vs 优化)、利用率对比与调优建议。相比直译版,端到端 <b>3.1×</b> 加速。`,
+  body:`采集硬件流水,定位瓶颈并给出调优建议,最后把算子注册为 <code>aclNN</code> 供图层调用。完成后生成<b>性能报告</b>(见右侧「性能」视图):含 msProf <b>流水泳道图</b>(直译对比优化)、利用率对比与调优建议。相比直译版,端到端 <b>3.1×</b> 加速。`,
   log:[['','ascendport profile --with msprof','p'],
-       ['采集 aicore pipe utilization …','d'],
-       ['  直译版 aicore 利用率: 31%  (Cube 空转, 串行搬运)','y'],
-       ['  优化版 aicore 利用率: 82%  (双缓冲重叠)','g'],
-       ['  端到端加速: 3.1× · Cube 占用 76% · MTE 隐藏 94%','g'],
+       ['采集算力核流水利用率 …','d'],
+       ['  直译版算力核利用率: 31%  (矩阵单元空转,串行搬运)','y'],
+       ['  优化版算力核利用率: 82%  (双缓冲重叠)','g'],
+       ['  端到端加速: 3.1× · 矩阵单元占用 76% · 搬运隐藏 94%','g'],
        ['✓ 注册 aclNN 算子: aclnnLightningIndexer','a'],
-       ['▶ 性能报告已生成 → 底部「性能报告」页签','a'],
+       ['▶ 性能报告已生成 → 右侧「性能」视图','a'],
        ['✓ 迁移完成 —— S1→S8 全流程通过','a']],
   run(){ if(!accFixed){ accFixed=true; setProblems(0); } setAicore('82%'); }},
 ];
@@ -1601,7 +1650,7 @@ function renderWizard(){
     html+=`<div class="stepcard" style="border-color:var(--ok);background:#48d5970d">
       <div class="sc-h"><div class="sc-n" style="background:#48d59722;color:var(--ok)">✓</div>
       <div class="sc-t"><b>迁移完成</b><span>S1 → S8 全流程通过</span></div></div>
-      <div class="sc-body">Flash MLA 已迁移为 AscendC 算子并注册为 <code>aclnnLightningIndexer</code>。端到端 <b>3.1×</b> 加速,aicore 利用率 31%→82%,精度对齐 cos_sim 0.99987。</div></div>`;
+      <div class="sc-body">稀疏解码算子已迁移为 AscendC 算子并注册为 <code>aclnnLightningIndexer</code>。端到端 <b>3.1×</b> 加速,算力核利用率 31%→82%,精度余弦相似度 0.99987。</div></div>`;
   }
   sc.innerHTML=html;
   sc.querySelectorAll('.opt').forEach(o=>o.onclick=()=>{
@@ -1661,14 +1710,14 @@ function setProblems(n){problems=n;const c=document.getElementById('probCnt');c.
 function initProblems(){
   const pl=document.getElementById('probs');
   pl.innerHTML=`
-   <div class="prob"><span class="pi" style="color:var(--risk)">⚠</span><div><div><code style="font-family:var(--mono)">__shfl_xor_sync</code> 无昇腾对应物 —— 需重写为 Vector 归约</div><div class="pf">lightning_indexer.cu · 行 20</div></div></div>
+   <div class="prob"><span class="pi" style="color:var(--risk)">⚠</span><div><div><code style="font-family:var(--mono)">__shfl_xor_sync</code> 无昇腾对应物 —— 需重写为向量单元归约</div><div class="pf">lightning_indexer.cu · 行 20</div></div></div>
    <div class="prob"><span class="pi" style="color:var(--risk)">⚠</span><div><div><code style="font-family:var(--mono)">warp_bitonic_sort</code> SIMT 双调排序 —— 需重写为 TopK 原语</div><div class="pf">lightning_indexer.cu · 行 27</div></div></div>`;
 }
 // S7：精度异常写入问题面板
 function setAccProblem(){
   problems=1;const c=document.getElementById('probCnt');c.textContent=1;c.className='cnt err';
   document.getElementById('probs').innerHTML=`
-   <div class="prob"><span class="pi" style="color:var(--risk)">⚠</span><div><div><code style="font-family:var(--mono)">WeightedHeadReduce</code> 精度异常 —— max_abs_err 3.1e-2 超阈值(FP8 累加序不一致)</div><div class="pf">lightning_indexer.cpp · 详见「精度报告」页签</div></div></div>`;
+   <div class="prob"><span class="pi" style="color:var(--risk)">⚠</span><div><div><code style="font-family:var(--mono)">WeightedHeadReduce</code> 精度异常 —— 最大绝对误差 3.1e-2 超阈值(FP8 累加序不一致)</div><div class="pf">lightning_indexer.cpp · 详见右侧「精度」视图</div></div></div>`;
 }
 
 /* ---------- notifications ---------- */
@@ -1677,17 +1726,32 @@ function notify(title,msg,kind){
   d.className='notif '+(kind||'');d.innerHTML=`<b>${title}</b><span>${msg}</span>`;
   w.appendChild(d);setTimeout(()=>{d.style.transition='opacity .4s,transform .4s';d.style.opacity=0;d.style.transform='translateX(20px)';setTimeout(()=>d.remove(),400)},3400);
 }
-function setAicore(v){document.getElementById('sbAicore').textContent='aicore '+v;}
+function setAicore(v){document.getElementById('sbAicore').textContent='算力核 '+v;}
 
 /* ---------- panel tabs ---------- */
 document.querySelectorAll('.ptab').forEach(t=>t.onclick=()=>{
   const p=t.dataset.p;
-  if(p==='flow'){ if(document.getElementById('flowpane').innerHTML.trim()==='') renderFlow(); }
-  else { stopFlow(); }
-  if(p==='acc'){ renderAccReport(); }
-  if(p==='perf'){ renderPerfReport(false); }
+  stopFlow();
   activatePanelTab(p);
 });
+document.querySelectorAll('.analysis-tab[data-analysis]').forEach(t=>t.onclick=()=>{
+  const view=t.dataset.analysis;
+  setAnalysisView(view);
+  if(view==='graph') renderGraph(false);
+  if(view==='generated'){
+    if(!document.getElementById('diffLines')?.innerHTML.trim()) renderDiff(hasCpp?'s3':'s3');
+  }
+  if(view==='tiling') renderTilingViz();
+  if(view==='flow'){
+    if(document.getElementById('flowpane').innerHTML.trim()==='') renderFlow();
+  } else {
+    stopFlow();
+  }
+  if(view==='pipeline') renderPipeViz(false);
+  if(view==='accuracy') renderAccReport();
+  if(view==='performance') renderPerfReport(false);
+});
+document.getElementById('analysisClose').onclick=closeAnalysisView;
 
 /* ---------- run a step ---------- */
 function runStep(){
@@ -1729,22 +1793,16 @@ function runStep(){
     // S8：完成后打开性能报告(泳道图 + 对比)
     if(s.n==='S8'){ openPerfPanel(); }
     const done=state.step>=STEPS.length;
-    notify(done?'🎉 迁移完成':`✓ ${s.n} 完成`, done?'Flash MLA 已注册为 aclNN 算子':`${s.t} —— ${s.sub}`, done?'ok':'ok');
+    notify(done?'🎉 迁移完成':`✓ ${s.n} 完成`, done?'稀疏解码算子已注册为 aclNN 算子':`${s.t} —— ${s.sub}`, done?'ok':'ok');
     if(!done) document.getElementById('runBtn').disabled=false;
   });
 }
 function reset(){
   state.step=1; state.choices={}; state.viewStep=0; hasCpp=false; graphMapped=false; activeTab='cuda'; tilingReady=false; accFixed=false; // 重置到 S1 已完成状态
   document.getElementById('term').innerHTML='';
-  closeCompare(); closeTiling(); closePipe(); stopFlow();
-  document.getElementById('flowTab').style.display='none';
-  document.getElementById('flowpane').style.display='none';
+  closeAnalysisView(); stopFlow();
   document.getElementById('flowpane').innerHTML='';
-  document.getElementById('accTab').style.display='none';
-  document.getElementById('accpane').style.display='none';
   document.getElementById('accpane').innerHTML='';
-  document.getElementById('perfTab').style.display='none';
-  document.getElementById('perfpane').style.display='none';
   document.getElementById('perfpane').innerHTML='';
   initProblems(); setProblems(2); setAicore('—');
   renderTree(); renderTabs(); renderCode('cuda'); renderProg(); renderWizard();
@@ -1756,7 +1814,7 @@ document.getElementById('runBtn').onclick=runStep;
 /* ---------- boot ---------- */
 initProblems();
 renderTree(); renderTabs(); renderCode('cuda'); renderProg(); renderWizard();
-termLine('AscendPort v0.9 · target=Atlas 800T A2 (Ascend 910B)','d');
+termLine('AscendPort v0.9 · 目标 Atlas 800T A2 (Ascend 910B)','d');
 termLine('✓ S1 解析算子已完成 — 已生成计算图，点击任意节点可定位源码。','g');
 termLine('点击右侧「运行 S2 · 算子映射」继续迁移流程。','d');
 // S1 已完成，打开计算图
