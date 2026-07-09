@@ -1,0 +1,2475 @@
+<!doctype html>
+<!--
+  PyPTO 泳道分析器 — Mix 子图核间同步可视化原型
+  课题: 04-uxdesign/02-swimlane-profiler/ux-analysis.md (Issue #1121)
+
+  数据等级: L3-placeholder
+    - 所有 task / sync / 耗时为按硬件拓扑与执行逻辑编造的占位数据。
+    - 已植入「瓶颈剧本」: Attention Score 子图 Wrap 06 的 AIC 跑超大 BMM,
+      配对 AIV 长时间停等; 同组其他 Wrap 早完空转 (负载不均)。
+    - 待 Codex 补 merged_swimlane.json 真实样本后替换 buildModel()。
+  分享级别: exploration-only (不可外发)
+
+  设计系统: 复用 compute-graph-viewer/vendor/pto-design-system bundle
+    - css/style.css + patterns/ide-frame + patterns/workbench-shell —— 运行时加载
+    - patterns/swimlane-task/pattern.js —— 运行时加载, task bar 经 drawTaskBar 渲染
+    - 共享组件类: .btn / .btn-ghost / .segmented-control / .stat-chip / .pto-ide-frame__*
+    - 同步弧线 / 等待段斜纹 / mix group 配色 属 data-viz exempt
+-->
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PTO性能分析</title>
+<style>
+/* ============================================================
+   1. Legacy fallback tokens —— 最新 PTO bundle 会在下方 link 覆盖
+   ============================================================ */
+:root {
+  --ark-neutral-0: #0b0b0b; --ark-neutral-1: #101010; --ark-neutral-2: #141414;
+  --ark-neutral-3: #1a1a1a; --ark-neutral-4: #343434;
+  --ark-blue-500: #4369efff; --ark-blue-600: #5a92e6; --ark-domain-aux: #7c8db8;
+  --ark-green-500: #04d793ff; --ark-orange-500: #ffaa3bff; --ark-red-500: #ff4b7bff;
+  --font-sans: 'Inter', 'Source Han Sans SC', 'PingFang SC', 'Noto Sans SC', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-weight-semibold: 600; --font-weight-medium: 500;
+  --letter-spacing-label: 0.5px;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 999px;
+  --shadow-lg: 0 12px 30px rgba(0,0,0,0.42);
+  --z-overlay: 200;
+  --duration-fast: 100ms; --easing-default: cubic-bezier(0.4,0,0.2,1);
+}
+:root, :root[data-theme='dark'] {
+  --background: var(--ark-neutral-1); --background-elevated: var(--ark-neutral-2);
+  --surface-1: #161616; --surface-2: #1c1c1c; --surface-3: #262626; --surface-4: #313131;
+  --foreground: rgba(255,255,255,0.90); --foreground-secondary: rgba(255,255,255,0.60);
+  --foreground-muted: rgba(255,255,255,0.40); --foreground-disabled: rgba(255,255,255,0.25);
+  --border-subtle: rgba(255,255,255,0.06); --border-default: rgba(255,255,255,0.10);
+  --border-strong: rgba(255,255,255,0.16);
+  --primary: var(--ark-blue-500); --primary-hover: var(--ark-blue-600);
+  --accent: var(--ark-domain-aux); --success: var(--ark-green-500);
+  --warning: var(--ark-orange-500); --danger: var(--ark-red-500);
+  --focus-ring: rgba(67,105,239,0.42);
+  --state-hover: rgba(255,255,255,0.06); --state-press: rgba(255,255,255,0.10);
+  --state-muted: rgba(255,255,255,0.06); --state-selected: rgba(67,105,239,0.14);
+  --surface-disabled: rgba(255,255,255,0.04);
+  --tone-warning-bg: color-mix(in srgb, var(--warning) 16%, transparent);
+  --button-height-md: 36px; --button-height-sm: 30px; --button-radius: var(--radius-lg);
+  --button-padding-x-md: var(--space-3); --button-padding-x-sm: var(--space-2); --button-gap: 6px;
+  --button-font: 500 12px/1 var(--font-sans);
+  --button-solid-bg: var(--foreground); --button-solid-bg-hover: color-mix(in srgb,var(--foreground) 88%,transparent);
+  --button-solid-fg: var(--background);
+  --button-secondary-bg: color-mix(in srgb,var(--surface-2) 92%,white 3%);
+  --button-secondary-bg-hover: var(--surface-3);
+  --button-secondary-bg-press: color-mix(in srgb,var(--surface-3) 84%,black);
+  --button-secondary-border: var(--border-subtle); --button-secondary-fg: var(--foreground);
+  --button-secondary-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 2px 8px rgba(0,0,0,0.16);
+  --button-ghost-bg-hover: var(--state-hover); --button-ghost-fg: var(--foreground-secondary);
+  --button-ghost-fg-hover: var(--foreground);
+  --text-title-1: 600 20px/1.30 var(--font-sans); --text-title-2: 600 16px/1.30 var(--font-sans);
+  --text-body: 400 14px/1.50 var(--font-sans); --text-body-sm: 400 12px/1.50 var(--font-sans);
+  --text-label: 500 11px/1.20 var(--font-sans); --text-mono: 500 12px/1.40 var(--font-mono);
+  --tag-height: 20px;
+  --stat-chip-height: 22px; --stat-chip-bg: var(--surface-2);
+  --stat-chip-border: var(--border-subtle); --stat-chip-fg: color-mix(in srgb,var(--foreground) 88%,var(--background));
+  --segmented-control-bg: var(--surface-disabled); --segmented-control-border: var(--border-subtle);
+}
+
+/* ============================================================
+   2. Legacy fallback components —— 真实组件类来自下方 css/style.css
+   ============================================================ */
+* { box-sizing: border-box; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--button-gap);
+  min-height: var(--button-height-md); padding: 0 var(--button-padding-x-md);
+  border-radius: var(--button-radius); background: var(--button-secondary-bg);
+  border: 1px solid var(--button-secondary-border); box-shadow: var(--button-secondary-shadow);
+  color: var(--button-secondary-fg); font: var(--button-font); cursor: pointer;
+  white-space: nowrap; appearance: none; -webkit-appearance: none;
+  transition: background var(--duration-fast) var(--easing-default),
+    border-color var(--duration-fast) var(--easing-default), color var(--duration-fast) var(--easing-default);
+}
+.btn:hover { background: var(--button-secondary-bg-hover); border-color: var(--border-default); }
+.btn:active { background: var(--button-secondary-bg-press); }
+.btn:focus-visible { box-shadow: 0 0 0 3px var(--focus-ring), var(--button-secondary-shadow); }
+.btn-sm { min-height: var(--button-height-sm); padding-inline: var(--button-padding-x-sm); }
+.btn-icon { min-width: var(--button-height-sm); width: var(--button-height-sm); padding: 0;
+  min-height: var(--button-height-sm); font-size: 14px; }
+.btn-solid { background: var(--button-solid-bg); border-color: transparent; box-shadow: none;
+  color: var(--button-solid-fg); font-weight: var(--font-weight-semibold); }
+.btn-solid:hover { background: var(--button-solid-bg-hover); border-color: transparent; }
+.btn-ghost { background: transparent; border-color: transparent; box-shadow: none; color: var(--button-ghost-fg); }
+.btn-ghost:hover { background: var(--button-ghost-bg-hover); border-color: transparent; color: var(--button-ghost-fg-hover); }
+.btn.is-selected, .btn.is-selected:hover { background: var(--foreground); border-color: transparent;
+  color: var(--background); box-shadow: none; }
+.segmented-control {
+  display: inline-flex; align-items: center; gap: 3px; padding: 3px; border-radius: 10px;
+  border: 1px solid var(--segmented-control-border); background: var(--segmented-control-bg);
+}
+.segmented-control > .btn { min-height: 28px; }
+.segmented-control > .btn:not(.is-selected) { background: transparent; border-color: transparent; box-shadow: none; }
+.segmented-control > .btn:not(.is-selected):hover { background: var(--button-ghost-bg-hover); }
+.stat-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: var(--stat-chip-height);
+  padding: 0 8px; border-radius: var(--radius-pill); background: var(--stat-chip-bg);
+  border: 1px solid var(--stat-chip-border); color: var(--stat-chip-fg);
+  font: var(--text-label); white-space: nowrap;
+}
+
+/* ============================================================
+   3. 模块布局 —— 局部 layout/structure 类 (sl- 前缀)
+   ============================================================ */
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--background); color: var(--foreground);
+  font-family: var(--font-sans); -webkit-font-smoothing: antialiased;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sl-topbar {
+  flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-3);
+  padding: 10px var(--space-4); border-bottom: 1px solid var(--border-subtle);
+}
+.sl-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sl-brand-mark {
+  width: 30px; height: 30px; flex: 0 0 auto; border-radius: 8px;
+  background: color-mix(in srgb, var(--foreground) 82%, var(--background));
+  display: grid; place-items: center; color: var(--background); font-weight: 700; font-size: 13px;
+}
+.sl-brand-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.sl-brand-title { font: var(--text-title-2); }
+.sl-brand-sub {
+  font: var(--text-label); color: var(--foreground-muted);
+  text-transform: uppercase; letter-spacing: var(--letter-spacing-label);
+}
+.sl-zoom-readout {
+  min-width: 46px; text-align: center; font: var(--text-mono);
+  color: color-mix(in srgb, var(--foreground) 84%, var(--background));
+}
+.sl-stage { flex: 1 1 auto; display: flex; gap: 10px; padding: 10px var(--space-4) var(--space-4); min-height: 0; }
+.sl-pane { display: flex; flex-direction: column; min-height: 0; min-width: 0;
+  border-radius: 10px; background: #242424; overflow: hidden; }
+.sl-pane-canvas { flex: 1 1 auto; }
+.sl-pane-inspector { flex: 0 0 332px; }
+.sl-pane-head { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-3);
+  padding: 10px 14px; min-height: 50px; }
+.sl-pane-title { font: var(--text-title-2); }
+.sl-pane-kicker { font: var(--text-label); color: var(--foreground-muted);
+  text-transform: uppercase; letter-spacing: var(--letter-spacing-label); }
+.sl-legend { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+.sl-legend-item { display: flex; align-items: center; gap: 5px; font: var(--text-label); color: var(--foreground-secondary); }
+.sl-legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.sl-legend-swatch.is-wait {
+  background: repeating-linear-gradient(135deg, rgba(255,170,59,0.85) 0 2px, transparent 2px 4px),
+    color-mix(in srgb, var(--warning) 18%, transparent);
+}
+
+.sl-grid { flex: 1 1 auto; display: grid; min-height: 0;
+  grid-template-columns: 184px 1fr; grid-template-rows: 34px 1fr; }
+.sl-corner {
+  border-right: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-default);
+  display: flex; align-items: center; padding: 0 12px; background: #242424;
+  font: var(--text-label); color: var(--foreground-muted);
+  text-transform: uppercase; letter-spacing: var(--letter-spacing-label);
+}
+.sl-axis-wrap { overflow: hidden; border-bottom: 1px solid var(--border-default); }
+.sl-lane-wrap { overflow: hidden; border-right: 1px solid var(--border-subtle); }
+.sl-body-wrap { overflow: auto; }
+.sl-axis-wrap canvas, .sl-lane-wrap canvas, .sl-body-wrap canvas { display: block; }
+.sl-body-wrap::-webkit-scrollbar { width: 12px; height: 12px; }
+.sl-body-wrap::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 8px; border: 3px solid #242424; }
+.sl-body-wrap::-webkit-scrollbar-corner { background: #242424; }
+
+/* Inspector */
+.sl-insp-body { flex: 1 1 auto; overflow: auto; padding: 0 14px 16px; }
+.sl-crumb { display: flex; align-items: center; flex-wrap: wrap; gap: 3px;
+  padding: 8px 0 4px; font: var(--text-body-sm); }
+.sl-crumb-item { color: var(--foreground-muted); cursor: pointer; }
+.sl-crumb-item:hover { color: var(--foreground); }
+.sl-crumb-item.is-current { color: var(--foreground); cursor: default; font-weight: 600; }
+.sl-crumb-sep { color: var(--foreground-disabled); }
+.sl-insp-section { margin-top: 14px; }
+.sl-insp-section-label { font: var(--text-label); color: var(--foreground-muted);
+  text-transform: uppercase; letter-spacing: var(--letter-spacing-label); margin-bottom: 7px; }
+.sl-kv { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font: var(--text-body-sm); }
+.sl-kv + .sl-kv { border-top: 1px solid var(--border-subtle); }
+.sl-kv-key { color: var(--foreground-secondary); }
+.sl-kv-val { color: var(--foreground); font-family: var(--font-mono); text-align: right; }
+.sl-meter { height: 8px; border-radius: var(--radius-pill); background: var(--surface-3); overflow: hidden; margin: 6px 0 2px; }
+.sl-meter-fill { height: 100%; }
+.sl-insp-hint { font: var(--text-body-sm); color: var(--foreground-muted); line-height: 1.65; }
+.sl-insp-hint b { color: var(--foreground); font-weight: 600; }
+.sl-row {
+  display: flex; align-items: center; gap: 9px; padding: 8px 9px; border-radius: var(--radius-md);
+  cursor: pointer; transition: background var(--duration-fast) var(--easing-default);
+}
+.sl-row:hover { background: var(--state-hover); }
+.sl-row.is-active { background: var(--state-selected); }
+.sl-row.is-flag { background: color-mix(in srgb, var(--warning) 12%, transparent); }
+.sl-dot { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; }
+.sl-row-name { flex: 1 1 auto; min-width: 0; font: var(--text-body-sm); color: var(--foreground); }
+.sl-row-name small { color: var(--foreground-muted); }
+.sl-row-meta { font: var(--text-label); color: var(--foreground-muted); font-family: var(--font-mono); }
+.sl-pill { display: inline-flex; align-items: center; gap: 4px; height: var(--tag-height);
+  padding: 0 8px; border-radius: var(--radius-pill); background: var(--surface-3); font: var(--text-label); }
+.sl-pill.is-warn { color: var(--warning); }
+.sl-pill.is-ok { color: var(--success); }
+.sl-sync-item { padding: 8px 9px; border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--background) 26%, transparent);
+  margin-top: 6px; font: var(--text-body-sm); color: var(--foreground-secondary); line-height: 1.55; }
+.sl-sync-item b { color: var(--foreground); font-weight: 600; }
+.sl-sync-item .mono { font-family: var(--font-mono); color: var(--foreground); }
+.sl-callout {
+  margin-top: 12px; padding: 10px 11px; border-radius: var(--radius-md);
+  background: var(--tone-warning-bg);
+  font: var(--text-body-sm); color: var(--foreground-secondary); line-height: 1.6;
+}
+.sl-callout b { color: color-mix(in srgb, var(--warning) 82%, var(--foreground)); font-weight: 600; }
+.sl-callout .sl-btn-drill { margin-top: 8px; width: 100%; }
+
+.sl-task-tooltip {
+  position: fixed;
+  z-index: 1000;
+}
+
+.sl-task-tooltip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 2px;
+}
+
+.sl-banner {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+  padding: 6px var(--space-4); font: var(--text-body-sm); color: var(--foreground-muted);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.sl-banner b { color: color-mix(in srgb, var(--warning) 82%, var(--foreground)); font-weight: 600; }
+</style>
+<link rel="stylesheet" href="../vendor/pto-design-system/css/style.css?v=6941fa7" />
+<link rel="stylesheet" href="../vendor/pto-design-system/patterns/workbench-shell/pattern.css?v=6941fa7" />
+<link rel="stylesheet" href="../vendor/pto-design-system/patterns/ide-frame/pattern.css?v=6941fa7" />
+<link rel="stylesheet" href="../vendor/pto-design-system/patterns/swimlane-task/pattern.css?v=6941fa7" />
+<style>
+/* PTO retrofit overrides: layout-only glue around shared ide-frame + swimlane-task. */
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: block;
+  overflow: hidden;
+  background: var(--ide-frame-page-bg);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+.sl-app {
+  width: 100vw;
+  height: 100vh;
+  padding: 0 0 var(--space-3);
+  background: var(--ide-frame-page-bg);
+}
+
+.sl-frame {
+  width: 100%;
+  height: calc(100vh - var(--space-3));
+  aspect-ratio: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.sl-task-tooltip {
+  position: fixed;
+  z-index: 1000;
+}
+
+.sl-task-tooltip-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.sl-overview-tooltip {
+  z-index: 60;
+}
+
+.pto-swimlane-task-tooltip__key {
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.sl-frame::after {
+  display: none;
+}
+
+.sl-frame .pto-ide-frame__topbar {
+  min-height: 52px;
+}
+
+.sl-window-actions {
+  margin-left: var(--space-1);
+}
+
+.pto-ide-frame__window-action.is-selected {
+  background: var(--state-selected);
+  color: var(--foreground);
+}
+
+.pto-ide-frame__window-action.is-selected .pto-ide-frame__window-icon {
+  opacity: var(--ide-frame-icon-opacity-secondary);
+}
+
+.sl-title-stack {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sl-title-stack strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font: var(--ide-frame-title-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-title-stack span {
+  overflow: hidden;
+  color: var(--foreground-muted);
+  font: var(--ide-frame-meta-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-project-placeholder {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--foreground-muted);
+  font: var(--text-mono);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-explorer-body,
+.sl-insp-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-3);
+}
+
+.sl-explorer-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sl-pane-body {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sl-swimlane-workbench {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sl-swimlane-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.sl-swimlane-toolbar .btn.btn-sm {
+  min-height: 28px;
+  height: 28px;
+}
+
+.sl-searchbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: min(220px, 100%);
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+}
+
+.sl-searchbox svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: var(--foreground-muted);
+  stroke-width: 2;
+}
+
+.sl-searchbox input {
+  min-width: 0;
+  width: 190px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--foreground);
+  font: var(--text-body-sm);
+}
+
+.sl-searchbox input::placeholder {
+  color: var(--foreground-muted);
+}
+
+.sl-tool-spacer {
+  flex: 1 1 auto;
+}
+
+.sl-zoom-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+}
+
+.sl-zoom-label {
+  color: var(--foreground-muted);
+  font: var(--text-label);
+}
+
+.sl-zoom-control .btn {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  min-height: 22px;
+  border-radius: var(--radius-md);
+}
+
+.sl-zoom-slider {
+  width: 116px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.sl-global-ruler {
+  position: relative;
+  height: 27px;
+  overflow: hidden;
+  background: var(--surface-2);
+  box-shadow: 0 1px 0 var(--border-subtle);
+  cursor: pointer;
+}
+
+.sl-report-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--space-3);
+}
+
+#globalRulerTicks {
+  position: absolute;
+  inset: 0;
+}
+
+.sl-global-ruler__tick {
+  position: absolute;
+  top: 10px;
+  bottom: 0;
+  border-left: 1px solid color-mix(in srgb, var(--border-subtle) 58%, transparent);
+}
+
+.sl-global-ruler__tick.is-major {
+  top: 0;
+  border-left-color: var(--border-default);
+  padding-left: 4px;
+  color: var(--foreground-muted);
+  font: 500 10px/1.4 var(--font-mono);
+}
+
+.sl-global-ruler__brush {
+  position: absolute;
+  inset-block: 2px;
+  min-width: 3px;
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.sl-swimlane-scroll-shell {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sl-timeline-head {
+  flex: 0 0 auto;
+  z-index: 5;
+  box-shadow: 0 1px 0 var(--border-default);
+}
+
+.sl-timeline-band {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr);
+  background: var(--surface-1);
+}
+
+.sl-timeline-corner {
+  min-width: 0;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+}
+
+.sl-timeline-corner {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-height: 117px;
+  padding: 8px 10px;
+}
+
+.sl-corner-eyebrow {
+  display: none;
+  color: var(--foreground-muted);
+  font: var(--text-label);
+}
+
+.sl-corner-title {
+  color: var(--foreground);
+  font: 700 13px/1.35 var(--font-mono);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.sl-corner-meta {
+  display: none;
+  color: var(--foreground-muted);
+  font: var(--text-label);
+}
+
+.sl-timeline-right {
+  min-width: 0;
+}
+
+.sl-axis-wrap,
+.sl-overview-wrap {
+  overflow: hidden;
+}
+
+.sl-overview-wrap {
+  position: relative;
+  z-index: 30;
+  overflow: visible;
+}
+
+.sl-overview {
+  position: relative;
+  height: 62px;
+  min-width: 0;
+  cursor: crosshair;
+}
+
+.sl-overview svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.sl-overview-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--warning) 84%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--warning) 84%, transparent);
+}
+
+.sl-overview-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 1px;
+  background: color-mix(in srgb, var(--foreground) 54%, transparent);
+  pointer-events: none;
+}
+
+.sl-overview-tooltip {
+  position: absolute;
+  top: 6px;
+  z-index: 60;
+  min-width: 214px;
+  pointer-events: none;
+}
+
+.sl-overview-tooltip.is-visible {
+  display: block;
+}
+
+.sl-overview-tooltip[hidden],
+.sl-overview-cursor[hidden] {
+  display: none;
+}
+
+.sl-overview-tip-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 3px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.pto-swimlane-task-tooltip__key {
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.sl-history-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-5);
+}
+
+.sl-run-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+
+.sl-run-card.is-selected {
+  background: var(--surface-3);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.sl-run-card--past:not(.is-expanded) {
+  opacity: 0.78;
+}
+
+.sl-run-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sl-run-card__toggle {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: var(--foreground-muted);
+  stroke-width: 2;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.15s ease;
+}
+
+.sl-run-card:hover .sl-run-card__toggle {
+  opacity: 1;
+}
+
+.sl-run-card__toggle.is-open {
+  transform: rotate(180deg);
+}
+
+.sl-run-id {
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+  font: var(--text-mono);
+}
+
+.sl-run-card--past .sl-run-id {
+  color: var(--foreground-secondary);
+}
+
+.sl-history-kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px var(--space-3);
+  font: var(--text-body-sm);
+}
+
+.sl-history-kv dt {
+  color: var(--foreground-muted);
+  font: var(--text-label);
+  white-space: nowrap;
+}
+
+.sl-history-kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.sl-history-sm {
+  font: var(--text-label);
+}
+
+.sl-history-divider {
+  height: 1px;
+  margin: var(--space-2) 0;
+  border: 0;
+  background: var(--border-subtle);
+}
+
+.sl-history-artifact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 2px 0;
+  font: var(--text-body-sm);
+}
+
+.sl-history-artifact .nm {
+  overflow: hidden;
+  color: var(--foreground-secondary);
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-history-artifact .rl {
+  flex: none;
+  color: var(--foreground-muted);
+  font: var(--text-label);
+  white-space: nowrap;
+}
+
+.sl-banner {
+  display: block;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--foreground-secondary);
+}
+
+.sl-banner span {
+  display: block;
+  margin-top: var(--space-1);
+  line-height: 1.55;
+}
+
+.sl-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.sl-lane-wrap,
+.sl-body-wrap {
+  min-width: 0;
+  min-height: 0;
+}
+
+.sl-body-wrap::-webkit-scrollbar-thumb {
+  border-color: color-mix(in srgb, var(--background) 80%, transparent);
+}
+
+.sl-insp-body {
+  padding-top: 0;
+}
+
+.sl-insp-section {
+  margin-top: var(--space-4);
+}
+
+.sl-soft-card {
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-3) 48%, transparent);
+  padding: var(--space-3);
+}
+
+.sl-soft-card.is-warning {
+  background: color-mix(in srgb, var(--warning) 13%, transparent);
+}
+
+.sl-soft-card.is-success {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.sl-callout {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warning) 13%, transparent);
+  font: var(--text-body-sm);
+  color: var(--foreground-secondary);
+  line-height: 1.6;
+}
+
+.sl-callout.is-success {
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.sl-rail-spacer {
+  flex: 1 1 auto;
+}
+
+.sl-visually-disabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.sl-terminal-prompt {
+  color: var(--foreground);
+  font-weight: var(--font-weight-semibold);
+}
+
+@media (max-width: 1120px) {
+  .sl-app {
+    padding: 0 0 var(--space-2);
+  }
+
+  .sl-frame {
+    height: calc(100vh - var(--space-2));
+  }
+}
+</style>
+</head>
+<body>
+<div class="sl-app">
+  <section class="pto-ide-frame sl-frame" data-ide-frame data-host="standalone">
+    <header class="pto-ide-frame__topbar">
+      <div class="pto-ide-frame__topbar-left">
+        <div class="sl-title-stack">
+          <strong>PTO工作台</strong>
+        </div>
+      </div>
+      <div class="pto-ide-frame__topbar-center">
+        <span class="sl-project-placeholder">project_name</span>
+      </div>
+      <div class="pto-ide-frame__topbar-right">
+        <div class="pto-ide-frame__window-actions sl-window-actions" data-ide-slot="window-controls" aria-label="面板开关">
+          <button class="pto-ide-frame__window-action is-selected" type="button" id="topExplorerToggle" aria-label="切换运行历史面板" aria-controls="scenarioPane" aria-expanded="true" aria-pressed="true" title="运行历史">
+            <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <path d="M9 3v18"></path>
+            </svg>
+          </button>
+          <button class="pto-ide-frame__window-action is-selected" type="button" id="topInspectorToggle" aria-label="切换性能报告面板" aria-controls="inspectorPane" aria-expanded="true" aria-pressed="true" title="性能报告">
+            <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <path d="M15 3v18"></path>
+            </svg>
+          </button>
+          <button class="pto-ide-frame__window-action" type="button" data-ide-toggle="terminal" aria-label="切换终端面板" aria-controls="terminalPane" aria-expanded="false" aria-pressed="false" title="终端">
+            <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+              <path d="m7 9 3 3-3 3"></path>
+              <path d="M12 15h5"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="pto-ide-frame__body">
+      <nav class="pto-ide-frame__activity-rail" aria-label="一级导航">
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button is-selected" type="button" data-ide-toggle="explorer" aria-label="展开运行历史" aria-controls="scenarioPane" aria-expanded="true" aria-pressed="true" title="运行历史">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9l-.81-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button sl-visually-disabled" type="button" aria-label="搜索" title="搜索">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button sl-visually-disabled" type="button" aria-label="版本记录" title="版本记录">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="18" cy="18" r="3"></circle>
+            <circle cx="6" cy="6" r="3"></circle>
+            <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
+            <path d="M6 9v12"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button sl-visually-disabled" type="button" aria-label="终端" title="终端">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+            <path d="m7 9 3 3-3 3"></path>
+            <path d="M12 15h5"></path>
+          </svg>
+        </button>
+        <span class="sl-rail-spacer"></span>
+      </nav>
+
+      <div class="pto-ide-frame__workarea">
+        <div class="pto-ide-frame__split" data-ide-split="standalone-main" data-split-direction="horizontal" data-storage-key="pyptoux-mix-sync-workbench-main-v1" data-sizes="20,80" data-min-size="240,760" data-pixel-sizes="260,0">
+          <aside class="pto-ide-frame__pane pto-ide-frame__explorer" id="scenarioPane" data-ide-pane="explorer">
+            <div class="pto-ide-frame__pane-header">
+              <h2 class="pto-ide-frame__pane-title">运行历史</h2>
+              <span class="pto-ide-frame__pane-meta" id="runHistoryMeta"></span>
+            </div>
+            <div class="sl-explorer-body" id="runHistoryBody" data-ide-slot="navigation">
+            </div>
+          </aside>
+
+          <section class="pto-ide-frame__pane pto-ide-frame__pane--stack" data-ide-pane="main-col">
+            <div class="pto-ide-frame__split" data-ide-split="swimlane-right" data-split-direction="vertical" data-storage-key="pyptoux-mix-sync-workbench-right-v1" data-sizes="76,24" data-min-size="360,140">
+              <section class="pto-ide-frame__pane pto-ide-frame__pane--stack" data-ide-pane="content-row">
+                <main class="pto-ide-frame__split" data-ide-split="swimlane-content" data-split-direction="horizontal" data-storage-key="pyptoux-mix-sync-workbench-content-v1" data-sizes="70,30" data-min-size="520,300" data-pixel-sizes="0,332">
+                  <section class="pto-ide-frame__pane" id="canvasPane" data-ide-pane="editor-preview">
+                    <div class="pto-ide-frame__pane-header">
+                      <h2 class="pto-ide-frame__pane-title">泳道图</h2>
+                      <div class="sl-legend" id="legend"></div>
+                    </div>
+                    <div class="pto-ide-frame__pane-body sl-pane-body">
+                      <div class="sl-swimlane-workbench">
+                        <div class="sl-swimlane-toolbar">
+                          <span class="sl-searchbox">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4-4"></path></svg>
+                            <input id="taskSearch" type="search" placeholder="搜索任务 / 泳道 / Wrap" />
+                          </span>
+                          <button class="btn btn-sm" id="mixModeBtn" type="button" aria-pressed="false" title="按 1C2V Wrap 重排泳道">Mix模式</button>
+                          <button class="btn btn-sm" id="syncPathBtn" type="button" aria-pressed="false" title="弱化无同步边的任务，聚焦核间协作">同步路径</button>
+                          <span class="sl-tool-spacer"></span>
+                          <span class="sl-zoom-control" title="泳道图缩放控制滑杆，控制时间轴可见区">
+                            <span class="sl-zoom-label">缩放</span>
+                            <button class="btn btn-icon btn-ghost" id="zoomOut" aria-label="缩小">−</button>
+                            <input class="sl-zoom-slider" id="zoomSlider" type="range" min="100" max="480" step="5" value="100" />
+                            <button class="btn btn-icon btn-ghost" id="zoomIn" aria-label="放大">+</button>
+                            <span class="sl-zoom-readout" id="zoomReadout">100%</span>
+                          </span>
+                        </div>
+                        <div class="sl-swimlane-scroll-shell">
+                          <div class="sl-timeline-head">
+                            <div class="sl-timeline-band">
+                              <div class="sl-timeline-corner">
+                                <span class="sl-corner-title" title="Attention Score / Wrap 06">Attention Score / Wrap 06</span>
+                              </div>
+                              <div class="sl-timeline-right">
+                                <div class="sl-global-ruler" id="globalRulerScale" aria-label="全局时间尺">
+                                  <div id="globalRulerTicks"></div>
+                                  <div class="sl-global-ruler__brush" id="globalRulerBrush"></div>
+                                </div>
+                                <div class="sl-axis-wrap" id="axisWrap"><canvas id="axisCanvas"></canvas></div>
+                                <div class="sl-overview-wrap" id="overviewWrap"><div class="sl-overview" id="overviewBand"></div></div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="sl-grid" id="grid">
+                            <div class="sl-lane-wrap" id="laneWrap"><canvas id="laneCanvas"></canvas></div>
+                            <div class="sl-body-wrap" id="bodyWrap"><canvas id="bodyCanvas"></canvas></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <aside class="pto-ide-frame__pane" id="inspectorPane" data-ide-pane="inspector">
+                    <div class="pto-ide-frame__pane-header">
+                      <h2 class="pto-ide-frame__pane-title" id="inspTitle">性能报告</h2>
+                    </div>
+                    <div class="sl-insp-body" id="inspBody"></div>
+                  </aside>
+                </main>
+              </section>
+
+              <section class="pto-ide-frame__pane pto-ide-frame__bottom-dock" data-ide-pane="bottom-panel" data-ide-bottom-dock id="terminalDock" hidden>
+                <div class="pto-ide-frame__bottom-view pto-ide-frame__terminal" data-ide-bottom-panel="terminal" id="terminalPane" hidden>
+                  <div class="pto-ide-frame__terminal-tabs" aria-label="面板标签">
+                    <div class="pto-ide-frame__terminal-tablist">
+                      <span class="pto-ide-frame__terminal-tab">问题</span>
+                      <span class="pto-ide-frame__terminal-tab">输出</span>
+                      <span class="pto-ide-frame__terminal-tab">调试控制台</span>
+                      <span class="pto-ide-frame__terminal-tab is-selected">终端</span>
+                    </div>
+                    <div class="pto-ide-frame__terminal-actions" aria-label="终端操作">
+                      <button class="pto-ide-frame__terminal-action" type="button" aria-label="新建终端">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+                      </button>
+                      <button class="pto-ide-frame__terminal-action" type="button" data-ide-close="terminal" aria-label="关闭终端">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="pto-ide-frame__terminal-body">
+                    <p class="pto-ide-frame__terminal-line"><span class="sl-terminal-prompt">pypto@swimlane-profiler %</span> 终端面板默认关闭，打开后用于承载执行日志与诊断输出。</p>
+                    <p class="pto-ide-frame__terminal-line">当前 demo 使用 L3 占位数据；真实 merged_swimlane.json 接入后在这里同步展示加载与解析状态。</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="pto-swimlane-task-tooltip sl-task-tooltip" id="tooltip" role="tooltip" aria-hidden="true"></div>
+<script src="../vendor/pto-design-system/patterns/workbench-shell/pattern.js?v=6941fa7"></script>
+<script src="../vendor/pto-design-system/patterns/ide-frame/pattern.js?v=6941fa7"></script>
+<script src="../vendor/pto-design-system/patterns/swimlane-task/pattern.js?v=6941fa7"></script>
+
+<script>
+/* ============================================================
+   4. 数据模型 + 剧本 (L3-placeholder)
+
+   剧本: 一个 transformer 解码层跑 3 次迭代 (L0/L1/L2)。
+   解码层被切成 6 个 mix 子图, 静态绑定到 24 个 1C2V wrap
+   (每子图 4 个 wrap; 每个 wrap = 1 AIC + 2 AIV)。
+
+   植入瓶颈:
+     - 子图 g1 "Attention Score" 是全局瓶颈。
+     - 根因在 g1 的 Wrap 06: 该 wrap 的 AIC 跑了一个超大 BMM
+       (K 维未切分), 单 task 耗时 ~2.5x 正常值。
+     - Wrap 06 的两个 AIV 算完一小段后, 长时间等待该 AIC 的 SyncSet。
+     - g1 其余 wrap (04/05/07) 的 AIC 早早算完, AIV 也早完 -> 出现明显空转,
+       形成"负载不均": 一个 wrap 拖慢整个子图。
+   ============================================================ */
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const SCENARIO = {
+  bottleneckGroup: 1,   // Attention Score
+  slowWrap: 6,          // 全局 wrap 编号 (g1 的本地 k=2)
+};
+
+function buildModel() {
+  const rand = mulberry32(0x5117A2);
+  const rnd = (a, b) => a + rand() * (b - a);
+  const rndi = (a, b) => Math.floor(a + rand() * (b - a + 1));
+  const pick = (arr) => arr[Math.floor(rand() * arr.length)];
+
+  /* 6 个 mix 子图 (颜色属 data-viz exempt) */
+  const groups = [
+    { id: 0, name: 'QKV Projection',     short: 'QKV',    color: '#3F7DF6', cScale: 1.00, wChar: 0.20 },
+    { id: 1, name: 'Attention Score',    short: 'AttnQK', color: '#9B6BF0', cScale: 1.08, wChar: 0.30 },
+    { id: 2, name: 'Attention Context',  short: 'AttnV',  color: '#1FB6C9', cScale: 1.00, wChar: 0.22 },
+    { id: 3, name: 'FFN Up · GeLU',      short: 'FFN-Up', color: '#EF8A3C', cScale: 1.06, wChar: 0.18 },
+    { id: 4, name: 'FFN Down',           short: 'FFN-Dn', color: '#86C541', cScale: 1.04, wChar: 0.24 },
+    { id: 5, name: 'Residual · RMSNorm', short: 'Resid',  color: '#E25A92', cScale: 0.72, wChar: 0.12 },
+  ];
+
+  /* 78 条泳道 (核身份固定; 显示顺序见 buildOrder) */
+  const cores = [];
+  cores.push({ key: 'cpu_ctrl', label: 'AI CPU 控制', kind: 'cpu', section: 'AI CPU' });
+  for (let i = 0; i < 3; i++) cores.push({ key: 'cpu_sched_' + i, label: 'AI CPU 调度 ' + i, kind: 'cpu', section: 'AI CPU' });
+  for (let i = 0; i < 24; i++) cores.push({ key: 'aic_' + i, label: 'AIC ' + String(i).padStart(2, '0'), kind: 'aic', section: 'AIC', group: Math.floor(i / 4), wrap: i });
+  for (let i = 0; i < 48; i++) cores.push({ key: 'aiv_' + i, label: 'AIV ' + String(i).padStart(2, '0'), kind: 'aiv', section: 'AIV', group: Math.floor(i / 8), wrap: Math.floor(i / 2) });
+  cores.push({ key: 'mte_in', label: 'MTE 输入', kind: 'mte', section: 'MTE' });
+  cores.push({ key: 'mte_out', label: 'MTE 输出', kind: 'mte', section: 'MTE' });
+  cores.forEach((c, i) => { c.idx = i; });
+  const idxOf = {};
+  cores.forEach((c) => { idxOf[c.key] = c.idx; });
+  const aicIdxOfWrap = (w) => idxOf['aic_' + w];
+  const aivIdxOfWrap = (w) => [idxOf['aiv_' + (2 * w)], idxOf['aiv_' + (2 * w + 1)]];
+
+  const AIC_OPS = ['MatMul Tile', 'BMM K-split', 'MatMul Accum', 'GEMM Pack'];
+  const AIC_SLOW_OP = 'BMM (K 未切分)';
+  const AIV_OPS = ['Softmax', 'RMSNorm', 'GeLU Act', 'Add Bias', 'Cast fp16', 'Reduce Sum', 'Eltwise Mul', 'RoPE Apply'];
+
+  const tasks = [];
+  const edges = [];
+  let taskSeq = 0, edgeSeq = 0;
+  const tasksByCore = cores.map(() => []);
+  const mk = (coreIdx, name, start, computeEnd, end, group, wrap, kind, inN, outN) => {
+    const t = {
+      id: 't' + (taskSeq++), coreIdx, name, start, computeEnd, end, group, wrap, kind,
+      inputRawMagic: Array.from({ length: inN }, (_, i) => 'in' + i),
+      outputRawMagic: Array.from({ length: outN }, (_, i) => 'out' + i),
+      syncIn: [], syncOut: [],
+    };
+    tasks.push(t);
+    tasksByCore[coreIdx].push(t);
+    return t;
+  };
+  const addEdge = (group, wrap, dir, prod, prodT, waiter, waitStartT) => {
+    const e = {
+      id: 'e' + (edgeSeq++), group, wrap, dir,
+      fromCore: prod.coreIdx, fromT: prodT, fromTask: prod.id,
+      toCore: waiter.coreIdx, toT: waitStartT, toTask: waiter.id,
+      wait: waiter.end - waitStartT,
+    };
+    edges.push(e);
+    prod.syncOut.push(e.id);
+    waiter.syncIn.push(e.id);
+    return e;
+  };
+
+  const LAYERS = 3, LAYER0 = 80, LAYER_SPAN = 820, STAGGER = 84;
+
+  for (let L = 0; L < LAYERS; L++) {
+    const layerStart = LAYER0 + L * LAYER_SPAN;
+    mk(idxOf['cpu_ctrl'], '层调度', layerStart - 50, layerStart - 26, layerStart - 26, null, null, 'cpu', 0, 0);
+
+    for (let g = 0; g < 6; g++) {
+      const gcfg = groups[g];
+      const winStart = layerStart + g * STAGGER;
+      const schedCore = idxOf['cpu_sched_' + (g % 3)];
+      mk(schedCore, '子图启动', winStart - 22, winStart - 8, winStart - 8, g, null, 'cpu', 0, 0);
+      mk(idxOf['mte_in'], 'HBM→L1 加载', winStart - 36, winStart + 16, winStart + 16, g, null, 'mte', 1, rndi(4, 7));
+
+      let groupComputeEnd = winStart;
+
+      for (let k = 0; k < 4; k++) {
+        const w = g * 4 + k;
+        const isSlow = (w === SCENARIO.slowWrap);
+        const aicCore = aicIdxOfWrap(w);
+        const aivCores = aivIdxOfWrap(w);
+
+        /* ---- AIC: matmul tile ---- */
+        const aicTasks = [];
+        let cursor = winStart + 10 + rnd(0, 12);
+        if (isSlow) {
+          /* 超大 BMM: 3 个长 task, 几乎无等待 (它是被等的一方) */
+          for (let s = 0; s < 3; s++) {
+            const dur = rnd(78, 116);
+            const start = cursor, computeEnd = start + dur, end = computeEnd + rnd(0, 6);
+            aicTasks.push(mk(aicCore, s === 0 ? AIC_SLOW_OP : 'BMM Accum', start, computeEnd, end, g, w, 'aic', 3, 1));
+            cursor = end + rnd(4, 9);
+          }
+        } else {
+          const n = rndi(4, 6);
+          for (let s = 0; s < n; s++) {
+            const dur = rnd(16, 40) * gcfg.cScale;
+            const wait = rand() < 0.22 ? rnd(8, 22) : 0;
+            const start = cursor, computeEnd = start + dur, end = computeEnd + wait;
+            aicTasks.push(mk(aicCore, pick(AIC_OPS), start, computeEnd, end, g, w, 'aic', rndi(2, 3), 1));
+            cursor = end + rnd(3, 8);
+          }
+        }
+        const aicComputeDone = aicTasks[aicTasks.length - 1].computeEnd;
+        groupComputeEnd = Math.max(groupComputeEnd, aicComputeDone);
+
+        /* ---- AIV: 向量算子, 等待 AIC ---- */
+        aivCores.forEach((aivCore, half) => {
+          let cur = winStart + 26 + rnd(0, 14);
+          const n = isSlow ? rndi(5, 6) : rndi(6, 9);
+          for (let s = 0; s < n; s++) {
+            const dur = rnd(9, 24);
+            let wait = 0, prod = null, waitStartT = null;
+            if (isSlow && s < 3) {
+              /* 剧本核心: 算一小段后长时间停等 Wrap06 的超大 BMM */
+              prod = aicTasks[s];
+              waitStartT = cur + dur;
+              const end = prod.computeEnd + rnd(5, 16);
+              const t = mk(aivCore, pick(AIV_OPS), cur, waitStartT, Math.max(end, waitStartT + 6), g, w, 'aiv', rndi(1, 2), 1);
+              addEdge(g, w, 'aic2aiv', prod, prod.computeEnd, t, waitStartT);
+              cur = t.end + rnd(2, 6);
+              continue;
+            }
+            /* 普通 wrap: 部分 task 等待对应 AIC */
+            if (rand() < 0.42) {
+              prod = aicTasks[Math.min(aicTasks.length - 1, 1 + (s % 2))];
+              if (prod.computeEnd > cur + dur + 2) {
+                waitStartT = cur + dur;
+                wait = prod.computeEnd - waitStartT + rnd(3, 12) * (1 + gcfg.wChar);
+              }
+            }
+            const start = cur, computeEnd = start + dur, end = computeEnd + Math.max(0, wait);
+            const t = mk(aivCore, pick(AIV_OPS), start, computeEnd, end, g, w, 'aiv', rndi(1, 2), 1);
+            if (prod && waitStartT != null) addEdge(g, w, 'aic2aiv', prod, prod.computeEnd, t, computeEnd);
+            cur = end + rnd(2, 7);
+          }
+        });
+
+        /* AIV → AIC 回写同步 (普通 wrap, 1 条/wrap): AIC 末 task 等 AIV 结果 */
+        if (!isSlow && rand() < 0.7) {
+          const aivList = tasksByCore[aivCores[0]];
+          const prod = aivList[rndi(1, Math.max(1, aivList.length - 2))];
+          const lastAic = aicTasks[aicTasks.length - 1];
+          if (prod && prod.computeEnd > lastAic.computeEnd - 6) {
+            lastAic.end = prod.computeEnd + rnd(5, 14);
+            addEdge(g, w, 'aiv2aic', prod, prod.computeEnd, lastAic, lastAic.computeEnd);
+          }
+        }
+      }
+
+      mk(idxOf['mte_out'], 'L1→HBM 写回', groupComputeEnd + 6, groupComputeEnd + 44, groupComputeEnd + 44, g, null, 'mte', rndi(2, 4), 1);
+    }
+  }
+
+  const timelineEnd = Math.max(...tasks.map((t) => t.end)) + 70;
+  const layerMarks = [];
+  for (let L = 0; L < LAYERS; L++) layerMarks.push({ t: LAYER0 + L * LAYER_SPAN, label: String(L + 1), layer: L });
+
+  return { cores, groups, tasks, edges, timelineEnd, layerMarks, idxOf, aicIdxOfWrap, aivIdxOfWrap, LAYERS, LAYER0, LAYER_SPAN, STAGGER };
+}
+
+
+/* ============================================================
+   6. 渲染基础
+   ============================================================ */
+const MODEL = buildModel();
+const edgeById = {}; MODEL.edges.forEach((e) => { edgeById[e.id] = e; });
+const taskById = {}; MODEL.tasks.forEach((t) => { taskById[t.id] = t; });
+const CURRENT_RUN_ID = 'mix-sync-run-20260708-001';
+const ARTIFACT_ZH = {
+  'execution timeline': '执行时间线',
+  'merged swimlane placeholder': '泳道数据',
+  'sync edge evidence': '同步边证据',
+  'bottleneck narrative': '瓶颈剧本',
+};
+const PAST_RUNS = [
+  { id: 'mix-sync-run-20260707-1742-004', operator: 'decoder_layer_mix_subgraph', dur: 2570, tasks: 468, completeness: '完整', timestamp: '2026-07-07 17:42' },
+  { id: 'mix-sync-run-20260707-1016-003', operator: 'attention_score_mix', dur: 2314, tasks: 444, completeness: '完整', timestamp: '2026-07-07 10:16' },
+  { id: 'mix-sync-run-20260706-2238-002', operator: 'ffn_up_gelu_mix', dur: 1988, tasks: 392, completeness: '完整', timestamp: '2026-07-06 22:38' },
+  { id: 'mix-sync-run-20260706-1530-001', operator: 'residual_rmsnorm_mix', dur: 1460, tasks: 316, completeness: '完整', timestamp: '2026-07-06 15:30' },
+];
+const RUN_ARTIFACTS = [
+  { name: 'merged_swimlane.json', role: 'merged swimlane placeholder' },
+  { name: 'sync_edges.l3.json', role: 'sync edge evidence' },
+  { name: 'mix-sync-story.md', role: 'bottleneck narrative' },
+];
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+function runList() {
+  return [{
+    id: CURRENT_RUN_ID,
+    operator: 'decoder_layer_mix_subgraph',
+    dur: Math.round(MODEL.timelineEnd),
+    tasks: MODEL.tasks.length,
+    completeness: 'L3 占位',
+    timestamp: '2026-07-08 22:30',
+    current: true,
+  }, ...PAST_RUNS];
+}
+
+const ROW_H = 21, BAR_PAD = 3, BAR_H = ROW_H - 2 * BAR_PAD;
+const AXIS_H = 34, ZOOM_MIN = 100, ZOOM_MAX = 480;
+const KIND_ACCENT = { cpu: '#7C8DB8', aic: '#5A92E6', aiv: '#9B6BF0', mte: '#EAB308' };
+
+const state = {
+  zoomPct: 100, mixMode: false, syncPathOnly: false,
+  query: '',
+  hoverTask: null,
+  level: 'overview',      // overview | group | wrap | task
+  selGroup: null, selWrap: null, selTask: null,
+  expandedRuns: new Set([CURRENT_RUN_ID]),
+};
+
+/* ---- 显示顺序: rowToCore[row]=coreIdx, rowOf[coreIdx]=row ---- */
+let rowToCore = [], rowOf = [];
+function buildOrder() {
+  const order = [];
+  const id = MODEL.idxOf;
+  order.push(id['cpu_ctrl'], id['cpu_sched_0'], id['cpu_sched_1'], id['cpu_sched_2']);
+  if (state.mixMode) {
+    /* Mix: AI CPU — Wrap(1C2V: AIC + 两 AIV) — MTE */
+    for (let w = 0; w < 24; w++) {
+      order.push(MODEL.aicIdxOfWrap(w));
+      const av = MODEL.aivIdxOfWrap(w);
+      order.push(av[0], av[1]);
+    }
+  } else {
+    /* 经典: AI CPU — AIC — AIV — MTE */
+    for (let i = 0; i < 24; i++) order.push(MODEL.idxOf['aic_' + i]);
+    for (let i = 0; i < 48; i++) order.push(MODEL.idxOf['aiv_' + i]);
+  }
+  order.push(id['mte_in'], id['mte_out']);
+  rowToCore = order;
+  rowOf = [];
+  order.forEach((coreIdx, row) => { rowOf[coreIdx] = row; });
+}
+
+/* mix 模式下 wrap w 的行区间 [起, 止] (含) */
+function wrapRowRange(w) { return [4 + 3 * w, 4 + 3 * w + 2]; }
+function groupRowRange(g) { return [4 + 12 * g, 4 + 12 * g + 11]; }
+
+const bodyCanvas = document.getElementById('bodyCanvas');
+const axisCanvas = document.getElementById('axisCanvas');
+const laneCanvas = document.getElementById('laneCanvas');
+const bodyWrap = document.getElementById('bodyWrap');
+const axisWrap = document.getElementById('axisWrap');
+const laneWrap = document.getElementById('laneWrap');
+const overviewWrap = document.getElementById('overviewWrap');
+const overviewBand = document.getElementById('overviewBand');
+const globalRulerScale = document.getElementById('globalRulerScale');
+const globalRulerTicks = document.getElementById('globalRulerTicks');
+const globalRulerBrush = document.getElementById('globalRulerBrush');
+const taskSearch = document.getElementById('taskSearch');
+const zoomSlider = document.getElementById('zoomSlider');
+const mixModeBtn = document.getElementById('mixModeBtn');
+const syncPathBtn = document.getElementById('syncPathBtn');
+const runHistoryBody = document.getElementById('runHistoryBody');
+const tooltip = document.getElementById('tooltip');
+const frameEl = document.querySelector('[data-ide-frame]');
+const canvasPane = document.getElementById('canvasPane');
+const inspectorPane = document.getElementById('inspectorPane');
+const topExplorerToggle = document.getElementById('topExplorerToggle');
+const topInspectorToggle = document.getElementById('topInspectorToggle');
+let bctx, actx, lctx;
+let frameController = null;
+let canvasResizeObserver = null;
+let overviewMetricSeries = [];
+
+const LABEL_W = 184;
+function visibleTrackW() {
+  const measured = bodyWrap?.clientWidth || axisWrap?.clientWidth || Math.max(0, (canvasPane?.clientWidth || 0) - LABEL_W);
+  return Math.max(360, measured || 760);
+}
+function bodyW() {
+  return Math.ceil(visibleTrackW() * (state.zoomPct / 100));
+}
+function pxPerUs() { return Math.max(0.1, (bodyW() - 8) / MODEL.timelineEnd); }
+function bodyH() { return MODEL.cores.length * ROW_H; }
+function rowMidY(row) { return row * ROW_H + ROW_H / 2; }
+function hexToRgba(hex, a) {
+  const v = parseInt(hex.slice(1), 16);
+  return `rgba(${v >> 16},${(v >> 8) & 0xff},${v & 0xff},${a})`;
+}
+function taskMatchesQuery(t) {
+  const q = state.query.trim().toLowerCase();
+  if (!q) return true;
+  const core = MODEL.cores[t.coreIdx];
+  const grp = t.group != null ? MODEL.groups[t.group] : null;
+  return [
+    t.name,
+    core.label,
+    core.section,
+    grp?.name,
+    grp?.short,
+    t.wrap != null ? 'Wrap ' + String(t.wrap).padStart(2, '0') : '',
+  ].some((value) => String(value || '').toLowerCase().includes(q));
+}
+function setupCanvas(canvas, wCss, hCss) {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(wCss * dpr);
+  canvas.height = Math.round(hCss * dpr);
+  canvas.style.width = wCss + 'px';
+  canvas.style.height = hCss + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
+/* ============================================================
+   7. 主体画布渲染
+   ============================================================ */
+function focusInfo() {
+  /* 返回当前需高亮的 task / edge / group / wrap, 用于渐进式聚焦 */
+  const relTasks = new Set();
+  const relEdges = new Set();
+  let dimGroup = null, dimWrap = null;
+  const focusTask = state.selTask || state.hoverTask;
+  if (state.level === 'group' && state.selGroup != null) dimGroup = state.selGroup;
+  if (state.level === 'wrap' && state.selWrap != null) { dimGroup = Math.floor(state.selWrap / 4); dimWrap = state.selWrap; }
+  if (state.level === 'task' && state.selTask) {
+    dimGroup = state.selTask.group;
+    dimWrap = state.selTask.wrap;
+  }
+  if (focusTask) {
+    relTasks.add(focusTask.id);
+    focusTask.syncIn.concat(focusTask.syncOut).forEach((eid) => {
+      relEdges.add(eid);
+      relTasks.add(edgeById[eid].fromTask);
+      relTasks.add(edgeById[eid].toTask);
+    });
+  }
+  return { relTasks, relEdges, dimGroup, dimWrap, focusTask };
+}
+
+function drawBody() {
+  const w = bodyW(), h = bodyH(), scale = pxPerUs();
+  bctx.clearRect(0, 0, w, h);
+  const fi = focusInfo();
+
+  /* 行底纹: mix 按 wrap 隔行, 经典按 section */
+  for (let row = 0; row < MODEL.cores.length; row++) {
+    let stripe = false;
+    if (state.mixMode) {
+      if (row >= 4 && row <= 75) stripe = Math.floor((row - 4) / 3) % 2 === 1;
+    } else {
+      const k = MODEL.cores[rowToCore[row]].kind;
+      stripe = k === 'aic' || k === 'mte';
+    }
+    if (stripe) { bctx.fillStyle = 'rgba(255,255,255,0.014)'; bctx.fillRect(0, row * ROW_H, w, ROW_H); }
+  }
+
+  /* mix: group 染色带 (连续 12 行/子图, 圆角虚线框) */
+  if (state.mixMode) drawGroupBands(fi);
+
+  /* 时间网格 + 迭代 barrier */
+  bctx.strokeStyle = 'rgba(255,255,255,0.05)'; bctx.lineWidth = 1;
+  for (let t = 0; t <= MODEL.timelineEnd; t += 100) {
+    const x = Math.round(t * scale) + 0.5;
+    bctx.beginPath(); bctx.moveTo(x, 0); bctx.lineTo(x, h); bctx.stroke();
+  }
+  MODEL.layerMarks.forEach((m) => {
+    const x = Math.round(m.t * scale) + 0.5;
+    bctx.strokeStyle = 'rgba(255,255,255,0.15)'; bctx.setLineDash([4, 4]);
+    bctx.beginPath(); bctx.moveTo(x, 0); bctx.lineTo(x, h); bctx.stroke();
+    bctx.setLineDash([]);
+  });
+
+  /* section / wrap / group 分隔线 */
+  drawSeparators(bctx, w);
+
+  /* task bars */
+  const fontFamily = "'Inter', sans-serif";
+  for (const t of MODEL.tasks) {
+    const row = rowOf[t.coreIdx];
+    const x = t.start * scale;
+    const computeW = (t.computeEnd - t.start) * scale;
+    const y = row * ROW_H + BAR_PAD;
+    const grp = t.group != null ? MODEL.groups[t.group] : null;
+    const baseColor = grp ? grp.color : KIND_ACCENT[t.kind];
+
+    let alpha = 1;
+    if (state.syncPathOnly && t.syncIn.length === 0 && t.syncOut.length === 0) alpha = 0.16;
+    if (fi.dimWrap != null) { if (t.wrap !== fi.dimWrap) alpha = Math.min(alpha, 0.2); }
+    else if (fi.dimGroup != null) { if (t.group !== fi.dimGroup) alpha = Math.min(alpha, 0.2); }
+    if (fi.focusTask && !fi.relTasks.has(t.id)) alpha = Math.min(alpha, 0.34);
+    if (!taskMatchesQuery(t)) alpha = Math.min(alpha, 0.15);
+
+    bctx.globalAlpha = alpha;
+    if (computeW >= 1) {
+      window.PtoSwimlaneTaskPattern.drawTaskBar(bctx, {
+        x, y, width: computeW, height: BAR_H, baseColor, fontFamily, task: t,
+        isSelected: state.selTask && state.selTask.id === t.id,
+        isRelated: fi.relTasks.has(t.id) && fi.focusTask && fi.focusTask.id !== t.id,
+        isEmphasized: state.hoverTask && state.hoverTask.id === t.id,
+      });
+    }
+    const waitW = (t.end - t.computeEnd) * scale;
+    if (waitW >= 1) drawWaitSegment(x + computeW, y, waitW, BAR_H);
+    bctx.globalAlpha = 1;
+  }
+
+  /* mix: 同步弧线 (按层级渐进显示) */
+  if (state.mixMode) drawArcs(fi);
+}
+
+function drawGroupBands(fi) {
+  const scale = pxPerUs();
+  for (let L = 0; L < MODEL.LAYERS; L++) {
+    for (let g = 0; g < 6; g++) {
+      const isFocus = fi.dimGroup === g;
+      const faded = fi.dimGroup != null && !isFocus;
+      const grp = MODEL.groups[g];
+      const winStart = (MODEL.LAYER0 + L * MODEL.LAYER_SPAN + g * MODEL.STAGGER - 40) * scale;
+      const winW = (MODEL.STAGGER + 320) * scale;
+      const [r0] = groupRowRange(g);
+      const y = r0 * ROW_H, bh = 12 * ROW_H;
+      bctx.fillStyle = hexToRgba(grp.color, faded ? 0.025 : (isFocus ? 0.085 : 0.045));
+      bctx.fillRect(winStart, y, winW, bh);
+      bctx.strokeStyle = hexToRgba(grp.color, faded ? 0.18 : (isFocus ? 0.62 : 0.32));
+      bctx.lineWidth = 1; bctx.setLineDash([5, 3]);
+      bctx.beginPath();
+      bctx.roundRect(winStart + 0.5, y + 1.5, winW - 1, bh - 3, 8);
+      bctx.stroke();
+      bctx.setLineDash([]);
+      /* wrap 选中: 在 group 带内再描出 wrap 子框 */
+      if (fi.dimWrap != null && Math.floor(fi.dimWrap / 4) === g) {
+        const [wr0] = wrapRowRange(fi.dimWrap);
+        bctx.strokeStyle = hexToRgba(grp.color, 0.92);
+        bctx.lineWidth = 1.4;
+        bctx.beginPath();
+        bctx.roundRect(winStart + 2.5, wr0 * ROW_H + 1.5, winW - 5, 3 * ROW_H - 3, 6);
+        bctx.stroke();
+      }
+    }
+  }
+}
+
+function drawSeparators(ctx, w) {
+  const line = (row, color, weight) => {
+    const y = row * ROW_H + 0.5;
+    ctx.strokeStyle = color; ctx.lineWidth = weight;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  };
+  if (state.mixMode) {
+    line(4, 'rgba(255,255,255,0.16)', 1);
+    line(76, 'rgba(255,255,255,0.16)', 1);
+    for (let g = 1; g < 6; g++) line(4 + 12 * g, 'rgba(255,255,255,0.12)', 1);
+    for (let wgap = 1; wgap < 24; wgap++) {
+      if (wgap % 4 === 0) continue;
+      line(4 + 3 * wgap, 'rgba(255,255,255,0.045)', 1);
+    }
+  } else {
+    [4, 28, 76].forEach((r) => line(r, 'rgba(255,255,255,0.14)', 1));
+  }
+}
+
+function drawWaitSegment(x, y, w, h) {
+  bctx.save();
+  bctx.beginPath(); bctx.roundRect(x, y, w, h, 2); bctx.clip();
+  bctx.fillStyle = hexToRgba('#FFAA3B', 0.14);
+  bctx.fillRect(x, y, w, h);
+  bctx.strokeStyle = 'rgba(255,170,59,0.5)'; bctx.lineWidth = 1;
+  for (let i = -h; i < w + h; i += 5) {
+    bctx.beginPath(); bctx.moveTo(x + i, y + h); bctx.lineTo(x + i + h, y); bctx.stroke();
+  }
+  bctx.restore();
+  bctx.strokeStyle = 'rgba(255,170,59,0.4)'; bctx.lineWidth = 1;
+  bctx.beginPath(); bctx.roundRect(x + 0.5, y + 0.5, Math.max(0, w - 1), h - 1, 2); bctx.stroke();
+  if (w >= 6) {
+    bctx.fillStyle = '#FFAA3B';
+    bctx.beginPath();
+    bctx.moveTo(x, y - 1); bctx.lineTo(x + 5, y - 1); bctx.lineTo(x + 2.5, y + 3.5);
+    bctx.closePath(); bctx.fill();
+  }
+}
+
+/* 同步弧线: 渐进显示
+   overview -> 不画; group -> 该子图弧线中等; wrap -> 该 wrap 弧线强;
+   任务 -> 选中任务弧线最强, 同 Wrap 其余弱 */
+function drawArcs(fi) {
+  let visible, strongPred;
+  if (fi.focusTask) {
+    visible = MODEL.edges.filter((e) => e.wrap === fi.focusTask.wrap);
+    strongPred = (e) => fi.relEdges.has(e.id);
+  } else if (fi.dimWrap != null) {
+    visible = MODEL.edges.filter((e) => e.wrap === fi.dimWrap);
+    strongPred = () => true;
+  } else if (fi.dimGroup != null) {
+    visible = MODEL.edges.filter((e) => e.group === fi.dimGroup);
+    strongPred = () => false;
+  } else {
+    return; /* overview: 保持干净, 不画弧线 */
+  }
+  /* 先弱后强, 保证强线在上层 */
+  visible.filter((e) => !strongPred(e)).forEach((e) => drawArc(e, false));
+  visible.filter((e) => strongPred(e)).forEach((e) => drawArc(e, true));
+  /* 选中 task 的同步点 barrier 竖线 */
+  if (fi.focusTask) {
+    fi.focusTask.syncIn.concat(fi.focusTask.syncOut).forEach((eid) => {
+      const e = edgeById[eid];
+      drawBarrier(e.fromT, MODEL.groups[e.group].color);
+      drawBarrier(e.toT, MODEL.groups[e.group].color);
+    });
+  }
+}
+
+function drawArc(e, strong) {
+  const scale = pxPerUs();
+  const x1 = e.fromT * scale, y1 = rowMidY(rowOf[e.fromCore]);
+  const x2 = e.toT * scale, y2 = rowMidY(rowOf[e.toCore]);
+  const color = MODEL.groups[e.group].color;
+  const bow = Math.max(14, Math.abs(y2 - y1) * 0.55) * (strong ? 1.15 : 1);
+  bctx.save();
+  bctx.strokeStyle = hexToRgba(color, strong ? 0.95 : 0.3);
+  bctx.lineWidth = strong ? 1.7 : 1;
+  if (e.dir === 'aiv2aic') bctx.setLineDash(strong ? [5, 3] : [3, 3]);
+  /* 控制点右推 -> 平滑外凸曲线; 终点水平进入便于统一箭头 */
+  bctx.beginPath();
+  bctx.moveTo(x1, y1);
+  bctx.bezierCurveTo(x1 + bow, y1, x2 + bow, y2, x2, y2);
+  bctx.stroke();
+  bctx.setLineDash([]);
+  /* 起点 (SyncSet) 实心圆点 */
+  bctx.fillStyle = hexToRgba(color, strong ? 1 : 0.55);
+  bctx.beginPath(); bctx.arc(x1, y1, strong ? 2.6 : 1.8, 0, Math.PI * 2); bctx.fill();
+  /* 终点 (SyncWait) 箭头, 水平指向 -x */
+  const ah = strong ? 5 : 3.6;
+  bctx.beginPath();
+  bctx.moveTo(x2, y2);
+  bctx.lineTo(x2 + ah, y2 - ah * 0.72);
+  bctx.lineTo(x2 + ah, y2 + ah * 0.72);
+  bctx.closePath(); bctx.fill();
+  bctx.restore();
+}
+
+function drawBarrier(tUs, color) {
+  const x = Math.round(tUs * pxPerUs()) + 0.5;
+  bctx.save();
+  bctx.strokeStyle = hexToRgba(color, 0.45);
+  bctx.lineWidth = 1; bctx.setLineDash([2, 3]);
+  bctx.beginPath(); bctx.moveTo(x, 0); bctx.lineTo(x, bodyH()); bctx.stroke();
+  bctx.restore();
+}
+
+/* ---- 时间轴 ---- */
+function drawAxis() {
+  const w = bodyW(), scale = pxPerUs();
+  actx.clearRect(0, 0, w, AXIS_H);
+  actx.fillStyle = 'rgba(255,255,255,0.40)';
+  actx.font = "500 10px 'JetBrains Mono', monospace";
+  actx.textBaseline = 'middle';
+  for (let t = 0; t <= MODEL.timelineEnd; t += 50) {
+    const x = Math.round(t * scale) + 0.5;
+    const major = t % 100 === 0;
+    actx.strokeStyle = major ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.10)';
+    actx.beginPath();
+    actx.moveTo(x, major ? AXIS_H - 11 : AXIS_H - 6); actx.lineTo(x, AXIS_H); actx.stroke();
+    if (major) { actx.textAlign = 'left'; actx.fillText(t + 'μs', x + 3, 9); }
+  }
+  MODEL.layerMarks.forEach((m) => {
+    const x = m.t * scale;
+    actx.fillStyle = 'rgba(255,255,255,0.62)';
+    actx.font = "600 10px 'Inter', sans-serif";
+    actx.textAlign = 'left';
+    actx.fillText('迭代 ' + m.label, x + 4, 22);
+  });
+}
+
+function layerWindow(layer) {
+  const startBound = MODEL.LAYER0 + layer * MODEL.LAYER_SPAN - 60;
+  const endBound = MODEL.LAYER0 + (layer + 1) * MODEL.LAYER_SPAN;
+  const tasks = MODEL.tasks.filter((t) => t.start >= startBound && t.start < endBound);
+  if (!tasks.length) return null;
+  const start = Math.max(0, Math.min(...tasks.map((t) => t.start)) - 8);
+  const end = Math.min(MODEL.timelineEnd, Math.max(...tasks.map((t) => t.end)) + 8);
+  return { start, end };
+}
+
+function fitLayer(layer) {
+  const win = layerWindow(layer);
+  if (!win) return;
+  const span = Math.max(1, win.end - win.start);
+  const desiredZoom = Math.floor((MODEL.timelineEnd / span) * 100);
+  setZoom(desiredZoom);
+  window.requestAnimationFrame(() => {
+    bodyWrap.scrollLeft = Math.max(0, win.start * pxPerUs());
+    axisWrap.scrollLeft = bodyWrap.scrollLeft;
+    overviewWrap.scrollLeft = bodyWrap.scrollLeft;
+    syncGlobalRulerBrush();
+  });
+}
+
+function hitLayerLabel(canvasX, canvasY) {
+  if (canvasY < 8 || canvasY > AXIS_H) return null;
+  const scale = pxPerUs();
+  return MODEL.layerMarks.find((m) => {
+    const x = m.t * scale;
+    return canvasX >= x && canvasX <= x + 62;
+  }) || null;
+}
+
+/* ---- 泳道标签列 ---- */
+function drawLanes() {
+  const h = bodyH();
+  lctx.clearRect(0, 0, LABEL_W, h);
+  lctx.textBaseline = 'middle';
+  const fi = focusInfo();
+  for (let row = 0; row < MODEL.cores.length; row++) {
+    const c = MODEL.cores[rowToCore[row]];
+    const y = row * ROW_H;
+    /* 行底纹同步 */
+    let stripe = false;
+    if (state.mixMode && row >= 4 && row <= 75) stripe = Math.floor((row - 4) / 3) % 2 === 1;
+    else if (!state.mixMode) stripe = c.kind === 'aic' || c.kind === 'mte';
+    if (stripe) { lctx.fillStyle = 'rgba(255,255,255,0.014)'; lctx.fillRect(0, y, LABEL_W, ROW_H); }
+    /* kind 强调条 */
+    lctx.fillStyle = KIND_ACCENT[c.kind]; lctx.globalAlpha = 0.85;
+    lctx.fillRect(0, y + 3, 3, ROW_H - 6); lctx.globalAlpha = 1;
+
+    const dim = (fi.dimWrap != null && c.wrap !== fi.dimWrap)
+      || (fi.dimWrap == null && fi.dimGroup != null && c.group !== fi.dimGroup);
+    /* group 色点 */
+    if (c.group != null) {
+      const grp = MODEL.groups[c.group];
+      lctx.fillStyle = hexToRgba(grp.color, dim ? 0.28 : 1);
+      lctx.beginPath();
+      lctx.roundRect(LABEL_W - 16, y + ROW_H / 2 - 4, 8, 8, 2);
+      lctx.fill();
+    }
+    /* 标签 */
+    lctx.fillStyle = dim ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.8)';
+    lctx.font = "500 11px 'Inter', sans-serif";
+    lctx.textAlign = 'left';
+    lctx.fillText(c.label, 11, y + ROW_H / 2 + 0.5);
+    /* mix: AIC 行附 wrap 号 */
+    if (state.mixMode && c.kind === 'aic') {
+      lctx.fillStyle = dim ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.42)';
+      lctx.font = "600 9px 'JetBrains Mono', monospace";
+      lctx.textAlign = 'right';
+      lctx.fillText('W' + String(c.wrap).padStart(2, '0'), LABEL_W - 22, y + ROW_H / 2 + 0.5);
+    }
+  }
+  /* 分隔线 */
+  const line = (row, color, weight) => {
+    const yy = row * ROW_H + 0.5;
+    lctx.strokeStyle = color; lctx.lineWidth = weight;
+    lctx.beginPath(); lctx.moveTo(0, yy); lctx.lineTo(LABEL_W, yy); lctx.stroke();
+  };
+  if (state.mixMode) {
+    line(4, 'rgba(255,255,255,0.16)', 1); line(76, 'rgba(255,255,255,0.16)', 1);
+    for (let g = 1; g < 6; g++) line(4 + 12 * g, 'rgba(255,255,255,0.12)', 1);
+    for (let wgap = 1; wgap < 24; wgap++) {
+      if (wgap % 4 === 0) continue;
+      line(4 + 3 * wgap, 'rgba(255,255,255,0.045)', 1);
+    }
+  } else {
+    [4, 28, 76].forEach((r) => line(r, 'rgba(255,255,255,0.14)', 1));
+  }
+}
+
+function smoothPath(points) {
+  if (!points.length) return '';
+  if (points.length === 1) return `M${points[0].x},${points[0].y}`;
+  let d = `M${points[0].x.toFixed(2)},${points[0].y.toFixed(2)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+  }
+  return d;
+}
+
+function clampMetric(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+function buildOverviewMetrics() {
+  const samples = 72;
+  const metricDefs = [
+    { key: 'hostQueue', label: 'Host CPU 队列', unit: '', max: 8, color: '#7C8DB8' },
+    { key: 'activeAi', label: '活跃 AI Core', unit: ' 核', max: 72, color: '#5A92E6' },
+    { key: 'aivIdle', label: 'AIV 空闲', unit: '%', max: 100, color: '#FFAA3B' },
+    { key: 'ubLive', label: 'UB Live', unit: '%', max: 100, color: '#9B6BF0' },
+    { key: 'mteBw', label: 'MTE 带宽', unit: ' GB/s', max: 900, color: '#04D793' },
+  ];
+  const series = metricDefs.map((m) => ({ ...m, values: [] }));
+  for (let i = 0; i < samples; i++) {
+    const f = i / Math.max(1, samples - 1);
+    const t = f * MODEL.timelineEnd;
+    let hostActive = 0, aiCompute = 0, aivTotal = 0, aivWaiting = 0, mteActive = 0;
+    MODEL.tasks.forEach((task) => {
+      const core = MODEL.cores[task.coreIdx];
+      const active = t >= task.start && t <= task.end;
+      const computing = t >= task.start && t <= task.computeEnd;
+      const waiting = t > task.computeEnd && t <= task.end;
+      if (core.kind === 'cpu' && active) hostActive++;
+      if ((core.kind === 'aic' || core.kind === 'aiv') && computing) aiCompute++;
+      if (core.kind === 'aiv') {
+        aivTotal++;
+        if (waiting) aivWaiting++;
+      }
+      if (core.kind === 'mte' && active) mteActive++;
+    });
+    const pulse = 0.5 + 0.5 * Math.sin(f * Math.PI * 9);
+    const bottleneck = Math.exp(-Math.pow((t - (MODEL.LAYER0 + MODEL.LAYER_SPAN + MODEL.STAGGER * 1.4)) / 230, 2));
+    series[0].values.push(clampMetric(hostActive + 1.6 * pulse + 2.2 * bottleneck, 0, 8));
+    series[1].values.push(clampMetric(aiCompute, 0, 72));
+    series[2].values.push(clampMetric((aivWaiting / Math.max(1, aivTotal)) * 100 + 20 * bottleneck, 0, 100));
+    series[3].values.push(clampMetric(34 + aiCompute * 0.72 + mteActive * 8 + 18 * bottleneck + 8 * pulse, 0, 100));
+    series[4].values.push(clampMetric(120 + mteActive * 230 + 90 * pulse + 140 * Math.max(0, Math.sin(f * Math.PI * 6)), 0, 900));
+  }
+  return series;
+}
+
+function renderOverviewBand() {
+  const w = bodyW();
+  const h = 62;
+  const top = 7;
+  const bottom = 9;
+  overviewMetricSeries = buildOverviewMetrics();
+  const grid = [0.25, 0.5, 0.75].map((p) => {
+    const y = top + (h - top - bottom) * p;
+    return `<path d="M0 ${y.toFixed(2)} H${w}" stroke="rgba(255,255,255,0.055)" stroke-width="1"></path>`;
+  }).join('');
+  const paths = overviewMetricSeries.map((metric) => {
+    const points = metric.values.map((value, i) => {
+      const f = i / Math.max(1, metric.values.length - 1);
+      const y = top + (1 - value / metric.max) * (h - top - bottom);
+      return { x: f * w, y };
+    });
+    const line = smoothPath(points);
+    const area = `${line} L${w.toFixed(2)},${(h - bottom).toFixed(2)} L0,${(h - bottom).toFixed(2)} Z`;
+    return `<path d="${area}" fill="${metric.color}" opacity="0.10"></path><path d="${line}" fill="none" stroke="${metric.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.88"></path>`;
+  }).join('');
+  let marker = '';
+  if (state.selTask) {
+    const x = state.selTask.start * pxPerUs();
+    const mw = Math.max(2, (state.selTask.end - state.selTask.start) * pxPerUs());
+    marker = `<div class="sl-overview-marker" style="left:${x}px;width:${mw}px"></div>`;
+  }
+  overviewBand.style.width = w + 'px';
+  overviewBand.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${grid}${paths}</svg>${marker}<div class="sl-overview-cursor" id="overviewCursor" hidden></div><div class="sl-overview-tooltip pto-swimlane-task-tooltip" id="overviewTooltip" hidden aria-hidden="true"></div>`;
+}
+
+function renderGlobalRuler() {
+  if (!globalRulerTicks) return;
+  globalRulerScale.style.width = visibleTrackW() + 'px';
+  let html = '';
+  for (let t = 0; t <= MODEL.timelineEnd; t += 100) {
+    const major = t % 200 === 0;
+    html += `<div class="sl-global-ruler__tick ${major ? 'is-major' : ''}" style="left:${(t / MODEL.timelineEnd * 100).toFixed(4)}%">${major ? t + 'μs' : ''}</div>`;
+  }
+  globalRulerTicks.innerHTML = html;
+  syncGlobalRulerBrush();
+}
+
+function syncGlobalRulerBrush() {
+  if (!globalRulerBrush) return;
+  const w = bodyW();
+  const visible = Math.max(1, bodyWrap.clientWidth || visibleTrackW());
+  const leftF = Math.max(0, Math.min(1, bodyWrap.scrollLeft / w));
+  const widthF = Math.max(0.01, Math.min(1 - leftF, visible / w));
+  const trackW = visibleTrackW();
+  const isFull = leftF <= 0.002 && widthF >= 0.998;
+  globalRulerBrush.style.left = (isFull ? 0 : leftF * trackW) + 'px';
+  globalRulerBrush.style.width = (isFull ? trackW : Math.max(3, widthF * trackW)) + 'px';
+}
+
+function formatMetricValue(metric, value) {
+  if (metric.key === 'hostQueue') return value.toFixed(1);
+  if (metric.key === 'activeAi') return Math.round(value) + metric.unit;
+  if (metric.key === 'mteBw') return Math.round(value) + metric.unit;
+  return value.toFixed(1) + metric.unit;
+}
+
+function showOverviewTooltip(e) {
+  if (!overviewMetricSeries.length) return;
+  const rect = overviewBand.getBoundingClientRect();
+  if (!rect.width) return;
+  const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+  const f = x / rect.width;
+  const idx = Math.max(0, Math.min(overviewMetricSeries[0].values.length - 1, Math.round(f * (overviewMetricSeries[0].values.length - 1))));
+  const t = f * MODEL.timelineEnd;
+  const cursor = document.getElementById('overviewCursor');
+  const tip = document.getElementById('overviewTooltip');
+  if (!cursor || !tip) return;
+  cursor.hidden = false;
+  cursor.style.left = x + 'px';
+  const rows = overviewMetricSeries.map((metric) => (
+    `<div class="pto-swimlane-task-tooltip__row"><span class="pto-swimlane-task-tooltip__key"><span class="sl-overview-tip-swatch" style="background:${metric.color}"></span>${metric.label}</span><span class="pto-swimlane-task-tooltip__value">${formatMetricValue(metric, metric.values[idx])}</span></div>`
+  )).join('');
+  tip.innerHTML = `<div class="pto-swimlane-task-tooltip__title">时间戳 ${t.toFixed(1)}μs</div>${rows}`;
+  tip.hidden = false;
+  tip.classList.add('is-visible');
+  tip.setAttribute('aria-hidden', 'false');
+  const tw = tip.offsetWidth || 214;
+  const left = x + 12 + tw > rect.width ? x - tw - 12 : x + 12;
+  tip.style.left = Math.max(2, Math.min(rect.width - tw - 2, left)) + 'px';
+  tip.style.top = '6px';
+}
+
+function hideOverviewTooltip() {
+  const cursor = document.getElementById('overviewCursor');
+  const tip = document.getElementById('overviewTooltip');
+  if (cursor) cursor.hidden = true;
+  if (tip) {
+    tip.classList.remove('is-visible');
+    tip.setAttribute('aria-hidden', 'true');
+    tip.hidden = true;
+  }
+}
+
+function runCardHtml(r) {
+  const expanded = state.expandedRuns.has(r.id);
+  const artifactHtml = RUN_ARTIFACTS.map((a) => (
+    `<div class="sl-history-artifact"><span class="nm">${escapeHtml(a.name)}</span><span class="rl">${escapeHtml(ARTIFACT_ZH[a.role] || '')}</span></div>`
+  )).join('');
+  const detail = expanded
+    ? `<dl class="sl-history-kv">
+        <dt>算子</dt><dd class="sl-history-sm">${escapeHtml(r.operator)}</dd>
+        <dt>总耗时</dt><dd>${escapeHtml(r.dur)}μs</dd>
+        <dt>任务数</dt><dd>${escapeHtml(r.tasks)}</dd>
+        <dt>完整性</dt><dd style="color:var(--success)">${escapeHtml(r.completeness)}</dd>
+        <dt>运行时间</dt><dd class="sl-history-sm">${escapeHtml(r.timestamp)}</dd>
+      </dl>
+      <hr class="sl-history-divider">
+      ${artifactHtml}`
+    : `<dl class="sl-history-kv">
+        <dt>算子</dt><dd class="sl-history-sm">${escapeHtml(r.operator)}</dd>
+        <dt>总耗时</dt><dd>${escapeHtml(r.dur)}μs</dd>
+        <dt>运行时间</dt><dd class="sl-history-sm">${escapeHtml(r.timestamp)}</dd>
+      </dl>`;
+  return `<section class="sl-run-card ${r.current ? 'is-selected' : 'sl-run-card--past'} ${expanded ? 'is-expanded' : ''}">
+    <button class="sl-run-card__head" type="button" data-run-id="${escapeHtml(r.id)}" aria-expanded="${String(expanded)}">
+      <span class="sl-run-id">${escapeHtml(r.id)}</span>
+      <svg class="sl-run-card__toggle ${expanded ? 'is-open' : ''}" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+    </button>
+    ${detail}
+  </section>`;
+}
+
+function renderRunHistory() {
+  if (!runHistoryBody) return;
+  runHistoryBody.innerHTML = `<div class="sl-history-stack">${runList().map(runCardHtml).join('')}</div>`;
+  runHistoryBody.querySelectorAll('[data-run-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.runId;
+      if (state.expandedRuns.has(id)) state.expandedRuns.delete(id);
+      else state.expandedRuns.add(id);
+      renderRunHistory();
+    });
+  });
+  const meta = document.getElementById('runHistoryMeta');
+  if (meta) meta.textContent = '';
+}
+
+function layout() {
+  const w = bodyW(), h = bodyH();
+  bctx = setupCanvas(bodyCanvas, w, h);
+  actx = setupCanvas(axisCanvas, w, AXIS_H);
+  lctx = setupCanvas(laneCanvas, LABEL_W, h);
+  renderGlobalRuler();
+  renderOverviewBand();
+  drawAxis(); drawLanes(); drawBody();
+}
+function refresh() { renderGlobalRuler(); renderOverviewBand(); drawLanes(); drawBody(); }
+
+function hitTest(px, py) {
+  const row = Math.floor(py / ROW_H);
+  if (row < 0 || row >= MODEL.cores.length) return null;
+  const coreIdx = rowToCore[row];
+  const scale = pxPerUs();
+  for (const t of MODEL.tasks) {
+    if (t.coreIdx !== coreIdx) continue;
+    if (px >= t.start * scale - 1 && px <= t.end * scale + 1) return t;
+  }
+  return null;
+}
+
+/* ============================================================
+   8. 交互
+   ============================================================ */
+bodyWrap.addEventListener('scroll', () => {
+  axisWrap.scrollLeft = bodyWrap.scrollLeft;
+  overviewWrap.scrollLeft = bodyWrap.scrollLeft;
+  laneWrap.scrollTop = bodyWrap.scrollTop;
+  syncGlobalRulerBrush();
+});
+overviewBand.addEventListener('mousemove', showOverviewTooltip);
+overviewBand.addEventListener('mouseleave', hideOverviewTooltip);
+axisCanvas.addEventListener('mousemove', (e) => {
+  const rect = axisCanvas.getBoundingClientRect();
+  axisCanvas.style.cursor = hitLayerLabel(e.clientX - rect.left, e.clientY - rect.top) ? 'pointer' : 'default';
+});
+axisCanvas.addEventListener('mouseleave', () => {
+  axisCanvas.style.cursor = 'default';
+});
+axisCanvas.addEventListener('click', (e) => {
+  const rect = axisCanvas.getBoundingClientRect();
+  const mark = hitLayerLabel(e.clientX - rect.left, e.clientY - rect.top);
+  if (mark) fitLayer(mark.layer);
+});
+
+bodyCanvas.addEventListener('mousemove', (e) => {
+  const rect = bodyCanvas.getBoundingClientRect();
+  const t = hitTest(e.clientX - rect.left, e.clientY - rect.top);
+  if (t !== state.hoverTask) {
+    state.hoverTask = t;
+    bodyCanvas.style.cursor = t ? 'pointer' : 'default';
+    drawBody();
+  }
+  if (t) showTooltip(t, e.clientX, e.clientY);
+  else hideTaskTooltip();
+});
+bodyCanvas.addEventListener('mouseleave', () => {
+  state.hoverTask = null;
+  hideTaskTooltip();
+  drawBody();
+});
+bodyCanvas.addEventListener('click', (e) => {
+  const rect = bodyCanvas.getBoundingClientRect();
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  const t = hitTest(px, py);
+  if (t) { selectTask(t); return; }
+  /* 点空白: Mix 模式下按所在 wrap / group 下钻 */
+  if (state.mixMode) {
+    const row = Math.floor(py / ROW_H);
+    if (row >= 4 && row <= 75) {
+      const w = Math.floor((row - 4) / 3);
+      const g = Math.floor(w / 4);
+      if (state.level === 'wrap' && state.selWrap === w) selectGroup(g);
+      else if (state.selGroup === g && state.level !== 'overview') selectWrap(w);
+      else selectGroup(g);
+      return;
+    }
+  }
+  goOverview();
+});
+
+function selectTask(t) {
+  state.level = 'task'; state.selTask = t;
+  state.selGroup = t.group; state.selWrap = t.wrap;
+  refresh(); renderInspector();
+}
+function selectGroup(g) {
+  state.level = 'group'; state.selGroup = g; state.selWrap = null; state.selTask = null;
+  refresh(); renderInspector();
+}
+function selectWrap(w) {
+  state.level = 'wrap'; state.selWrap = w; state.selGroup = Math.floor(w / 4); state.selTask = null;
+  refresh(); renderInspector(); scrollWrapIntoView(w);
+}
+function goOverview() {
+  state.level = 'overview'; state.selGroup = null; state.selWrap = null; state.selTask = null;
+  refresh(); renderInspector();
+}
+function scrollWrapIntoView(w) {
+  const [r0, r1] = wrapRowRange(w);
+  const top = r0 * ROW_H, mid = (top + r1 * ROW_H) / 2;
+  bodyWrap.scrollTop = Math.max(0, mid - bodyWrap.clientHeight / 2);
+}
+
+function showTooltip(t, cx, cy) {
+  const grp = t.group != null ? MODEL.groups[t.group] : null;
+  const compute = (t.computeEnd - t.start).toFixed(1);
+  const wait = (t.end - t.computeEnd).toFixed(1);
+  const total = (t.end - t.start) || 1;
+  const ratio = ((t.end - t.computeEnd) / total * 100).toFixed(0);
+  const color = grp ? grp.color : KIND_ACCENT[t.kind];
+  tooltip.innerHTML = `
+    <div class="pto-swimlane-task-tooltip__title"><span class="sl-task-tooltip-dot" style="background:${color}"></span>${t.name}</div>
+    <div class="pto-swimlane-task-tooltip__row"><span class="pto-swimlane-task-tooltip__key">泳道</span><span class="pto-swimlane-task-tooltip__value">${MODEL.cores[t.coreIdx].label}${t.wrap != null ? ' · W' + String(t.wrap).padStart(2, '0') : ''}</span></div>
+    <div class="pto-swimlane-task-tooltip__row"><span class="pto-swimlane-task-tooltip__key">Mix 子图</span><span class="pto-swimlane-task-tooltip__value">${grp ? grp.name : '—'}</span></div>
+    <div class="pto-swimlane-task-tooltip__row"><span class="pto-swimlane-task-tooltip__key">区间</span><span class="pto-swimlane-task-tooltip__value">${t.start.toFixed(0)}–${t.end.toFixed(0)}μs</span></div>
+    <div class="pto-swimlane-task-tooltip__row"><span class="pto-swimlane-task-tooltip__key">计算 / 等待</span><span class="pto-swimlane-task-tooltip__value">${compute} / ${wait}μs</span></div>
+    <div class="pto-swimlane-task-tooltip__row"><span class="pto-swimlane-task-tooltip__key">等待占比</span><span class="pto-swimlane-task-tooltip__value ${ratio >= 30 ? 'is-warn' : 'is-ok'}">${ratio}%</span></div>`;
+  tooltip.classList.add('is-visible');
+  tooltip.setAttribute('aria-hidden', 'false');
+  const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+  let x = cx + 16, y = cy + 16;
+  if (x + tw > window.innerWidth - 8) x = cx - tw - 16;
+  if (y + th > window.innerHeight - 8) y = cy - th - 16;
+  tooltip.style.left = x + 'px'; tooltip.style.top = y + 'px';
+}
+
+function hideTaskTooltip() {
+  tooltip.classList.remove('is-visible');
+  tooltip.setAttribute('aria-hidden', 'true');
+}
+
+function setMixMode(active) {
+  if (active === state.mixMode) return;
+  state.mixMode = active;
+  mixModeBtn.classList.toggle('is-selected', active);
+  mixModeBtn.setAttribute('aria-pressed', String(active));
+  if (!active) goOverview();
+  buildOrder();
+  layout();
+  renderInspector();
+}
+mixModeBtn.addEventListener('click', () => {
+  setMixMode(!state.mixMode);
+});
+syncPathBtn.addEventListener('click', (e) => {
+  state.syncPathOnly = !state.syncPathOnly;
+  e.currentTarget.classList.toggle('is-selected', state.syncPathOnly);
+  e.currentTarget.setAttribute('aria-pressed', String(state.syncPathOnly));
+  drawBody();
+});
+document.getElementById('zoomIn').addEventListener('click', () => setZoom(state.zoomPct + 5));
+document.getElementById('zoomOut').addEventListener('click', () => setZoom(state.zoomPct - 5));
+zoomSlider.addEventListener('input', (e) => setZoom(Number(e.target.value)));
+taskSearch.addEventListener('input', (e) => {
+  state.query = e.target.value;
+  drawBody();
+});
+if (globalRulerScale) {
+  globalRulerScale.addEventListener('pointerdown', (e) => {
+    const rect = (globalRulerTicks || globalRulerScale).getBoundingClientRect();
+    const f = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    bodyWrap.scrollLeft = Math.max(0, bodyW() * f - bodyWrap.clientWidth / 2);
+    syncGlobalRulerBrush();
+  });
+}
+function setZoom(pct) {
+  state.zoomPct = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(pct / 5) * 5));
+  document.getElementById('zoomReadout').textContent = state.zoomPct + '%';
+  zoomSlider.value = String(state.zoomPct);
+  layout();
+  syncGlobalRulerBrush();
+}
+
+/* ============================================================
+   9. Inspector (概览 → 子图 → Wrap → Task 下钻)
+   ============================================================ */
+function coreStats(coreIdx, group, wrap) {
+  let compute = 0, wait = 0, n = 0;
+  for (const t of MODEL.tasks) {
+    if (t.coreIdx !== coreIdx) continue;
+    if (group != null && t.group !== group) continue;
+    compute += t.computeEnd - t.start; wait += t.end - t.computeEnd; n++;
+  }
+  return { compute, wait, n, ratio: wait / (compute + wait || 1) };
+}
+function groupStats(g) {
+  let compute = 0, wait = 0;
+  for (const t of MODEL.tasks) {
+    if (t.group !== g) continue;
+    if (MODEL.cores[t.coreIdx].kind !== 'aic' && MODEL.cores[t.coreIdx].kind !== 'aiv') continue;
+    compute += t.computeEnd - t.start; wait += t.end - t.computeEnd;
+  }
+  return { compute, wait, ratio: wait / (compute + wait || 1) };
+}
+function wrapStats(w) {
+  const aic = MODEL.aicIdxOfWrap(w), aiv = MODEL.aivIdxOfWrap(w);
+  const s = (ci) => coreStats(ci);
+  const all = [s(aic), s(aiv[0]), s(aiv[1])];
+  let compute = 0, wait = 0;
+  all.forEach((x) => { compute += x.compute; wait += x.wait; });
+  return { aic: all[0], aiv0: all[1], aiv1: all[2], ratio: wait / (compute + wait || 1) };
+}
+
+function runMetricChips() {
+  let compute = 0, wait = 0;
+  MODEL.tasks.forEach((t) => { compute += t.computeEnd - t.start; wait += t.end - t.computeEnd; });
+  const ratio = (wait / (compute + wait) * 100).toFixed(1);
+  return `<div class="sl-report-metrics">
+    <span class="stat-chip">78 条泳道</span>
+    <span class="stat-chip">${MODEL.tasks.length} 个任务</span>
+    <span class="stat-chip">${MODEL.edges.length} 条同步边</span>
+    <span class="stat-chip" style="color:var(--warning)">同步等待 ${ratio}%</span>
+  </div>`;
+}
+function renderLegend() {
+  let html = '';
+  MODEL.groups.forEach((g) => {
+    html += `<span class="sl-legend-item"><span class="sl-legend-swatch" style="background:${g.color}"></span>${g.short}</span>`;
+  });
+  html += `<span class="sl-legend-item"><span class="sl-legend-swatch is-wait"></span>同步等待段</span>`;
+  document.getElementById('legend').innerHTML = html;
+}
+
+function crumbHtml() {
+  const parts = [{ k: 'overview', label: '概览' }];
+  if (state.selGroup != null) parts.push({ k: 'group', label: MODEL.groups[state.selGroup].short });
+  if (state.selWrap != null) parts.push({ k: 'wrap', label: 'Wrap ' + String(state.selWrap).padStart(2, '0') });
+  if (state.selTask) parts.push({ k: 'task', label: state.selTask.name });
+  return '<div class="sl-crumb">' + parts.map((p, i) => {
+    const cur = i === parts.length - 1;
+    return (i ? '<span class="sl-crumb-sep">›</span>' : '')
+      + `<span class="sl-crumb-item ${cur ? 'is-current' : ''}" data-nav="${p.k}">${p.label}</span>`;
+  }).join('') + '</div>';
+}
+
+function renderInspector() {
+  const title = document.getElementById('inspTitle');
+  const body = document.getElementById('inspBody');
+  let html = crumbHtml();
+  title.textContent = '性能报告';
+
+  if (!state.mixMode) {
+    html = '';
+    if (state.selTask) html += taskDetailHtml(state.selTask);
+    else html += `${runMetricChips()}<div class="sl-insp-section"><div class="sl-insp-hint">
+      <b>经典视图</b> —— 78 条泳道按 AI CPU → AIC → AIV → MTE 排布, 即 UX 分析的「第一层嗅探视图」:
+      任务条末尾的<b>斜纹段</b>即同步等待, 无需打开 Mix 模式也能嗅到瓶颈。<br><br>
+      切到 <b>Mix</b> 模式可按 1C2V Wrap 重排泳道, 并逐层下钻核间同步关系。
+      点击任意任务查看计算/等待拆解。</div></div>`;
+    body.innerHTML = html;
+    bindInspector();
+    return;
+  }
+
+  if (state.level === 'task' && state.selTask) {
+    html += taskDetailHtml(state.selTask);
+  } else if (state.level === 'wrap' && state.selWrap != null) {
+    html += wrapDetailHtml(state.selWrap);
+  } else if (state.level === 'group' && state.selGroup != null) {
+    html += groupDetailHtml(state.selGroup);
+  } else {
+    html += overviewHtml();
+  }
+  body.innerHTML = html;
+  bindInspector();
+}
+
+function overviewHtml() {
+  let html = `${runMetricChips()}<div class="sl-insp-section">
+    <div class="sl-insp-hint">3 次迭代的解码层, 切成 <b>6 个 Mix 子图</b>流水执行,
+    各子图静态绑定 4 个 <b>1C2V Wrap</b> (1 AIC + 2 AIV)。点击子图逐层下钻。</div>
+  </div>
+  <div class="sl-insp-section"><div class="sl-insp-section-label">6 个 Mix 子图 · 同步等待占比</div>`;
+  MODEL.groups.forEach((g) => {
+    const st = groupStats(g.id);
+    const pct = (st.ratio * 100).toFixed(0);
+    const bn = g.id === SCENARIO.bottleneckGroup;
+    html += `<div class="sl-row ${bn ? 'is-flag' : ''}" data-group="${g.id}">
+        <span class="sl-dot" style="background:${g.color}"></span>
+        <span class="sl-row-name">${g.name}${bn ? ' <small>· 瓶颈</small>' : ''}</span>
+        <span class="sl-row-meta">${pct}%</span></div>
+      <div class="sl-meter"><div class="sl-meter-fill" style="width:${pct}%;background:${pct >= 35 ? 'var(--warning)' : g.color}"></div></div>`;
+  });
+  html += `</div>`;
+  const bg = MODEL.groups[SCENARIO.bottleneckGroup];
+  html += `<div class="sl-callout">
+    <b>剧本 · 定位提示</b><br>
+    <b>${bg.name}</b> 的同步等待占比明显高于其它子图。根因疑似落在它的某个
+    1C2V Wrap —— 一个 AIC 把整组其它核拖在 SyncWait 上。
+    <button class="btn btn-sm btn-solid sl-btn-drill" data-drill="bottleneck">▶ 下钻到瓶颈 Wrap</button>
+  </div>
+  <div class="sl-insp-section"><div class="sl-insp-section-label">硬件拓扑</div>
+    <div class="sl-kv"><span class="sl-kv-key">AI CPU</span><span class="sl-kv-val">1 个控制核 + 3 个调度核</span></div>
+    <div class="sl-kv"><span class="sl-kv-key">1C2V Wrap</span><span class="sl-kv-val">24 · 每组 1 AIC + 2 AIV</span></div>
+    <div class="sl-kv"><span class="sl-kv-key">AIC / AIV</span><span class="sl-kv-val">24 / 48</span></div>
+    <div class="sl-kv"><span class="sl-kv-key">MTE</span><span class="sl-kv-val">输入 / 输出</span></div>
+  </div>`;
+  return html;
+}
+
+function groupDetailHtml(g) {
+  const grp = MODEL.groups[g];
+  const st = groupStats(g);
+  const pct = (st.ratio * 100).toFixed(0);
+  let html = `<div class="sl-insp-section">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <span class="sl-pill" style="color:${grp.color}"><span class="sl-dot" style="width:8px;height:8px;background:${grp.color}"></span>${grp.short}</span>
+      <span class="sl-pill ${st.ratio >= 0.35 ? 'is-warn' : 'is-ok'}">${st.ratio >= 0.35 ? '同步瓶颈' : '同步健康'}</span>
+    </div>
+    <div class="sl-kv"><span class="sl-kv-key">绑定 Wrap</span><span class="sl-kv-val">W${String(g * 4).padStart(2, '0')}–W${String(g * 4 + 3).padStart(2, '0')}</span></div>
+    <div class="sl-kv"><span class="sl-kv-key">同步等待占比</span><span class="sl-kv-val" style="color:${pct >= 35 ? 'var(--warning)' : 'inherit'}">${pct}%</span></div>
+  </div>
+  <div class="sl-insp-section"><div class="sl-insp-section-label">4 个 1C2V Wrap · 等待占比</div>`;
+  let slowW = -1, slowR = -1;
+  for (let k = 0; k < 4; k++) {
+    const w = g * 4 + k;
+    const ws = wrapStats(w);
+    if (ws.ratio > slowR) { slowR = ws.ratio; slowW = w; }
+  }
+  for (let k = 0; k < 4; k++) {
+    const w = g * 4 + k;
+    const ws = wrapStats(w);
+    const pctw = (ws.ratio * 100).toFixed(0);
+    const flag = w === slowW;
+    html += `<div class="sl-row ${flag ? 'is-flag' : ''}" data-wrap="${w}">
+        <span class="sl-dot" style="background:${grp.color}"></span>
+        <span class="sl-row-name">Wrap ${String(w).padStart(2, '0')} <small>AIC${String(w).padStart(2, '0')} + AIV${String(w * 2).padStart(2, '0')}/${String(w * 2 + 1).padStart(2, '0')}</small></span>
+        <span class="sl-row-meta">${pctw}%</span></div>
+      <div class="sl-meter"><div class="sl-meter-fill" style="width:${pctw}%;background:${flag ? 'var(--warning)' : grp.color}"></div></div>`;
+  }
+  html += `</div>`;
+  if (g === SCENARIO.bottleneckGroup) {
+    html += `<div class="sl-callout">
+      <b>Wrap ${String(slowW).padStart(2, '0')}</b> 的等待占比远高于同组其它 Wrap。
+      该 Wrap 的 AIC 在跑一个超大 BMM, 同组其它 Wrap 早早算完后空转 —— 典型的<b>核间负载不均</b>。
+      点击该 Wrap 行查看 1C2V 内部三个核的耗时拆解。</div>`;
+  }
+  return html;
+}
+
+function wrapDetailHtml(w) {
+  const g = Math.floor(w / 4);
+  const grp = MODEL.groups[g];
+  const ws = wrapStats(w);
+  const aicCore = MODEL.aicIdxOfWrap(w), aivCores = MODEL.aivIdxOfWrap(w);
+  const cores3 = [
+    { ci: aicCore, st: ws.aic, role: 'AIC (Cube)' },
+    { ci: aivCores[0], st: ws.aiv0, role: 'AIV-0 (Vector)' },
+    { ci: aivCores[1], st: ws.aiv1, role: 'AIV-1 (Vector)' },
+  ];
+  let html = `<div class="sl-insp-section">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <span class="sl-pill" style="color:${grp.color}"><span class="sl-dot" style="width:8px;height:8px;background:${grp.color}"></span>${grp.short}</span>
+      <span class="sl-pill ${ws.ratio >= 0.4 ? 'is-warn' : 'is-ok'}">${ws.ratio >= 0.4 ? '同步瓶颈' : '健康'}</span>
+    </div>
+    <div class="sl-insp-hint">1C2V 单元 = 1 个 Cube 核 + 2 个 Vector 核, 物理上协同执行。</div>
+  </div>
+  <div class="sl-insp-section"><div class="sl-insp-section-label">单元内三核 · 计算与同步等待</div>`;
+  cores3.forEach((c) => {
+    const tot = c.st.compute + c.st.wait || 1;
+    const cp = (c.st.compute / tot * 100), wp = (c.st.wait / tot * 100);
+    html += `<div style="margin-top:8px">
+      <div class="sl-kv" style="padding-bottom:3px;border:0">
+        <span class="sl-kv-key">${MODEL.cores[c.ci].label} · ${c.role}</span>
+        <span class="sl-kv-val">计算 ${c.st.compute.toFixed(0)} / 等待 ${c.st.wait.toFixed(0)}μs</span></div>
+      <div class="sl-meter">
+        <div class="sl-meter-fill" style="width:${cp}%;background:${grp.color};float:left"></div>
+        <div class="sl-meter-fill" style="width:${wp}%;background:repeating-linear-gradient(135deg,rgba(255,170,59,0.9) 0 3px,rgba(255,170,59,0.35) 3px 6px);float:left"></div>
+      </div></div>`;
+  });
+  html += `</div>`;
+  const edgeN = MODEL.edges.filter((e) => e.wrap === w).length;
+  html += `<div class="sl-insp-section">
+    <div class="sl-kv"><span class="sl-kv-key">单元内同步边</span><span class="sl-kv-val">${edgeN}</span></div>
+  </div>`;
+  if (w === SCENARIO.slowWrap) {
+    html += `<div class="sl-callout">
+      <b>根因锁定</b> —— <b>${MODEL.cores[aicCore].label}</b> 在跑一个「K 维未切分」的超大 BMM,
+      单任务计算量约为正常 tile 的 2.5x。它一直没发出 SyncSet,
+      配对的两个 AIV 算完一小段后就长时间停等。<br>
+      优化方向: 对该 BMM 做 K-split, 把单核长任务拆成多个 tile, 让 AIV 不必整段等待。</div>`;
+  } else {
+    html += `<div class="sl-callout is-success">
+      该 Wrap 三核耗时较均衡。点击任务查看单个任务的同步事件。</div>`;
+  }
+  return html;
+}
+
+function taskDetailHtml(t) {
+  const grp = t.group != null ? MODEL.groups[t.group] : null;
+  const compute = t.computeEnd - t.start, wait = t.end - t.computeEnd;
+  const total = (t.end - t.start) || 1, ratio = wait / total;
+  const pct = (ratio * 100).toFixed(0);
+  let html = `<div class="sl-insp-section">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <span class="sl-pill" style="color:${grp ? grp.color : 'var(--accent)'}">
+        <span class="sl-dot" style="width:8px;height:8px;background:${grp ? grp.color : 'var(--accent)'}"></span>
+        ${grp ? grp.short : MODEL.cores[t.coreIdx].section}</span>
+      <span class="sl-pill ${ratio >= 0.3 ? 'is-warn' : 'is-ok'}">${ratio >= 0.3 ? '同步瓶颈' : '计算主导'}</span>
+    </div>
+    <div class="sl-kv"><span class="sl-kv-key">泳道</span><span class="sl-kv-val">${MODEL.cores[t.coreIdx].label}</span></div>
+    <div class="sl-kv"><span class="sl-kv-key">所属 Wrap</span><span class="sl-kv-val">${t.wrap != null ? 'W' + String(t.wrap).padStart(2, '0') : '—'}</span></div>
+    <div class="sl-kv"><span class="sl-kv-key">区间</span><span class="sl-kv-val">${t.start.toFixed(1)}–${t.end.toFixed(1)}μs</span></div>
+    <div class="sl-kv"><span class="sl-kv-key">输入 / 输出</span><span class="sl-kv-val">输入 ${t.inputRawMagic.length} · 输出 ${t.outputRawMagic.length}</span></div>
+  </div>
+  <div class="sl-insp-section"><div class="sl-insp-section-label">计算与同步等待</div>
+    <div class="sl-meter" style="height:14px">
+      <div class="sl-meter-fill" style="width:${compute / total * 100}%;background:${grp ? grp.color : 'var(--accent)'};float:left"></div>
+      <div class="sl-meter-fill" style="width:${pct}%;background:repeating-linear-gradient(135deg,rgba(255,170,59,0.9) 0 3px,rgba(255,170,59,0.35) 3px 6px);float:left"></div>
+    </div>
+    <div class="sl-kv"><span class="sl-kv-key">计算段</span><span class="sl-kv-val">${compute.toFixed(1)}μs</span></div>
+    <div class="sl-kv"><span class="sl-kv-key">同步等待段</span><span class="sl-kv-val" style="color:var(--warning)">${wait.toFixed(1)}μs · ${pct}%</span></div>
+  </div>`;
+  const ins = t.syncIn.map((id) => edgeById[id]);
+  const outs = t.syncOut.map((id) => edgeById[id]);
+  html += `<div class="sl-insp-section"><div class="sl-insp-section-label">同步事件 (${ins.length + outs.length})</div>`;
+  if (ins.length + outs.length === 0) {
+    html += `<div class="sl-insp-hint">该任务无登记的核间同步边。${wait > 0 ? '末段为未归因的屏障等待。' : ''}</div>`;
+  }
+  ins.forEach((e) => {
+    html += `<div class="sl-sync-item">▼ <b>SyncWait</b> · 等待 <span class="mono">${MODEL.cores[e.fromCore].label}</span>
+      的 SyncSet @ <span class="mono">${e.fromT.toFixed(1)}μs</span>, 等待耗时 <span class="mono">${e.wait.toFixed(1)}μs</span></div>`;
+  });
+  outs.forEach((e) => {
+    html += `<div class="sl-sync-item">▲ <b>SyncSet</b> · 向 <span class="mono">${MODEL.cores[e.toCore].label}</span>
+      发出信号 @ <span class="mono">${e.fromT.toFixed(1)}μs</span></div>`;
+  });
+  html += `</div>`;
+  if (wait > 0) {
+    html += `<div class="sl-callout">
+      该任务实际计算仅 <b>${compute.toFixed(0)}μs</b>, 另有 <b>${wait.toFixed(0)}μs</b> 在等待同步。
+      ${ins.length ? '优先缩短上游 <b>' + MODEL.cores[ins[0].fromCore].label + '</b> 的前序计算量。'
+        : '检查同 Wrap 内核间负载是否均衡。'}</div>`;
+  }
+  return html;
+}
+
+function bindInspector() {
+  const body = document.getElementById('inspBody');
+  body.querySelectorAll('.sl-crumb-item').forEach((el) => {
+    el.addEventListener('click', () => {
+      const nav = el.dataset.nav;
+      if (nav === 'overview') goOverview();
+      else if (nav === 'group' && state.selGroup != null) selectGroup(state.selGroup);
+      else if (nav === 'wrap' && state.selWrap != null) selectWrap(state.selWrap);
+    });
+  });
+  body.querySelectorAll('[data-group]').forEach((el) => {
+    el.addEventListener('click', () => selectGroup(Number(el.dataset.group)));
+  });
+  body.querySelectorAll('[data-wrap]').forEach((el) => {
+    el.addEventListener('click', () => selectWrap(Number(el.dataset.wrap)));
+  });
+  const drill = body.querySelector('[data-drill="bottleneck"]');
+  if (drill) drill.addEventListener('click', () => selectWrap(SCENARIO.slowWrap));
+}
+
+function refreshFrameLayout() {
+  window.requestAnimationFrame(() => {
+    frameController?.refresh?.();
+    layout();
+  });
+}
+
+function bindTopPanelActions() {
+  const railExplorerToggle = frameEl.querySelector('[data-ide-toggle="explorer"]');
+  if (topExplorerToggle && railExplorerToggle) {
+    const syncExplorerState = () => {
+      const expanded = railExplorerToggle.getAttribute('aria-expanded') !== 'false';
+      topExplorerToggle.classList.toggle('is-selected', expanded);
+      topExplorerToggle.setAttribute('aria-expanded', String(expanded));
+      topExplorerToggle.setAttribute('aria-pressed', String(expanded));
+    };
+    topExplorerToggle.addEventListener('click', () => railExplorerToggle.click());
+    new MutationObserver(syncExplorerState).observe(railExplorerToggle, {
+      attributes: true,
+      attributeFilter: ['aria-expanded', 'aria-pressed', 'class'],
+    });
+    syncExplorerState();
+  }
+
+  if (topInspectorToggle && inspectorPane) {
+    const setInspectorOpen = (open) => {
+      inspectorPane.hidden = !open;
+      const leftGutter = inspectorPane.previousElementSibling;
+      if (leftGutter?.classList.contains('pto-workbench-shell__split-gutter')) {
+        leftGutter.hidden = !open;
+      }
+      topInspectorToggle.classList.toggle('is-selected', open);
+      topInspectorToggle.setAttribute('aria-expanded', String(open));
+      topInspectorToggle.setAttribute('aria-pressed', String(open));
+      refreshFrameLayout();
+    };
+    topInspectorToggle.addEventListener('click', () => setInspectorOpen(inspectorPane.hidden));
+    setInspectorOpen(!inspectorPane.hidden);
+  }
+}
+
+/* ============================================================
+   10. 启动
+   ============================================================ */
+function init() {
+  frameController = window.PtoIdeFrame?.init(frameEl, {
+    splitOptions: {
+      default: {
+        onResize: () => window.requestAnimationFrame(() => layout()),
+      },
+    },
+  });
+  buildOrder();
+  renderLegend();
+  renderRunHistory();
+  layout();
+  renderInspector();
+  bindTopPanelActions();
+  if ('ResizeObserver' in window && canvasPane) {
+    canvasResizeObserver = new ResizeObserver(() => window.requestAnimationFrame(() => layout()));
+    canvasResizeObserver.observe(canvasPane);
+  }
+}
+init();
+</script>
+</body>
+</html>

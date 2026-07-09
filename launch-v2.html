@@ -24,6 +24,8 @@ html {
   height: auto;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-color: color-mix(in srgb, var(--foreground-muted) 52%, transparent) transparent;
+  scrollbar-width: thin;
 }
 
 body {
@@ -39,6 +41,31 @@ body {
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+* {
+  scrollbar-color: color-mix(in srgb, var(--foreground-muted) 52%, transparent) transparent;
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--foreground-muted) 56%, transparent);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground-secondary) 62%, transparent);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 body::before {
@@ -1013,6 +1040,16 @@ const launchItems = [
     tags: ["Hardware", "Migration", "Operator"]
   },
   {
+    title: "AscendPort MLA 迁移工作台",
+    sub: "GPU → AscendC · Flash MLA",
+    group: "A5 硬件与迁移",
+    status: "hi-fi",
+    desc: "按 S1-S8 引导把 CUDA Flash MLA sparse decode 迁移到 AscendC,联动源码、计算图、内存架构、流水与终端输出。",
+    href: "ascendport_migration/ascendport_migration_V3_MLA_pto.html",
+    preview: "assets/ascendport-mla-migration-workbench.png",
+    tags: ["AscendPort", "MLA", "Migration"]
+  },
+  {
     title: "A3 / A5 差异解读",
     group: "A5 硬件与迁移",
     status: "hi-fi",
@@ -1189,11 +1226,13 @@ const launchItems = [
   {
     title: "PyPTOUX 泳道性能分析",
     sub: "Swimlane Profiler · 外部",
+    title: "PTO性能分析",
+    sub: "Swimlane Profiler · 本地",
     group: "执行与性能分析",
     status: "hi-fi",
-    desc: "外部泳道性能原型,观察任务同步与 profiler 视图。",
-    href: "https://wangnaiyu.github.io/PyPTOUX/mix-sync-swimlane/",
-    preview: "assets/pyptoux-swimlane-profiler.png",
+    desc: "融合泳道视图、Profiler 报告、同步等待与性能下钻,展示 PTO 性能分析工作流。",
+    href: "pto-swimlane-profiler/index.html",
+    preview: "assets/pto-swimlane-profiler.png",
     fit: "contain",
     tags: ["Swimlane", "Profiler"]
   },
