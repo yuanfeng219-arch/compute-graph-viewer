@@ -2622,7 +2622,9 @@ function renderGraph(graph, options = {}) {
     node._el = group;
   });
 
-  requestAnimationFrame(() => { if (options.preserveView) applyTransform(); else fit(); });
+  /* 切换动画期间 els.stage 处于 translateZ 变换，getBoundingClientRect 会读到被投影的尺寸 → fit 出错位；
+     此时跳过，改由动画收尾(onDone)在变换清除后统一 fit 居中 */
+  requestAnimationFrame(() => { if (_viewSwapping) return; if (options.preserveView) applyTransform(); else fit(); });
 }
 
 /* ===================== tooltip ===================== */
@@ -3302,12 +3304,16 @@ function clearSwapStyles(el) { if (!el) return; ['transition', 'transform', 'opa
 /* 变焦叠化：inEl 从 inFrom 归位并淡入，outEl 反向变换并淡出，共用 origin 作镜头焦点。
    调用方须先把两侧内容 fit 到自然尺寸，切换期间冻结 fit（_viewSwapping），避免 ResizeObserver
    读到被变换后的容器尺寸重算出错位 → 抖动。带 perspective 的 3D 侧用纯淡入/淡出 + 轻量 translateY，避免 scale 每帧重投影卡顿。 */
-function runSwap({ inEl, outEl, origin, inFrom, outTo, onDone }) {
+function runSwap({ inEl, outEl, origin, inFrom, outTo, onDone, persp, dur: durIn }) {
   if (_swapTimer) { clearTimeout(_swapTimer); _swapTimer = null; }
   _viewSwapping = true;
   const pane = els.stage && els.stage.closest('.graph-pane');
-  if (pane) pane.classList.add('view-swapping');
-  const dur = 400, ease = 'cubic-bezier(.22,.61,.36,1)';
+  if (pane) {
+    pane.classList.add('view-swapping');
+    /* Z 轴穿层：在容器上加透视 + 把消失点对齐点击的层，translateZ 才有真实景深收束 */
+    if (persp) { pane.style.perspective = persp + 'px'; pane.style.perspectiveOrigin = origin; }
+  }
+  const dur = durIn || 400, ease = 'cubic-bezier(.22,.61,.36,1)';
   /* transform 起讫都为 none 的一侧只提示 opacity，避免给 3D 子树无谓提层导致跳变 */
   inEl.style.willChange = (inFrom === 'none') ? 'opacity' : 'transform,opacity';
   outEl.style.willChange = (outTo === 'none') ? 'opacity' : 'transform,opacity';
@@ -3323,11 +3329,11 @@ function runSwap({ inEl, outEl, origin, inFrom, outTo, onDone }) {
   _swapTimer = setTimeout(() => {
     _swapTimer = null; _viewSwapping = false;
     clearSwapStyles(inEl); clearSwapStyles(outEl);
-    if (pane) pane.classList.remove('view-swapping');
+    if (pane) { pane.classList.remove('view-swapping'); pane.style.perspective = ''; pane.style.perspectiveOrigin = ''; }
     if (onDone) onDone();
   }, dur + 60);
 }
-/* 整网 → 层内：镜头推进到被点图层，整网淡出，计算图从深处放大浮现 */
+/* 整网 → 层内：Z 轴推进——镜头穿入被点的那一层，整网向镜头推近并让过，计算图从纵深浮现放大 */
 function animateEnter(originClient) {
   lastDiveOrigin = originClient || lastDiveOrigin;
   const origin = paneOriginFromClient(originClient);
@@ -3335,10 +3341,11 @@ function animateEnter(originClient) {
   renderActiveGraph({ preserveView: false });
   els.sideWrap.hidden = false;                            /* 保留整网作为淡出的残影底层 */
   fit();                                                  /* 在变换前把计算图 fit 到自然尺寸（避免抖动） */
-  const outTo = side3d ? 'translateY(16px)' : 'scale(1.3)';   /* 3D 侧用轻量位移代替 scale，避免重投影卡顿 */
-  runSwap({ inEl: els.stage, outEl: els.sideWrap, origin, inFrom: 'scale(.9)', outTo, onDone: () => { els.sideWrap.hidden = true; } });
+  const inFrom = 'translateZ(-520px)';                        /* 计算图从更深的纵深浮现放大到位 */
+  const outTo = side3d ? 'translateY(20px)' : 'translateZ(420px)';   /* 整网向镜头推近让过；3D 侧用轻量位移避免嵌套透视卡顿 */
+  runSwap({ inEl: els.stage, outEl: els.sideWrap, origin, inFrom, outTo, persp: 820, dur: 500, onDone: () => { els.sideWrap.hidden = true; fit(); } });   /* persp 更小=景深更强；收尾后按真实尺寸重新居中 */
 }
-/* 层内 → 整网：镜头拉回，计算图缩小淡出，整网从焦点处回落到 40 层堆叠 */
+/* 层内 → 整网：Z 轴后退——计算图退回纵深，整网从近处落定到整叠层 */
 function animateBack() {
   const origin = paneOriginFromClient(lastDiveOrigin);
   if (side3d) render3D(); else renderSideView();
@@ -3346,8 +3353,9 @@ function animateBack() {
   els.stage.style.display = '';                           /* 让计算图作为淡出残影浮在整网之上 */
   side3d ? fitOrbit() : fitSide();                        /* 在变换前把整网 fit 到自然尺寸（避免抖动） */
   hideSideTip();
-  const inFrom = side3d ? 'translateY(16px)' : 'scale(1.3)';   /* 3D 侧轻量上浮淡入，丝滑不卡 */
-  runSwap({ inEl: els.sideWrap, outEl: els.stage, origin, inFrom, outTo: 'scale(.9)', onDone: () => { els.stage.style.display = 'none'; } });
+  const inFrom = side3d ? 'translateY(20px)' : 'translateZ(240px)';   /* 整网从近处推近落定（2D）*/
+  const outTo = 'translateZ(-520px)';                         /* 计算图退回更深的纵深并淡出 */
+  runSwap({ inEl: els.sideWrap, outEl: els.stage, origin, inFrom, outTo, persp: 820, dur: 500, onDone: () => { els.stage.style.display = 'none'; side3d ? fitOrbit() : fitSide(); } });
 }
 /* 层内计算图的精度：首错层→完整分析；达标层→全绿；传播层→全 amber（误差自首错传入） */
 function currentGraphPrec() {
@@ -4024,13 +4032,23 @@ function drillStage() { return els.drill && els.drill.querySelector('.gstage'); 
 function drillCanvas() { return els.drill && els.drill.querySelector('.gcanvas'); }
 function applyDrillView() { const st = drillStage(); if (st) st.style.transform = `translate(${drillView.tx}px, ${drillView.ty}px) scale(${drillView.z})`; }
 function fitDrill() {
-  const c = drillCanvas(); if (!c) return;
+  const c = drillCanvas(), st = drillStage(); if (!c || !st) return;
   const r = c.getBoundingClientRect(); if (r.width <= 0) return;
-  const pad = 18, GW = 980, GH = 520;
-  const z = Math.min((r.width - pad * 2) / GW, (r.height - pad * 2) / GH, 1.1);
+  /* 用真实渲染出的节点包围盒（含内容驱动的高度）居中，而不是固定 980×520 设计尺寸 */
+  let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9;
+  const nodes = st.querySelectorAll('.gnode');
+  if (nodes.length) {
+    nodes.forEach((n) => {
+      const l = parseFloat(n.style.left) || 0, t = parseFloat(n.style.top) || 0;
+      const w = n.offsetWidth || 152, h = n.offsetHeight || 96;
+      minX = Math.min(minX, l); minY = Math.min(minY, t); maxX = Math.max(maxX, l + w); maxY = Math.max(maxY, t + h);
+    });
+  } else { minX = 0; minY = 0; maxX = 980; maxY = 520; }
+  const pad = 24, cw = Math.max(1, maxX - minX), ch = Math.max(1, maxY - minY);
+  const z = Math.min((r.width - pad * 2) / cw, (r.height - pad * 2) / ch, 1.1);
   drillView.z = Math.max(z, 0.3);
-  drillView.tx = Math.max(pad, (r.width - GW * drillView.z) / 2);
-  drillView.ty = pad;
+  drillView.tx = (r.width - cw * drillView.z) / 2 - minX * drillView.z;    /* 水平居中 */
+  drillView.ty = (r.height - ch * drillView.z) / 2 - minY * drillView.z;   /* 垂直居中 */
   applyDrillView();
 }
 function drillZoom(f) { drillView.z = Math.max(0.3, Math.min(2.4, drillView.z * f)); applyDrillView(); }
@@ -4548,19 +4566,21 @@ function init() {
   document.getElementById('legendBtn').addEventListener('click', (e) => { e.stopPropagation(); els.legend.hidden = !els.legend.hidden; e.currentTarget.classList.toggle('is-selected', !els.legend.hidden); });
 
   /* pan / zoom */
+  let stageDragged = false;
   els.stage.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.nd') || e.target.closest('.cl-toggle')) return;
-    pan = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
+    pan = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty, moved: false };
     els.stage.setPointerCapture && els.stage.setPointerCapture(e.pointerId);
     els.stage.classList.add('is-grabbing');
   });
   els.stage.addEventListener('pointermove', (e) => {
     if (!pan) return;
+    if (!pan.moved && Math.abs(e.clientX - pan.x) + Math.abs(e.clientY - pan.y) > 4) pan.moved = true;
     view.tx = pan.tx + (e.clientX - pan.x);
     view.ty = pan.ty + (e.clientY - pan.y);
     applyTransform();
   });
-  const endPan = (e) => { pan = null; els.stage.releasePointerCapture && e && els.stage.releasePointerCapture(e.pointerId); els.stage.classList.remove('is-grabbing'); };
+  const endPan = (e) => { if (pan && pan.moved) stageDragged = true; pan = null; els.stage.releasePointerCapture && e && els.stage.releasePointerCapture(e.pointerId); els.stage.classList.remove('is-grabbing'); };
   els.stage.addEventListener('pointerup', endPan);
   els.stage.addEventListener('pointercancel', () => endPan());
   els.stage.addEventListener('wheel', (e) => {
@@ -4573,7 +4593,12 @@ function init() {
     view.ty = e.clientY - rect.top - before.y * view.z;
     applyTransform();
   }, { passive: false });
-  els.stage.addEventListener('click', (e) => { if (!e.target.closest('.nd')) clearSelection(); });
+  els.stage.addEventListener('click', (e) => {
+    if (e.target.closest('.nd')) return;
+    if (stageDragged) { stageDragged = false; return; }        /* 刚拖拽平移过，不当作点击 */
+    if (selectedNode) { clearSelection(); return; }            /* 有选中 → 先取消选中聚焦态 */
+    if (mainView === 'graph') { lastDiveOrigin = { x: e.clientX, y: e.clientY }; setMainView('side'); }   /* 点空白 → 从落点平滑变焦回落到整网 */
+  });
 
   if ('ResizeObserver' in window) new ResizeObserver(() => { if (_viewSwapping || _dimSwapping) return; fit(); if (mainView === 'side') { side3d ? fitOrbit() : fitSide(); }; }).observe(els.stage);
   if ('ResizeObserver' in window && els.sideWrap) new ResizeObserver(() => { if (_viewSwapping || _dimSwapping) return; if (mainView === 'side') { side3d ? fitOrbit() : fitSide(); }; }).observe(els.sideWrap);
