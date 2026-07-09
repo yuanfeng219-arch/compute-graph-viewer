@@ -3057,8 +3057,9 @@ function syncExpertPoolGrid(mesh,rec){
   const contextualFocus=focusMatch&&(objectFocus==='layer:moe'||objectFocus==='op:experts'||objectFocus==='data:dispatch'||objectFocus==='comm:ep');
   const representative=typeof layer==='number'&&(isMajorLayer(layer)||isSolidLayer(layer));
   const frontFoldedMoe=activeView==='front'&&typeof layer==='number'&&layer>=FIRST_MOE_LAYER&&layer!==LAST_MOE_LAYER;
-  const visible=!frontFoldedMoe&&(directHighlight||(contextualFocus&&representative));
-  const high=mesh.userData.selectedHighlight?1:(mesh.userData.hoverHighlight?1:(mesh.userData.activeHighlight?0.82:(mesh.userData.selectedNeighborHighlight?0.62:(mesh.userData.neighborHighlight?0.58:(mesh.userData.trailHighlight?0.42:(contextualFocus?0.5:0))))));
+  const defaultFrontSolid=activeView==='front'&&isSolidLayer(layer);
+  const visible=!frontFoldedMoe&&(directHighlight||(contextualFocus&&representative)||defaultFrontSolid);
+  const high=mesh.userData.selectedHighlight?1:(mesh.userData.hoverHighlight?1:(mesh.userData.activeHighlight?0.82:(mesh.userData.selectedNeighborHighlight?0.62:(mesh.userData.neighborHighlight?0.58:(mesh.userData.trailHighlight?0.42:(contextualFocus?0.5:(defaultFrontSolid?0.36:0)))))));
   grid.group.visible=visible;
   grid.group.position.copy(mesh.position);
   grid.group.position.z+=ARCH_THICK*0.42;
