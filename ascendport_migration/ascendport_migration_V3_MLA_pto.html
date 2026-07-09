@@ -1385,16 +1385,11 @@
         const sy = 1.52;
         const ox = 56;
         const oy = 48;
-        const qNode = GNODES.find((node) => node.id === 'q');
-        const idxNode = GNODES.find((node) => node.id === 'idx');
         const nodes = GNODES.map((node) => {
           const unit = effectiveGraphUnit(node);
           const rewritten = graphMapped && node.unit === 'risk';
           const isTensor = node.unit === 'mem';
           const isGpuOnly = node.gpuOnly || gpuOnlyGraphNodeIds.has(node.id);
-          const visualY = node.id === 'q' && idxNode
-            ? idxNode.y
-            : (node.id === 'idx' && qNode ? qNode.y : node.y);
           return {
             id: node.id,
             label: node.t,
@@ -1404,7 +1399,7 @@
             kind: isTensor ? 'tensor' : 'op',
             hideTypeLabel: !isTensor && !isGpuOnly,
             x: ox + (node.x + node.w / 2) * sx,
-            y: oy + (visualY + node.h / 2) * sy,
+            y: oy + (node.y + node.h / 2) * sy,
             width: Math.max(isGpuOnly ? 210 : (isTensor ? 178 : 188), node.w * 1.42),
             height: Math.max(isTensor ? 52 : 56, node.h * 1.18),
             colorKey: graphColorKey[unit] || `unit:${unit}`,

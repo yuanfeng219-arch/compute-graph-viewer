@@ -1202,13 +1202,13 @@ function renderPipeViz(play){
 /* ============================ 计算图 ============================ */
 // unit: mem|cube|vector|scalar|risk
 const GNODES=[
-  {id:'q', x:26,  y:14,  w:120,h:40, unit:'mem', t:'Q[b,q,h] · FP8', s:'GM→L1→L0A', d:'Query 向量,FP8 e4m3,每个 (batch, head) 对加载一个 query。搬入 L1 后进 L0A 供 Cube 读取。', lines:[20,25]},
+  {id:'q', x:26,  y:86,  w:120,h:40, unit:'mem', t:'Q[b,q,h] · FP8', s:'GM→L1→L0A', d:'Query 向量,FP8 e4m3,每个 (batch, head) 对加载一个 query。搬入 L1 后进 L0A 供 Cube 读取。', lines:[20,25]},
   {id:'kv', x:200, y:14,  w:120,h:40, unit:'mem', t:'KV Cache · FP8', s:'GM→L1→L0B', d:'FP8 量化的 KV cache,每个 token 656 字节(512B NoPE + 16B scale + 128B RoPE)。按 TopK 稀疏索引分块载入。', lines:[28,32]},
-  {id:'idx', x:26,  y:150, w:120,h:40, unit:'mem', t:'indices[b,topk]', s:'GM→UB', d:'稀疏 TopK 索引,指示每个 query 应该 attend 到哪些 KV。原为 CPU/GPU 预计算,昇腾映射到 Unified Buffer。', lines:[28,32]},
+  {id:'idx', x:26,  y:14, w:120,h:40, unit:'mem', t:'indices[b,topk]', s:'GM→UB', d:'稀疏 TopK 索引,指示每个 query 应该 attend 到哪些 KV。原为 CPU/GPU 预计算,昇腾映射到 Unified Buffer。', lines:[28,32]},
   {id:'qk', x:200, y:86,  w:120,h:44, unit:'cube', t:'QK^T 点积', s:'Cube · Mmad', d:'Q·K^T 的 FP8 矩阵乘,是算力主体。CUDA 里是手写循环累加,昇腾直接映射到 Cube 矩阵单元(Mmad)。', lines:[35,45]},
   {id:'sm', x:200, y:158, w:120,h:44, unit:'vector', t:'Softmax', s:'Vector · Exp/Reduce', d:'在线 Softmax:逐块更新 max 与 sum,exp 归一化。CUDA 用 __shfl_xor_sync 规约,昇腾映射到 Vector ReduceMax/Sum。', lines:[48,60]},
-  {id:'shf',x:26, y:230, w:120,h:44, unit:'risk', gpuOnly:true, t:'block_reduce 规约', s:'GPU-only · 无直接适配', d:'依赖 warp 内 lane 间硬件 shuffle 做 max/sum 规约。达芬奇无线程/warp 概念,不是可直接映射的昇腾算子,S2 决策需替代为 Vector 片上归约。', lines:[16,28]},
-  {id:'sync',x:26, y:300, w:120,h:40, unit:'risk', gpuOnly:true, t:'__syncthreads', s:'GPU-only · 无直接适配', d:'CUDA 线程块级同步屏障。昇腾无线程块同步模型,不是可直接映射的昇腾算子,需改写为 EnQue/DeQue 的流水同步(见 S6)。', lines:[30,45]},
+  {id:'shf',x:26, y:158, w:120,h:44, unit:'risk', gpuOnly:true, t:'block_reduce 规约', s:'GPU-only · 无直接适配', d:'依赖 warp 内 lane 间硬件 shuffle 做 max/sum 规约。达芬奇无线程/warp 概念,不是可直接映射的昇腾算子,S2 决策需替代为 Vector 片上归约。', lines:[16,28]},
+  {id:'sync',x:26, y:230, w:120,h:40, unit:'risk', gpuOnly:true, t:'__syncthreads', s:'GPU-only · 无直接适配', d:'CUDA 线程块级同步屏障。昇腾无线程块同步模型,不是可直接映射的昇腾算子,需改写为 EnQue/DeQue 的流水同步(见 S6)。', lines:[30,45]},
   {id:'vac', x:200, y:230, w:120,h:44, unit:'vector', t:'V 累加', s:'Vector · Axpy', d:'加权累加 V:out += weight * V[k]。逐 token 累加,映射到 Vector 单元的 Axpy 操作。', lines:[62,70]},
   {id:'out',x:200,y:300, w:120,h:44, unit:'mem', t:'Output + LSE', s:'UB→GM', d:'注意力输出与 log-sum-exp 写回 Global Memory。LSE 用于后续层或 loss 计算。', lines:[72,76]},
 ];
