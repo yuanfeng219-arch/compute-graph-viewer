@@ -1659,6 +1659,7 @@ const hexInt=hex=>parseInt(hex.slice(1),16);
 let SEM_COLOR={}, LINE={}, GRAY=0x7a7f88;
 const isWeightNode=n=>!!n&&(n.colorKey==='io:parameter'||/_weight$/i.test(n.id||'')||/^w_/.test(n.id||''));
 const weightFillColor=()=>hexInt((document.documentElement.dataset.theme||savedTheme)==='light'?'#cbd5e1':'#64748b');
+const sharedExpertFillColor=()=>hexInt((document.documentElement.dataset.theme||savedTheme)==='light'?'#f3c8aa':'#f0b991');
 function applySemanticPalette(){
   const id=SELECTED_PALETTE_ID;
   const lightVariantId=SELECTED_LIGHT_VARIANT_ID;
@@ -1667,11 +1668,13 @@ function applySemanticPalette(){
     ?window.buildPanguSemanticColors({keys:SEMANTIC_KEYS,paletteId:id,theme,lightVariantId})
     :baseDsMap(SEMANTIC_KEYS);
   SEM_COLOR=Object.fromEntries(SEMANTIC_KEYS.map(key=>[key,hexInt(palette[key]||'#8b929e')]));
+  SEM_COLOR['sem:comm']=hexInt(theme==='light'?'#9bcf8d':'#86efac');
   GRAY=hexInt(theme==='light'?'#64748b':'#8b929e');
   LINE={tp:SEM_COLOR['sem:attention'],ep:SEM_COLOR['sem:comm'],pp:SEM_COLOR['sem:mlp'],dp:SEM_COLOR['sem:dp']??0x9aa7ff};
 }
 function colorForNode(n){
   if(isWeightNode(n))return weightFillColor();
+  if(n?.id==='shared_expert')return sharedExpertFillColor();
   return (n.colorKey&&SEM_COLOR[n.colorKey]!=null)?SEM_COLOR[n.colorKey]:GRAY;
 }
 const toHex=n=>'#'+((n>>>0)&0xffffff).toString(16).padStart(6,'0');
@@ -2581,6 +2584,8 @@ function refreshArchMesh(mesh){
   const selectionActive=archSelectionActive();
   const selectedDirect=!!mesh.userData.selectedHighlight;
   const selectedNeighbor=!!mesh.userData.selectedNeighborHighlight;
+  const isSharedExpert=rec.id==='shared_expert';
+  const focusDimmed=focusActive()&&!archRecordMatchesFocus(rec);
   if(mesh.userData.trailHighlight){ei=Math.max(ei,0.32);op=Math.max(op,0.38);sc=1.02;}
   if(mesh.userData.neighborHighlight){ei=Math.max(ei,0.62);op=Math.max(op,0.88);sc=Math.max(sc,1.05);}  // hover 节点的上下游：变 solid
   if(selectedNeighbor){ei=Math.max(ei,0.52);op=Math.max(op,0.62);sc=Math.max(sc,1.035);}
@@ -2592,7 +2597,7 @@ function refreshArchMesh(mesh){
     if(archRecordMatchesFocus(rec)){ei=Math.max(ei,0.92);op=Math.max(op,0.86);sc=Math.max(sc,1.055);}
     else {ei=Math.min(ei,0.04);op=Math.min(op,0.08);sc=Math.min(sc,0.98);}
   }
-  if(selectionActive&&!selectedDirect&&!selectedNeighbor){
+  if(selectionActive&&!selectedDirect&&!selectedNeighbor&&!isSharedExpert){
     col=lightMode?0x94a3b8:0x475569;
     ei=Math.min(ei,0.025);
     op=Math.min(op,0.07);
@@ -2602,20 +2607,34 @@ function refreshArchMesh(mesh){
   }else if(selectedNeighbor){
     col=mixHex(baseCol,lightMode?0x111827:0xffffff,lightMode?0.08:0.12);
   }
-  if(mesh.material.color)mesh.material.color.setHex(lightMode&&mesh.material.emissive&&!selectionActive?0x000000:col);
-  if(mesh.material.emissive)mesh.material.emissive.setHex(col);
+  const frontFoldedMoeDimmed=activeView==='front'&&typeof rec.layer==='number'&&rec.layer>=FIRST_MOE_LAYER&&rec.layer!==LAST_MOE_LAYER&&!selectedDirect&&!selectedNeighbor&&!mesh.userData.hoverHighlight&&!mesh.userData.activeHighlight;
+  const frontReadable=activeView==='front'&&!frontFoldedMoeDimmed;
+  const frontLeafOp=frontReadable&&node?.kind==='op'&&!['expert_pool','dense_block','dense_layer_shell','moe_layer'].includes(rec.id);
+  const frontFill=frontReadable&&lightMode&&(!selectionActive||isSharedExpert)?mixHex(baseCol,0xffffff,0.16):col;
+  const frontEmissive=frontReadable&&lightMode&&(!selectionActive||isSharedExpert)?mixHex(baseCol,0xffffff,0.04):col;
+  if(mesh.material.color)mesh.material.color.setHex(lightMode&&mesh.material.emissive&&!selectionActive&&!frontReadable?baseCol:frontFill);
+  if(mesh.material.emissive)mesh.material.emissive.setHex(frontEmissive);
   const frontDense=activeView==='front'&&rec.id==='dense_block'&&typeof rec.layer==='number';
   if(frontDense){
     op=focusActive()&&archRecordMatchesFocus(rec)?Math.max(op,0.78):Math.min(op,0.38);
     ei=Math.max(ei,0.36);
   }
-  const frontFoldedMoeDimmed=activeView==='front'&&typeof rec.layer==='number'&&rec.layer>=FIRST_MOE_LAYER&&rec.layer!==LAST_MOE_LAYER&&!selectedDirect&&!selectedNeighbor&&!mesh.userData.hoverHighlight&&!mesh.userData.activeHighlight;
   if(frontFoldedMoeDimmed){
-    op=Math.min(op,rec.id==='expert_pool'?0.006:0.018);
-    ei=Math.min(ei,0.015);
+    op=0;
+    ei=0;
     sc=Math.min(sc,0.98);
   }
-  if(lightMode&&mesh.material.emissive&&!(selectionActive&&!selectedDirect&&!selectedNeighbor)&&!frontFoldedMoeDimmed){
+  if(frontReadable&&(!selectionActive||isSharedExpert)&&!selectedDirect&&!selectedNeighbor){
+    const isContainer=rec.id==='expert_pool'||rec.id==='dense_block'||rec.id==='dense_layer_shell'||rec.id==='moe_layer';
+    const isParam=node?.kind&&node.kind!=='op';
+    const normalFloor=isSharedExpert||frontLeafOp?1:(isContainer?0.42:(isParam?0.72:0.92));
+    const dimmedFloor=isSharedExpert||frontLeafOp?1:(isContainer?0.32:(isParam?0.62:0.82));
+    op=Math.max(op,focusDimmed?dimmedFloor:normalFloor);
+    ei=isSharedExpert
+      ? (lightMode?0.72:0.82)
+      : (lightMode?Math.min(Math.max(ei,0.2),0.48):Math.max(ei,0.34));
+  }
+  if(lightMode&&mesh.material.emissive&&(!(selectionActive&&!selectedDirect&&!selectedNeighbor)||isSharedExpert)&&!frontFoldedMoeDimmed){
     ei=Math.max(ei,1);
     mesh.material.toneMapped=false;
   }
@@ -2717,8 +2736,11 @@ function applyViewPresentation(){
         label.visible=false;
       }
       let opacity=focusActive()?(tagMatchesFocus(tags)||ppFocusActive()?1:0.14):1;
+      if(frontNodeVisible){
+        opacity=Math.max(opacity,archId==='shared_expert'?1:0.78);
+      }
       if(archSelectionActive()&&!only){
-        opacity=archLabelSelectionRelated(label)?1:Math.min(opacity,0.12);
+        opacity=archLabelSelectionRelated(label)||archId==='shared_expert'?1:Math.min(opacity,frontNodeVisible?0.48:0.12);
       }
       label.material.transparent=true;
       label.material.opacity=opacity;
