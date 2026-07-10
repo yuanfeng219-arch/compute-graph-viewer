@@ -106,7 +106,6 @@ html[data-theme="light"] .train-twin-page {
   --twin-thermal-risk: color-mix(in srgb, var(--danger) 72%, white);
 }
 
-html[data-theme="light"] .train-twin-page .panel-shell,
 html[data-theme="light"] .train-twin-page .twin-graph-card,
 html[data-theme="light"] .train-twin-page .twin-monitor-card,
 html[data-theme="light"] .train-twin-page .twin-locate-chain {
@@ -115,39 +114,8 @@ html[data-theme="light"] .train-twin-page .twin-locate-chain {
   box-shadow: none;
 }
 
-html[data-theme="light"] .train-twin-page .panel-shell-header {
-  border-bottom-color: transparent;
-}
-
-html[data-theme="light"] .train-twin-page .twin-side-pane {
-  background: #fff;
-}
-
-html[data-theme="light"] .train-twin-page .twin-center-pane,
-html[data-theme="light"] .train-twin-page .twin-monitor-pane {
-  background: #fff;
-}
-
-/* 浅色模式:合并大面板本体给白底,内部两块子面板改透明,避免叠出接缝 */
-html[data-theme="light"] .train-twin-page .twin-work-area.is-merged {
-  background: #fff;
-  border-color: transparent;
-  box-shadow: none;
-}
-
-html[data-theme="light"] .train-twin-page .twin-work-area.is-merged > .panel-shell {
-  background: transparent;
-}
-
-/* 浅色模式:头部栏白底,底部用可见的浅色分隔线,让头部栏从正文里划分出来 */
-html[data-theme="light"] .train-twin-page .twin-work-area.is-merged .twin-locate-chain {
-  background: #fff;
-  border-bottom-color: var(--border-subtle);
-}
-
-html[data-theme="light"] .train-twin-page .twin-work-area.is-merged .twin-center-pane > .panel-shell-header {
-  border-bottom-color: var(--border-subtle);
-}
+/* pane 本体的底色/边框/模糊由 patterns/ide-frame 的共享 IDE skin(--ide-frame-pane-fill 等)统一提供,
+   浅/深色主题自适应在 ide-frame-pattern.css 里已经做了,这里不再覆盖 */
 
 html[data-theme="light"] .train-twin-page .twin-center-scroll {
   padding: 0;
@@ -212,85 +180,12 @@ html[data-theme="light"] .train-twin-page .twin-segment .btn.is-selected:hover,
 html[data-theme="light"] .train-twin-page .twin-dim,
 html[data-theme="light"] .train-twin-page .stat-chip,
 html[data-theme="light"] .train-twin-page .twin-status,
-html[data-theme="light"] .train-twin-page .twin-progress-status {
-  border-color: transparent;
-  background: color-mix(in srgb, var(--foreground) 7%, white);
-}
+/* 默认极简:透明无框,只在悬浮时浮起,浅/深色都走通用 .twin-progress-status:hover 规则 */
 
-.twin-topbar {
-  min-height: 68px;
-  padding: 0 var(--space-5);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  background: transparent;
-  border: 0;
-}
-
-.twin-title-block {
-  min-width: 0;
-}
-
-.twin-kicker {
-  color: var(--foreground-secondary);
-  font-size: 14px;
-  line-height: var(--line-height-label);
-  font-weight: var(--font-weight-medium);
-}
-
-.twin-title-block h1 {
-  margin: 2px 0 0;
-  color: var(--foreground);
-  font-size: var(--font-size-title-md);
-  line-height: 1.25;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0;
-}
-
-.twin-topbar-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.twin-theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.twin-theme-toggle-icon {
-  position: relative;
-  width: 26px;
-  height: 14px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-}
-
-.twin-theme-toggle-icon::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-pill);
-  background: var(--foreground-secondary);
-  transition: transform var(--duration-fast) var(--easing-default), background var(--duration-fast) var(--easing-default);
-}
-
-html[data-theme="light"] .twin-theme-toggle-icon {
-  background: color-mix(in srgb, var(--warning) 18%, white);
-}
-
-html[data-theme="light"] .twin-theme-toggle-icon::after {
-  background: color-mix(in srgb, var(--warning) 78%, black);
-  transform: translateX(12px);
-}
+/* 顶栏 chrome(标题/透明背景/rail)由 patterns/ide-frame 提供,.twin-topbar/.twin-title-block/.twin-kicker/
+   .twin-topbar-actions 等旧顶栏容器 class 已随 ide-frame 迁移移除;主题切换按钮改用 ide-frame 自带的
+   .pto-ide-frame__window-action + 内联月亮/太阳 SVG(见 wzh_index.html #themeToggle),不再需要这里的
+   私有 pill/knob 样式(.twin-theme-toggle / .twin-theme-toggle-icon 已删除) */
 
 .train-twin-page .btn {
   font-size: 14px;
@@ -331,60 +226,58 @@ html[data-theme="light"] .twin-theme-toggle-icon::after {
   50% { opacity: 0.35; }
 }
 
-/* 顶栏「训练进度」组件：替换原 TRAINING 状态标签，承载进度总览卡片挪上来的 step/epoch/进度条 */
+/* 顶栏「训练进度」:默认极简(当前 step · 进度条含问题点 · 总 step),悬浮动效撑大再显示百分比 + epoch */
 .twin-progress-status {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: var(--space-3);
-  min-height: 40px;
-  padding: 6px var(--space-3);
-  border: 1px solid var(--border-subtle);
+  gap: 10px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--foreground);
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.twin-progress-status:hover {
   background: var(--surface-1);
-  color: var(--success);
+  border-color: var(--border-subtle);
+  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, 0.35);
 }
 
-.twin-progress-status .twin-dot {
+/* 左右 step 单号 */
+.twin-progress-step {
   flex: none;
-}
-
-.twin-progress-status-info {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  min-width: 210px;
-}
-
-.twin-progress-status-row {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--foreground-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
   white-space: nowrap;
 }
-
-.twin-progress-status-row strong {
-  margin-right: 6px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
-  color: var(--foreground);
+.twin-progress-step--total {
+  color: var(--foreground-muted);
+  font-weight: var(--font-weight-medium);
 }
 
+/* 进度条:默认细,悬浮加粗 */
 .twin-progress-status-track {
   position: relative;
-  width: 100%;
-  height: 6px;
-  overflow: hidden;
+  width: 148px;
+  height: 5px;
   border-radius: 999px;
   background: var(--surface-2);
+  transition: height 180ms ease;
+}
+.twin-progress-status:hover .twin-progress-status-track {
+  height: 8px;
 }
 
 .twin-progress-status-fill {
-  position: relative;
+  position: absolute;
+  left: 0;
+  top: 0;
   overflow: hidden;
   width: 0%;
   height: 100%;
@@ -396,83 +289,81 @@ html[data-theme="light"] .twin-theme-toggle-icon::after {
 .twin-progress-status-fill::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 40%;
-  height: 100%;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, white 65%, transparent), transparent);
   transform: translateX(-120%);
   animation: twinProgressFlow 1.8s linear infinite;
 }
 
-.twin-progress-status-pct {
-  flex: none;
-  min-width: 44px;
+/* 进度条内问题点标注:带白边的纵向线(略高于轨道),颜色按严重度 P0 红 / P1 橙 */
+.twin-progress-marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  transform: translateX(-50%);
+  border-radius: 1.5px;
+  box-shadow: 0 0 0 1px var(--surface-1);
+  cursor: pointer;
+  z-index: 3;
+  transition: transform 140ms ease;
+}
+.twin-progress-marker.is-p0 { background: #dc2626; }
+.twin-progress-marker.is-p1 { background: #ea580c; }
+.twin-progress-marker:hover { transform: translateX(-50%) scaleX(2); }
+
+/* 悬浮撑大:百分比 + epoch 从右侧滑入(收起时用负 margin 抵消 flex gap,不占位) */
+.twin-progress-detail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 0;
+  margin-left: -10px;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transform: translateX(-4px);
+  transition: max-width 220ms ease, opacity 160ms ease, transform 220ms ease, margin-left 220ms ease;
+}
+.twin-progress-status:hover .twin-progress-detail {
+  max-width: 180px;
+  margin-left: 0;
+  opacity: 1;
+  transform: translateX(0);
+}
+.twin-progress-pct {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: #3b82f6;
+}
+.twin-progress-sep {
+  flex: none;
+  width: 1px;
+  height: 12px;
+  background: var(--border-subtle);
+}
+.twin-progress-epoch {
+  font-size: 11px;
+  color: var(--foreground-secondary);
+  white-space: nowrap;
+}
+.twin-progress-epoch strong {
+  margin-left: 2px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: var(--font-weight-semibold);
   color: var(--foreground);
-  text-align: right;
 }
 
-@media (max-width: 1100px) {
-  .twin-progress-status-info {
-    min-width: 160px;
-  }
-}
-
-.twin-shell {
-  height: calc(100vh - 68px);
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) minmax(0, 1fr);
-  /* 第 1 行:工作区 + 诊断列;第 2 行:底部横向 Timeline 面板(高度由面板自身撑开) */
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: var(--space-4);
-  padding: 0 var(--space-4) var(--space-4);
-  overflow: hidden;
-}
-
-/* 底部横向「Timeline」面板:跨满所有列,顶部有拖拽手柄可调高度,默认 200px */
-.twin-timeline-pane {
-  grid-column: 1 / -1;
-  position: relative;
-  height: 200px;
-  min-height: 120px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.twin-timeline-resizer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 10px;
-  cursor: ns-resize;
-  z-index: 6;
-}
-
-.twin-timeline-resizer::before {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--border-strong);
-  transition: background 120ms ease;
-}
-
-.twin-timeline-resizer:hover::before {
-  background: var(--foreground-secondary);
-}
+/* 顶层 shell/工作区网格(.twin-shell/.twin-work-area 网格布局)已由 patterns/ide-frame +
+   patterns/workbench-shell 的 split/pane/gutter 接管,底部 Timeline dock 的高度拖拽也改用
+   workbench-shell 自带的可拖拽 gutter(见 #twinWorkArea 所在的 standalone-vertical split);
+   下面只保留仍在业务内容里使用的 class */
 
 .twin-timeline-body {
-  flex: 1;
-  min-height: 0;
   /* 泳道图(.opv-swimlane)自带内部横/纵向滚动,这里交给它管理,避免叠出两层滚动条 */
   overflow: hidden;
 }
@@ -484,54 +375,40 @@ html[data-theme="light"] .twin-theme-toggle-icon::after {
   line-height: 1.4;
 }
 
-.twin-side-pane,
-.twin-center-pane,
-.twin-monitor-pane {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* 「整网图」列与「监控 / 定位链」列的外层容器:默认作为两块独立面板并排(整网图 | 训练监控),
-   进入问题后加 .is-merged 合并为一块大面板——整网图在左、定位链在右,不再是独立面板 */
-.twin-work-area {
-  min-width: 0;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-4);
-  overflow: hidden;
-}
-
-.twin-work-area.is-merged {
+/* 定位链模式:整网图列与训练监控/定位链列合并为一块大面板(见 training-run-twin.js
+   showLocateChainPanel/hideLocateChainPanel 对 #twinWorkArea 的 .is-merged 切换) */
+#twinWorkArea.is-merged {
   gap: 0;
-  background: var(--panel-shell-bg);
-  border: 1px solid var(--panel-shell-border);
-  border-radius: var(--panel-shell-radius);
-  box-shadow: var(--panel-shell-shadow);
 }
 
-/* 合并后,内部两块子面板去掉各自的边框/圆角/底色/阴影,读起来是同一块面板 */
-.twin-work-area.is-merged > .panel-shell {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+#twinWorkArea.is-merged > .pto-workbench-shell__split-gutter {
+  display: none;
+}
+
+/* 合并后,两块子 pane 去掉相邻边的圆角/边框,读起来是同一块面板;底色/模糊仍由 ide-frame pane-fill 提供 */
+#twinWorkArea.is-merged > .twin-center-pane {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: 0;
+}
+
+#twinWorkArea.is-merged > .twin-monitor-pane {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 0;
 }
 
 /* 左侧「整网图 / 问题一」标题头 + 右侧定位链导航,拼成一条贯通整块面板的头部栏:
    两者等高、共用一条底部分隔线,下方才是图 / 图表正文 */
-.twin-work-area.is-merged .twin-center-pane > .panel-shell-header,
-.twin-work-area.is-merged .twin-locate-chain {
+#twinWorkArea.is-merged .twin-center-pane > .pto-ide-frame__pane-header,
+#twinWorkArea.is-merged .twin-locate-chain {
   height: 78px;
   min-height: 78px;
   box-sizing: border-box;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.twin-work-area.is-merged .twin-locate-chain {
+#twinWorkArea.is-merged .twin-locate-chain {
   position: sticky;
   top: 0;
   z-index: 5;
@@ -542,12 +419,14 @@ html[data-theme="light"] .twin-theme-toggle-icon::after {
   border-left: 0;
   border-right: 0;
   border-radius: 0;
-  background: var(--panel-shell-bg);
+  background: var(--ide-frame-pane-header-fill);
   box-shadow: none;
 }
 
+/* 头部要塞下 kicker+title+meta 三行,比 ide-frame 默认 32px 高;通过官方允许的
+   --ide-frame-header-height token override 加高,而不是重写 .pto-ide-frame__pane-header 本身 */
 .twin-pane-header {
-  min-height: 58px;
+  --ide-frame-header-height: 58px;
 }
 
 .twin-pane-header-title-row {
@@ -555,11 +434,6 @@ html[data-theme="light"] .twin-theme-toggle-icon::after {
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-}
-
-.panel-shell-meta {
-  color: var(--foreground-secondary);
-  font-size: 14px;
 }
 
 .twin-pane-scroll,
@@ -748,7 +622,7 @@ html[data-theme="light"] .twin-theme-toggle-icon::after {
   flex: 1;
   min-height: 0;
   border-radius: var(--radius-lg);
-  background: var(--background);
+  background: transparent;
   overflow: hidden;
 }
 
@@ -1023,9 +897,27 @@ html[data-theme="light"] .twin-theme-toggle-icon::after {
 .twin-heat-cell {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 3px;
-  background: var(--twin-util-mid);
+  border-radius: 2px;
   cursor: help;
+}
+/* DP 分组容器：带边框和标签 */
+.twin-heat-dp-group {
+  position: relative;
+  border: 1.5px solid var(--border-default);
+  border-radius: 4px;
+  padding: 3px;
+}
+.twin-heat-dp-group::before {
+  content: attr(data-dp-label);
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%) translateX(-100%);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--foreground-muted);
+  white-space: nowrap;
+  padding-right: 4px;
 }
 
 .twin-heat-cell::before {
@@ -1212,8 +1104,6 @@ html[data-theme="light"] .twin-theme-toggle-icon::after {
 }
 
 .twin-feed {
-  max-height: 208px;
-  overflow: auto;
 }
 
 .twin-event {
@@ -1322,10 +1212,6 @@ html[data-theme="light"] .twin-theme-toggle-icon::after {
 }
 
 @media (max-width: 1320px) {
-  .twin-shell {
-    grid-template-columns: 280px minmax(0, 1fr) minmax(0, 1fr);
-  }
-
   .twin-monitor-grid,
   .twin-whatif,
   .twin-outgrid {
@@ -1334,57 +1220,12 @@ html[data-theme="light"] .twin-theme-toggle-icon::after {
 }
 
 @media (max-width: 1080px) {
-  .train-twin-page {
-    overflow: auto;
-  }
-
-  .twin-shell {
-    height: auto;
-    min-height: calc(100vh - 68px);
-    grid-template-columns: 1fr;
-    overflow: visible;
-  }
-
-  .twin-work-area {
-    grid-template-columns: 1fr;
-    overflow: visible;
-  }
-
-  .twin-side-pane,
-  .twin-center-pane,
-  .twin-monitor-pane {
-    min-height: auto;
-    overflow: visible;
-  }
-
-  .twin-pane-scroll,
-  .twin-center-scroll,
-  .twin-monitor-scroll {
-    overflow: visible;
-  }
-
-  .twin-center-scroll {
-    grid-template-rows: auto;
-  }
-
   .twin-architecture-stage {
     height: 420px;
   }
 }
 
 @media (max-width: 720px) {
-  .twin-topbar {
-    align-items: flex-start;
-    flex-direction: column;
-    justify-content: center;
-    min-height: auto;
-    padding: var(--space-4);
-  }
-
-  .twin-shell {
-    padding: 0 var(--space-3) var(--space-3);
-  }
-
   .twin-vitals,
   .twin-monitor-grid,
   .twin-whatif,
@@ -1431,29 +1272,41 @@ html[data-theme="light"] .train-twin-page .twin-segment .btn:focus-visible,
   box-shadow: none;
 }
 
-/* 内嵌模式（?embed=hardware）：外部页面只取「算力占用 · 基础设施层」卡片，隐藏顶栏/侧栏/架构中栏与其余监控卡片 */
-html[data-embed="hardware"] .twin-topbar {
+/* 内嵌模式（?embed=hardware）：外部页面只取「算力占用 · 基础设施层」卡片，隐藏顶栏/rail/诊断列/架构列/Timeline dock,
+   只留训练监控 pane(inspector) 里的「硬件多卡热力图」卡片,铺满 viewport,透明背景 */
+html[data-embed="hardware"] .pto-ide-frame__topbar,
+html[data-embed="hardware"] .pto-ide-frame__activity-rail,
+html[data-embed="hardware"] .pto-ide-frame__status-strip,
+html[data-embed="hardware"] #explorerPane,
+html[data-embed="hardware"] .twin-center-pane,
+html[data-embed="hardware"] #bottomDock,
+html[data-embed="hardware"] .pto-workbench-shell__split-gutter {
   display: none;
 }
 
-html[data-embed="hardware"] .twin-shell {
+html[data-embed="hardware"] .pto-ide-frame {
+  width: 100vw;
   height: 100vh;
-  grid-template-columns: minmax(0, 1fr);
-  padding: 0;
-}
-
-html[data-embed="hardware"] .twin-side-pane,
-html[data-embed="hardware"] .twin-center-pane {
-  display: none;
-}
-
-html[data-embed="hardware"] .twin-monitor-pane {
-  border: none;
-  border-radius: 0;
   background: transparent;
 }
 
-html[data-embed="hardware"] .twin-monitor-pane > .panel-shell-header {
+html[data-embed="hardware"] .pto-ide-frame__body,
+html[data-embed="hardware"] .pto-ide-frame__workarea,
+html[data-embed="hardware"] [data-ide-split] {
+  padding: 0;
+}
+
+html[data-embed="hardware"] .twin-monitor-pane {
+  flex: 1 1 100% !important;
+  width: 100% !important;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+html[data-embed="hardware"] .twin-monitor-pane > .pto-ide-frame__pane-header {
   display: none;
 }
 
@@ -1582,24 +1435,38 @@ html[data-embed="hardware"] .twin-hardware-kpis {
 .twin-layerview.is-maximized svg { width: 100%; height: 100%; }
 
 /* ── 模型层展开图搬到整网图区域展示 ──────────────────────────────────────
-   定位链「模型层」的「查看」按钮触发,#modelLayerStage 覆盖在 .twin-architecture-stage 上。
-   打开时整网图(#modelGraphStage)对准 MoE(router)节点放大淡出,展开图从该处放大淡入,
-   左右层列由中心向两侧逐渐出现(JS 逐个设 animation-delay),两图切换有连续观感。逻辑见
-   js/training-run-twin.js 的 openModelLayerView() / closeModelLayerView()。 */
-#modelGraphStage {
-  transition: transform 0.52s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.42s ease;
-  transform-origin: var(--twin-zoom-ox, 60%) var(--twin-zoom-oy, 52%);
+   定位链「模型层」的「查看」按钮 / 整网图上问题一红框触发,#modelLayerStage 覆盖在
+   .twin-architecture-stage 上。进入展开图时:背后整网图(#graphStage)淡出消失,但保留顶栏
+   .opv-topbar 继续控制展开图的缩放(+/−/Fit)与算子染色(层级下拉在展开图下隐藏)。逻辑见
+   js/training-run-twin.js 的 openModelLayerView() / closeModelLayerView() / bindLayerViewTopbar()。 */
+#graphStage {
+  transition: opacity 0.34s ease;
 }
-.twin-architecture-stage.is-layer-active #modelGraphStage {
-  transform: scale(2.1);
+/* 进入展开图:整网图与状态文字淡出消失,不再从展开图透出 */
+.twin-architecture-stage.is-layer-active #graphStage,
+.twin-architecture-stage.is-layer-active .opv-status {
   opacity: 0;
   pointer-events: none;
+}
+/* 顶栏保留并置于覆盖层之上,作为展开图的控制条 */
+.twin-architecture-stage.is-layer-active .opv-topbar {
+  position: relative;
+  z-index: 6;
+  background: var(--surface-1);
+}
+/* 展开图下不需要「层级」控制:隐藏其分隔线 + 标签 + 下拉 */
+.twin-architecture-stage.is-layer-active .opv-topbar .lv-topbar-level {
+  display: none;
 }
 .twin-layer-stage {
   position: absolute;
   inset: 0;
   z-index: 5;
   display: flex;
+}
+/* 覆盖层从顶栏下方开始,避免盖住作为控制条的 .opv-topbar(embed 模式顶栏高 48px) */
+.twin-architecture-stage.is-layer-active .twin-layer-stage {
+  top: 48px;
 }
 .twin-layer-stage[hidden] { display: none; }
 .twin-layer-stage .twin-layerview {
