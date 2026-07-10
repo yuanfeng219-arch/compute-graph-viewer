@@ -5,9 +5,60 @@
 
 ---
 
+## 2026-07-10 — training-run-twin 顶栏训练进度条重设计(默认极简 + 悬浮撑大)
+- **默认态极简**:去掉原来常驻的 step/epoch 双行文字 + 边框盒,只保留「当前 step 单号 · 进度条 · 总 step 单号」一行,进度条透明无框不再突兀。问题点标注从进度条下方的三角箭头改为**进度条内的带白边纵向线**(`.twin-progress-marker`,P0 红/P1 橙,`box-shadow` 白边),用百分比直接定位,不再测量几何。
+- **悬浮态动效撑大**:hover 时整条浮起(surface 底 + 阴影 + 圆角),进度条加粗(5→8px),右侧滑入**进度百分比 + Epoch 进度**(`.twin-progress-detail`,max-width/opacity/位移过渡)。
+- 结构调整:markup 换成 `#progressStepCurrent`/`#progressStepTotal`/`#progressTrack`/`#progressDetail`;`renderProgress`/`renderDiagnosisMarkers`/`bindDiagnosisMarkers` 相应改为在 `#progressTrack` 内注入纵向线并做事件委托;删除旧 `.twin-progress-status-info/-row/-pct` 与 `.progress-diagnosis-marker` 样式。
+
+## 2026-07-10 — training-run-twin 问题一 infra 示意图复用外层集群热力图
+- **complete reuse**:问题一定位链「infra层」原来画一张独立的 2048-GPU canvas(`#infraHeatCanvas` / `renderInfraHeatSnapshot`),现改为完全复用外层「训练监控 · infra」的集群热力图(`#heat` 的 DP4×PP8×EP64 网格)。新增 `syncLocateInfraHeat()`:按同款外壳建格(`renderHeatShell` 增加 target 参数),再把 `#heat` 每个 cell 的 util 着色镜像到定位链里的 `#locateInfraHeat`,并叠加本问题的 hot(EP rank 23)/warm(EP 16–22)标记;随训练 tick(`renderAll`)同步刷新。定位链关闭时 `activeLocateCase` 复位停止镜像。
+
+## 2026-07-10 — training-run-twin 展开图:红框进入、查看/关闭切换、顶栏接管缩放/染色
+- **红框进入展开图**:整网图上问题一标红的 MoE FFN 分组框(`moe-block` cluster)背景 rect 现可点击,等同选中问题一并进入模型层展开图(`enterProblemOneLayerView`)。
+- **查看/关闭切换**:定位链「模型层」CTA 按钮随展开图开合在「查看」⇄「关闭」间切换(`syncLayerViewCTALabel`),CTA 点击改为开合 toggle;红框/CTA/返回按钮任一路径都会同步文案。
+- **进入展开图时整网图消失、顶栏保留接管**:`#graphStage` 与 `.opv-status` 在 `.is-layer-active` 下淡出消失(修正原先指向不存在的 `#modelGraphStage` 的死规则);`.opv-topbar` 保留并作为展开图控制条——`+/−/Fit` 改为缩放展开图 SVG(`lvZoom`/`lvApplyZoom`),「算子染色 关/类别」改为切换展开图配色(`lvColorMode`,局部 LV 遮蔽 `LV_BASE`,off 模式压成中性灰仅保留 cHot 红);顶栏点击由 `bindLayerViewTopbar` 捕获阶段拦截。「层级」下拉在展开图下隐藏(`.lv-topbar-level`)。
+- **字号 specificity 修复**:`.diagnosis-severity`(P0/P1 徽标,意图 11px)、`.diagnosis-category`(分类标签,意图 10px)、`.diagnosis-desc`(描述文字,意图 11px)此前一直被 `css/training-run-twin.css` 里更早、更泛化的 `.twin-option span`/`.twin-option small { font-size:14px }` 以更高 specificity(class+type `(0,1,1)` > 单 class `(0,1,0)`)覆盖,导致卡片内所有文字实际都渲染成 14px,标题与徽标/描述没有字号层级。改为 `.diagnosis-card .diagnosis-severity` / `.diagnosis-card .diagnosis-category` / `.diagnosis-card .diagnosis-desc`(双 class,`(0,2,0)`)重新压过前者,徽标/标签/描述恢复到各自设计意图的字号。
+- **删除问题七**:移除「q_lora FP8 溢出导致 grad_norm 缓慢发散」诊断卡片(`data-diagnosis="q-lora-fp8"`)及其全部关联数据——explorer 卡片 DOM、`problemMarkers` 里 id 7 的整网图节点标注、`diagnosisCases["q-lora-fp8"]`(架构图概念定位)、`diagnosisMarkers` 里 num 七 的进度条标记、`locateChains["q-lora-fp8"]`(完整定位链步骤)。问题一~问题六保持原编号不变。
+- **验证**:Edge headless + CDP 脚本核对卡片数量降到 6、`.diagnosis-severity`/`.diagnosis-category`/`.diagnosis-desc` 的 `getComputedStyle().fontSize` 分别为 11px/10px/11px。
+
+## 2026-07-10 — wzh_index 统一整网图与页面顶栏的主题切换按钮
+- **问题**:整网图组件工具栏的 `opvTopThemeToggle`("Dark"/"Light" 文字按钮)、`floatingThemeToggle`(嵌入模式下浮在图上的同款按钮)与页面顶栏的 `#themeToggle`(pill/knob + 文案)是三套并存的主题开关,视觉不统一且语义重复。
+- **修复**:参照 `pangu-moe-trainviz/op-rank-time.html` 的 `.opv-theme-toggle` 做法,删除 `opvTopThemeToggle`/`floatingThemeToggle` 两个按钮(`opv-modelviz.js` 原有的 `if(!button) return` 空值保护和 `MutationObserver` 联动重着色逻辑无需改动,元素消失后自动安全跳过),页面顶栏 `#themeToggle` 改成 `.pto-ide-frame__window-action` 单一图标按钮,月亮(浅色态,点击切深色)/太阳(深色态,点击切浅色)两个 SVG 互换,由 `training-run-twin.js` 的 `applyTheme()` 驱动 `#themeToggleIcon.innerHTML` 切换;删除随之失效的 `.twin-theme-toggle`/`.twin-theme-toggle-icon` 私有 pill 样式。
+- **验证**:Edge headless + CDP 脚本点击 `#themeToggle`,浅色态显示月亮、点击后深色态显示太阳,整网图组件仍通过 `MutationObserver` 正常跟随重新着色。
+
+## 2026-07-10 — wzh_index 整体接入 patterns/ide-frame(shell-first retrofit)
+- **按工作流 B 做 shell-first 迁移**：`Profiling_Insight_and_Tool/training-run-twin-standalone/wzh_index.html` 原有私有 chrome(`.twin-topbar`/`.twin-shell` grid/`.twin-side-pane`/`.twin-panel-toggle`/自制 `.twin-timeline-resizer` 拖拽手柄)整体替换为 `patterns/ide-frame` 标准 shell:顶栏(标题+训练进度+主题切换+Timeline dock 开关)、四键 activity rail(Explorer/Search/Source control/Terminal)、`standalone-vertical`(主区/Timeline dock)+`standalone-main`(诊断列/工作区)+嵌套 `twin-workarea`(整网图/训练监控)三层 workbench-shell split。
+- **不用 iframe，本地 vendor 化**:因该 standalone 文件夹会整体移动,不引用 `../../vendor/pto-design-system`,而是把 `patterns/ide-frame`、`patterns/workbench-shell` 的 `pattern.css`/`pattern.js` 直接拷进本地 `css/ide-frame-pattern.css`·`css/workbench-shell-pattern.css`·`js/ide-frame-pattern.js`·`js/workbench-shell-pattern.js`,与既有 `css/model-graphviz-pattern.css` 等本地化资产同构。
+- **pane 映射**:「问题诊断」卡片列表 → explorer pane(左, 280px, rail Explorer 按钮折叠);「DeepSeek V3.2 整网图」→ editor-preview pane;「训练监控」→ inspector pane;「Timeline」泳道图 → 底部 bottom-dock(顶栏 "Toggle bottom visualization" 图标开关,替代原自制 resizer+`twinSidebarToggle`/`twinTimelineToggle` 私有实现)。
+- **定位链「合并大面板」效果重做**:原 `.twin-work-area.is-merged` 私有实现(白底/边框拼接)改为 `#twinWorkArea.is-merged` 隐藏 workbench-shell gutter + 去掉相邻 pane 的圆角/边框,底色仍走 ide-frame 共享 `--ide-frame-pane-fill`,不再本地覆盖 pane 背景色,浅/深色主题自动适配。
+- **`?embed=hardware` 外部嵌入契约保持**:改用新 class(`.pto-ide-frame__topbar`/`#explorerPane`/`#bottomDock`/`.pto-workbench-shell__split-gutter`)重写隐藏规则,效果与迁移前一致(只留训练监控 pane 里的硬件热力图卡片,透明背景铺满 viewport)。
+- **container decoration residue check**:清理后 `border-left`/`::before`/`::after`/`outline`/`inset shadow`/`linear-gradient(90deg` 命中项均为已有数据编码(热力图告警框、KPI 状态色条、进度条箭头/流光、事件时间线连接点),或本次新增的“去边框”(`border-left:0` 等,合并态去缝),无遗留的旧卡片装饰性描边/侧边条。
+- **验证**:本地起 Node 静态服务器 + Edge headless(CDP 脚本驱动点击)分别截图浅色/深色主题、Explorer 折叠/展开、Timeline dock 开关、点击「问题二 HiF8」进入定位链合并视图,均正常。
+
+## 2026-07-10 — 左侧整网图由 iframe 内嵌改为「直接集成」openPangu-2.0-Flash (wzh_index)
+- **去掉 iframe，改为同文档集成**：因整个 standalone 文件夹会整体移动，iframe 方式(即便相对路径)不理想；改为把 `openpangu_2_0_flash_modelviz.html` 组件按「样式/逻辑/数据/引擎」四份资产直接并入 `wzh_index.html`，与页面其它 `js/`·`css/` 依赖同构，随文件夹整体移动无影响。
+- **抽出的资产**(经 `scratchpad/gen_opv.js` 从组件 HTML 机械切片生成)：`css/opv-modelviz.css`(组件 `<style>`，去掉会污染父页的全局 `body/html/*` 规则、embed 作用域由 `:root`→`#opvHost`、`height:100vh`→`100%`)、`js/opv-modelviz-schema.js`(内联默认 schema → `window.OPV_DEFAULT_SCHEMA`)、`js/opv-modelviz.js`(组件主逻辑，IIFE 包裹防全局泄漏；`themeToggle`→`opvTopThemeToggle` 避与父页主题按钮 id 冲突；`loadDefaultSchema` 改读全局 schema 不再 fetch；新增 `data-theme` MutationObserver 与父页浅/深色联动)；渲染引擎复用 `model-graphviz-embed/pattern.js`+`pattern.css`(上游新版，含标签避让)。
+- **父页接线**：`wzh_index.html` 左侧 `.twin-architecture-stage` 用组件私有 DOM(`#opvHost.opv-app[data-embed=1]` + topbar/color-panel/`#graphStage`/popover/status，`.pto-model-graphviz-pattern-page` 类保留以复刻原 body 变量级联)替换 iframe;head 增 `pattern.css`+`opv-modelviz.css`;底部脚本以 `pattern.js`→`opv-modelviz-schema.js`→`opv-modelviz.js` 顺序替换原 `model-graphviz-pattern.js`/`model-training-graphviz-pattern.js`(旧训练图引擎移除，`renderArchitecture` 因 `PtoModelTrainingGraphvizPattern` 缺失而安全空转);删除已失效的 iframe 主题 postMessage 脚本。展开/下钻/配色/light mode/通信算子/标签避让均由原组件逻辑+引擎原样提供。
+- **修复死循环卡死**：主题 MutationObserver 与 `setTheme` 互相触发(observer→setTheme→写 `data-theme`→observer…)导致整页反复重渲卡死;加 `opvLastTheme` 去重，主题未真正变化时直接 return。
+- **清理**：删除 `model-graphviz-embed/` 下已不再引用的 `openpangu_2_0_flash_modelviz.html`、`openpangu_2_0_flash_model_architecture.json`、`pangu_moe_modelviz.html`、`pangu_ultramoe_718b_graph.js`、`pangu_pro_moe_72ba16b_graph.js`;该目录仅保留仍在用的引擎 `pattern.js`/`pattern.css`。
+
+## 2026-07-10 — 左侧整网图内嵌组件换成 openPangu-2.0-Flash (wzh_index)
+- **整网图组件由 `pangu_moe_modelviz` 换为 `openpangu_2_0_flash_modelviz`**：一模一样复用上游 model-graphviz 组件(展开/下钻、语义配色、light mode、通信算子、标签避让全保留);iframe src 指向新组件。
+- **自包含拷贝**：`model-graphviz-embed/` 新增组件 HTML + 内联 schema 的外部备份 `openpangu_2_0_flash_model_architecture.json`,复用已有 `pattern.js`/`pattern.css`;依赖路径改指 standalone `css/`(含 `style.css`),默认 `?theme=light`(组件默认 embed 模式,隐藏顶栏、保留右上角浮动主题按钮)。
+- **主题联动**：新组件加 `postMessage` 监听调用自身 `setTheme`(renderAll preserveZoom 不丢缩放),复用父页已有的 `panguSetTheme` 转发,无需改父页脚本。
+
+## 2026-07-10 — 问题一定位链改写为 Pangu Pro MoE 72BA16B 案例 (wzh_index)
+- **对齐 `Pangu 72B 定位链.md` 精度案例一**：将问题一（moe-a2a）的图文从 DeepSeek-V3.2 改为 Pangu 72BA16B——问题层 layer 38→30、热点 expert 193→47、其余 255→63 expert、集群 64→32 GPU / EP64→EP32 / PP8→PP4、PP stage 4(layers 31~38)→stage 3(layers 24~35)、精度 FP8→BF16、recv buffer dim 7168→4608（2048×4608×8≈151MB）、修复项 n_group→MoGE group 8→16（每组 8→4）。
+- **覆盖范围**：诊断卡/Timeline 副标题/定位节点/定位链各层文案 + send/recv 缓冲图（n 32、满刻度 160、BF16 标注）+ MoE 层展开图 case 标注与 `LV_INCIDENT_*` 常量；MoE 展开图与 infra 热力图几何保持原示意不变。
+
+## 2026-07-10 — training-run-twin 左侧整网图整体替换为 model-graphviz 组件 (wzh_index)
+- **完全复用 `pto-design-system/patterns/model-graphviz` 的 `pangu_moe_modelviz` 组件**：把 wzh_index 左侧原 `PtoModelTrainingGraphvizPattern` 整网图替换为该组件，一模一样保留其展开/下钻、语义配色、light mode、通信算子渲染与标签避让实现。
+- **自包含内嵌**：新增 `model-graphviz-embed/`（组件 HTML + 上游最新 `pattern.js`/`pattern.css` + `pangu_ultramoe_718b_graph.js`/`pangu_pro_moe_72ba16b_graph.js`），组件以 iframe 内嵌，token CSS 指向 standalone `css/`，离线可运行。
+- **主题联动**：组件新增 `postMessage` 监听调用自身 `setTheme`（preserveTransform 不丢缩放/variant/展开态）；`wzh_index.html` 用 MutationObserver 监听 `data-theme` 并向 iframe 转发主题。原 `#modelGraphStage` 换成 `#modelGraphFrame`（id 变更使 `training-run-twin.js` 的诊断高亮等对图操作安全空转），原整网图的错误标签按需丢弃。
 ## 2026-07-09 — 更新「PTO性能分析」泳道 Profiler (pto-swimlane-profiler)
 - 同步 PyPTOUX 最新 swimlane profiler 原型：新增性能统计 / PMU / 优化建议 / 核心详情面板，更新为双 DIE、32 个 1C2V Wrap 的泳道拓扑，并保留 L3 占位数据披露。
 - 发布版资源统一指向 `vendor/pto-design-system`；`launch-v2.html` 与旧版 `launch.html` 均指向本地 `pto-swimlane-profiler/index.html`。
+
 ## 2026-07-09 — training-run-twin 问题七：HiF8 精度诊断工作台嵌入定位链 (wzh_index)
 - **新增「问题七」诊断案例**：把 `hif8-precision-workbench-V3.html` 的「概览 / 张量分布 / 量化误差 / 误差传播 / 根因分析」五页签 100% 搬进「问题诊断」定位链，形式对齐问题一/问题二详情（sticky 定位链栏 + 分节内容 + Canvas 图表）。
 - **自包含模块 `js/hif8-case7.js`**：移植工作台的种子 RNG / 数据模型（200 采样步、46 层、culprit blk4.mlp.down_proj 等）与全部 Canvas 渲染（loss 多格式对照 / Δloss / logit 打散度 / 事件时间线 / 直方图 / 动态范围 / 误差表 / 热力图 / 传播柱状 + 累积折线 / 敏感度 / 相关性散点 / 可疑算子清单），去掉工具壳后固定在训练末步（step 10000 已发散）做快照；保留张量类型切换、表头排序、选层联动。`window.PtoHif8Case7.chain()` 提供定位链结构，`renderAll()` 绘制画布。

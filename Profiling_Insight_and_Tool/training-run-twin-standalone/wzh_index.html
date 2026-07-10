@@ -21,10 +21,16 @@
   <link rel="stylesheet" href="./css/semantic.css">
   <link rel="stylesheet" href="./css/components.css">
   <link rel="stylesheet" href="./css/style.css">
+  <!-- IDE frame shell (patterns/ide-frame + patterns/workbench-shell, vendored locally per repo convention so this folder can move on its own) -->
+  <link rel="stylesheet" href="./css/workbench-shell-pattern.css">
+  <link rel="stylesheet" href="./css/ide-frame-pattern.css">
   <link rel="stylesheet" href="./css/model-graphviz-pattern.css">
   <link rel="stylesheet" href="./css/model-training-graphviz-pattern.css">
   <link rel="stylesheet" href="./css/training-run-twin.css">
   <link rel="stylesheet" href="./css/timeline-swimlane.css">
+  <!-- 整网图组件(openPangu-2.0-Flash model-graphviz)：新版渲染引擎样式 + 组件样式,置于旧 pattern css 之后以覆盖 -->
+  <link rel="stylesheet" href="./model-graphviz-embed/pattern.css">
+  <link rel="stylesheet" href="./css/opv-modelviz.css">
   <style>
     /* 「问题诊断」卡片复用 .twin-option 的选中/悬停视觉,点击后联动左侧架构图节点高亮 */
     .diagnosis-card {
@@ -41,7 +47,17 @@
       font-weight: var(--font-weight-semibold);
       color: var(--foreground);
     }
-    .diagnosis-desc {
+    /* PTO 规范：问题序号和问题名用 body-sm(12px)，压过 .twin-option span/small 的 14px */
+    .diagnosis-card span {
+      font-size: 12px;
+    }
+    .diagnosis-card small {
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    /* 加 .diagnosis-card 前缀提高 specificity(0,2,0),压过 .twin-option small 的 (0,1,1),
+       否则会被后者的 font-size:14px 覆盖,导致描述文字和标题一样大 */
+    .diagnosis-card .diagnosis-desc {
       display: -webkit-box;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 2;
@@ -71,8 +87,9 @@
     .diagnosis-bubble[hidden] {
       display: none;
     }
-    /* 设计系统尚未收录 .badge,此处按 quick-reference.md 的 retrofit 约定使用 token 内联实现 */
-    .diagnosis-severity {
+    /* 设计系统尚未收录 .badge,此处按 quick-reference.md 的 retrofit 约定使用 token 内联实现;
+       加 .diagnosis-card 前缀提高 specificity(0,2,0),压过 .twin-option span 的 (0,1,1) */
+    .diagnosis-card .diagnosis-severity {
       display: inline-flex;
       align-items: center;
       padding: 1px 8px;
@@ -86,26 +103,17 @@
     .diagnosis-severity.is-p0 { background: #dc2626; }
     .diagnosis-severity.is-p1 { background: #ea580c; }
     .diagnosis-severity.is-p2 { background: #ca8a04; }
-    .diagnosis-category {
+    .diagnosis-card .diagnosis-category {
       display: inline-flex;
       align-items: center;
       padding: 1px 6px;
       border-radius: var(--radius-pill);
       background: color-mix(in srgb, var(--foreground-secondary) 18%, transparent);
       color: var(--foreground-secondary);
-      font-size: 10px;
+      font-size: 11px;
       font-weight: var(--font-weight-medium);
       line-height: 1.5;
       letter-spacing: 0.04em;
-    }
-    /* 「问题诊断」挪到最右侧,固定列宽跟随 DOM 顺序调整到第三列 */
-    .twin-shell {
-      grid-template-columns: minmax(0, 1fr) 280px;
-    }
-    @media (max-width: 1320px) {
-      .twin-shell {
-        grid-template-columns: minmax(0, 1fr) 280px;
-      }
     }
     /* 点击右侧诊断卡片后,在架构图上方提示概念对应的层/分支;图为通用层模板,不代表真实的第 N 层实例 */
     .twin-diagnosis-locator {
@@ -131,24 +139,8 @@
     .twin-diagnosis-locator span {
       color: var(--foreground-secondary);
     }
-    /* ── 进度条诊断标记点 ── */
-    /* 进度条下方三角箭头,指向问题首个出现的 step;挂载在 .twin-progress-status-info 上 */
-    .twin-progress-status-info { position: relative; }
-    .progress-diagnosis-marker {
-      position: absolute;
-      transform: translateX(-50%);
-      width: 0;
-      height: 0;
-      border-left: 5px solid transparent;
-      border-right: 5px solid transparent;
-      border-bottom: 7px solid transparent;
-      z-index: 2;
-      cursor: pointer;
-      transition: transform 0.15s ease;
-    }
-    .progress-diagnosis-marker.is-p0 { border-bottom-color: #dc2626; filter: drop-shadow(0 1px 2px rgba(220,38,38,.4)); }
-    .progress-diagnosis-marker.is-p1 { border-bottom-color: #ea580c; filter: drop-shadow(0 1px 2px rgba(234,88,12,.35)); }
-    .progress-diagnosis-marker:hover { transform: translateX(-50%) scale(1.4); }
+    /* 进度条问题点标注(带白边纵向线)+ 顶栏进度条默认极简/悬浮撑大样式,统一在
+       css/training-run-twin.css 的 .twin-progress-status 一节维护 */
 
     /* 诊断案例命中的节点/连线默认(无需点击)就用 danger 描边标出,和训练阶段联动的默认蓝色高亮区分开 */
     .pto-model-graphviz-node.pto-diagnosis-active rect:not(.pto-diagnosis-pulse-ring) {
@@ -159,6 +151,14 @@
       stroke: var(--danger);
       stroke-width: 3px;
     }
+    /* Cluster（分组）诊断命中：红色描边 */
+    .pto-model-graphviz-cluster.pto-diagnosis-active > rect:first-child {
+      stroke: var(--danger);
+      stroke-width: 2.5px;
+    }
+    /* 聚焦模式：非当前问题徽标淡出 */
+    .pto-problem-badge.is-dimmed { opacity: 0.18; }
+    .pto-problem-badge.is-active { opacity: 1; }
     /* 命中节点的红色呼吸涟漪:克隆自身矩形做描边环,持续放大淡出 */
     @keyframes pto-diagnosis-pulse {
       0% { transform: scale(1); opacity: 0.55; }
@@ -174,16 +174,16 @@
       animation: pto-diagnosis-pulse 1.8s ease-out infinite;
       pointer-events: none;
     }
-    /* 点击某张诊断卡片进入「聚焦」模式:除该问题命中的节点/连线外,整网图其余部分淡出到 50% */
+    /* 点击诊断卡片→聚焦：命中保持不透明，其余淡出到 30% */
     .pto-model-graphviz-node,
     .pto-model-graphviz-edge,
     .pto-model-graphviz-cluster {
       transition: opacity 160ms ease;
     }
-    #modelGraphStage.is-diagnosis-focus .pto-model-graphviz-node:not(.pto-diagnosis-focus-active),
-    #modelGraphStage.is-diagnosis-focus .pto-model-graphviz-edge:not(.pto-diagnosis-focus-active),
-    #modelGraphStage.is-diagnosis-focus .pto-model-graphviz-cluster:not(.pto-diagnosis-focus-active) {
-      opacity: 0.5;
+    #graphStage.is-diagnosis-focus .pto-model-graphviz-node:not(.pto-diagnosis-focus-active),
+    #graphStage.is-diagnosis-focus .pto-model-graphviz-edge:not(.pto-diagnosis-focus-active),
+    #graphStage.is-diagnosis-focus .pto-model-graphviz-cluster:not(.pto-diagnosis-focus-active) {
+      opacity: 0.3;
     }
 
     /* 点击「问题诊断」卡片后,Run Twin 面板切换为「定位链面板」:顶部定位链栏 sticky 吸顶,兼作锚点导航;
@@ -222,12 +222,13 @@
       align-items: flex-end;
       justify-content: space-between;
       gap: 0;
-      margin: var(--space-3) var(--space-4) 0;
-      padding: 0 0 7px;
+      margin: 0;
+      padding: 6px var(--space-3) 4px;
       border-radius: 0;
-      border: 1px solid var(--border-subtle);
+      border: 0;
+      border-bottom: 1px solid var(--border-subtle);
       background: var(--surface-1);
-      box-shadow: 0 6px 16px -10px rgba(0, 0, 0, .3);
+      box-shadow: none;
     }
     /* 选中态底色是独立图层,z-index 压在连线下方,避免盖住经过该节点的连线;
        JS 在节点激活时把它挪到对应节点的位置和尺寸上 */
@@ -289,8 +290,9 @@
       flex-direction: column;
       align-items: center;
       text-align: center;
-      min-width: 88px;
-      padding: 3px 8px;
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 3px 4px;
       border-radius: var(--radius-md);
       cursor: pointer;
     }
@@ -299,12 +301,18 @@
       font-weight: var(--font-weight-semibold);
       color: var(--foreground);
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
     }
     .twin-locate-node-sub {
       margin-top: 1px;
       color: var(--foreground-secondary);
       font-size: 9px;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
     }
     .twin-locate-node-dot-row {
       display: flex;
@@ -328,13 +336,13 @@
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--highlight-copy-blue-500, #3b6fe0) 25%, transparent);
     }
     #locateChainContent {
-      padding: var(--space-4);
+      padding: var(--space-2) var(--space-3);
       display: flex;
       flex-direction: column;
-      gap: var(--space-3);
+      gap: var(--space-2);
     }
     .twin-locate-section {
-      scroll-margin-top: 88px;
+      scroll-margin-top: 60px;
     }
     .twin-locate-section-title {
       margin: 0 0 8px;
@@ -437,36 +445,28 @@
 
     .locate-causal { margin: 8px 0; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-2); font-family: "Cascadia Code", "Fira Code", monospace; font-size: 10px; line-height: 1.55; white-space: pre; overflow-x: auto; color: var(--foreground-secondary); }
 
-    /* ── 页面背景渐变（参考 ep-expert-parallel-2d.html 的 IDE frame 风格）── */
-    .train-twin-page {
-      background:
-        radial-gradient(ellipse at 72% 12%, color-mix(in srgb, #4f6df6 14%, transparent), transparent 44%),
-        radial-gradient(ellipse at 22% 88%, color-mix(in srgb, #4f6df6 8%, transparent), transparent 38%),
-        radial-gradient(ellipse at 48% 52%, color-mix(in srgb, #7c3aed 5%, transparent), transparent 55%),
-        var(--background);
+    /* 整网图 iframe：完全铺满 .twin-architecture-stage，边框/圆角对齐原 graphviz 容器视觉 */
+    .twin-model-graphviz-embed {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--background);
     }
 
-    /* ── 面板开关图标按钮（参考 ep-expert-parallel-2d.html 的 .ep-icon-btn）── */
-    .twin-panel-toggle {
-      display: inline-grid;
-      width: 28px; height: 28px; padding: 0;
-      place-items: center;
-      border: 1px solid transparent;
-      border-radius: var(--radius-sm);
-      background: transparent;
-      color: var(--foreground-muted);
-      cursor: pointer;
+    /* 页面级渐变背景/pane 半透明模糊改由 patterns/ide-frame 统一提供(见 css/ide-frame-pattern.css 的
+       --ide-gradient-bg / --ide-frame-pane-fill),这里不再本地复刻,避免和共享 IDE skin 打架 */
+    html, body {
+      height: 100%;
+      background: var(--ide-frame-page-bg);
     }
-    .twin-panel-toggle:hover { background: var(--state-hover); color: var(--foreground-secondary); }
-    .twin-panel-toggle.is-active {
-      border-color: color-mix(in srgb, var(--foreground) 12%, transparent);
-      background: color-mix(in srgb, var(--foreground) 6%, transparent);
-      color: var(--foreground);
-    }
-    .twin-panel-toggle svg {
-      width: 18px; height: 18px;
-      fill: none; stroke: currentColor;
-      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    .pto-ide-frame {
+      width: 100vw;
+      height: 100vh;
+      aspect-ratio: auto;
+      border-radius: 0;
+      box-shadow: none;
     }
 
     /* 「训练信息」改用属性-值列表(参考 ep-expert-parallel-2d.html 的「选中对象」面板),
@@ -617,88 +617,487 @@
     .hif8c7 .h8-suspect .act { font-size:11px; color:var(--h8-signal2); font-family:var(--h8-mono); white-space:nowrap;
       border:1px solid color-mix(in srgb,var(--h8-signal2) 40%,var(--border-subtle)); padding:4px 9px; border-radius:6px;
       background:color-mix(in srgb,var(--h8-signal2) 8%,transparent); }
+
+    /* ── 去掉整网图区所有灰色背景 ── */
+    .twin-center-scroll,
+    .twin-graph-card,
+    .twin-architecture-stage,
+    #opvHost.pto-model-graphviz-pattern-page,
+    #opvHost .opv-app,
+    #opvHost .opv-stage {
+      background: transparent !important;
+    }
+
+    /* 嵌入模式下仍显示 topbar（算子染色 + 层级选择需要可见） */
+    #opvHost[data-embed='1'] {
+      grid-template-rows: 48px minmax(0, 1fr);
+    }
+    #opvHost[data-embed='1'] .opv-topbar {
+      display: flex;
+    }
+
+    /* ── 整网图 + 监控侧栏 grid 横向: 保持原始 grid-template-rows 确保高度传递正确 ── */
+    .twin-center-scroll {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      grid-template-rows: minmax(0, 1fr);
+      overflow: hidden;
+      padding: 0;
+    }
+
+    /* twin-center-pane: 覆盖 .pto-ide-frame__pane 的 flex:0 0 auto，撑满父面板 */
+    .twin-center-pane {
+      flex: 1 1 0%;
+      min-height: 0;
+    }
+
+    /* 左侧整网图：不额外嵌套 wrapper，直接作为 grid 子项 */
+    .twin-center-scroll > .twin-graph-card {
+      min-width: 0;
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+    }
+
+    /* ── 监控侧栏：标题吸顶 + body 独立滚动 ── */
+    .twin-monitor-sidebar {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--surface-1);
+    }
+    /* 标题固定不滚 */
+    .twin-sidebar-title {
+      flex-shrink: 0;
+    }
+    /* 可滚动内容区：flex:1 占满剩余空间，overflow-y:auto 独立滚动 */
+    .twin-sidebar-body {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      padding: 0 var(--space-3) var(--space-3);
+    }
+    /* body 内所有卡片不压缩，超出时触发滚动 */
+    .twin-sidebar-body > * {
+      flex-shrink: 0;
+    }
+    .twin-monitor-sidebar .twin-monitor-card {
+      padding: var(--space-3);
+    }
+    .twin-monitor-sidebar .twin-card-heading h2 {
+      font-size: 13px;
+    }
+    .twin-monitor-sidebar .twin-card-heading p {
+      font-size: 11px;
+    }
+    .twin-monitor-sidebar .twin-info-line {
+      font-size: 11px;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 6px;
+    }
+    .twin-monitor-sidebar .twin-info-line small {
+      font-size: 10px;
+    }
+    .twin-monitor-sidebar .twin-info-box {
+      padding: 6px 8px;
+      gap: 4px;
+    }
+    .twin-monitor-sidebar .twin-subhead {
+      font-size: 11px;
+    }
+    .twin-monitor-sidebar .twin-monitor-grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+    }
+    /* 侧栏内「训练监控」标题（吸顶） */
+    .twin-sidebar-title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: var(--space-3) var(--space-3) var(--space-2) 24px;
+    }
+    .twin-sidebar-title .pto-ide-frame__pane-title {
+      font-size: 13px;
+    }
+    .twin-sidebar-title .pto-ide-frame__pane-meta {
+      font-size: 11px;
+    }
+    /* 监控侧栏中的 locate-chain-view */
+    .twin-sidebar-body > .twin-locate-chain-view {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── 整网图工具栏：算子染色 + 层级选择（参考 precision-debugger）── */
+    .seg {
+      display: inline-flex;
+      background: color-mix(in srgb, var(--foreground) 6%, transparent);
+      border: 1px solid var(--border-subtle);
+      border-radius: 7px;
+      overflow: hidden;
+    }
+    .segbtn {
+      height: 24px;
+      padding: 0 10px;
+      border: none;
+      background: transparent;
+      color: var(--foreground-secondary);
+      font: 600 11px/1 var(--font-sans);
+      border-radius: 0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+    .segbtn:hover { color: var(--foreground); }
+    .segbtn.on {
+      background: var(--surface-1);
+      color: var(--foreground);
+      box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.28));
+    }
+    .seg-lbl {
+      font: 600 11px/1.2 var(--font-sans);
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      color: var(--foreground-muted);
+    }
+    .tsep {
+      display: inline-block;
+      width: 1px;
+      height: 18px;
+      background: var(--border-subtle);
+      flex: 0 0 auto;
+    }
+    .hsel {
+      height: 24px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-default);
+      background: var(--surface-1);
+      color: var(--foreground);
+      font: 500 11px/1 var(--font-mono, monospace);
+      padding: 0 4px;
+      cursor: pointer;
+    }
+    .hsel:focus { outline: none; border-color: var(--primary); }
+    .hsel-dd { position: relative; display: inline-flex; }
+    .hsel-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 24px;
+      padding: 0 6px 0 8px;
+      white-space: nowrap;
+      line-height: 1;
+    }
+    .hsel-chev {
+      width: 13px;
+      height: 13px;
+      flex: 0 0 auto;
+      opacity: 0.7;
+      transition: transform var(--duration-fast, 100ms) var(--easing-default, ease);
+    }
+    .hsel-dd.open .hsel-chev { transform: rotate(180deg); }
+    .hsel-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      z-index: 80;
+      min-width: 186px;
+      padding: 6px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-strong);
+      background: var(--surface-1);
+      box-shadow: 0 8px 24px rgba(0,0,0,.36);
+    }
+    .hsel-menu[hidden] { display: none; }
+    .hsel-item {
+      display: flex;
+      align-items: center;
+      height: 30px;
+      padding: 0 12px 0 26px;
+      position: relative;
+      border: 0;
+      background: transparent;
+      color: var(--foreground-secondary);
+      font: 500 12px/1 var(--font-sans);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      width: 100%;
+      text-align: left;
+    }
+    .hsel-item:hover { background: var(--state-hover, rgba(255,255,255,.06)); color: var(--foreground); }
+    .hsel-item.is-sel { color: var(--foreground); }
+    .hsel-item.is-sel::before {
+      content: "✓";
+      position: absolute;
+      left: 8px;
+      font-size: 12px;
+      color: var(--primary);
+    }
   </style>
 </head>
 <body class="train-twin-page" data-theme="light" data-model="deepseek" data-task="pretrain" data-hardware="cluster2048">
-  <header class="twin-topbar">
-    <div class="twin-title-block">
-      <h1>模型训练监控大盘</h1>
-    </div>
-    <div class="twin-topbar-actions">
-      <div class="twin-progress-status" id="progressTopbar" title="训练进度">
-        <div class="twin-progress-status-info">
-          <div class="twin-progress-status-row">
-            <span class="twin-progress-status-label">Step</span>
-            <strong id="progressStep">-- / --</strong>
-            <span class="twin-progress-status-label">Epoch</span>
-            <strong id="progressEpoch">-- / --</strong>
-          </div>
-          <div class="twin-progress-status-track" aria-hidden="true">
+  <section class="pto-ide-frame" data-ide-frame data-host="standalone" aria-label="Training Run Explainable Twin">
+    <header class="pto-ide-frame__topbar pto-ide-frame__standalone-chrome">
+      <div class="pto-ide-frame__topbar-left">
+        <div class="pto-ide-frame__host-chip" data-ide-slot="host-chip">
+          <svg class="pto-ide-frame__host-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+            <path d="m7 9 3 3-3 3"></path>
+            <path d="M12 15h5"></path>
+          </svg>
+        </div>
+        <div class="pto-ide-frame__workspace" data-ide-slot="workspace-switcher">
+          <span>模型训练监控大盘</span>
+        </div>
+      </div>
+      <div class="pto-ide-frame__topbar-center"></div>
+      <div class="pto-ide-frame__topbar-right">
+        <!-- 训练进度:默认极简(当前 step · 进度条含问题点 · 总 step),悬浮动效撑大再显示百分比 + epoch -->
+        <div class="twin-progress-status" id="progressTopbar" title="训练进度">
+          <span class="twin-progress-step" id="progressStepCurrent">--</span>
+          <div class="twin-progress-status-track" id="progressTrack" aria-hidden="true">
             <div class="twin-progress-status-fill" id="progressFill"></div>
+            <!-- 问题点标注(带白边纵向线)由 renderDiagnosisMarkers() 注入 -->
+          </div>
+          <span class="twin-progress-step twin-progress-step--total" id="progressStepTotal">--</span>
+          <div class="twin-progress-detail" id="progressDetail" aria-hidden="true">
+            <span class="twin-progress-pct" id="progressPct">--</span>
+            <span class="twin-progress-sep"></span>
+            <span class="twin-progress-epoch">Epoch <strong id="progressEpoch">--</strong></span>
           </div>
         </div>
-        <span class="twin-progress-status-pct" id="progressPct">--</span>
-      </div>
-      <button class="btn btn-ghost twin-theme-toggle" id="themeToggle" type="button" aria-pressed="false" title="切换浅色模式">
-        <span class="twin-theme-toggle-icon" aria-hidden="true"></span>
-        <span id="themeToggleLabel">浅色模式</span>
-      </button>
-      <button class="twin-panel-toggle is-active" id="twinSidebarToggle" type="button" aria-pressed="true" title="隐藏问题诊断侧栏" aria-label="隐藏问题诊断侧栏">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1.5"></rect><path d="M15 4v16"></path></svg>
-      </button>
-      <button class="twin-panel-toggle is-active" id="twinTimelineToggle" type="button" aria-pressed="true" title="隐藏 Timeline 面板" aria-label="隐藏 Timeline 面板">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1.5"></rect><path d="M4 14h16"></path></svg>
-      </button>
-    </div>
-  </header>
-
-  <main class="twin-shell">
-    <div class="twin-work-area" id="twinWorkArea">
-    <section class="panel-shell twin-center-pane" aria-label="架构与脚本解释">
-      <div class="panel-shell-header twin-pane-header">
-        <div class="twin-pane-header-title-row">
-          <button class="btn btn-ghost btn-icon btn-sm" id="locateChainBack" type="button" hidden aria-label="返回 训练监控" title="返回 训练监控">←</button>
-          <div>
-            <div class="panel-shell-meta" id="architectureKicker" hidden></div>
-            <div class="panel-shell-title" id="architectureTitle">DeepSeek V3.2 整网图</div>
-            <div class="panel-shell-meta" id="architectureMeta"></div>
-          </div>
+        <div class="pto-ide-frame__window-actions" data-ide-slot="window-controls" aria-label="Window controls">
+          <!-- 主题切换:单一图标按钮(月亮/太阳互换),参照 pangu-moe-trainviz/op-rank-time.html 的 .opv-theme-toggle,
+               避免和整网图组件内部的 opvTopThemeToggle/floatingThemeToggle 文字按钮重复出现两套主题开关 -->
+          <button class="pto-ide-frame__window-action" id="themeToggle" type="button" aria-pressed="false" title="切换主题" aria-label="切换主题">
+            <svg class="pto-ide-frame__window-icon" id="themeToggleIcon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3a6.5 6.5 0 0 0 7.8 8.8A8 8 0 1 1 12 3z"></path>
+            </svg>
+          </button>
+          <button class="pto-ide-frame__window-action is-selected" id="twinTimelineToggle" type="button" data-ide-toggle="visualization" aria-controls="bottomDock" aria-expanded="true" aria-pressed="true" title="隐藏 Timeline 面板" aria-label="隐藏 Timeline 面板">
+            <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <path d="M3 15h18"></path>
+            </svg>
+          </button>
         </div>
       </div>
+    </header>
 
-      <div class="twin-center-scroll">
-        <section class="twin-graph-card" aria-label="模型架构图">
+    <div class="pto-ide-frame__body">
+      <nav class="pto-ide-frame__activity-rail pto-ide-frame__standalone-chrome" data-ide-slot="activity-rail" aria-label="Activity rail">
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button is-selected" type="button" data-ide-toggle="explorer" aria-controls="explorerPane" aria-expanded="true" aria-pressed="true" title="问题诊断" aria-label="展开/收起 问题诊断">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9l-.81-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Search" title="Search">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Source control" title="Source control">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="18" cy="18" r="3"></circle>
+            <circle cx="6" cy="6" r="3"></circle>
+            <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
+            <path d="M6 9v12"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Terminal" title="Terminal">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+            <path d="m7 9 3 3-3 3"></path>
+            <path d="M12 15h5"></path>
+          </svg>
+        </button>
+      </nav>
+
+      <div class="pto-ide-frame__workarea">
+        <div class="pto-ide-frame__split" data-ide-split="standalone-vertical" data-split-direction="vertical" data-sizes="72,28" data-min-size="360,140">
+          <section class="pto-ide-frame__pane pto-ide-frame__pane--stack" data-ide-pane="main-row">
+            <div class="pto-ide-frame__split" data-ide-split="standalone-main" data-split-direction="horizontal" data-sizes="18,82" data-pixel-sizes="280" data-min-size="240,520">
+              <aside class="pto-ide-frame__pane pto-ide-frame__explorer" data-ide-pane="explorer" id="explorerPane" aria-label="问题诊断">
+                <header class="pto-ide-frame__pane-header">
+                  <span class="pto-ide-frame__pane-title">问题诊断</span>
+                </header>
+                <div class="pto-ide-frame__pane-body twin-pane-scroll">
+                  <section class="twin-control-section" aria-label="诊断案例列表">
+                    <div class="twin-option-list">
+                      <div class="twin-option diagnosis-card" data-diagnosis="moe-a2a" role="button" tabindex="0">
+                        <div class="diagnosis-card-head">
+                          <span>问题一</span>
+                          <span class="diagnosis-severity is-p0">P0</span>
+                          <span class="diagnosis-category">精度</span>
+                        </div>
+                        <small><strong>MoE all-to-all 超时导致 loss NaN</strong></small>
+                        <small class="diagnosis-desc" data-tooltip="layer 30 router 将 98% token 集中路由到 expert 47,EP rank 23 all-to-all send/recv 死锁,其余 rank 空等超时">layer 30 router 将 98% token 集中路由到 expert 47,EP rank 23 all-to-all send/recv 死锁</small>
+                      </div>
+                      <div class="twin-option diagnosis-card" data-diagnosis="qproj-overflow" role="button" tabindex="0">
+                        <div class="diagnosis-card-head">
+                          <span>问题二</span>
+                          <span class="diagnosis-severity is-p1">P1</span>
+                          <span class="diagnosis-category">精度</span>
+                        </div>
+                        <small><strong>q_proj FP8 精度溢出 → grad_norm 缓慢发散</strong></small>
+                        <small class="diagnosis-desc" data-tooltip="layer 33 q_proj 输入 3.2% 元素超 FP8 E4M3 max(448),经 Linear[4608→12288] 扩张投影放大,Partial RoPE 高频分量尾部累积溢出">layer 33 q_proj 输入 3.2% 元素超 FP8 E4M3 max(448),扩张投影放大误差</small>
+                      </div>
+                      <div class="twin-option diagnosis-card" data-diagnosis="low-precision-training" role="button" tabindex="0">
+                        <div class="diagnosis-card-head">
+                          <span>问题三</span>
+                          <span class="diagnosis-severity is-p1">P1</span>
+                          <span class="diagnosis-category">精度</span>
+                        </div>
+                        <small><strong>低精训练 loss 尾部不收敛，量化误差累积导致梯度信号淹没</strong></small>
+                        <small class="diagnosis-desc" data-tooltip="FP8 E4M3 深层激活值自然长尾超限,峰度从-0.12飙至+15.3,量化SNR从42dB降至6.8dB,layer 47 为偏差起点,梯度消失">FP8 E4M3 深层激活值长尾超限,峰度+15.3,SNR降至6.8dB,layer 47 偏差起点</small>
+                      </div>
+                      <div class="twin-option diagnosis-card" data-diagnosis="nvlink" role="button" tabindex="0">
+                        <div class="diagnosis-card-head">
+                          <span>问题四</span>
+                          <span class="diagnosis-severity is-p1">P1</span>
+                          <span class="diagnosis-category">Infra</span>
+                        </div>
+                        <small><strong>HCCS 链路掉线导致 MFU 骤降</strong></small>
+                        <small class="diagnosis-desc" data-tooltip="node2 NPU 3 HCCS lane 5 inactive,CRC error 突增,HCCL 回退至 RoCE 慢路径拖慢 PP pipeline,MFU 从55%降至20%">node2 NPU 3 HCCS lane 5 inactive,CRC error 突增,HCCL 回退至 RoCE 慢路径</small>
+                      </div>
+                      <div class="twin-option diagnosis-card" data-diagnosis="perf-compute-bottleneck" role="button" tabindex="0">
+                        <div class="diagnosis-card-head">
+                          <span>问题五</span>
+                          <span class="diagnosis-severity is-p1">P1</span>
+                          <span class="diagnosis-category">性能</span>
+                        </div>
+                        <small><strong>整网耗时下钻：算子带宽瓶颈 + AICPU 回退导致步耗时超标 42%</strong></small>
+                        <small class="diagnosis-desc" data-tooltip="lm_head MatMulV2 vocab 非对齐致 cube_util 仅 49%,CE loss 手写算子链走 AICPU 回退(526ms),PP stage 7 过载 1.82×,MFU 仅 38%">lm_head MatMulV2 vocab 非对齐致 cube_util 仅 49%,AICPU 回退 526ms</small>
+                      </div>
+                      <div class="twin-option diagnosis-card" data-diagnosis="perf-comm-straggler" role="button" tabindex="0">
+                        <div class="diagnosis-card-head">
+                          <span>问题六</span>
+                          <span class="diagnosis-severity is-p1">P1</span>
+                          <span class="diagnosis-category">性能</span>
+                        </div>
+                        <small><strong>MoE all-to-all 快慢卡：步耗时周期性尖峰、尾延迟恶化</strong></small>
+                        <small class="diagnosis-desc" data-tooltip="router gate bias 漂移致 rank 17/23/41 承接 5× expert token,all-to-all 耗时暴增 32×,其余 61 rank 空等,步耗时 CV=27%">router gate bias 漂移致 rank 17/23/41 承接 5× token,all-to-all 耗时暴增 32×</small>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </aside>
+
+              <section class="pto-ide-frame__pane" data-ide-pane="main-content">
+                  <section class="pto-ide-frame__pane twin-center-pane" data-ide-pane="editor-preview" aria-label="架构与脚本解释">
+                    <header class="pto-ide-frame__pane-header twin-pane-header">
+                      <div class="twin-pane-header-title-row">
+                        <button class="btn btn-ghost btn-icon btn-sm" id="locateChainBack" type="button" hidden aria-label="返回 训练监控" title="返回 训练监控">←</button>
+                        <div>
+                          <div class="pto-ide-frame__pane-meta" id="architectureKicker" hidden></div>
+                          <div class="pto-ide-frame__pane-title" id="architectureTitle">Pangu Pro MoE 72BA16B 整网图</div>
+                          <div class="pto-ide-frame__pane-meta" id="architectureMeta"></div>
+                        </div>
+                      </div>
+                    </header>
+
+                    <div class="pto-ide-frame__pane-body twin-center-scroll">
+                      <section class="twin-graph-card" aria-label="模型架构图">
           <div class="twin-diagnosis-locator" id="diagnosisLocator" hidden>
             <strong id="diagnosisLocatorLayer">--</strong>
             <span id="diagnosisLocatorNote">--</span>
           </div>
           <div class="twin-architecture-stage">
-            <div
-              id="modelGraphStage"
-              class="twin-model-training-graphviz"
-              aria-label="Model Graphviz training architecture"
-            ></div>
+            <!-- 整网图「直接集成」pto-design-system 的 openPangu-2.0-Flash model-graphviz 组件(非 iframe):
+                 样式 css/opv-modelviz.css、逻辑 js/opv-modelviz.js、默认 schema js/opv-modelviz-schema.js、
+                 渲染引擎 model-graphviz-embed/pattern.(js|css);展开/下钻/配色/light mode/通信算子/标签避让原样保留。
+                 组件 IDs 均为其私有命名,随文件夹整体移动无影响;组件自带的主题按钮(原 opvTopThemeToggle/
+                 floatingThemeToggle)已删除,统一由页面顶栏唯一的月亮/太阳图标按钮驱动,组件通过
+                 MutationObserver 监听 documentElement[data-theme] 联动重新着色。 -->
+            <section id="opvHost" class="opv-app pto-model-graphviz-pattern-page" data-embed="1">
+              <header class="opv-topbar" style="justify-content:flex-end; border-bottom:0;">
+                <div class="opv-actions">
+                  <button class="btn btn-ghost" type="button" id="zoomOut">-</button>
+                  <button class="btn btn-ghost" type="button" id="zoomReset">Fit</button>
+                  <button class="btn btn-ghost" type="button" id="zoomIn">+</button>
+                  <span class="tsep"></span>
+                  <span class="seg-lbl">算子染色</span>
+                  <span class="seg" id="opColorSeg" title="整网算子染色方式">
+                    <button class="segbtn" data-c="off" onclick="setOpColorMode('off')" title="不染色（中性）">关</button>
+                    <button class="segbtn on" data-c="cat" onclick="setOpColorMode('cat')" title="按算子类别：归一化/线性/注意力/MoE">类别</button>
+                  </span>
+                  <span class="tsep lv-topbar-level"></span>
+                  <span class="seg-lbl lv-topbar-level">层级</span>
+                  <span class="hsel-dd lv-topbar-level" id="flatLevelDD">
+                    <button type="button" class="hsel hsel-btn" id="flatLevelBtn" onclick="toggleFlatLevelMenu(event)" title="展开层级">
+                      <span id="flatLevelLabel">L5 · Operator</span>
+                      <svg class="hsel-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="hsel-menu" id="flatLevelMenu" hidden role="listbox">
+                      <button type="button" class="hsel-item" data-v="1" onclick="pickFlatLevel('1')">L1 · Model</button>
+                      <button type="button" class="hsel-item" data-v="2" onclick="pickFlatLevel('2')">L2 · DecoderLayer</button>
+                      <button type="button" class="hsel-item" data-v="3" onclick="pickFlatLevel('3')">L3 · Attention / MoE</button>
+                      <button type="button" class="hsel-item" data-v="4" onclick="pickFlatLevel('4')">L4 · Q·K·V / Expert</button>
+                      <button type="button" class="hsel-item is-sel" data-v="5" onclick="pickFlatLevel('5')">L5 · Operator</button>
+                    </div>
+                  </span>
+                  <!-- 以下元素被 opv-modelviz.js 的初始化代码引用，不能删除，否则 JS 报错导致整网图无法加载 -->
+                  <input id="schemaFileInput" type="file" accept=".json,application/json" hidden>
+                </div>
+              </header>
+              <!-- 独立的主题切换按钮已删除,组件内部通过 MutationObserver 监听 documentElement[data-theme]
+                   跟随页面顶栏唯一的主题开关(#themeToggle,月亮/太阳图标)联动重新着色,见 opv-modelviz.js -->
+              <section class="opv-color-panel" id="colorPanel" aria-label="Light mode HSL controls" hidden>
+                <div class="opv-color-head">
+                  <div class="opv-color-title">Light HSL</div>
+                  <button class="btn btn-ghost" type="button" id="colorReset">Reset</button>
+                </div>
+                <label class="opv-color-row" for="colorHue">
+                  <span>Hue</span>
+                  <input id="colorHue" type="range" min="-180" max="180" step="1">
+                  <output id="colorHueValue" for="colorHue">2</output>
+                </label>
+                <label class="opv-color-row" for="colorSaturation">
+                  <span>Saturation</span>
+                  <input id="colorSaturation" type="range" min="30" max="88" step="1">
+                  <output id="colorSaturationValue" for="colorSaturation">79%</output>
+                </label>
+                <label class="opv-color-row" for="colorLightness">
+                  <span>Lightness</span>
+                  <input id="colorLightness" type="range" min="58" max="86" step="1">
+                  <output id="colorLightnessValue" for="colorLightness">76%</output>
+                </label>
+                <div class="opv-color-swatches" id="colorPreview" aria-hidden="true"></div>
+              </section>
+              <section class="opv-stage pto-model-architecture-stage" id="graphStage" aria-label="openPangu model architecture graph">
+                <div class="opv-node-popover" id="nodePopover" hidden></div>
+              </section>
+              <div class="opv-status" id="statusText">Loading schema.</div>
+            </section>
             <!-- 模型层「查看」按钮打开后,整网图区域覆盖展示 MoE 层展开图(见 openModelLayerView) -->
             <div id="modelLayerStage" class="twin-layer-stage" hidden></div>
           </div>
         </section>
-      </div>
-    </section>
-
-    <section class="panel-shell twin-monitor-pane" aria-label="实时数据监控">
-      <div class="panel-shell-header twin-pane-header" id="runTwinHeader">
-        <div>
-          <div class="panel-shell-title" id="runTwinTitle">训练监控</div>
-          <div class="panel-shell-meta" id="runTwinMeta"></div>
-        </div>
-      </div>
-
-      <div class="twin-locate-chain-view" id="runTwinLocateView" hidden>
-        <div class="twin-locate-chain" id="locateChainTop"></div>
-        <div id="locateChainContent"></div>
-      </div>
-
-      <div class="twin-monitor-scroll" id="runTwinDefaultView">
+                      <!-- 右侧：训练监控侧栏 -->
+                      <div class="twin-monitor-sidebar">
+                        <div id="runTwinHeader" class="twin-sidebar-title">
+                          <div class="pto-ide-frame__pane-title" id="runTwinTitle">训练监控</div>
+                          <div class="pto-ide-frame__pane-meta" id="runTwinMeta"></div>
+                        </div>
+                        <div class="twin-sidebar-body">
+                        <div class="twin-locate-chain-view" id="runTwinLocateView" hidden>
+                          <div class="twin-locate-chain" id="locateChainTop"></div>
+                          <div id="locateChainContent"></div>
+                        </div>
+                        <div id="runTwinDefaultView" style="display:flex; flex-direction:column; gap:var(--space-3);">
         <section class="twin-monitor-card twin-accuracy-card" aria-label="训练动态曲线">
           <div class="twin-card-heading">
             <div>
@@ -713,14 +1112,14 @@
           <div class="twin-card-heading">
             <div>
               <h2>infra</h2>
-              <p id="hardwareSummary">2048 × H800 · 256 节点，每格为 H800 GPU 卡槽。</p>
+              <p id="hardwareSummary">2048 × Ascend 910B · 256 节点，每格为 910B NPU 卡槽。</p>
             </div>
           </div>
           <div class="twin-infra-charts" id="infraCharts"></div>
           <div class="twin-hardware-kpis" aria-label="硬件操作摘要">
             <div><span>Avg util</span><strong id="hwUtil">--</strong></div>
             <div><span>Low util</span><strong id="hwLow">--</strong></div>
-            <div><span>Thermal risk</span><strong id="hwThermal">--</strong></div>
+            <div><span>Risk</span><strong id="hwThermal">--</strong></div>
             <div><span>Action</span><strong id="hwAction">--</strong></div>
           </div>
           <div class="twin-heat" id="heat"></div>
@@ -728,8 +1127,6 @@
             <span><i class="twin-swatch twin-swatch-util-low"></i>&lt;70% util</span>
             <span><i class="twin-swatch twin-swatch-util-mid"></i>70-92% util</span>
             <span><i class="twin-swatch twin-swatch-util-high"></i>&gt;92% util</span>
-            <span><i class="twin-swatch twin-swatch-thermal"></i>温度/异常</span>
-            <strong id="heatStat">util -- · peak -- · 异常 --</strong>
           </div>
         </section>
 
@@ -759,202 +1156,140 @@
           <div class="twin-card-heading">
             <div>
               <h2>训练信息</h2>
-              <p>DeepSeek-V3 关键参数与预训练配置。</p>
+              <p>Pangu Pro MoE 72BA16B 关键参数与预训练配置。</p>
             </div>
           </div>
 
           <p class="twin-subhead" style="margin-top:2px">关键参数 · 模型结构</p>
           <div class="twin-info-box">
-            <div class="twin-info-line"><span>层数</span><span>61<small>3 Dense + 58 MoE</small></span></div>
-            <div class="twin-info-line"><span>hidden</span><span>7168<small>FFN 18432 / expert 2048</small></span></div>
-            <div class="twin-info-line"><span>MoE</span><span>256+1<small>top-8 路由, n_group=8</small></span></div>
-            <div class="twin-info-line"><span>注意力</span><span>MLA<small>128 heads · q_lora 1536 / kv_lora 512</small></span></div>
-            <div class="twin-info-line"><span>参数量</span><span>671B<small>激活 37B / token</small></span></div>
-            <div class="twin-info-line"><span>精度</span><span>FP8<small>训练 · BF16 推理</small></span></div>
-            <div class="twin-info-line"><span>vocab</span><span>129280<small>MTP 1 层 (~14B)</small></span></div>
-            <div class="twin-info-line"><span>max seq</span><span>163840<small>128K 上下文</small></span></div>
+            <div class="twin-info-line"><span>层数</span><span>48<small>4 Dense + 44 MoE</small></span></div>
+            <div class="twin-info-line"><span>hidden</span><span>4608<small>FFN 10240 / expert 1280</small></span></div>
+            <div class="twin-info-line"><span>MoE</span><span>64+4<small>top-8 路由, MoGE 8 groups</small></span></div>
+            <div class="twin-info-line"><span>注意力</span><span>GQA<small>64 Q-heads / 4 KV-heads</small></span></div>
+            <div class="twin-info-line"><span>参数量</span><span>72B<small>激活 16.50B / token</small></span></div>
+            <div class="twin-info-line"><span>精度</span><span>BF16<small>训练 · 推理</small></span></div>
+            <div class="twin-info-line"><span>vocab</span><span>153600<small>MTP 1 层</small></span></div>
+            <div class="twin-info-line"><span>max seq</span><span>131072<small>128K 上下文</small></span></div>
           </div>
 
-          <p class="twin-subhead">集群规模 · 2048×H800</p>
+          <p class="twin-subhead">集群规模 · 2048×Ascend 910B</p>
           <div class="twin-info-box">
-            <div class="twin-info-line"><span>GPU 总数</span><span>2048<small>H800 · 256 节点×8</small></span></div>
-            <div class="twin-info-line"><span>并行策略</span><span>PP16×EP64<small>ZeRO-1 DP · 无 TP</small></span></div>
-            <div class="twin-info-line"><span>节点内</span><span>NVLink<small>NVSwitch 160 GB/s</small></span></div>
-            <div class="twin-info-line"><span>跨节点</span><span>IB 50GB/s<small>EP64 跨 8 节点</small></span></div>
+            <div class="twin-info-line"><span>NPU 总数</span><span>2048<small>910B · 256 节点×8</small></span></div>
+            <div class="twin-info-line"><span>并行策略</span><span>DP4×PP8×EP64<small>ZeRO-1 · 无 TP/CP</small></span></div>
+            <div class="twin-info-line"><span>节点内</span><span>HCCS<small>910B 全互联 392 GB/s</small></span></div>
+            <div class="twin-info-line"><span>跨节点</span><span>RoCE 100GbE<small>EP64 跨 8 节点</small></span></div>
           </div>
 
           <p class="twin-subhead">预训练超参</p>
           <div class="twin-info-box">
-            <div class="twin-info-line"><span>训练 token</span><span>14.8T<small>≈ 1 epoch 单遍</small></span></div>
+            <div class="twin-info-line"><span>训练 token</span><span>24T<small>公开数据</small></span></div>
             <div class="twin-info-line"><span>序列长度</span><span>4096<small>预训练 4K</small></span></div>
-            <div class="twin-info-line"><span>Batch</span><span>15360<small>3072 渐增至 15360</small></span></div>
+            <div class="twin-info-line"><span>Batch</span><span>12288<small>global batch</small></span></div>
             <div class="twin-info-line"><span>优化器</span><span>AdamW<small>β 0.9/0.95 · wd 0.1</small></span></div>
-            <div class="twin-info-line"><span>学习率</span><span>2.2e-4<small>2K warmup → cos 2.2e-5</small></span></div>
-            <div class="twin-info-line"><span>Grad clip</span><span>1.0<small>balance α 1e-4</small></span></div>
+            <div class="twin-info-line"><span>学习率</span><span>3e-4<small>2K warmup → cos 3e-5</small></span></div>
+            <div class="twin-info-line"><span>Grad clip</span><span>1.0</span></div>
           </div>
 
           <p class="twin-subhead">步数与 Epoch · 推算</p>
           <div class="twin-info-box">
-            <div class="twin-info-line"><span>每步 token</span><span>62.9M<small>15360×4096 稳态</small></span></div>
-            <div class="twin-info-line"><span>总步数</span><span>≈24 万<small>含前期 batch 渐增</small></span></div>
-            <div class="twin-info-line"><span>Epoch</span><span>≈1<small>14.8T 基本单遍</small></span></div>
+            <div class="twin-info-line"><span>每步 token</span><span>50.3M<small>12288×4096 稳态</small></span></div>
+            <div class="twin-info-line"><span>总步数</span><span>≈48 万<small>24T tokens</small></span></div>
+            <div class="twin-info-line"><span>Epoch</span><span>≈1<small>24T 基本单遍</small></span></div>
             <div class="twin-info-line"><span>LR 分段</span><span>3 段<small>warmup + 恒定 + cosine</small></span></div>
           </div>
         </section>
+                        </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+              </section>
+            </div>
+          </section>
+
+          <section class="pto-ide-frame__pane pto-ide-frame__bottom-dock" data-ide-pane="bottom-panel" data-ide-bottom-dock id="bottomDock">
+            <div class="pto-ide-frame__bottom-view" data-ide-bottom-panel="visualization" id="twinTimeline">
+              <header class="pto-ide-frame__pane-header">
+                <span class="pto-ide-frame__pane-title">Timeline</span>
+                <p class="twin-timeline-subtitle">NCCL trace: node2 ranks 16–23 · EP rank 23（GPU 7）all-to-all 超时 30s → layer 30 MoE expert dispatch 死锁</p>
+              </header>
+              <div class="pto-ide-frame__pane-body twin-timeline-body" id="twinTimelineBody"></div>
+            </div>
+          </section>
+        </div>
       </div>
-    </section>
     </div>
-
-    <aside class="panel-shell twin-side-pane" aria-label="问题诊断">
-      <div class="panel-shell-header twin-pane-header">
-        <div>
-          <div class="panel-shell-title">问题诊断</div>
-        </div>
-      </div>
-      <div class="twin-pane-scroll">
-        <section class="twin-control-section" aria-label="诊断案例列表">
-          <div class="twin-option-list">
-            <div class="twin-option diagnosis-card" data-diagnosis="moe-a2a" role="button" tabindex="0">
-              <div class="diagnosis-card-head">
-                <span>问题一</span>
-                <span class="diagnosis-severity is-p0">P0</span>
-                <span class="diagnosis-category">精度</span>
-              </div>
-              <small><strong>MoE all-to-all 超时导致 loss NaN</strong></small>
-              <small class="diagnosis-desc" data-tooltip="layer 38 router 将 98% token 集中路由到 expert 193,EP rank 23 all-to-all send/recv 不匹配触发死锁">layer 38 router 将 98% token 集中路由到 expert 193,EP rank 23 all-to-all send/recv 不匹配触发死锁</small>
-            </div>
-            <div class="twin-option diagnosis-card" data-diagnosis="hif8-precision" role="button" tabindex="0">
-              <div class="diagnosis-card-head">
-                <span>问题二</span>
-                <span class="diagnosis-severity is-p1">P1</span>
-                <span class="diagnosis-category">精度</span>
-              </div>
-              <small><strong>HiF8 低精度训练发散 · 精度诊断工作台</strong></small>
-              <small class="diagnosis-desc" data-tooltip="HiF8(1-3-3-1 锥形)候选格式 step 3150 首次发散,BF16/MXFP8 正常;概览→张量分布→量化误差→误差传播→根因分析全链路下钻,主嫌 blk4.mlp.down_proj 重尾超 ±448 截断">HiF8(1-3-3-1 锥形)候选格式 step 3150 首次发散,BF16/MXFP8 正常;主嫌 blk4.mlp.down_proj 重尾超 ±448 截断</small>
-            </div>
-            <div class="twin-option diagnosis-card" data-diagnosis="low-precision-training" role="button" tabindex="0">
-              <div class="diagnosis-card-head">
-                <span>问题三</span>
-                <span class="diagnosis-severity is-p1">P1</span>
-                <span class="diagnosis-category">精度</span>
-              </div>
-              <small><strong>低精训练 loss 尾部不收敛，量化误差累积导致梯度信号淹没</strong></small>
-              <small class="diagnosis-desc" data-tooltip="FP8 E4M3 深层激活值自然长尾超限,峰度从-0.12飙至+15.3,量化SNR从42dB降至6.8dB,layer 47 为偏差起点,梯度消失">FP8 E4M3 深层激活值自然长尾超限,峰度从-0.12飙至+15.3,量化SNR从42dB降至6.8dB,layer 47 为偏差起点,梯度消失</small>
-            </div>
-            <div class="twin-option diagnosis-card" data-diagnosis="nvlink" role="button" tabindex="0">
-              <div class="diagnosis-card-head">
-                <span>问题四</span>
-                <span class="diagnosis-severity is-p1">P1</span>
-                <span class="diagnosis-category">Infra</span>
-              </div>
-              <small><strong>NVLINK 链路掉线导致 MFU 骤降</strong></small>
-              <small class="diagnosis-desc" data-tooltip="node2 GPU 3 NVLINK lane 5 inactive,CRC error 突增,NCCL 回退至 IB 慢路径拖慢 PP pipeline">node2 GPU 3 NVLINK lane 5 inactive,CRC error 突增,NCCL 回退至 IB 慢路径拖慢 PP pipeline</small>
-            </div>
-            <div class="twin-option diagnosis-card" data-diagnosis="perf-compute-bottleneck" role="button" tabindex="0">
-              <div class="diagnosis-card-head">
-                <span>问题五</span>
-                <span class="diagnosis-severity is-p1">P1</span>
-                <span class="diagnosis-category">性能</span>
-              </div>
-              <small><strong>整网耗时下钻：算子带宽瓶颈 + AICPU 回退导致步耗时超标 42%</strong></small>
-              <small class="diagnosis-desc" data-tooltip="lm_head MatMulV2 vocab 非对齐致 cube_util 仅 49%,CE loss 手写算子链走 AICPU 回退(526ms),PP stage 7 过载 1.82×,MFU 仅 38%">lm_head MatMulV2 vocab 非对齐致 cube_util 仅 49%,CE loss 手写算子链走 AICPU 回退(526ms),PP stage 7 过载 1.82×,MFU 仅 38%</small>
-            </div>
-            <div class="twin-option diagnosis-card" data-diagnosis="perf-comm-straggler" role="button" tabindex="0">
-              <div class="diagnosis-card-head">
-                <span>问题六</span>
-                <span class="diagnosis-severity is-p1">P1</span>
-                <span class="diagnosis-category">性能</span>
-              </div>
-              <small><strong>MoE all-to-all 快慢卡：步耗时周期性尖峰、尾延迟恶化</strong></small>
-              <small class="diagnosis-desc" data-tooltip="router gate bias 漂移致 rank 17/23/41 承接 5× expert token,all-to-all 耗时暴增 32×,其余 61 rank 空等,步耗时 CV=27%">router gate bias 漂移致 rank 17/23/41 承接 5× expert token,all-to-all 耗时暴增 32×,其余 61 rank 空等,步耗时 CV=27%</small>
-            </div>
-            <div class="twin-option diagnosis-card" data-diagnosis="q-lora-fp8" role="button" tabindex="0">
-              <div class="diagnosis-card-head">
-                <span>问题七</span>
-                <span class="diagnosis-severity is-p1">P1</span>
-                <span class="diagnosis-category">精度</span>
-              </div>
-              <small><strong>q_lora FP8 溢出导致 grad_norm 缓慢发散</strong></small>
-              <small class="diagnosis-desc" data-tooltip="layer 42 q_lora 输入 3.2% 元素超出 FP8 E4M3 表示范围(max=448),经低秩压缩放大误差">layer 42 q_lora 输入 3.2% 元素超出 FP8 E4M3 表示范围(max=448),经低秩压缩放大误差</small>
-            </div>
-          </div>
-        </section>
-      </div>
-    </aside>
-
-    <section class="panel-shell twin-timeline-pane" id="twinTimeline" aria-label="Timeline">
-      <div class="twin-timeline-resizer" id="twinTimelineResizer" role="separator" aria-orientation="horizontal" title="拖拽调整高度"></div>
-      <div class="panel-shell-header twin-pane-header">
-        <div>
-          <div class="panel-shell-title">Timeline</div>
-          <p class="twin-timeline-subtitle">NCCL trace: node2 ranks 16–23 · EP rank 23（GPU 7）all-to-all 超时 30s → layer 38 MoE expert dispatch 死锁</p>
-        </div>
-      </div>
-      <div class="twin-timeline-body" id="twinTimelineBody"></div>
-    </section>
-  </main>
+  </section>
 
   <div id="diagnosisTooltip" class="diagnosis-bubble" hidden></div>
   <script>
-    // 底部 Timeline 面板:顶部手柄向上/向下拖拽以调整面板高度
-    (() => {
-      const panel = document.getElementById('twinTimeline');
-      const handle = document.getElementById('twinTimelineResizer');
-      if (!panel || !handle) return;
-      const MIN = 120;
-      const getMax = () => Math.max(MIN, window.innerHeight - 200);
-      let startY = 0;
-      let startH = 0;
-
-      function onMove(e) {
-        const dy = startY - e.clientY; // 向上拖动 → 增高
-        const h = Math.min(getMax(), Math.max(MIN, startH + dy));
-        panel.style.height = h + 'px';
-      }
-
-      function onUp() {
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
-        document.body.style.userSelect = '';
-      }
-
-      handle.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        startY = e.clientY;
-        startH = panel.getBoundingClientRect().height;
-        document.body.style.userSelect = 'none';
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
+    // ── 算子染色切换 ──
+    window._opColorMode = 'cat';
+    function setOpColorMode(mode) {
+      window._opColorMode = mode;
+      document.querySelectorAll('#opColorSeg .segbtn').forEach(function(b) {
+        b.classList.toggle('on', b.dataset.c === mode);
       });
-    })();
-    // 面板开关按钮：参照 ep-expert-parallel-2d.html 的 analysisToggle / inspectorToggle
+      document.dispatchEvent(new CustomEvent('opv-recolor'));
+    }
+
+    // ── 层级下拉 ──
+    function toggleFlatLevelMenu(e) {
+      e.stopPropagation();
+      var dd = document.getElementById('flatLevelDD');
+      var menu = document.getElementById('flatLevelMenu');
+      var open = !menu.hidden;
+      menu.hidden = open;
+      dd.classList.toggle('open', !open);
+      if (!open) {
+        var close = function(ev) {
+          if (!dd.contains(ev.target)) { menu.hidden = true; dd.classList.remove('open'); document.removeEventListener('click', close); }
+        };
+        setTimeout(function() { document.addEventListener('click', close); }, 0);
+      }
+    }
+
+    function pickFlatLevel(level) {
+      var menu = document.getElementById('flatLevelMenu');
+      var label = document.getElementById('flatLevelLabel');
+      menu.querySelectorAll('.hsel-item').forEach(function(item) {
+        item.classList.toggle('is-sel', item.dataset.v === level);
+      });
+      var names = { '1': 'L1 · Model', '2': 'L2 · DecoderLayer', '3': 'L3 · Attention / MoE', '4': 'L4 · Q·K·V / Expert', '5': 'L5 · Operator' };
+      label.textContent = names[level] || ('L' + level);
+      menu.hidden = true;
+      document.getElementById('flatLevelDD').classList.remove('open');
+      document.dispatchEvent(new CustomEvent('opv-set-level', { detail: { level: parseInt(level) } }));
+    }
+  </script>
+  <script>
+    // 底部 Timeline dock 开关:问题诊断(explorer)的展开/收起交给 ide-frame-pattern.js 内建的
+    // data-ide-toggle="explorer" 逻辑处理;这里只补 ide-frame 没有内建的「无 terminal 时的
+    // 纯 visualization dock 开关」——ide-frame 的 initBottomTerminalToggle 只在存在
+    // data-ide-toggle="terminal" 时才接管 visualization 按钮,本页没有 terminal 面板。
     (() => {
-      const sidebar = document.querySelector('.twin-side-pane');
-      const timeline = document.getElementById('twinTimeline');
-      const sidebarBtn = document.getElementById('twinSidebarToggle');
-      const timelineBtn = document.getElementById('twinTimelineToggle');
-      if (!sidebar || !timeline || !sidebarBtn || !timelineBtn) return;
+      const dock = document.getElementById('bottomDock');
+      const btn = document.getElementById('twinTimelineToggle');
+      if (!dock || !btn) return;
 
-      const updateSidebar = (on) => {
-        sidebar.hidden = !on;
-        sidebarBtn.classList.toggle('is-active', on);
-        sidebarBtn.setAttribute('aria-pressed', String(on));
-        sidebarBtn.title = on ? '隐藏问题诊断侧栏' : '显示问题诊断侧栏';
-        // 收起侧栏时左侧内容区自适应撑开
-        const shell = document.querySelector('.twin-shell');
-        if (shell) {
-          shell.style.gridTemplateColumns = on ? '' : 'minmax(0, 1fr)';
-        }
-      };
-      const updateTimeline = (on) => {
-        timeline.hidden = !on;
-        timelineBtn.classList.toggle('is-active', on);
-        timelineBtn.setAttribute('aria-pressed', String(on));
-        timelineBtn.title = on ? '隐藏 Timeline 面板' : '显示 Timeline 面板';
-      };
+      function gutterFor(pane) {
+        const prev = pane.previousElementSibling;
+        return prev && prev.matches('.pto-workbench-shell__split-gutter') ? prev : null;
+      }
 
-      sidebarBtn.addEventListener('click', () => updateSidebar(sidebar.hidden));
-      timelineBtn.addEventListener('click', () => updateTimeline(timeline.hidden));
+      function setVisible(show) {
+        dock.hidden = !show;
+        dock.setAttribute('aria-hidden', String(!show));
+        const gutter = gutterFor(dock);
+        if (gutter) gutter.hidden = !show;
+        btn.classList.toggle('is-selected', show);
+        btn.setAttribute('aria-pressed', String(show));
+        btn.setAttribute('aria-expanded', String(show));
+        btn.title = show ? '隐藏 Timeline 面板' : '显示 Timeline 面板';
+      }
+
+      btn.addEventListener('click', () => setVisible(dock.hidden));
+      window.PtoTrainingTwinTimelineDock = { setVisible };
     })();
   </script>
   <script>
@@ -991,8 +1326,16 @@
       });
     })();
   </script>
-  <script src="./js/model-graphviz-pattern.js"></script>
-  <script src="./js/model-training-graphviz-pattern.js"></script>
+  <!-- 整网图组件:新版 model-graphviz 渲染引擎 + openPangu 默认 schema + 组件逻辑(集成,非 iframe)。
+       引擎须先于组件逻辑加载;组件逻辑在 DOM 就绪后立即渲染到 #graphStage。
+       原 model-graphviz-pattern.js / model-training-graphviz-pattern.js(旧训练图引擎)已移除:
+       左侧不再渲染旧训练整网图,training-run-twin.js 的 renderArchitecture 因 PtoModelTrainingGraphvizPattern 缺失而安全空转。 -->
+  <!-- IDE frame shell init: workbench-shell (resize kernel) must load before ide-frame (split/explorer/dock wiring) -->
+  <script src="./js/workbench-shell-pattern.js"></script>
+  <script src="./js/ide-frame-pattern.js"></script>
+  <script src="./model-graphviz-embed/pattern.js"></script>
+  <script src="./js/opv-modelviz-schema.js"></script>
+  <script src="./js/opv-modelviz.js"></script>
   <script src="./js/training-metrics-chart.js"></script>
   <script src="./js/swimlane-task.js"></script>
   <script src="./js/timeline-swimlane.js"></script>

@@ -505,6 +505,20 @@
 
     paint();
 
+    // 首次渲染自动把纵向滚动定位到「首个问题」(异常 rank 所在行) 露出:该行默认在可视区域之外
+    // (面板高度只够显示前几个 rank),不然用户以为面板没有滚动条 / 看不到问题。只在首次渲染时
+    // 定位一次,不跟随后续 paint() (主题切换/resize) 反复重置,避免打断用户手动滚动的位置。
+    const anomalyRowIndex = RT.ranks.findIndex((r) => r.rank === ANOMALY_RANK);
+    if (anomalyRowIndex >= 0) {
+      const rowH = COMM_SPLIT ? ROW_H * 2 : ROW_H;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const rowTop = anomalyRowIndex * rowH;
+        const viewportH = scrollEl.clientHeight || 0;
+        // 异常行落在可视区域上方约 1/3 处,而不是贴边,便于看清上下文
+        scrollEl.scrollTop = Math.max(0, rowTop - viewportH / 3);
+      }));
+    }
+
     // 主题切换 / 尺寸变化时重绘（画布颜色是烘焙进去的，必须重画）
     const themeObs = new MutationObserver(() => paint());
     themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
