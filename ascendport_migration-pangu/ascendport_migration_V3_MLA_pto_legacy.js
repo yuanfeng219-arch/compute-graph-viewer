@@ -767,6 +767,7 @@ const ANALYSIS_LABELS={
   api:'API可视化',
   generated:'生成代码',
   flow:'数据流',
+  plan:'算子规划',
   tiling:'分块',
   pipeline:'流水',
   accuracy:'精度',
@@ -1166,7 +1167,7 @@ function activatePanelTab(p){
   document.getElementById('probs').style.display=p==='probs'?'block':'none';
 }
 
-/* ============================ S7 精度报告 ============================ */
+/* ============================ S6 精度报告 ============================ */
 // 逐算子对齐 CUDA 黄金基准。fixed 表示已应用修复后的复测结果。
 let accFixed=false;
 const ACC_OPS=[
@@ -1254,7 +1255,7 @@ function openAccPanel(){
   renderAccReport();
 }
 
-/* ============================ S8 性能报告 ============================ */
+/* ============================ S7 性能报告 ============================ */
 // 泳道图:每条泳道一个硬件单元,cell 为 {s起, w宽, cls, l标签}。时间以格为单位。
 // 直译版:串行,单元间大量空转。
 function perfSwimBefore(){
@@ -1329,7 +1330,7 @@ function renderPerfReport(play){
 
     <div class="perf-sec-h">调优发现与建议</div>
     <div class="perf-tune">
-      <div class="pt-item"><span class="ic" style="color:var(--ok)">✓</span><div><b>双缓冲重叠</b> <span class="pv">已消除搬运气泡,流水气泡 21%→4%(见 S6)。</span></div></div>
+      <div class="pt-item"><span class="ic" style="color:var(--ok)">✓</span><div><b>双缓冲重叠</b> <span class="pv">已消除搬运气泡,流水气泡 21%→4%(见 S5)。</span></div></div>
       <div class="pt-item"><span class="ic" style="color:var(--ok)">✓</span><div><b>矩阵单元满流水</b> <span class="pv">Mmad 连续无断流,矩阵单元占用 76%。</span></div></div>
       <div class="pt-item"><span class="ic" style="color:var(--warn)">◐</span><div><b>向量单元仍有空隙</b> <span class="pv">在线 Softmax 归约与矩阵单元存在轻微串行,可进一步用统一缓冲双缓冲重叠(潜在 +6%)。</span></div></div>
       <div class="pt-item"><span class="ic" style="color:var(--warn)">◐</span><div><b>末块尾效应</b> <span class="pv">末块无预取对象,建议按分块长度对齐序列长度以摊薄尾延迟。</span></div></div>
@@ -1713,6 +1714,261 @@ function openPipe(){
   renderPipeViz(false);
 }
 function closePipe(){ if(currentAnalysisView()==='pipeline') closeAnalysisView();else document.getElementById('split').classList.remove('pipe-open'); }
+
+/* ============================ S5 算子规划视图（变量控制 · Tiling 可视化 · Pipeline） ============================ */
+// 合并原 S5「自动分块」+ S6「流水线编排」。内容取自 Operator Plan 工作面的三个区域，适配 MLA Decode。
+const PLAN_SOC={ '910C':{name:'910C',cores:24,ub:'256KB',align:32}, '910B':{name:'910B',cores:20,ub:'192KB',align:32}, '310P':{name:'310P',cores:8,ub:'128KB',align:32} };
+// KV 分块方案（与左卡 A/B/C 决策同源，state.choices['S5']）
+const PLAN_SCHEMES={
+  A:{blockN:128, buffer:1, ubPct:61,  cyc:'1.00×', l0c:'富余',        tone:'warn', tag:'基线',  desc:'分块 128 · 单缓冲'},
+  B:{blockN:256, buffer:2, ubPct:88,  cyc:'0.72×', l0c:'恰好容纳',    tone:'ok',   tag:'推荐',  desc:'分块 256 · 双缓冲'},
+  C:{blockN:512, buffer:2, ubPct:103, cyc:'0.95×', l0c:'超容量·回退', tone:'risk', tag:'溢出',  desc:'分块 512 · 双缓冲'},
+};
+const PLAN_KVSEQ=4000;   // KV 上下文长度（decode），故意非整除以显示核内末块
+const PLAN_WORK=40;      // batch × qHeads，映射到核间
+const planState={ soc:'910C', dtype:'half', tailPolicy:'branch', bufferOverride:null, pipeline:'db', coreTab:'former', selCore:0, selLine:10 };
+function planFmt(n){ return n.toLocaleString('en-US'); }
+function planScheme(){ return PLAN_SCHEMES[state.choices['S5']||'B']; }
+function planModel(){
+  const scheme=planScheme(), soc=PLAN_SOC[planState.soc];
+  const buffer=planState.bufferOverride!=null?planState.bufferOverride:scheme.buffer;
+  const loopCount=Math.ceil(PLAN_KVSEQ/scheme.blockN);
+  const lastValid=PLAN_KVSEQ-(loopCount-1)*scheme.blockN;
+  const partial=lastValid!==scheme.blockN;
+  const base=Math.floor(PLAN_WORK/soc.cores), rem=PLAN_WORK%soc.cores;
+  const activeCores = base>0 ? soc.cores : rem;
+  const overlap = planState.pipeline!=='serial' && buffer===2;
+  return {scheme, soc, buffer, loopCount, lastValid, partial, base, rem, activeCores, overlap};
+}
+// ---- 变量控制 ----
+function planSeg(seg,label,opts,active,hint){
+  const btns=opts.map(o=>`<button type="button" data-plan-set="${seg}" data-val="${o.v}" class="${o.v===active?'on':''}">${o.t}</button>`).join('');
+  return `<div class="pv-field"><label>${label}</label><div class="pv-seg">${btns}</div>${hint?`<div class="pv-hint">${hint}</div>`:''}</div>`;
+}
+function renderPlanControls(m){
+  const cur=state.choices['S5']||'B';
+  const schemes=Object.entries(PLAN_SCHEMES).map(([k,s])=>{
+    const badge = s.tag==='推荐'?`<span class="rec">推荐</span>`:(s.tone==='risk'?`<span class="warn">溢出</span>`:'');
+    return `<button type="button" class="pv-scheme ${k===cur?'on':''}" data-plan-scheme="${k}">
+      <b>${k} · ${s.desc} ${badge}</b><span>UB ${s.ubPct}% · L0C ${s.l0c} · 周期 ${s.cyc}</span></button>`;
+  }).join('');
+  return `<div class="pv-block pv-ctrl">
+    <div class="pv-h"><h4>变量控制</h4><span>hardware · tiling</span></div>
+    <div class="pv-body">
+      <div class="pv-group"><p class="pv-gt">目标硬件</p>
+        ${planSeg('soc','SOC',Object.keys(PLAN_SOC).map(k=>({v:k,t:k})),planState.soc,`决定核数上限 ${m.soc.cores} · UB ${m.soc.ub} · 对齐 ${m.soc.align}B`)}
+        ${planSeg('dtype','dtype',[{v:'half',t:'half'},{v:'bf16',t:'bf16'},{v:'float',t:'float'}],planState.dtype,'影响元素字节数与对齐单元对应的元素数')}
+      </div>
+      <div class="pv-group"><p class="pv-gt">Tiling 可调项</p>
+        <div class="pv-field"><label>KV 分块方案</label><div class="pv-schemes">${schemes}</div></div>
+        ${planSeg('buffer','BUFFER_NUM',[{v:1,t:'1 · 单缓冲'},{v:2,t:'2 · 双缓冲'}],m.buffer,m.buffer===2?'双缓冲让 KV 搬运与计算重叠':'单缓冲：搬运与计算串行')}
+        ${planSeg('tailPolicy','核内尾块策略',[{v:'branch',t:'Branch'},{v:'pad',t:'Pad'}],planState.tailPolicy,planState.tailPolicy==='branch'?'末块走分支 + Mask，避免读越界':'末块 Pad 到对齐长度，多算被丢弃')}
+      </div>
+    </div>
+  </div>`;
+}
+// ---- Tiling 可视化（核间 / 核内） ----
+function renderPlanViz(m){
+  // 核间
+  let cores='';
+  for(let i=0;i<m.soc.cores;i++){
+    const active=i<m.activeCores;
+    let cls='idle', load=0;
+    if(active){
+      const heavy = m.rem===0 || i<m.rem;
+      load = m.base + (i<m.rem?1:0);
+      cls = heavy ? 'former' : 'tail';
+    }
+    const sel = i===planState.selCore ? ' sel':'';
+    cores+=`<button type="button" class="pv-core ${cls}${sel}" data-plan-core="${i}" ${active?'':'disabled'} title="core ${i} · ${active?load+' 个工作项':'空闲'}">${active?load:''}</button>`;
+  }
+  const heavyCores = m.rem===0 ? m.activeCores : m.rem;
+  // 核内分块（KV 分块）
+  const cap=16; const tiles=[]; const total=m.loopCount;
+  const push=(i)=>{
+    const partial = i===total-1 && m.partial;
+    const valid = partial ? m.lastValid : m.scheme.blockN;
+    const slot = m.buffer===2 ? `slot${i%2}` : 'slot0';
+    tiles.push(`<span class="pv-tile ${partial?'partial':''}" title="KV 分块 ${i} · 有效 ${valid} / 对齐 ${m.scheme.blockN}${partial?(planState.tailPolicy==='branch'?' · Branch/Mask':' · Pad'):''}">
+      <b>${valid}</b>${partial?`<small>/${m.scheme.blockN}</small>`:''}<span class="slot">${slot}</span></span>`);
+  };
+  if(total<=cap){ for(let i=0;i<total;i++) push(i); }
+  else { for(let i=0;i<cap-2;i++) push(i); tiles.push(`<span class="pv-tile" style="opacity:.6" title="省略 ${total-cap+1} 块">…<small>+${total-cap+1}</small></span>`); push(total-1); }
+  const tailNote = m.partial ? `<div class="pv-tailnote">核内末块：有效 ${m.lastValid} / 对齐 ${m.scheme.blockN} · ${planState.tailPolicy==='branch'?'Branch / Mask':'Pad'}</div>` : '';
+  return `<div class="pv-block pv-viz">
+    <div class="pv-h"><h4>Tiling 可视化</h4><span>核间分核 · 核内分块</span>
+      <span class="pv-badge" style="color:var(--${m.scheme.tone==='ok'?'ok':m.scheme.tone==='risk'?'risk':'warn'});background:color-mix(in srgb, var(--${m.scheme.tone==='ok'?'ok':m.scheme.tone==='risk'?'risk':'warn'}) 15%, transparent)">UB ${m.scheme.ubPct}%</span></div>
+    <div class="pv-body">
+      <div class="pv-vizsec">
+        <div class="pv-vh"><strong>核间</strong><span>${m.activeCores} / ${m.soc.cores} 核激活 · ${heavyCores} 满载 / ${m.activeCores-heavyCores} 尾核</span></div>
+        <div class="pv-coremap">${cores}</div>
+      </div>
+      <div class="pv-vizsec">
+        <div class="pv-vh"><strong>核内</strong><span>KV ${planFmt(PLAN_KVSEQ)} → ${m.loopCount} 分块 × ${m.buffer} 缓冲</span></div>
+        <div class="pv-tilemap">${tiles.join('')}</div>
+        ${tailNote}
+      </div>
+    </div>
+  </div>`;
+}
+// ---- Pipeline（伪代码驱动泳道 + Inspector） ----
+const PLAN_PIPE={
+  serial:{name:'串行基线', lines:[
+    ['for (n = 0; n &lt; loopCount; n++) {','steady'],
+    ['  CopyIn KV(n);','MTE2'],
+    ['  S = Mmad(Q, Kᵀ[n]);','Cube'],
+    ['  P = SoftmaxOnline(S);','Vector'],
+    ['  O += Mmad(P, V[n]);','Cube'],
+    ['  CopyOut(partial);','MTE3'],
+    ['}','drain'],
+    ['Normalize(O);','post'],
+  ]},
+  db:{name:'双缓冲循环', lines:[
+    ['// prologue: 预取前两个 KV 分块','phase'],
+    ['CopyIn KV(0);','slot0'],
+    ['CopyIn KV(1);','slot1'],
+    ['for (n = 0; n &lt; loopCount; n++) {','steady'],
+    ['  S = Mmad(Q, Kᵀ[n]);','Cube'],
+    ['  P = SoftmaxOnline(S);','Vector'],
+    ['  O += Mmad(P, V[n]);','Cube'],
+    ['  if (n &gt; 0) CopyOut(O[n-1]);','MTE3'],
+    ['  next = n + BUFFER_NUM;','index'],
+    ['  if (next &lt; loopCount) CopyIn KV(next);','prefetch'],
+    ['}','drain'],
+    ['CopyOut(O[last]); Normalize(O);','post'],
+  ]},
+  cv:{name:'Cube+Vector 交接', lines:[
+    ['// prologue: 预取 KV 分块','phase'],
+    ['CopyIn KV(0); CopyIn KV(1);','MTE2'],
+    ['for (n = 0; n &lt; loopCount; n++) {','steady'],
+    ['  S = Mmad(Q, Kᵀ[n]);            // L0C','Cube'],
+    ['  CopyGM(S);  // L0C→GM→UB 中转','transit'],
+    ['  P = SoftmaxOnline(S);          // UB','Vector'],
+    ['  O += Mmad(P, V[n]);','Cube'],
+    ['  if (next &lt; loopCount) CopyIn KV(next);','prefetch'],
+    ['}','drain'],
+  ]},
+};
+// 泳道时序（3 个分块 t0/t1/t2）：x/w 为百分比。串行无重叠、双缓冲压缩重叠。
+const PLAN_LANES={
+  serial:[
+    ['MTE2 / CopyIn', [['t0',2,8],['t1',34,8],['t2',66,8]]],
+    ['Cube / Mmad',   [['t0',11,9],['t1',43,9],['t2',75,9]]],
+    ['Vector / Softmax',[['t0',21,7],['t1',53,7],['t2',85,7]]],
+    ['MTE3 / CopyOut', [['t0',29,4],['t1',61,4],['t2',93,4]]],
+    ['FLOWCTRL',       [['wait',30,3],['wait',62,3]]],
+  ],
+  db:[
+    ['MTE2 / CopyIn', [['t0',2,8],['t1',11,8],['t2',30,8]]],
+    ['Cube / Mmad',   [['t0',18,11],['t1',38,11],['t2',56,11]]],
+    ['Vector / Softmax',[['t0',28,9],['t1',48,9],['t2',66,9]]],
+    ['MTE3 / CopyOut', [['t0',37,6],['t1',56,6],['t2',74,6]]],
+    ['FLOWCTRL',       [['wait',64,2]]],
+  ],
+  cv:[
+    ['MTE2 / CopyIn', [['t0',2,8],['t1',11,8],['t2',32,8]]],
+    ['Cube / Mmad',   [['t0',18,10],['t1',40,10],['t2',60,10]]],
+    ['Vector / Softmax',[['t0',31,9],['t1',53,9],['t2',73,9]]],
+    ['MTE3 / CopyOut', [['t0',42,6],['t1',64,6],['t2',84,6]]],
+    ['FLOWCTRL',       [['wait',28,3],['wait',50,3],['wait',70,3]]],
+  ],
+};
+const PLAN_TILECOL={t0:'var(--mem)', t1:'var(--cube)', t2:'var(--vec)'};
+// 选中伪代码行的解释（按 tag 归类，配合当前 preset）
+function planInspector(tag){
+  const M={
+    prefetch:{sel:'CopyIn KV(next)', dep:'BUFFER_NUM=2', queue:'inQueue slot(n%2)', mem:'UB 输入 slot', risk:'预取未被计算隐藏',
+      note:'double buffer 是否真正 overlap 的关键行：若 slot 未释放或 UB 接近上限，prefetch 会从隐藏延迟变成阻塞源。'},
+    Cube:{sel:'Mmad(Q, Kᵀ / P, V)', dep:'L0A / L0B → L0C', queue:'L0C 累加区', mem:'FP32 累加', risk:'L0C 无直连 UB',
+      note:'矩阵单元计算落 L0C。910C 的 L0C 不能直连 UB，打分须经 L0C→GM→UB 中转再交向量单元。'},
+    Vector:{sel:'SoftmaxOnline(S)', dep:'ReduceMax/Exp/ReduceSum', queue:'UB 打分区', mem:'acc_o / l_i FP32', risk:'rescale 次序影响精度',
+      note:'在线 Softmax 由向量单元片上归约，保持 acc_o/l_i 的 FP32 累加以稳住 rescale 次序（见 S6 精度对齐）。'},
+    transit:{sel:'CopyGM(S)  L0C→GM→UB', dep:'GM workspace', queue:'ubQK', mem:'GM 中转', risk:'中转带宽',
+      note:'Cube 与 Vector 物理分离、L0C 无直连 UB，打分结果须经 GM 中转，这是 910C 上 Cube+Vector 交接的固有代价。'},
+    MTE3:{sel:'CopyOut(O[n-1])', dep:'outQueue', queue:'outQueue slot', mem:'UB→GM', risk:'output queue 反压',
+      note:'写回单元。观察 CopyOut 是否反向阻塞 output queue，形成 back pressure。'},
+    MTE2:{sel:'CopyIn KV(n)', dep:'GM→L1', queue:'inQueue', mem:'UB 输入 slot', risk:'搬运未隐藏',
+      note:'KV 分块载入。串行模式下搬运与计算无法重叠，是主要空转来源。'},
+  };
+  return M[tag] || {sel:'—', dep:'—', queue:'—', mem:'—', risk:'—', note:'点击伪代码行查看该阶段在流水中的角色、依赖与风险。'};
+}
+function renderPlanPipe(m){
+  const preset=PLAN_PIPE[planState.pipeline];
+  const presets=Object.entries(PLAN_PIPE).map(([k,p])=>`<button type="button" data-plan-pipe="${k}" class="${k===planState.pipeline?'on':''}">${p.name}</button>`).join('');
+  const nLines=preset.lines.length;
+  if(planState.selLine>=nLines) planState.selLine=nLines-1;
+  const code=preset.lines.map(([txt,tag],i)=>`<div class="pv-cline ${i===planState.selLine?'on':''}" data-plan-line="${i}"><span class="pv-cnum">${String(i+1).padStart(2,'0')}</span><span>${txt}</span><span class="pv-ctag">${tag}</span></div>`).join('');
+  const lanes=(m.overlap?(planState.pipeline==='cv'?PLAN_LANES.cv:PLAN_LANES.db):PLAN_LANES.serial);
+  const swim=lanes.map(([label,stages])=>{
+    const blocks=stages.map(([cls,x,w])=>{
+      if(cls==='wait') return `<span class="pv-stage wait" style="left:${x}%;width:${w}%">·</span>`;
+      return `<span class="pv-stage" style="left:${x}%;width:${w}%;background:${PLAN_TILECOL[cls]}">${cls}</span>`;
+    }).join('');
+    return `<div class="pv-lane-l">${label}</div><div class="pv-lane">${blocks}</div>`;
+  }).join('');
+  const tag=preset.lines[planState.selLine]?.[1]||'';
+  const ins=planInspector(tag);
+  const overlapNote = m.overlap ? '双缓冲已形成搬运/计算重叠，流水气泡 21%→4%。' : '串行搬运-计算，无重叠，存在明显空转。';
+  return `<div class="pv-block pv-pipe">
+    <div class="pv-h"><h4>Pipeline</h4><span>伪代码驱动泳道</span>
+      <span class="pv-badge" style="color:var(--${m.overlap?'ok':'warn'});background:color-mix(in srgb, var(--${m.overlap?'ok':'warn'}) 15%, transparent)">${m.overlap?'重叠':'串行'} · ${m.scheme.cyc}</span></div>
+    <div class="pv-pipebody">
+      <div class="pv-field"><label>Pipeline 方案</label><div class="pv-seg">${presets}</div></div>
+      <div class="pv-code">${code}</div>
+      <div class="pv-swim">
+        <div class="pv-swim-legend">
+          <span><i style="background:${PLAN_TILECOL.t0}"></i>t0</span>
+          <span><i style="background:${PLAN_TILECOL.t1}"></i>t1</span>
+          <span><i style="background:${PLAN_TILECOL.t2}"></i>t2</span>
+          <span><i style="background:var(--risk)"></i>wait</span>
+          <span style="margin-left:auto">${overlapNote}</span>
+        </div>
+        ${swim}
+      </div>
+      <div class="pv-insp">
+        <div class="soft">${ins.note}</div>
+        <div class="pv-insp-rows">
+          <div class="pv-insp-row"><span>selected</span><b>${ins.sel}</b></div>
+          <div class="pv-insp-row"><span>depends</span><b>${ins.dep}</b></div>
+          <div class="pv-insp-row"><span>queue/slot</span><b>${ins.queue}</b></div>
+          <div class="pv-insp-row"><span>memory</span><b>${ins.mem}</b></div>
+          <div class="pv-insp-row"><span>risk</span><b>${ins.risk}</b></div>
+          <div class="pv-insp-row"><span>tail policy</span><b>${planState.tailPolicy==='branch'?'Branch/Mask':'Pad'}</b></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function renderPlanView(){
+  const pane=document.getElementById('planpane'); if(!pane) return;
+  const m=planModel();
+  pane.innerHTML=`<div class="pv">${renderPlanControls(m)}${renderPlanViz(m)}${renderPlanPipe(m)}</div>`;
+  // 变量控制交互
+  pane.querySelectorAll('[data-plan-set]').forEach(b=>b.onclick=()=>{
+    const seg=b.dataset.planSet, val=b.dataset.val;
+    if(seg==='buffer') planState.bufferOverride=Number(val);
+    else planState[seg]=val;
+    renderPlanView();
+  });
+  pane.querySelectorAll('[data-plan-scheme]').forEach(b=>b.onclick=()=>{
+    state.choices['S5']=b.dataset.planScheme;
+    planState.bufferOverride=null;           // 跟随新方案的缓冲
+    if(planState.selCore>=planModel().soc.cores) planState.selCore=0;
+    renderPlanView(); renderWizard();          // 同步左卡决策
+  });
+  pane.querySelectorAll('[data-plan-core]').forEach(b=>b.onclick=()=>{ if(b.disabled) return; planState.selCore=Number(b.dataset.planCore); renderPlanView(); });
+  pane.querySelectorAll('[data-plan-pipe]').forEach(b=>b.onclick=()=>{ planState.pipeline=b.dataset.planPipe; planState.selLine=Math.min(planState.selLine, PLAN_PIPE[b.dataset.planPipe].lines.length-1); renderPlanView(); });
+  pane.querySelectorAll('[data-plan-line]').forEach(b=>b.onclick=()=>{ planState.selLine=Number(b.dataset.planLine); renderPlanView(); });
+}
+function openPlanView(){
+  closeGraph(); closeCompare(); closeTiling(); closePipe();
+  activeTab='s6'; renderCode('s6'); renderTabs(); renderTree();
+  const h=document.getElementById('leftPaneH'); if(h) h.style.display='none';
+  const f=document.getElementById('etbFile'); if(f) f.textContent='flash_mla_decode.cpp';
+  unlockAnalysisView('plan');
+  setAnalysisView('plan');
+  renderPlanView();
+}
 function renderPipeViz(play){
   const ser=buildSerial(), pip=buildPipe();
   const serBubbles=ser.rows.cube.filter(c=>c.cls==='bub').length;
@@ -1805,7 +2061,7 @@ function selectNode(id){
   const label={mem:'片上搬运',cube:'矩阵单元',vector:'向量单元',scalar:'标量单元',risk:'仅源端支持 · 无直接适配'}[u];
   const col=unitColor(u);
   let note=n.d;
-  if(graphMapped&&n.unit==='risk') note='【已在 S2 改写】'+n.d.replace(/S2 决策.*$/,'现映射为分核 + 向量单元片上归约,见 S6 的在线 Softmax 规约实现。');
+  if(graphMapped&&n.unit==='risk') note='【已在 S2 改写】'+n.d.replace(/S2 决策.*$/,'现映射为分核 + 向量单元片上归约,见 S5 的在线 Softmax 规约实现。');
   document.getElementById('gdetail').innerHTML=
     `<span class="badge" style="background:${col}22;color:${col};border:1px solid ${col}66">${label}</span>`+
     `<b>${n.t}</b> · <code style="font-family:var(--mono);font-size:13px">${n.s}</code><br>`+
@@ -1839,7 +2095,7 @@ const OPMAP=[
 const FEAS_AXES=[
   {label:'计算密度', s1:82, v:92, s:88, tip:'Q·Kᵀ / P·V GEMM 直接落 Cube 矩阵单元'},
   {label:'API 覆盖', s1:70, v:90, s:78, tip:'DataCopy / Mmad / Reduce* 均有昇腾对应算子'},
-  {label:'精度对齐', s1:58, v:60, s:56, tip:'FP16 + FP32 累加;在线 Softmax rescale 次序待 S7 校验'},
+  {label:'精度对齐', s1:58, v:60, s:56, tip:'FP16 + FP32 累加;在线 Softmax rescale 次序待 S6 校验'},
   {label:'性能收益', s1:60, v:88, s:34, tip:'向量单元片上归约吞吐最高;标量模拟严重浪费算力'},
   {label:'并行模型', s1:28, v:82, s:44, tip:'SIMT 网格 + warp 级 MMA 无对应 → 分核 SPMD 重写'},
   {label:'内存层次', s1:52, v:66, s:60, tip:'GPU 共享内存 → L1 / L0 / UB;L0C 无直连 UB 需中转'},
@@ -2016,7 +2272,7 @@ const API_DATACOPY={nm:'DataCopy',ns:'AscendC',since:'CANN 8.0.RC1',
     {n:'src',t:'GlobalTensor&lt;T&gt;',d:'源全局张量（GM）'},
     {n:'calCount',t:'uint32_t',d:'搬运元素个数，起止地址需 <code>32B</code> 对齐'},
   ],
-  notes:['搬运方向由张量的 <code>TPosition</code> 决定：GM ↔ L1 ↔ L0 ↔ UB。','大块搬运建议配合 <code>TQue</code> 深度 2 双缓冲，让搬运与计算重叠（见 S6）。'],
+  notes:['搬运方向由张量的 <code>TPosition</code> 决定：GM ↔ L1 ↔ L0 ↔ UB。','大块搬运建议配合 <code>TQue</code> 深度 2 双缓冲，让搬运与计算重叠（见 S5）。'],
   ex:'DataCopy(qLocal, qGm[bOffset], BLOCK_M * headDim);'};
 const API_MMAD={nm:'Mmad',ns:'AscendC',since:'CANN 8.0.RC1',
   brief:'矩阵单元（Cube）GEMM 指令：dst = a · b，FP16 输入、FP32 片上累加，结果落 L0C。',
@@ -2051,14 +2307,14 @@ const API_REDUCEMAX={nm:'ReduceMax',ns:'AscendC',since:'CANN 8.0.RC1',
   ],
   notes:['与 <code>ReduceSum</code> 一起构成在线 Softmax 的 running max / sum 更新。']};
 const API_EXP={nm:'Exp',ns:'AscendC',since:'CANN 8.0.RC1',
-  brief:'向量单元逐元素自然指数。昇腾用自然底 Exp，须去掉源端 <code>exp2</code> 的 <code>log2(e)</code> 预乘（否则 S7 精度异常）。',
+  brief:'向量单元逐元素自然指数。昇腾用自然底 Exp，须去掉源端 <code>exp2</code> 的 <code>log2(e)</code> 预乘（否则 S6 精度异常）。',
   sig:'template &lt;typename T&gt;\nvoid Exp(const LocalTensor&lt;T&gt;&amp; dst,\n         const LocalTensor&lt;T&gt;&amp; src,\n         const uint32_t count);',
   params:[
     {n:'dst',t:'LocalTensor&lt;T&gt;',d:'输出 exp 值'},
     {n:'src',t:'LocalTensor&lt;T&gt;',d:'输入 = (score - m_i) · softmaxScale'},
     {n:'count',t:'uint32_t',d:'元素个数'},
   ],
-  notes:['源端 <code>tl.exp2(x·log2e)</code> → 昇腾 <code>Exp((x - m)·scale)</code>，底数改写须一致（见 S7 精度对齐）。'],
+  notes:['源端 <code>tl.exp2(x·log2e)</code> → 昇腾 <code>Exp((x - m)·scale)</code>，底数改写须一致（见 S6 精度对齐）。'],
   ex:'Exp(p, (qk - mNew) * softmaxScale, sTile);'};
 const API_REDUCESUM={nm:'ReduceSum',ns:'AscendC',since:'CANN 8.0.RC1',
   brief:'向量单元树形归约求每行和，得到在线 Softmax 的归一化分母 l_i（建议 FP32 累加）。',
@@ -2068,7 +2324,7 @@ const API_REDUCESUM={nm:'ReduceSum',ns:'AscendC',since:'CANN 8.0.RC1',
     {n:'src',t:'LocalTensor&lt;T&gt;',d:'exp 后的概率张量'},
     {n:'work',t:'LocalTensor&lt;T&gt;',d:'归约中间缓冲'},
   ],
-  notes:['跨 KV 分块在线合并时以 <code>float</code> 累加，避免 FP16 舍入放大（见 S7）。']};
+  notes:['跨 KV 分块在线合并时以 <code>float</code> 累加，避免 FP16 舍入放大（见 S6）。']};
 const API_DIV={nm:'Div',ns:'AscendC',since:'CANN 8.0.RC1',
   brief:'向量单元逐元素除法，用于末尾归一化 acc_o /= l_i。',
   sig:'template &lt;typename T&gt;\nvoid Div(const LocalTensor&lt;T&gt;&amp; dst,\n         const LocalTensor&lt;T&gt;&amp; src0,\n         const LocalTensor&lt;T&gt;&amp; src1,\n         const uint32_t count);',
@@ -2290,7 +2546,7 @@ const STEPS=[
        ['  tl.load/store + mask   → GM↔L1/UB DataCopy','g']],
   logVector:[['  SIMT 网格 + warp → 分核 SPMD + 向量单元片上归约','g'],
        ['✓ 计算图风险节点已更新: 源端专属 → 分核/向量单元','a'],
-       ['⚠ 注意:在线 Softmax rescale 次序与 FP16 累加 → S7 校验精度','y']],
+       ['⚠ 注意:在线 Softmax rescale 次序与 FP16 累加 → S6 校验精度','y']],
   logScalar:[['  SIMT 网格 + warp → 标量单元逐元素模拟','y'],
        ['⚠ 向量单元将闲置,预计算力利用率 < 40% —— 不推荐','r']]},
 
@@ -2302,7 +2558,7 @@ const STEPS=[
        ['  ├─ Init/Process/ComputeAttention/ComputeTile','d'],
        ['  ├─ program_id 网格 → GetBlockIdx() 分核','g'],
        ['  └─ warp 级 tl.dot → Cube Mmad (删 warp 概念)','g'],
-       ['插入 2 处 TODO 标记 (S4 内存 / S6 流水)','y'],
+       ['插入 2 处 TODO 标记 (S4 内存 / S5 流水)','y'],
        ['✓ 已开启源端 ↔ 昇腾同屏对比视图 (计算图已收起)','a']],
   run(){ hasCpp=true; renderTree(); renderTabs(); openCompare('s3'); }},
 
@@ -2315,38 +2571,30 @@ const STEPS=[
        ['✓ Mmad→L0C, 在线 Softmax(经 GM→UB 中转)→向量单元','g'],
        ['✓ 新注入代码已在 AscendC 侧高亮','a'],
        ['▶ 已生成硬件数据流动画 → 右侧「数据流」视图','a'],
-       ['当前为串行搬运-计算,S6 将做双缓冲重叠','y']],
+       ['当前为串行搬运-计算,S5 将做双缓冲重叠','y']],
   run(){ openCompare('s4'); }},
 
- {n:'S5',t:'自动分块',sub:'贴合缓冲容量的分块',
-  body:`沿 KV 序列维搜索分块长度,在 L1/L0/UB 容量约束下最大化片上驻留、最小化回 GM 次数,结果写入 <code>tiling.h</code>(默认打开)。Q 行块(<code>BLOCK_M</code>)常驻片上,K/V 按 <code>BLOCK_N</code> 流式载入,L1 容量需核算。右侧 <b>分块可视化</b>直观呈现:KV 维如何被切成多个分块、各方案的缓冲占用与代价。给出候选,由你确认:`,
-  choice:{q:'选择 KV 序列维分块方案:',
+ {n:'S5',t:'分块与流水编排',sub:'变量控制 · Tiling 可视化 · Pipeline',
+  body:`把「自动分块」与「流水线编排」合并为一次算子规划:在<b>变量控制</b>里调 SOC / dtype / KV 分块方案 / BUFFER_NUM / 尾块策略;<b>Tiling 可视化</b>实时呈现核间分核与核内分块 + 缓冲占用;<b>Pipeline</b>把伪代码编排成双缓冲软件流水泳道 —— 预取 KV(n+1) ∥ 计算 n ∥ 写回 n-1。右侧「算子规划」视图给出全部内容,由你确认 KV 分块方案:`,
+  choice:{q:'选择 KV 序列维分块方案(驱动 Tiling 可视化与流水):',
     opts:[
-     {v:'A',title:'分块长度 = 128',desc:'UB 利用率 61% · 回 GM 次数多 · 周期基线 1.00×'},
-     {v:'B',rec:'推荐',title:'分块长度 = 256',desc:'UB 利用率 88% · L0C 恰好容纳 · 周期 0.72× —— 综合最优'},
-     {v:'C',warn:'溢出风险',title:'分块长度 = 512',desc:'UB 利用率 103% · 超 L0C 容量 → 触发回退搬运,周期 0.95×'}]},
-  log:[['','ascendport tiling --search --constraint l0c,ub','p'],
-       ['枚举分块长度 ∈ {128,256,512} …','d'],
-       ['  分块长度=128 → UB 61%  周期 1.00×','d'],
-       ['  分块长度=256 → UB 88%  周期 0.72×  ★','g'],
-       ['  分块长度=512 → UB 103% 溢出回退 0.95×','y']],
-  logDone:[['✓ tiling.h 已生成 (分块长度写入 TilingData)','a'],
-       ['▶ 已打开 tiling.h 并生成分块可视化 → 右侧','a']],
+     {v:'A',title:'分块长度 = 128 · 单缓冲',desc:'UB 利用率 61% · 回 GM 次数多 · 无重叠 · 周期基线 1.00×'},
+     {v:'B',rec:'推荐',title:'分块长度 = 256 · 双缓冲',desc:'UB 利用率 88% · L0C 恰好容纳 · 搬运/计算重叠 · 周期 0.72×'},
+     {v:'C',warn:'溢出风险',title:'分块长度 = 512 · 双缓冲',desc:'UB 利用率 103% · 超 L0C → 回退搬运 · 周期 0.95×'}]},
+  log:[['','ascendport plan --tiling --pipeline --double-buffer','p'],
+       ['① 变量控制 → 搜索 KV 分块 ∈ {128,256,512} …','d'],
+       ['  分块=128 → UB 61%  周期 1.00×','d'],
+       ['  分块=256 → UB 88%  周期 0.72×  ★','g'],
+       ['  分块=512 → UB 103% 溢出回退 0.95×','y'],
+       ['② Tiling 可视化 → 核间 20/24 核激活,核内分块 + 双缓冲 slot','g'],
+       ['③ 软件流水 → 预取 CopyIn KV(n+1) ∥ Compute(n) ∥ CopyOut(n-1)','g'],
+       ['✓ TQue 深度 1→2 (kvL1/cO/ubQK) 双缓冲,流水气泡 21%→4%','g'],
+       ['✓ 在线 Softmax 保持 acc_o/l_i 的 FP32 累加,稳住 rescale 次序','g']],
+  logDone:[['✓ tiling.h 已生成 (分块长度写入 TilingData) + 软件流水已编排','a'],
+       ['▶ 已打开「算子规划」视图 → 变量控制 · Tiling 可视化 · Pipeline','a']],
   run(){ tilingReady=true; renderTree(); renderTabs(); }},
 
- {n:'S6',t:'流水线编排',sub:'双缓冲重叠',
-  body:`把串行的「搬运→计算」重排为软件流水:<b>预取 n+1 ∥ 计算 n ∥ 写回 n-1</b>。<code>TQue</code> 深度 1→2,让 K/V 搬运与矩阵/向量计算重叠 —— 这是开箱性能翻倍的关键。在线 Softmax 直接用向量单元自然 <code>Exp</code>,并保持 <code>acc_o/l_i</code> 的 FP32 累加以稳住 rescale 次序。完成后定位回生成的 AscendC 源码,<b>高亮新增流水代码</b>,右侧给出编排前后的流水时序对比。`,
-  log:[['','ascendport pipeline --double-buffer','p'],
-       ['构建软件流水 …','d'],
-       ['✓ TQue 深度 1→2 (kvL1/cO/ubQK) 双缓冲','g'],
-       ['✓ 预取 CopyIn K|V(n+1) 与 Compute(n) 重叠','g'],
-       ['✓ 在线 Softmax rescale 保持 FP32 累加 (acc_o/l_i)','g'],
-       ['✓ 已定位回 AscendC 源码并高亮新增流水代码','a'],
-       ['▶ 流水前后对比 → 右侧面板','a'],
-       ['流水气泡 21% → 4%','a']],
-  run(){ /* 完成后在回调中定位源码 */ }},
-
- {n:'S7',t:'精度对齐',sub:'以源端为基准',
+ {n:'S6',t:'精度对齐',sub:'以源端为基准',
   body:`用相同输入跑昇腾 kernel 与源端参考(Triton FA2 / torch 注意力),逐元素比对,生成<b>精度报告</b>(见右侧「精度」视图)。报告会定位精度异常的算子、给出根因与修复方案 —— 一键应用修复即可复测通过。`,
   log:[['','ascendport verify --golden triton --rtol 1e-3','p'],
        ['运行昇腾 kernel 对比源端参考 …','d'],
@@ -2357,7 +2605,7 @@ const STEPS=[
        ['▶ 精度报告已生成 → 右侧「精度」视图,可查看根因与修复方案','a']],
   run(){ /* 报告在完成回调中打开 */ }},
 
- {n:'S8',t:'性能剖析与调优',sub:'msProf → aclNN 注册',
+ {n:'S7',t:'性能剖析与调优',sub:'msProf → aclNN 注册',
   body:`采集硬件流水,定位瓶颈并给出调优建议,最后把算子注册为 <code>aclNN</code> 供图层调用。完成后生成<b>性能报告</b>(见右侧「性能」视图):含 msProf <b>流水泳道图</b>(直译对比优化)、利用率对比与调优建议。相比直译版,端到端 <b>3.1×</b> 加速。`,
   log:[['','ascendport profile --with msprof','p'],
        ['采集算力核流水利用率 …','d'],
@@ -2366,7 +2614,7 @@ const STEPS=[
        ['  端到端加速: 3.1× · 矩阵单元占用 76% · 搬运隐藏 94%','g'],
        ['✓ 注册 aclNN 算子: aclnnFlashAttentionV2','a'],
        ['▶ 性能报告已生成 → 右侧「性能」视图','a'],
-       ['✓ 迁移完成 —— S1→S8 全流程通过','a']],
+       ['✓ 迁移完成 —— S1→S7 全流程通过','a']],
   run(){ if(!accFixed){ accFixed=true; setProblems(0); } setAicore('82%'); }},
 ];
 
@@ -2428,7 +2676,7 @@ function renderWizard(){
     // 全部完成
     html+=`<div class="stepcard" style="border-color:var(--ok);background:#48d5970d">
       <div class="sc-h"><div class="sc-n" style="background:#48d59722;color:var(--ok)">✓</div>
-      <div class="sc-t"><b>迁移完成</b><span>S1 → S8 全流程通过</span></div></div>
+      <div class="sc-t"><b>迁移完成</b><span>S1 → S7 全流程通过</span></div></div>
       <div class="sc-body">Flash Attention v2 算子已迁移为 AscendC 算子并注册为 <code>aclnnFlashAttentionV2</code>。端到端 <b>3.1×</b> 加速,算力核利用率 31%→82%,精度余弦相似度 0.99987。</div></div>`;
   }
   sc.innerHTML=html;
@@ -2448,10 +2696,10 @@ function renderWizard(){
     state.choices[o.dataset.step]=o.dataset.v;
     // 若在 S2 卡片上改变映射决策，实时反映到计算图
     if(o.dataset.step==='S2'){ graphMapped=(o.dataset.v==='vector'); renderGraph(false); }
-    // 若在 S5 卡片上改变 tiling 决策，实时反映到 tiling.h 与可视化
+    // 若在 S5 卡片上改变 tiling 决策，实时反映到「算子规划」视图
     if(o.dataset.step==='S5'){
-      if(document.getElementById('split').classList.contains('tiling-open')) renderTilingViz();
-      if(activeTab==='tiling') renderCode('tiling');
+      planState.bufferOverride=null;
+      if(currentAnalysisView()==='plan') renderPlanView();
     }
     renderWizard();
   });
@@ -2462,12 +2710,12 @@ function renderWizard(){
   if(state.step>=STEPS.length){
     btn.disabled=false; btn.textContent='↻ 重新开始迁移'; btn.className='run ghost';
     if(allBtn){allBtn.disabled=true; allBtn.textContent='全部完成';}
-    hint.textContent='全部 8 个阶段已完成';
+    hint.textContent=`全部 ${STEPS.length} 个阶段已完成`;
   } else {
     btn.disabled=false; btn.className='run';
     btn.textContent=`执行${nextStep.t}`;
     if(allBtn){allBtn.disabled=false; allBtn.textContent='全部执行';}
-    hint.textContent=`共 8 个阶段 · 当前 ${state.step} / 8 完成`;
+    hint.textContent=`共 ${STEPS.length} 个阶段 · 当前 ${state.step} / ${STEPS.length} 完成`;
   }
   document.getElementById('sbStep').textContent = state.step>=STEPS.length?'✓ 完成':(completedStep?`${completedStep.n} · 已完成`:'准备就绪');
 }
@@ -2510,7 +2758,7 @@ function initProblems(){
    <div class="prob"><span class="pi" style="color:var(--risk)">⚠</span><div><div><code style="font-family:var(--mono)">GemmWarpPolicy.FullCol</code> / <code style="font-family:var(--mono)">use_swizzle</code> 无昇腾对应 —— warp/swizzle 概念删除,改 Cube/Vector 分核 + <code style="font-family:var(--mono)">T.Persistent</code></div><div class="pf">flash_mla_decode · GEMM 调度</div></div></div>
    <div class="prob"><span class="pi" style="color:var(--warn)">⚠</span><div><div>split-KV + combine(flash-decoding)—— 需改 GM workspace 多核归约;<code style="font-family:var(--mono)">L0C→UB</code> 无直连,须经 GM 中转</div><div class="pf">example_mla_decode.py · num_split / combine</div></div></div>`;
 }
-// S7：精度异常写入问题面板
+// S6：精度异常写入问题面板
 function setAccProblem(){
   problems=1;const c=document.getElementById('probCnt');c.textContent=1;c.className='cnt err';
   document.getElementById('probs').innerHTML=`
@@ -2604,14 +2852,12 @@ function runStep(){
         });
       });
     }
-    // S5：完成后默认打开 tiling.h 并展示 Tiling 可视化
-    if(s.n==='S5'){ openTilingFile(); }
-    // S6：完成后定位回 AscendC 源码,高亮新增流水代码并展示前后对比
-    if(s.n==='S6'){ openS6Source(); }
-    // S7：完成后打开精度报告(异常态),用户可查看根因/修复方案并一键修复
-    if(s.n==='S7'){ accFixed=false; setAccProblem(); openAccPanel(); }
-    // S8：完成后打开性能报告(泳道图 + 对比)
-    if(s.n==='S8'){ openPerfPanel(); }
+    // S5：完成后打开「算子规划」视图（变量控制 · Tiling 可视化 · Pipeline）
+    if(s.n==='S5'){ openPlanView(); }
+    // S6：完成后打开精度报告(异常态),用户可查看根因/修复方案并一键修复
+    if(s.n==='S6'){ accFixed=false; setAccProblem(); openAccPanel(); }
+    // S7：完成后打开性能报告(泳道图 + 对比)
+    if(s.n==='S7'){ openPerfPanel(); }
     const done=state.step>=STEPS.length;
     notify(done?'🎉 迁移完成':`✓ ${s.n} 完成`, done?'MLA Decode 算子已注册为 aclNN 算子':`${s.t} —— ${s.sub}`, done?'ok':'ok');
     if(runAllMode && !done){
