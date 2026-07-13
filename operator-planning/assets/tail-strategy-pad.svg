@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" aria-labelledby="title desc">
+  <title id="title">pad 尾块策略示意图</title>
+  <desc id="desc">Host 或搬运阶段将不足一个 tile 的数据补齐到完整 tile，kernel 统一计算，输出阶段使用 mask 保留有效范围。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#16211f"/><stop offset="1" stop-color="#101010"/></linearGradient>
+    <style>.t{font-family:Inter,PingFang SC,Microsoft YaHei,sans-serif;fill:#e6e6e6}.muted{fill:#9aa3b5}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.label{font-size:12px;letter-spacing:.6px}.h{font-size:22px;font-weight:700}.s{font-size:14px}.small{font-size:12px}.box{fill:#1c2927;stroke:#39504a}.line{stroke:#7c8db8;stroke-width:1.5;fill:none}.blue{fill:#5a92e6}.green{fill:#04d793}.pad{fill:#2f4c46}.tag{fill:#1d302d}</style>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 Z" fill="#7c8db8"/></marker>
+  </defs>
+  <rect width="960" height="560" rx="18" fill="url(#bg)"/>
+  <text class="t h" x="44" y="54">pad：补满整块后统一计算，再屏蔽无效输出</text>
+  <text class="t muted s" x="44" y="82">适用于希望 DataCopy 和计算循环保持对齐、规整的场景；关键是 padding 值和写回 mask。</text>
+  <g transform="translate(44 128)">
+    <rect class="box" width="250" height="202" rx="12"/>
+    <text class="t label muted" x="22" y="31">1 · COPY IN / PAD</text>
+    <text class="t s" x="22" y="61">最后一个 tile：104 有效</text>
+    <g transform="translate(22 85)">
+      <rect class="blue" width="10" height="54" rx="2"/><rect class="blue" x="13" width="10" height="54" rx="2"/><rect class="blue" x="26" width="10" height="54" rx="2"/><rect class="blue" x="39" width="10" height="54" rx="2"/><rect class="blue" x="52" width="10" height="54" rx="2"/><rect class="blue" x="65" width="10" height="54" rx="2"/><rect class="blue" x="78" width="10" height="54" rx="2"/><rect class="blue" x="91" width="10" height="54" rx="2"/>
+      <rect class="pad" x="104" width="10" height="54" rx="2"/><rect class="pad" x="117" width="10" height="54" rx="2"/><rect class="pad" x="130" width="10" height="54" rx="2"/><rect class="pad" x="143" width="10" height="54" rx="2"/>
+      <text class="t mono small" x="0" y="79">104 valid</text><text class="t muted mono small" x="105" y="79">+ 24 pad</text>
+    </g>
+    <rect class="tag" x="22" y="166" width="205" height="22" rx="5"/><text class="t mono small" x="34" y="182">padValue = 0 / neutral value</text>
+  </g>
+  <path class="line" d="M307 230 H367" marker-end="url(#arrow)"/>
+  <g transform="translate(381 128)">
+    <rect class="box" width="198" height="202" rx="12"/>
+    <text class="t label muted" x="22" y="31">2 · COMPUTE</text>
+    <text class="t s" x="22" y="61">总是处理完整 128</text>
+    <rect class="blue" x="22" y="88" width="154" height="46" rx="7"/>
+    <text class="t mono small" x="38" y="116">Compute(tile = 128)</text>
+    <text class="t muted small" x="22" y="165">无尾部分支</text>
+    <text class="t muted small" x="22" y="185">搬运 / 循环更规整</text>
+  </g>
+  <path class="line" d="M592 230 H652" marker-end="url(#arrow)"/>
+  <g transform="translate(666 128)">
+    <rect class="box" width="250" height="202" rx="12"/>
+    <text class="t label muted" x="22" y="31">3 · COPY OUT / MASK</text>
+    <text class="t s" x="22" y="61">仅写回 104 个有效结果</text>
+    <rect class="green" x="22" y="88" width="126" height="46" rx="7"/>
+    <rect class="pad" x="148" y="88" width="67" height="46" rx="0 7 7 0"/>
+    <text class="t mono small" x="37" y="116">write</text><text class="t muted mono small" x="159" y="116">masked</text>
+    <rect class="tag" x="22" y="162" width="203" height="24" rx="5"/><text class="t mono small" x="35" y="179">mask(index &lt; validLength)</text>
+  </g>
+  <rect x="44" y="394" width="872" height="92" rx="12" fill="#162b27"/>
+  <text class="t label muted" x="66" y="424">设计检查点</text>
+  <text class="t small" x="66" y="454">1. padding 值必须对算子语义中性（例如 Add 可填 0；Max 需要选择不会改变结果的值）。</text>
+  <text class="t small" x="66" y="477">2. 输出必须 mask，否则补齐区域可能写入非法地址或污染真实 tensor。</text>
+</svg>

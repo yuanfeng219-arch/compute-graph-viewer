@@ -272,12 +272,11 @@
     }
     .operator-plan {
       display: grid;
-      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      grid-template-rows: auto minmax(0, 1fr) auto;
       gap: 12px;
       min-height: 100%;
     }
     .operator-plan .viz-panel,
-    .operator-plan .path-step,
     .operator-plan .metric,
     .operator-plan .plan-code-preview,
     .operator-plan .plan-swimlane,
@@ -288,36 +287,6 @@
     }
     .operator-plan .viz-panel {
       background: color-mix(in srgb, var(--ide-frame-pane-bg) 72%, transparent);
-    }
-    .plan-path {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 8px;
-    }
-    .path-step {
-      min-width: 0;
-      padding: 9px 10px;
-      border-radius: var(--radius-md);
-      background: color-mix(in srgb, var(--foreground) 5%, transparent);
-    }
-    .path-step span {
-      display: block;
-      color: var(--foreground-muted);
-      font: var(--text-label);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .path-step b {
-      display: block;
-      margin-top: 4px;
-      overflow: hidden;
-      color: var(--foreground);
-      font: 700 12px / 1.25 var(--font-sans);
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .path-step.is-current {
-      background: color-mix(in srgb, var(--primary) 18%, transparent);
     }
     .plan-summary-grid {
       display: grid;
@@ -335,7 +304,7 @@
     }
     .plan-constraint-line {
       display: grid;
-      grid-template-columns: minmax(84px, 0.68fr) minmax(0, 1fr);
+      grid-template-columns: minmax(84px, 0.68fr) minmax(0, 1fr) auto;
       gap: 8px;
       align-items: baseline;
       min-width: 0;
@@ -354,14 +323,14 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .plan-constraint-status {
+      color: var(--success);
+      font: 700 var(--font-size-body-sm) / 1 var(--font-sans);
+      white-space: nowrap;
+    }
+    .plan-constraint-status.is-warning { color: var(--warning); }
     .plan-verdict {
       background: color-mix(in srgb, var(--success) 10%, var(--ide-frame-pane-bg));
-    }
-    .plan-verdict-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(210px, 0.9fr);
-      gap: 18px;
-      align-items: start;
     }
     .plan-verdict-title {
       margin: 0;
@@ -387,42 +356,155 @@
     .plan-status-pill.is-pass { color: var(--success); }
     .plan-status-pill.is-warning { color: var(--warning); }
     .plan-status-pill.is-danger { color: var(--danger); }
-    .plan-pressure-title {
+    .plan-verdict-actions {
       display: flex;
-      justify-content: space-between;
-      gap: 8px;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+    }
+    .padding-policy-detail {
+      display: grid;
+      gap: var(--space-3);
+      margin-top: var(--space-3);
       color: var(--foreground-secondary);
       font: var(--text-body-sm);
     }
-    .plan-pressure-meter {
-      height: 10px;
-      margin: 8px 0 6px;
+    .padding-policy-detail__group {
+      display: grid;
+      gap: var(--space-1);
+    }
+    .padding-policy-detail__title {
+      color: var(--foreground);
+      font-weight: 700;
+    }
+    .padding-policy-detail__row {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: var(--space-2);
+    }
+    .padding-policy-detail__row span:first-child { color: var(--foreground-muted); }
+    .padding-value-options {
+      display: grid;
+      gap: var(--space-2);
+      margin-top: var(--space-3);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+    .padding-value-option {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-height: 26px;
+      cursor: pointer;
+    }
+    .padding-value-option input[type="number"] {
+      width: 132px;
+      min-width: 0;
+      height: 28px;
+      padding: 0 var(--space-2);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      background: var(--surface-1);
+      color: var(--foreground);
+      font: var(--text-body-sm);
+    }
+    .padding-value-option input[type="number"]:disabled { opacity: 0.45; }
+    .operator-code-preview[hidden] { display: none; }
+    .operator-code-preview {
+      position: fixed;
+      z-index: 30;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: var(--space-6);
+      background: rgb(0 0 0 / 58%);
+    }
+    .operator-code-preview__dialog {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      width: min(1060px, 100%);
+      height: min(760px, calc(100vh - 48px));
       overflow: hidden;
-      border-radius: var(--radius-pill);
-      background: color-mix(in srgb, var(--foreground) 8%, transparent);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-xl);
+      background: var(--surface-1);
+      box-shadow: var(--ide-frame-pane-shadow);
     }
-    .plan-pressure-meter span {
-      display: block;
-      width: var(--pressure, 18%);
-      height: 100%;
-      background: var(--warning);
+    .operator-code-preview__header,
+    .operator-code-preview__footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--border-subtle);
     }
-    .plan-checks {
-      display: grid;
-      gap: 3px;
-    }
-    .plan-check {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
-      padding: 5px 0;
-      border-bottom: 1px solid color-mix(in srgb, var(--foreground) 7%, transparent);
+    .operator-code-preview__title { margin: 0; font: 600 var(--font-size-title-sm) / 1.3 var(--font-sans); }
+    .operator-code-preview__meta { color: var(--foreground-muted); font: var(--text-body-sm); }
+    .operator-code-preview__summary {
+      padding: var(--space-3) var(--space-4);
       color: var(--foreground-secondary);
+      border-bottom: 1px solid var(--border-subtle);
+      font: var(--font-size-body-md) / 1.5 var(--font-sans);
+    }
+    .operator-code-preview__workbench {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      min-height: 0;
+    }
+    .operator-code-preview__files {
+      padding: var(--space-3);
+      overflow: auto;
+      border-right: 1px solid var(--border-subtle);
+      background: color-mix(in srgb, var(--surface-2) 65%, transparent);
+    }
+    .operator-code-preview__files h4 { margin: 0 0 var(--space-2); color: var(--foreground-muted); font: 500 var(--font-size-label-xs) / 1.2 var(--font-sans); letter-spacing: var(--letter-spacing-label); }
+    .operator-code-preview__folder { margin: var(--space-2) 0 var(--space-1); color: var(--foreground-secondary); font: var(--text-body-sm); }
+    .operator-code-preview__file {
+      display: block;
+      width: 100%;
+      padding: 6px var(--space-2);
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--foreground-secondary);
+      text-align: left;
+      font: var(--text-body-sm);
+      cursor: pointer;
+    }
+    .operator-code-preview__file:hover,
+    .operator-code-preview__file.is-active { background: var(--surface-4); color: var(--foreground); }
+    .operator-code-preview__editor { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; }
+    .operator-code-preview__tab {
+      padding: var(--space-2) var(--space-3);
+      color: var(--foreground-secondary);
+      border-bottom: 1px solid var(--border-subtle);
       font: var(--text-body-sm);
     }
-    .plan-check:last-child { border-bottom: 0; }
-    .plan-check b { color: var(--success); }
-    .plan-check.is-warning b { color: var(--warning); }
+    .operator-code-preview__code {
+      margin: 0;
+      padding: var(--space-3) var(--space-4);
+      overflow: auto;
+      background: var(--background);
+      color: var(--foreground);
+      font: var(--text-body-sm) / 1.6 var(--font-mono);
+      white-space: pre;
+    }
+    .operator-code-preview__code .syntax-generated { color: var(--success); }
+    .operator-code-preview__code .syntax-user { color: var(--warning); }
+    .operator-code-preview__code .syntax-keyword { color: var(--operator-purple); }
+    .operator-code-preview__code .syntax-type { color: var(--operator-cyan); }
+    .operator-code-preview__code .syntax-number { color: var(--operator-amber); }
+    .operator-code-preview__code .syntax-call { color: var(--operator-blue); }
+    .operator-code-preview__footer { border-top: 1px solid var(--border-subtle); border-bottom: 0; }
+    .operator-code-preview__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    @media (max-width: 720px) {
+      .operator-code-preview { padding: var(--space-3); }
+      .operator-code-preview__workbench { grid-template-columns: 1fr; }
+      .operator-code-preview__files { border-right: 0; border-bottom: 1px solid var(--border-subtle); }
+      .operator-code-preview__file { display: inline-block; width: auto; }
+      .operator-code-preview__footer { align-items: flex-start; flex-direction: column; }
+    }
     .operator-plan-grid {
       display: grid;
       grid-template-columns: 320px minmax(0, 1fr) 300px;
@@ -490,32 +572,73 @@
     .plan-core-map,
     .plan-tile-map {
       display: grid;
-      gap: 5px;
+      gap: 3px;
+      justify-content: start;
     }
-    .plan-core-map { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-    .plan-tile-map { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .plan-core-visualization { display: grid; gap: var(--space-3); }
+    .plan-core-visualization__section { display: grid; gap: var(--space-2); }
+    .plan-core-visualization__head {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-3);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+    .plan-core-visualization__head strong { color: var(--foreground); font: 700 var(--font-size-body-md) / 1.3 var(--font-sans); }
+    .plan-core-map { grid-template-columns: repeat(auto-fill, 36px); justify-content: start; }
+    .plan-tile-map { grid-template-columns: repeat(auto-fill, 36px); }
     .plan-core-cell,
     .plan-tile-cell {
-      min-height: 28px;
+      width: 36px;
+      min-height: 36px;
+      aspect-ratio: 1;
+      border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
       border-radius: var(--radius-sm);
       background: color-mix(in srgb, var(--foreground) 6%, transparent);
       color: var(--foreground-secondary);
-      font: 600 10px / 28px var(--font-mono);
+      font: 600 10px / 1.25 var(--font-mono);
       text-align: center;
     }
     .plan-tile-cell {
-      min-height: 36px;
-      padding-top: 6px;
-      line-height: 1.2;
+      display: grid;
+      align-content: center;
+      padding: 4px;
+      text-align: center;
     }
-    .plan-core-cell.is-active,
-    .plan-tile-cell.is-active {
-      background: var(--operator-blue);
-      color: var(--background);
+    .plan-core-cell { display: grid; place-items: center; width: auto; padding: 0; cursor: pointer; }
+    .plan-core-cell:disabled { cursor: default; opacity: 0.55; }
+    .plan-core-cell.is-selected { outline: 2px solid var(--foreground); outline-offset: -2px; }
+    .plan-core-cell.is-former {
+      border-color: color-mix(in srgb, var(--warning) 48%, transparent);
+      background: color-mix(in srgb, var(--warning) 26%, transparent);
+      color: var(--warning);
     }
     .plan-core-cell.is-tail {
-      background: var(--warning);
-      color: var(--background);
+      border-color: color-mix(in srgb, var(--operator-blue) 52%, transparent);
+      background: color-mix(in srgb, var(--operator-blue) 24%, transparent);
+      color: var(--operator-blue);
+    }
+    .plan-tile-cell.is-active {
+      border-color: color-mix(in srgb, var(--success) 50%, transparent);
+      background: color-mix(in srgb, var(--success) 11%, transparent);
+      color: var(--foreground-secondary);
+    }
+    .plan-tile-cell b { color: var(--foreground); font: 600 10px / 1 var(--font-mono); }
+    .plan-tile-cell small {
+      color: var(--foreground-muted);
+      font: 500 8px / 1 var(--font-mono);
+    }
+    .plan-tile-cell.is-tail-partial {
+      border-color: color-mix(in srgb, var(--warning) 54%, transparent);
+      background: repeating-linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--warning) 16%, transparent) 0 5px,
+        color-mix(in srgb, var(--foreground) 5%, transparent) 5px 10px
+      );
+    }
+    .plan-tail-note {
+      color: var(--foreground-muted);
+      font: var(--text-body-sm);
     }
     .plan-pipeline-stack {
       display: grid;
@@ -523,6 +646,47 @@
       gap: 12px;
       min-height: 0;
     }
+    .plan-workarea { display: grid; grid-column: 2 / -1; align-content: start; gap: 12px; min-width: 0; }
+    .plan-pipeline-inspector-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: start; gap: 12px; min-width: 0; }
+    .plan-core-tabs { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .plan-pipeline-presets > button {
+      display: grid;
+      justify-items: start;
+      gap: 2px;
+      min-width: 0;
+      text-align: left;
+    }
+    .plan-pipeline-presets > button small {
+      color: inherit;
+      font: 500 9px / 1.2 var(--font-mono);
+      opacity: 0.62;
+    }
+    .plan-comparison {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-2);
+      margin-top: var(--space-3);
+    }
+    .plan-comparison__item {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+      padding: var(--space-2);
+      border: 0;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--foreground) 5%, transparent);
+      color: var(--foreground-secondary);
+      text-align: left;
+      cursor: pointer;
+    }
+    .plan-comparison__item.is-active {
+      background: color-mix(in srgb, var(--primary) 18%, transparent);
+    }
+    .plan-comparison__item span,
+    .plan-comparison__item small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .plan-comparison__item span { font: var(--text-body-sm); }
+    .plan-comparison__item b { color: var(--foreground); font: 700 13px / 1.2 var(--font-mono); }
+    .plan-comparison__item small { color: var(--foreground-muted); font: 500 9px / 1.2 var(--font-mono); }
     .plan-code-preview,
     .plan-swimlane {
       min-height: 0;
@@ -530,6 +694,43 @@
       border-radius: var(--radius-md);
       background: color-mix(in srgb, var(--foreground) 4%, transparent);
     }
+    .plan-code-preview { overflow: hidden; }
+    .plan-code-editor { display: grid; grid-template-rows: auto minmax(180px, 1fr); min-height: 0; height: 100%; }
+    .plan-code-editor__toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .plan-code-editor__toolbar span { color: var(--foreground-muted); font: var(--text-body-sm); }
+    .plan-code-editor__surface { position: relative; min-height: 180px; overflow: hidden; }
+    .plan-code-editor__highlight,
+    .plan-code-editor__input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: var(--space-3);
+      overflow: auto;
+      border: 0;
+      font: var(--text-body-sm) / 1.55 var(--font-mono);
+      tab-size: 2;
+      white-space: pre;
+    }
+    .plan-code-editor__highlight { pointer-events: none; color: var(--foreground-secondary); }
+    .plan-code-editor__input {
+      resize: none;
+      outline: 0;
+      background: transparent;
+      color: transparent;
+      caret-color: var(--foreground);
+      -webkit-text-fill-color: transparent;
+    }
+    .plan-code-editor__input::selection { background: color-mix(in srgb, var(--primary) 35%, transparent); }
+    .plan-lane.is-muted { opacity: 0.32; }
     .plan-code-lines {
       margin: 0;
       padding: 12px;
@@ -554,6 +755,7 @@
       font: 700 10px / 1 var(--font-sans);
     }
     .plan-swimlane {
+      position: relative;
       display: grid;
       grid-template-columns: 110px minmax(560px, 1fr);
       gap: 8px;
@@ -606,6 +808,16 @@
       background: var(--danger);
       color: var(--foreground);
     }
+    .plan-stage[data-plan-task-canvas] {
+      display: block;
+      background: transparent;
+      cursor: pointer;
+    }
+    .plan-stage[data-plan-task-canvas]:hover { filter: brightness(1.08); }
+    .plan-stage.is-selected {
+      outline: 2px solid color-mix(in srgb, var(--foreground) 86%, transparent);
+      outline-offset: -2px;
+    }
     .plan-inspector-row {
       display: grid;
       grid-template-columns: 1fr 1.1fr;
@@ -616,19 +828,6 @@
     }
     .plan-inspector-row span { color: var(--foreground-muted); }
     .plan-inspector-row b { color: var(--foreground); }
-    .plan-code-output {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
-      gap: 12px;
-    }
-    .plan-code-output pre {
-      margin: 0;
-      padding: 12px;
-      overflow: auto;
-      color: var(--foreground-secondary);
-      font: var(--text-mono);
-      line-height: 1.5;
-    }
     .section-head {
       min-height: 38px;
       display: flex;
@@ -3040,7 +3239,7 @@
         </div>
         <div class="pto-ide-frame__workspace" data-ide-slot="workspace-switcher">
           <span>operator-design-lab</span>
-          <span class="pto-ide-frame__crumbs" id="topCrumb">OP-003 / API 可视化</span>
+          <span class="pto-ide-frame__crumbs" id="topCrumb">OP-004 / Operator Plan</span>
         </div>
       </div>
       <div class="pto-ide-frame__topbar-center"></div>
@@ -3082,8 +3281,8 @@
 
           <section class="pto-ide-frame__pane" data-ide-pane="editor-preview">
             <header class="pto-ide-frame__pane-header">
-              <h2 class="pto-ide-frame__pane-title" id="mainTitle">Load3D 滑窗展开</h2>
-              <span class="pto-ide-frame__pane-meta" id="mainMeta">OP-003 · 演示模式</span>
+              <h2 class="pto-ide-frame__pane-title" id="mainTitle">Cube + Vector Fusion</h2>
+              <span class="pto-ide-frame__pane-meta" id="mainMeta">OP-004 · Pipeline</span>
             </header>
             <div class="tab-strip" role="tablist" aria-label="Operator design views">
               <button class="tab-btn" type="button" data-view-tab="overview">概览</button>
@@ -3117,10 +3316,10 @@
             <div class="ide-status__group ide-status__group--left">
               <span class="ide-status__item">演示模式</span>
               <span class="ide-status__item">未接入 CANN 后端</span>
-              <span class="ide-status__item" id="statusOperator">OP-003</span>
+              <span class="ide-status__item" id="statusOperator">OP-004</span>
             </div>
             <div class="ide-status__group ide-status__group--right">
-              <span class="ide-status__item" id="statusView">API 可视化</span>
+              <span class="ide-status__item" id="statusView">Operator Plan</span>
               <span class="ide-status__item">UTF-8</span>
               <span class="ide-status__item">UX 原型</span>
             </div>
@@ -3130,8 +3329,44 @@
     </div>
   </section>
 
+  <div class="operator-code-preview" id="operatorCodePreview" hidden>
+    <section class="operator-code-preview__dialog" role="dialog" aria-modal="true" aria-labelledby="operatorCodePreviewTitle">
+      <header class="operator-code-preview__header">
+        <div>
+          <h2 class="operator-code-preview__title" id="operatorCodePreviewTitle">算子工程预览</h2>
+          <span class="operator-code-preview__meta" id="operatorCodePreviewMeta"></span>
+        </div>
+        <button class="btn btn-sm btn-ghost" type="button" data-close-code-preview>关闭</button>
+      </header>
+      <div class="operator-code-preview__summary" id="operatorCodePreviewSummary"></div>
+      <div class="operator-code-preview__workbench">
+        <nav class="operator-code-preview__files" aria-label="工程文件">
+          <h4>文件</h4>
+          <div class="operator-code-preview__folder">⌄ op_host</div>
+          <button class="operator-code-preview__file is-active" type="button" data-code-preview-file="tiling">op_tiling.h</button>
+          <button class="operator-code-preview__file" type="button" data-code-preview-file="host">op_tiling.cpp</button>
+          <div class="operator-code-preview__folder">⌄ op_kernel</div>
+          <button class="operator-code-preview__file" type="button" data-code-preview-file="kernel">op_kernel.cpp</button>
+        </nav>
+        <section class="operator-code-preview__editor" aria-label="代码预览">
+          <div class="operator-code-preview__tab" id="operatorCodePreviewFile"></div>
+          <div class="operator-code-preview__code" id="operatorCodePreviewCode"></div>
+        </section>
+      </div>
+      <footer class="operator-code-preview__footer">
+        <span class="operator-code-preview__meta">工程内容根据当前 Tiling + Pipeline 联合方案生成，尚未写入本地目录。</span>
+        <div class="operator-code-preview__actions">
+          <button class="btn btn-sm" type="button" data-close-code-preview>返回配置</button>
+          <button class="btn btn-sm" type="button" data-regenerate-code-preview>重新生成</button>
+          <button class="btn btn-sm btn-solid" type="button" data-generate-operator-project>生成完整算子工程</button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
   <script src="../vendor/pto-design-system/patterns/workbench-shell/pattern.js"></script>
   <script src="../vendor/pto-design-system/patterns/ide-frame/pattern.js"></script>
+  <script src="../vendor/pto-design-system/patterns/swimlane-task/pattern.js"></script>
   <script src="../vendor/pto-design-system/patterns/floating-playback-control/pattern.js"></script>
   <script>
     (() => {
@@ -3141,6 +3376,7 @@
           title: 'Elementwise Add',
           status: '未开始',
           type: '入门算子',
+          tailComputation: 'elementwise',
           requirement: '为 C = A + B 创建一个最小算子设计，并说明 shape、dtype 和第一版 tiling 如何确定。',
           performanceGoal: '第一版设计优先保证覆盖完整、tile 简单且适合 vector 处理。',
           formula: 'C[i] = A[i] + B[i]',
@@ -3154,6 +3390,7 @@
           title: 'Copy 与对齐',
           status: '设计中',
           type: '数据搬运',
+          tailComputation: 'elementwise',
           requirement: '搬运带 stride 的 tensor 切片，同时保持对齐，并解释 tail 处理方式。',
           performanceGoal: '减少非对齐 DataCopy 片段，并显式暴露 tail 策略决策。',
           formula: 'Y[n] = X[n * stride]',
@@ -3167,6 +3404,7 @@
           title: 'Load3D 滑窗展开',
           status: '已对比',
           type: 'API 数据变换',
+          tailComputation: 'elementwise',
           requirement: '使用 Load3D 为 Cube 计算准备 feature map tile，并解释每个滑窗如何变成矩阵数据。',
           performanceGoal: '在规划 pipeline 之前，先暴露数据搬运、repeatMode 和 layout 决策。',
           formula: 'Y = Conv2D(X, W)',
@@ -3180,6 +3418,7 @@
           title: 'Cube + Vector Fusion',
           status: '待评审',
           type: 'Pipeline',
+          tailComputation: 'reduction',
           requirement: '在同一 tiling 策略下，对比偏 Cube 的调度和 Vector 后处理调度。',
           performanceGoal: '减少 Cube Compute 与 Vector Compute 之间的空闲间隙，同时保持 buffer 压力可见。',
           formula: 'Z = activation(Mmad(A, B) + bias)',
@@ -3198,10 +3437,17 @@
 
       const dtypeSize = { half: 2, bf16: 2, float: 4, int8: 1 };
 
+      const operatorPlanContracts = {
+        'OP-001': { total: 1048576, inputs: 2 },
+        'OP-002': { total: 131072, inputs: 1 },
+        'OP-003': { total: 16448, inputs: 1 },
+        'OP-004': { total: 16384, inputs: 2 }
+      };
+
       const tilingSchemes = [
-          { name: '基线方案', soc: '910b', dtype: 'half', inputs: 2, total: 16384, blockDim: 8, tileNum: 8, bufferNum: 2, tailPolicy: 'branch', paddingPolicy: 'mask', tilingMode: 'auto', note: '第一版均分方案，便于阅读和解释。' },
-        { name: '对齐 tail 场景', soc: '910b', dtype: 'half', inputs: 2, total: 16448, blockDim: 7, tileNum: 8, bufferNum: 2, tailPolicy: 'former/tail', paddingPolicy: 'padding', tilingMode: 'auto', note: '刻意制造 former/tail 核切分，让 tail 对齐更可见。' },
-        { name: 'Double Buffer 友好', soc: '910b', dtype: 'half', inputs: 3, total: 32768, blockDim: 12, tileNum: 4, bufferNum: 2, tailPolicy: 'pad', paddingPolicy: 'padding', tilingMode: 'auto', note: 'tile 数更少，启用 Double Buffer，UB 压力更高。' }
+        { name: '串行基线', pipelineKey: 'serial', soc: '910b', dtype: 'half', blockDim: 8, tileNum: 8, bufferNum: 1, tailPolicy: 'branch', paddingPolicy: 'mask', tilingMode: 'auto', note: '单 Buffer 串行推进，用于建立可解释的性能基线。' },
+        { name: '双缓冲平衡', pipelineKey: 'auto', soc: '910b', dtype: 'half', blockDim: 8, tileNum: 8, bufferNum: 2, tailPolicy: 'branch', paddingPolicy: 'mask', tilingMode: 'auto', note: '保持均匀核切分，用双 Buffer 隐藏搬运，是推荐进入 profiling 的方案。' },
+        { name: '融合高收益', pipelineKey: 'manual', soc: '910b', dtype: 'half', blockDim: 12, tileNum: 4, bufferNum: 2, tailPolicy: 'branch', paddingPolicy: 'mask', tilingMode: 'auto', note: '提高 Cube / Vector 重叠，并轻量暴露核间与核内尾块，验证成本更高。' }
       ];
 
       const pipelineLanes = [
@@ -3323,8 +3569,22 @@
       const pipelineScenarios = {
         serial: {
           name: '串行基线 (Serial Baseline)',
+          shortName: '串行基线',
+          storyRole: '性能对照',
           intent: 'Run one tile through CopyIn, Cube, Vector, and CopyOut before starting the next tile.',
-          tilingScheme: '基线方案',
+          tilingScheme: '串行基线',
+          gainVsBaseline: '基线',
+          verdictTitle: '仅作性能基线',
+          code: `// serial baseline: one tile owns the pipeline
+for (int i = 0; i < TILE_NUM; i++) {
+  CopyIn(i, slot0);
+  LoadData(i, slot0);
+  Mmad(i);
+  SetFlag(i);
+  WaitFlag(i);
+  VectorCompute(i);
+  CopyOut(i, slot0);
+}`,
           summary: '认知基线：最容易解释，但 MTE、Cube、Vector 会大量互相等待。',
           recommendation: '适合讲清 tile 生命周期；不适合作为性能目标。下一步应验证 Double Buffer 是否能隐藏搬运。',
           assumptions: [
@@ -3376,8 +3636,27 @@
         },
         auto: {
           name: '双缓冲重叠 (Double Buffer Overlap)',
+          shortName: '双缓冲平衡',
+          storyRole: '推荐交付',
           intent: '使用 `BUFFER_NUM=2`，让 `CopyIn(tile n+1)` 与 `Cube(tile n)` 重叠，同时由 `CopyOut(tile n-1)` 负责排空输出。',
-          tilingScheme: 'Double Buffer 友好',
+          tilingScheme: '双缓冲平衡',
+          gainVsBaseline: '预计时间 -25%',
+          verdictTitle: '推荐进入 profiling',
+          code: `// prologue: fill slot0 / slot1
+CopyIn(0, slot0);
+CopyIn(1, slot1);
+
+// steady: prefetch n+2 while tile n computes
+for (int i = 0; i < TILE_NUM; i++) {
+  int slot = i % BUFFER_NUM;
+  LoadData(i, slot);
+  Mmad(i);
+  WaitFlag(i);
+  VectorCompute(i);
+  CopyOut(i, slot);
+  int next = i + BUFFER_NUM;
+  if (next < TILE_NUM) CopyIn(next, slot);
+}`,
           summary: '搬运延迟被部分隐藏，代价是输入和输出 queue slot 同时占用。',
           recommendation: '当前是最稳的候选方案。真实 profiling 应重点确认 MTE2 是否被 Cube 隐藏，以及 peak buffer 是否仍有余量。',
           assumptions: [
@@ -3429,8 +3708,31 @@
         },
         manual: {
           name: 'Cube-Vector 融合 Handoff',
+          shortName: '融合高收益',
+          storyRole: '高性能候选',
           intent: '让 Vector 更早消费 Cube 输出，同时 Cube 继续生产下一个 tile。',
-          tilingScheme: 'Double Buffer 友好',
+          tilingScheme: '融合高收益',
+          gainVsBaseline: '预计时间 -36%',
+          verdictTitle: '高收益 / 同步风险',
+          code: `// producer / consumer handoff
+CopyIn(0, slot0);
+CopyIn(1, slot1);
+for (int i = 0; i < TILE_NUM; i++) {
+  int slot = i % BUFFER_NUM;
+  LoadData(i, slot);
+  Mmad(i);
+  SetFlag(i);
+  if (i > 0) {
+    WaitFlag(i - 1);
+    VectorCompute(i - 1);
+    CopyOut(i - 1, (i - 1) % BUFFER_NUM);
+  }
+  int next = i + BUFFER_NUM;
+  if (next < TILE_NUM) CopyIn(next, slot);
+}
+WaitFlag(TILE_NUM - 1);
+VectorCompute(TILE_NUM - 1);
+CopyOut(TILE_NUM - 1, (TILE_NUM - 1) % BUFFER_NUM);`,
           summary: '理论 overlap 最强，但对 AIC/AIV handoff 和 wait flag 密度更敏感。',
           recommendation: '最值得作为高性能候选，但必须用 profiling 验证 `WAIT_FLAG` 是否过密、Vector 是否等待 Cube。',
           assumptions: [
@@ -3483,19 +3785,30 @@
       };
 
       const state = {
-        operatorId: 'OP-003',
-        view: 'api',
-        tilingScheme: '对齐 tail 场景',
+        operatorId: 'OP-004',
+        view: 'plan',
+        tilingScheme: '双缓冲平衡',
         customSchemeCount: 0,
         soc: '910b',
         dtype: 'half',
         inputCount: 2,
-        totalLen: 16448,
-        blockDim: 7,
+        totalLen: 16384,
+        blockDim: 8,
         tileNum: 8,
         bufferNum: 2,
-        tailPolicy: 'former/tail',
-        paddingPolicy: 'padding',
+        tailPolicy: 'branch',
+        paddingPolicy: 'mask',
+        paddingValueMode: 'recommended',
+        paddingCustomValue: 0,
+        paddingImplementation: 'dataCopyPad',
+        maskMode: 'continuous',
+        maskScope: 'tailOnly',
+        selectedVisualizationCore: 0,
+        selectedPlanTile: 't0',
+        selectedPlanStage: 'MTE2 / CopyIn',
+        selectedPlanLane: 'copyin',
+        planPipelineCode: pipelineScenarios.auto.code,
+        appliedPlanPipelineCode: pipelineScenarios.auto.code,
         tilingMode: 'auto',
         apiStep: 3,
         apiPlaying: false,
@@ -3528,6 +3841,7 @@
       const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
       let apiPlaybackTimer = null;
       const currentOperator = () => operators.find((item) => item.id === state.operatorId) || operators[0];
+      const currentOperatorPlanContract = (operatorId = state.operatorId) => operatorPlanContracts[operatorId] || { total: state.totalLen, inputs: state.inputCount };
       const statusClass = (status) => status === '待评审' ? 'is-ready' : status === '已对比' ? 'is-compared' : status === '设计中' ? 'is-designing' : '';
       const viewLabel = (view) => ({
         overview: '概览',
@@ -3554,9 +3868,14 @@
         $$('[data-operator]').forEach((btn) => {
           btn.addEventListener('click', () => {
             state.operatorId = btn.dataset.operator;
+            syncOperatorPlanContract();
+            syncTailPolicyToOperator();
             state.selectedApi = currentOperator().apis[0] || 'Load3D';
             if (state.operatorId === 'OP-003') state.view = 'api';
-            else state.view = 'overview';
+            else if (state.operatorId === 'OP-004') {
+              applyPipelineScenario('auto');
+              state.view = 'plan';
+            } else state.view = 'overview';
             renderAll();
           });
         });
@@ -3612,7 +3931,10 @@
         $$('[data-open-view]').forEach((btn) => {
           btn.addEventListener('click', () => {
             state.view = btn.dataset.openView;
-            if (state.view === 'pipeline') state.operatorId = 'OP-004';
+            if (state.view === 'pipeline') {
+              state.operatorId = 'OP-004';
+              syncTailPolicyToOperator();
+            }
             if (state.view === 'api') state.selectedApi = p.apis.includes('Load3D') ? 'Load3D' : p.apis[0];
             renderAll();
           });
@@ -3660,18 +3982,137 @@
         };
       }
 
-      function applyTilingScheme(scheme) {
+      function tailPolicyRecommendation(operator = currentOperator()) {
+        if (operator.tailComputation === 'reduction') {
+          return {
+            policy: 'branch',
+            label: 'Branch',
+            reason: '归约计算，无效数据可能改变结果'
+          };
+        }
+        return {
+          policy: 'pad',
+          label: 'Pad',
+          reason: '逐元素计算，无效数据不影响有效输出'
+        };
+      }
+
+      function tailPolicyHint(operator = currentOperator()) {
+        const recommendation = tailPolicyRecommendation(operator);
+        return `当前推荐：${recommendation.label}<br>原因：${recommendation.reason}`;
+      }
+
+      function paddingPolicyRecommendation(operator = currentOperator()) {
+        if (operator.tailComputation === 'reduction') {
+          return { policy: 'mask', label: '使用 Mask', reason: '归约计算需要隔离无效元素，避免参与结果。' };
+        }
+        return { policy: 'redundant', label: '冗余计算', reason: '逐元素计算，无效数据不影响有效输出。' };
+      }
+
+      function renderPaddingPolicyControl(operator, selected, outcome) {
+        if (selected.tailPolicy !== 'pad') return '';
+        const recommendation = paddingPolicyRecommendation(operator);
+        const validLength = Math.max(1, outcome.tailLastTileValid || outcome.tileLen);
+        const alignedLength = Math.max(outcome.tileLen, Math.ceil(validLength / outcome.alignElems) * outcome.alignElems);
+        const paddedElements = alignedLength - validLength;
+        const labels = {
+          redundant: '冗余计算',
+          value: '填充值',
+          mask: '使用 Mask'
+        };
+        return `
+          <div class="control-field">
+            <label>填充策略</label>
+            <div class="seg-control" data-seg="paddingPolicy">
+              ${Object.entries(labels).map(([policy, label]) => `<button type="button" class="${selected.paddingPolicy === policy ? 'is-active' : ''}" data-set-padding-policy="${policy}">${label}</button>`).join('')}
+            </div>
+            <div class="control-hint">当前推荐：${recommendation.label}<br>原因：${recommendation.reason}</div>
+            ${selected.paddingPolicy === 'value' ? `
+              <div class="padding-value-options" aria-label="填充值设置">
+                <label class="padding-value-option"><input type="radio" name="paddingValueMode" value="recommended" data-padding-value-mode ${state.paddingValueMode === 'recommended' ? 'checked' : ''}> 推荐值：0</label>
+                <label class="padding-value-option"><input type="radio" name="paddingValueMode" value="custom" data-padding-value-mode ${state.paddingValueMode === 'custom' ? 'checked' : ''}> 自定义值：<input type="number" value="${state.paddingCustomValue}" data-padding-custom-value ${state.paddingValueMode === 'custom' ? '' : 'disabled'}></label>
+              </div>
+              <div class="padding-value-options" aria-label="填充实现方式">
+                <span class="padding-policy-detail__title">实现方式</span>
+                ${[['dataCopyPad', 'DataCopyPad'], ['duplicate', 'Duplicate'], ['padApi', 'Pad API']].map(([value, label]) => `<label class="padding-value-option"><input type="radio" name="paddingImplementation" value="${value}" data-padding-implementation ${state.paddingImplementation === value ? 'checked' : ''}> ${label}</label>`).join('')}
+              </div>
+            ` : ''}
+            ${selected.paddingPolicy === 'mask' ? `
+              <div class="padding-value-options" aria-label="Mask 模式">
+                <span class="padding-policy-detail__title">Mask 模式</span>
+                ${[['continuous', '连续 Mask'], ['bitwise', '逐 bit Mask']].map(([value, label]) => `<label class="padding-value-option"><input type="radio" name="maskMode" value="${value}" data-mask-mode ${state.maskMode === value ? 'checked' : ''}> ${label}</label>`).join('')}
+              </div>
+              <div class="padding-value-options" aria-label="Mask 作用范围">
+                <span class="padding-policy-detail__title">作用范围</span>
+                ${[['tailOnly', '仅尾块'], ['allTiles', '所有 Tile']].map(([value, label]) => `<label class="padding-value-option"><input type="radio" name="maskScope" value="${value}" data-mask-scope ${state.maskScope === value ? 'checked' : ''}> ${label}</label>`).join('')}
+              </div>
+            ` : ''}
+            <div class="padding-policy-detail">
+              <div class="padding-policy-detail__group">
+                <span class="padding-policy-detail__title">尾块信息</span>
+                <div class="padding-policy-detail__row"><span>有效长度</span><span>${validLength}</span></div>
+                <div class="padding-policy-detail__row"><span>对齐长度</span><span>${alignedLength}</span></div>
+                <div class="padding-policy-detail__row"><span>补齐量</span><span>${paddedElements}</span></div>
+              </div>
+              <div class="padding-policy-detail__group">
+                <span class="padding-policy-detail__title">生成方式</span>
+                <div class="padding-policy-detail__row"><span>搬入</span><span>DataCopyPad</span></div>
+                <div class="padding-policy-detail__row"><span>计算</span><span>${alignedLength}</span></div>
+                <div class="padding-policy-detail__row"><span>搬出</span><span>${validLength}</span></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function syncTailPolicyToOperator() {
+        state.tailPolicy = tailPolicyRecommendation().policy;
+        if (state.tailPolicy === 'pad') state.paddingPolicy = paddingPolicyRecommendation().policy;
+      }
+
+      function syncOperatorPlanContract() {
+        const contract = currentOperatorPlanContract();
+        state.totalLen = contract.total;
+        state.inputCount = contract.inputs;
+      }
+
+      function applyTilingScheme(scheme, options = {}) {
+        const { syncPipeline = true } = options;
+        const contract = currentOperatorPlanContract();
         state.tilingScheme = scheme.name;
         state.soc = scheme.soc;
         state.dtype = scheme.dtype;
-        state.inputCount = scheme.inputs;
-        state.totalLen = scheme.total;
+        state.inputCount = contract.inputs;
+        state.totalLen = contract.total;
         state.blockDim = scheme.blockDim;
         state.tileNum = scheme.tileNum;
         state.bufferNum = scheme.bufferNum;
-        state.tailPolicy = scheme.tailPolicy || 'former/tail';
-        state.paddingPolicy = scheme.paddingPolicy || 'padding';
+        syncTailPolicyToOperator();
+        state.paddingPolicy = scheme.paddingPolicy || 'redundant';
         state.tilingMode = scheme.tilingMode || 'manual';
+        if (syncPipeline && scheme.pipelineKey && pipelineScenarios[scheme.pipelineKey]) {
+          state.pipeline = scheme.pipelineKey;
+          state.planPipelineCode = pipelineScenarios[scheme.pipelineKey].code;
+          state.appliedPlanPipelineCode = pipelineScenarios[scheme.pipelineKey].code;
+          state.selectedPlanTile = 't0';
+          state.selectedPlanStage = 'MTE2 / CopyIn';
+          state.selectedPlanLane = 'copyin';
+        }
+      }
+
+      function applyPipelineScenario(key) {
+        const scenario = pipelineScenarios[key] || pipelineScenarios.auto;
+        const scheme = tilingSchemes.find((item) => item.name === scenario.tilingScheme) || tilingSchemes[1];
+        state.pipeline = key in pipelineScenarios ? key : 'auto';
+        applyTilingScheme(scheme, { syncPipeline: false });
+        state.planPipelineCode = scenario.code;
+        state.appliedPlanPipelineCode = scenario.code;
+        state.selectedPipelineBlock = null;
+        state.selectedPipelineTime = null;
+        state.selectedPlanTile = 't0';
+        state.selectedPlanStage = 'MTE2 / CopyIn';
+        state.selectedPlanLane = 'copyin';
+        state.selectedVisualizationCore = 0;
       }
 
       function computeTilingOutcome(scheme) {
@@ -3680,24 +4121,31 @@
         const blockDim = Math.max(1, Math.min(Number(scheme.blockDim) || 1, soc.cores));
         const tileNum = Math.max(1, Number(scheme.tileNum) || 1);
         const bufferNum = Math.max(1, Number(scheme.bufferNum) || 1);
-        const total = Math.max(1, Number(scheme.total) || 1);
+        const contract = currentOperatorPlanContract();
+        const inputs = Math.max(1, Number(scheme.inputs) || Number(contract.inputs) || 1);
+        const total = Math.max(1, Number(scheme.total) || Number(contract.total) || 1);
         const alignElems = Math.max(1, soc.alignBytes / dtypeBytes);
-        const totalAligned = Math.floor(total / alignElems) * alignElems;
+        const totalAligned = Math.ceil(total / alignElems) * alignElems;
         const blocksTotal = Math.max(1, Math.floor(totalAligned / alignElems));
         const formerNum = blocksTotal % blockDim;
         const tailNum = blockDim - formerNum;
         const tailLength = Math.floor(blocksTotal / blockDim) * alignElems;
         const formerLength = tailLength + (formerNum > 0 ? alignElems : 0);
         const perCoreDisplay = formerNum > 0 ? formerLength : tailLength;
-        const loopCount = tileNum * bufferNum;
-        const tileLen = Math.max(1, Math.floor(perCoreDisplay / loopCount));
-        const queueCount = scheme.inputs + 1;
+        const loopCount = tileNum;
+        const tileLen = Math.max(alignElems, Math.ceil(perCoreDisplay / tileNum / alignElems) * alignElems);
+        const formerLastTileValid = Math.max(1, formerLength - tileLen * (tileNum - 1));
+        const tailLastTileValid = Math.max(1, tailLength - tileLen * (tileNum - 1));
+        const hasFormerIntraTail = formerNum > 0 && formerLastTileValid < tileLen;
+        const hasTailIntraTail = tailLastTileValid < tileLen;
+        const hasIntraCoreTail = hasFormerIntraTail || hasTailIntraTail;
+        const queueCount = inputs + 1;
         const queueBytes = bufferNum * tileLen * dtypeBytes;
         const ubUsed = queueCount * queueBytes;
         const ubCap = soc.ubKB * 1024;
         const ubPct = ubUsed / ubCap * 100;
         const queuePct = queueBytes / ubCap * 100;
-        const queueNames = Array.from({ length: scheme.inputs }, (_, idx) => `GM stream ${idx + 1}`).concat('输出 z');
+        const queueNames = Array.from({ length: inputs }, (_, idx) => `GM stream ${idx + 1}`).concat('输出 z');
         const queueColors = ['var(--info)', 'var(--aic)', 'var(--aiv)', 'var(--mte)'];
         let consumedPct = 0;
         const ubSegments = queueNames.map((name, idx) => {
@@ -3714,12 +4162,12 @@
         });
         const tileBytes = tileLen * dtypeBytes;
         const tileAligned = tileLen % alignElems === 0;
-        const queueLimitOk = scheme.inputs * bufferNum <= soc.maxQueuePerPos * 2;
+        const queueLimitOk = inputs * bufferNum <= soc.maxQueuePerPos * 2;
         const tileBigEnough = tileLen >= soc.vectorWidthBytes / dtypeBytes;
-        const wasteElems = total - totalAligned;
+        const wasteElems = totalAligned - total;
         const splitMsg = formerNum === 0
-          ? `均分：每个激活核处理 ${fmt(tailLength)} 个元素`
-          : `${formerNum} 个 former 核各处理 ${fmt(formerLength)} 个元素，${tailNum} 个 tail 核各处理 ${fmt(tailLength)} 个元素（差值 ${alignElems} 个元素）`;
+          ? `均分：每个激活核处理 ${fmt(tailLength)}`
+          : `${formerNum} 个 former 核各处理 ${fmt(formerLength)}，${tailNum} 个 tail 核各处理 ${fmt(tailLength)}（差值 ${alignElems}）`;
         const checksList = [
           {
             label: 'UB 容量',
@@ -3737,7 +4185,7 @@
           },
           {
             label: 'GM 输入流压力',
-            value: queueLimitOk ? `${scheme.inputs * bufferNum} 个队列，未超过限制` : `${scheme.inputs * bufferNum} 个队列，超过限制`,
+            value: queueLimitOk ? `${inputs * bufferNum} 个队列，未超过限制` : `${inputs * bufferNum} 个队列，超过限制`,
             cls: queueLimitOk ? 'is-ok' : 'is-warning',
             impact: queueLimitOk ? '队列占用在当前 demo 规则内，不会挤压 pipe 编排。' : '队列数量过高会增加 pipe 管理压力，并可能压缩 UB 可用空间。',
             action: queueLimitOk ? '保持当前输入流与 buffer 组合。' : '减少输入流数量，或关闭 Double Buffer 后重新评估 overlap 收益。'
@@ -3746,22 +4194,22 @@
             label: 'Tail 核处理',
             value: formerNum === 0 ? '没有 tail 分支' : `${formerNum} former + ${tailNum} tail`,
             cls: formerNum === 0 ? 'is-ok' : 'is-warning',
-            impact: formerNum === 0 ? '多核工作量均分，kernel 边界分支较少。' : '不同 core 工作量不一致，需要 kernel 明确区分 former/tail 或 padding。',
-            action: formerNum === 0 ? '可使用普通均分 kernel 路径。' : '确认 tail policy 选择 former/tail 或 padding，并验证 tail core 的搬运长度。'
+            impact: formerNum === 0 ? '多核工作量均分，kernel 边界分支较少。' : '不同 core 工作量不一致，需要 kernel 明确采用 Branch 或 Pad 承接尾块。',
+            action: formerNum === 0 ? '可使用普通均分 kernel 路径。' : '确认当前推荐的尾块策略，并验证 tail core 的搬运长度。'
           },
           {
             label: 'Vector 宽度',
-            value: tileBigEnough ? `tile ${tileLen} >= ${soc.vectorWidthBytes / dtypeBytes}` : `tile ${tileLen} 低于 ${soc.vectorWidthBytes / dtypeBytes} 元素`,
+            value: tileBigEnough ? `tile ${tileLen} >= ${soc.vectorWidthBytes / dtypeBytes}` : `tile ${tileLen} 低于 ${soc.vectorWidthBytes / dtypeBytes}`,
             cls: tileBigEnough ? 'is-ok' : 'is-warning',
             impact: tileBigEnough ? 'tile 至少覆盖一个 vector 宽度，便于保持向量执行效率。' : 'tile 过短会降低 vector lane 利用率，循环调度开销占比变高。',
             action: tileBigEnough ? '保持当前 TILE_NUM / BUFFER_NUM 组合。' : '减少 TILE_NUM、减少 BLOCK_DIM，或增大每核 workload。'
           },
           {
             label: '末尾覆盖',
-            value: wasteElems === 0 ? '无遗漏' : `${wasteElems} 个元素需要 mask 或 padding`,
-            cls: wasteElems === 0 ? 'is-ok' : 'is-warning',
-            impact: wasteElems === 0 ? 'total length 已按对齐单元覆盖，没有末尾遗漏。' : '末尾元素没有进入对齐 workload，可能影响正确性或输出覆盖。',
-            action: wasteElems === 0 ? '无需额外处理。' : '选择 padding policy，并在 kernel tail 分支中验证 mask / padding。'
+            value: hasIntraCoreTail ? `核内末块 ${tailLastTileValid} / ${tileLen}` : wasteElems === 0 ? '无遗漏' : `输入末端补齐 ${wasteElems}`,
+            cls: hasIntraCoreTail || wasteElems > 0 ? 'is-warning' : 'is-ok',
+            impact: hasIntraCoreTail ? '最后一个核内 Tile 只消费部分有效范围，需要 Branch、Mask 或 Pad 保护边界。' : wasteElems === 0 ? '有效范围已经完整覆盖。' : '输入末端需要对齐补齐并隔离无效范围。',
+            action: hasIntraCoreTail || wasteElems > 0 ? '在最后一个 Tile 验证有效长度与对齐长度。' : '无需额外处理。'
           }
         ];
         return {
@@ -3770,6 +4218,7 @@
           blockDim,
           tileNum,
           bufferNum,
+          inputs,
           total,
           alignElems,
           totalAligned,
@@ -3780,6 +4229,12 @@
           perCoreDisplay,
           loopCount,
           tileLen,
+          formerLastTileValid,
+          tailLastTileValid,
+          hasFormerIntraTail,
+          hasTailIntraTail,
+          hasIntraCoreTail,
+          wasteElems,
           ubUsed,
           ubPct,
           queueBytes,
@@ -3816,8 +4271,8 @@
 
       function operatorWorkloadFormula(operator, outcome) {
         if (operator.id === 'OP-003') return 'Ho * Wo * C0 → img2col 行 → tile 工作负载种子';
-        if (operator.id === 'OP-004') return 'M * N output tile elements → Cube result → Vector postprocess';
-        return 'flatten(shape) → linear elements';
+        if (operator.id === 'OP-004') return 'M * N output tile → Cube result → Vector postprocess';
+        return 'flatten(shape) → linear range';
       }
 
       function renderHardwareFacts(outcome) {
@@ -3827,8 +4282,8 @@
             <div class="tiling-fact"><span>SOC</span><b>${outcome.soc.name}</b></div>
             <div class="tiling-fact"><span>核心</span><b>${outcome.soc.cores} ${outcome.soc.coreLabel}</b></div>
             <div class="tiling-fact"><span>UB</span><b>${outcome.soc.ubKB} KB / core</b></div>
-            <div class="tiling-fact"><span>对齐</span><b>${outcome.soc.alignBytes}B = ${outcome.alignElems} elems</b></div>
-            <div class="tiling-fact"><span>Vector</span><b>${outcome.soc.vectorWidthBytes}B = ${vectorElems} elems</b></div>
+            <div class="tiling-fact"><span>对齐</span><b>${outcome.soc.alignBytes}B = ${outcome.alignElems}</b></div>
+            <div class="tiling-fact"><span>Vector</span><b>${outcome.soc.vectorWidthBytes}B = ${vectorElems}</b></div>
           </div>
         `;
       }
@@ -3839,7 +4294,7 @@
           <div class="tiling-fact-grid">
             <div class="tiling-fact"><span>输入形状</span><b title="${input[1]}">${input[1]}</b></div>
             <div class="tiling-fact"><span>总长度</span><b>${fmt(outcome.total)}</b></div>
-            <div class="tiling-fact"><span>已对齐</span><b>${fmt(outcome.totalAligned)} (${outcome.alignElems} elems/unit)</b></div>
+            <div class="tiling-fact"><span>已对齐</span><b>${fmt(outcome.totalAligned)}</b></div>
           </div>
         `;
       }
@@ -3850,12 +4305,12 @@
       }
 
       function tileLengthFormula(outcome, selected) {
-        return `floor(${fmt(outcome.perCoreDisplay)} / ${selected.tileNum} / ${selected.bufferNum})`;
+        return `alignUp(ceil(${fmt(outcome.perCoreDisplay)} / ${selected.tileNum}), ${outcome.alignElems})`;
       }
 
       function schemeTailText(scheme, outcome) {
         if (outcome.formerNum === 0) return `${scheme.tailPolicy || 'branch'}, no tail`;
-        return `${outcome.formerNum} + ${outcome.tailNum}, ${scheme.paddingPolicy || 'padding'}`;
+        return `${outcome.formerNum} + ${outcome.tailNum}, ${scheme.paddingPolicy || 'redundant'}`;
       }
 
       function checkClass(row) {
@@ -3886,7 +4341,7 @@
 
       function tilingCodeForScheme(scheme, outcome) {
         const dtypeC = codeDtype(scheme.dtype);
-        const inputNames = Array.from({ length: Math.max(1, scheme.inputs) }, (_, i) => String.fromCharCode(120 + i));
+        const inputNames = Array.from({ length: Math.max(1, outcome.inputs) }, (_, i) => String.fromCharCode(120 + i));
         const outputName = String.fromCharCode(120 + inputNames.length);
         const sig = inputNames.concat(outputName).map((name) => `GM_ADDR ${name}`).join(', ');
         const tilingKey = outcome.formerNum === 0 ? 0 : 2;
@@ -3919,7 +4374,7 @@
           kernel += `        pipe.InitBuffer(outQueue${outputName.toUpperCase()}, BUFFER_NUM, TILE_LENGTH * sizeof(${dtypeC}));\n`;
           kernel += '    }\n\n';
           kernel += '    __aicore__ inline void Process() {\n';
-          kernel += '        int32_t loopCount = TILE_NUM * BUFFER_NUM;\n';
+          kernel += '        int32_t loopCount = TILE_NUM;\n';
           kernel += '        for (int32_t i = 0; i < loopCount; i++) {\n';
           kernel += '            CopyIn(i);\n';
           kernel += '            Compute(i);\n';
@@ -3937,8 +4392,8 @@
           });
           kernel += '};\n';
         } else {
-          kernel += `// Tail-core split: ${outcome.formerNum} former cores (${outcome.formerLength} elems each)\n`;
-          kernel += `//                  ${outcome.tailNum} tail cores (${outcome.tailLength} elems each)\n\n`;
+          kernel += `// Tail-core split: ${outcome.formerNum} former cores (${outcome.formerLength})\n`;
+          kernel += `//                  ${outcome.tailNum} tail cores (${outcome.tailLength})\n\n`;
           kernel += 'class KernelOp {\n';
           kernel += 'public:\n';
           kernel += `    __aicore__ inline void Init(${sig}, const TilingData& t) {\n`;
@@ -3997,6 +4452,81 @@
         return { kernel, host };
       }
 
+      let generatedOperatorFiles = {};
+
+      function buildGeneratedOperatorFiles() {
+        const operator = currentOperator();
+        const scheme = currentTilingScheme();
+        const outcome = computeTilingOutcome(scheme);
+        const tail = tailPolicyRecommendation(operator);
+        const scenario = currentPipelineScenario();
+        const pipelineCode = state.appliedPlanPipelineCode || state.planPipelineCode || scenario.code;
+        const generatedSchedule = pipelineCode.split('\n').map((line) => `  ${line}`).join('\n');
+        const tailGuard = tail.policy === 'branch'
+          ? `const int32_t validLength = Min(tileLength, coreLength - tileOffset);\nif (validLength < tileLength) SetVectorMask(validLength);`
+          : `const int32_t validLength = Min(tileLength, coreLength - tileOffset);\nconst int32_t paddedLength = AlignUp(validLength, ${outcome.alignElems});\nSetLoadDataPaddingValue(0);`;
+        return {
+          tiling: {
+            name: 'op_tiling.h',
+            code: `#pragma once\n#include "register/tilingdata_base.h"\n\n// [Generated] Tiling + Pipeline 联合契约\nBEGIN_TILING_DATA_DEF(TilingData)\n  TILING_DATA_FIELD_DEF(uint32_t, totalLength);\n  TILING_DATA_FIELD_DEF(uint32_t, formerNum);\n  TILING_DATA_FIELD_DEF(uint32_t, formerLength);\n  TILING_DATA_FIELD_DEF(uint32_t, tailLength);\n  TILING_DATA_FIELD_DEF(uint32_t, tileLength);\n  TILING_DATA_FIELD_DEF(uint32_t, tileNum);\n  TILING_DATA_FIELD_DEF(uint32_t, bufferNum);\nEND_TILING_DATA_DEF;\n\n// [Generated] Tiling 数据注册\nREGISTER_TILING_DATA_CLASS(${operator.id.replace('-', '_')}, TilingData)`
+          },
+          host: {
+            name: 'op_tiling.cpp',
+            code: `// [Generated] 固定算子输入契约\ntiling.set_totalLength(${outcome.total});\ntiling.set_formerNum(${outcome.formerNum});\ntiling.set_formerLength(${outcome.formerLength});\ntiling.set_tailLength(${outcome.tailLength});\ntiling.set_tileLength(${outcome.tileLen});\ntiling.set_tileNum(${scheme.tileNum});\ntiling.set_bufferNum(${scheme.bufferNum});\n\n// [Generated] ${scenario.shortName} launch 绑定\ncontext->SetBlockDim(${scheme.blockDim});\ncontext->SetTilingKey(${outcome.formerNum === 0 ? 0 : 2});\ncontext->SetTilingData(tiling);\n\n// [User Code] 补充算子特定约束\nreturn ValidateOperatorContract(context);`
+          },
+          kernel: {
+            name: 'op_kernel.cpp',
+            code: `// [Generated] ${scenario.name}\nconstexpr int32_t USE_CORE_NUM = ${scheme.blockDim};\nconstexpr int32_t TILE_NUM = ${scheme.tileNum};\nconstexpr int32_t BUFFER_NUM = ${scheme.bufferNum};\nconstexpr int32_t TILE_LENGTH = ${outcome.tileLen};\n\n// [Generated] 核间 Former/Tail 分配\nif (GetBlockIdx() < formerNum) {\n  coreLength = formerLength;\n} else {\n  coreLength = tailLength;\n}\n\n// [Generated] 核内末块 ${tail.label} 处理\nif (isLastTile) {\n  ${tailGuard.replace(/\n/g, '\n  ')}\n}\n\n// [Generated] Pipeline schedule\n${generatedSchedule}\n\n// [User Code] 填写算子计算体与真实 queue 生命周期\nValidateGeneratedSchedule();`
+          },
+          summary: `${scenario.shortName} ｜ ${scheme.blockDim} 核 / ${scheme.tileNum} 块 / Buffer ${scheme.bufferNum} ｜ 估算 ${scenario.metrics.estimatedTime} ｜ 尾块 ${tail.label}`,
+          meta: `${operator.id} · ${operator.title} · ${scheme.name} · ${scenario.storyRole}`
+        };
+      }
+
+      function showGeneratedOperatorFile(key) {
+        const file = generatedOperatorFiles[key];
+        if (!file) return;
+        $('#operatorCodePreviewFile').textContent = file.name;
+        $('#operatorCodePreviewCode').innerHTML = fakeSyntaxHighlight(file.code);
+        $$('[data-code-preview-file]').forEach((button) => button.classList.toggle('is-active', button.dataset.codePreviewFile === key));
+      }
+
+      function fakeSyntaxHighlight(code) {
+        return String(code).split('\n').map((line) => {
+          const escaped = escapeHtml(line);
+          if (escaped.startsWith('// [Generated]')) return `<span class="syntax-generated">${escaped}</span>`;
+          if (escaped.startsWith('// [User Code]')) return `<span class="syntax-user">${escaped}</span>`;
+          return escaped
+            .replace(/\b(constexpr|const|for|if|else|return)\b/g, '<span class="syntax-keyword">$1</span>')
+            .replace(/\b(int32_t|uint32_t|TilingData)\b/g, '<span class="syntax-type">$1</span>')
+            .replace(/\b(\d+)\b/g, '<span class="syntax-number">$1</span>')
+            .replace(/\b(Compute|CopyIn|CopyOut|LoadData|Mmad|SetFlag|WaitFlag|VectorCompute|SetBlockDim|SetTilingKey|SetTilingData|AlignUp|Min|SetVectorMask|SetLoadDataPaddingValue|ValidateOperatorContract|ValidateGeneratedSchedule)\b/g, '<span class="syntax-call">$1</span>');
+        }).join('\n');
+      }
+
+      function openCodePreview() {
+        generatedOperatorFiles = buildGeneratedOperatorFiles();
+        $('#operatorCodePreviewMeta').textContent = generatedOperatorFiles.meta;
+        $('#operatorCodePreviewSummary').textContent = `生成结果摘要：${generatedOperatorFiles.summary}`;
+        $('#operatorCodePreview').hidden = false;
+        showGeneratedOperatorFile('tiling');
+        $('[data-close-code-preview]')?.focus();
+      }
+
+      function closeCodePreview() {
+        $('#operatorCodePreview').hidden = true;
+      }
+
+      function prepareOperatorProject() {
+        const operator = currentOperator();
+        const scheme = currentTilingScheme();
+        const scenario = currentPipelineScenario();
+        const log = $('#mockLog');
+        if (log) {
+          log.textContent = `已准备 ${operator.id} 的算子工程模板：op_host/op_tiling.h · op_host/op_tiling.cpp · op_kernel/op_kernel.cpp\n联合方案：${scenario.shortName} · ${scheme.blockDim} 核 / TILE_NUM=${scheme.tileNum} / BUFFER_NUM=${scheme.bufferNum}\nprofiling：${scenario.profilingChecklist.join('；')}\n这是 UX 原型，尚未写入本地目录。`;
+        }
+      }
+
       function renderTilingCode(selected, outcome) {
         const code = tilingCodeForScheme(selected, outcome);
         return `
@@ -4035,7 +4565,7 @@
               <div class="scheme-card-grid">
                 ${tilingSchemes.map((scheme) => {
                   const s = computeTilingOutcome(scheme);
-                  const queueCount = scheme.inputs * scheme.bufferNum;
+                  const queueCount = s.inputs * scheme.bufferNum;
                   const queueLimit = s.soc.maxQueuePerPos * 2;
                   const selectedScheme = scheme.name === state.tilingScheme;
                   const verdict = schemeVerdict(s);
@@ -4142,10 +4672,31 @@
         }));
         findAll('[data-set-tail-policy]').forEach((btn) => btn.addEventListener('click', () => {
           state.tailPolicy = btn.dataset.setTailPolicy;
+          if (state.tailPolicy === 'pad') state.paddingPolicy = paddingPolicyRecommendation().policy;
           renderAll();
         }));
         findAll('[data-set-padding-policy]').forEach((btn) => btn.addEventListener('click', () => {
           state.paddingPolicy = btn.dataset.setPaddingPolicy;
+          renderAll();
+        }));
+        findAll('[data-padding-value-mode]').forEach((input) => input.addEventListener('change', () => {
+          state.paddingValueMode = input.value;
+          renderAll();
+        }));
+        findAll('[data-padding-custom-value]').forEach((input) => input.addEventListener('change', () => {
+          state.paddingCustomValue = Number(input.value) || 0;
+          renderAll();
+        }));
+        findAll('[data-padding-implementation]').forEach((input) => input.addEventListener('change', () => {
+          state.paddingImplementation = input.value;
+          renderAll();
+        }));
+        findAll('[data-mask-mode]').forEach((input) => input.addEventListener('change', () => {
+          state.maskMode = input.value;
+          renderAll();
+        }));
+        findAll('[data-mask-scope]').forEach((input) => input.addEventListener('change', () => {
+          state.maskScope = input.value;
           renderAll();
         }));
       }
@@ -4183,7 +4734,7 @@
                         ${renderOperatorShapeFacts(p, outcome)}
                       </section>
                       <section class="tiling-group">
-                        <div class="tiling-group__head"><h4>硬件目标</h4><span>${outcome.soc.name} · ${outcome.soc.coreLabel}</span></div>
+                        <div class="tiling-group__head"><h4>目标硬件</h4><span>${outcome.soc.name} · ${outcome.soc.coreLabel}</span></div>
                         <div class="hardware-target-grid">
                           <div class="hardware-target-controls">
                             <div class="control-field">
@@ -4213,7 +4764,6 @@
                           ${stepperField('blockDim', 'BLOCK_DIM', 1, outcome.soc.cores, selected.blockDim, 1)}
                           ${stepperField('tileNum', 'TILE_NUM', 1, 32, selected.tileNum, 1)}
                         </div>
-                        <div class="control-hint">BLOCK_DIM → 激活核数 / 单核工作量；TILE_NUM → tile 长度 / 循环次数。</div>
                         <div class="control-field">
                           <label>BUFFER_NUM</label>
                           <div class="seg-control" data-seg="bufferNum">
@@ -4222,19 +4772,13 @@
                           <div class="control-hint">BUFFER_NUM → UB 压力 / overlap 就绪度；Double Buffer 会成倍增加队列占用。</div>
                         </div>
                         <div class="control-field">
-                          <label>尾块策略</label>
+                          <label>核内尾块策略</label>
                           <div class="seg-control" data-seg="tailPolicy">
-                            ${['former/tail', 'branch', 'pad'].map((policy) => `<button type="button" class="${selected.tailPolicy === policy ? 'is-active' : ''}" data-set-tail-policy="${policy}">${policy}</button>`).join('')}
+                            ${['branch', 'pad'].map((policy) => `<button type="button" class="${selected.tailPolicy === policy ? 'is-active' : ''}" data-set-tail-policy="${policy}">${policy === 'branch' ? 'Branch' : 'Pad'}</button>`).join('')}
                           </div>
-                          <div class="control-hint">决定 totalAligned 之后不均分时，kernel 用分支、former/tail 还是 padding 承接尾块。</div>
+                          <div class="control-hint">${tailPolicyHint(p)}</div>
                         </div>
-                        <div class="control-field">
-                          <label>填充策略</label>
-                          <div class="seg-control" data-seg="paddingPolicy">
-                            ${['mask', 'padding', 'drop'].map((policy) => `<button type="button" class="${selected.paddingPolicy === policy ? 'is-active' : ''}" data-set-padding-policy="${policy}">${policy}</button>`).join('')}
-                          </div>
-                          <div class="control-hint">决定未覆盖元素是用 mask 保护、补齐计算，还是显式标记为不可接受。</div>
-                        </div>
+                        ${renderPaddingPolicyControl(p, selected, outcome)}
                       </section>
                     </div>
               </section>
@@ -4249,19 +4793,19 @@
                       </div>
                       <div class="split-note">${outcome.splitMsg}</div>
                       <div>
-                        <div class="section-head" style="padding-left:0;padding-right:0;background:transparent;border-bottom:0;border:none"><h3>硬件利用 · 核间</h3><span class="section-meta">${selected.blockDim} / ${outcome.soc.cores} 个核激活</span></div>
+                        <div class="section-head" style="padding-left:0;padding-right:0;background:transparent;border-bottom:0;border:none"><h3>核间</h3><span class="section-meta">${selected.blockDim} / ${outcome.soc.cores} 个核激活</span></div>
                         <div class="core-grid">
                           ${Array.from({ length: outcome.soc.cores }, (_, i) => {
                             const active = i < selected.blockDim;
                             const former = active && outcome.formerNum > 0 && i < outcome.formerNum;
                             const len = former ? outcome.formerLength : outcome.tailLength;
-                            return `<div class="core-card ${active ? 'is-active' : ''} ${former ? 'is-former' : ''}" title="core ${i} · ${active ? len + ' 个元素' : '空闲'}">${active ? fmt(len) : ''}</div>`;
+                            return `<div class="core-card ${active ? 'is-active' : ''} ${former ? 'is-former' : ''}" title="core ${i} · ${active ? len : '空闲'}">${active ? fmt(len) : ''}</div>`;
                           }).join('')}
                         </div>
                         <p class="core-explain"><b>${selected.blockDim}/${outcome.soc.cores} ${outcome.soc.coreLabel} 激活</b>，${outcome.soc.cores - selected.blockDim} 个核空闲。</p>
-                        <div class="section-head" style="margin-top:10px;padding-left:0;padding-right:0;background:transparent;border-bottom:0;border:none"><h3>硬件利用 · 核内</h3><span class="section-meta">${selected.tileNum} tiles × ${selected.bufferNum} buffers</span></div>
+                        <div class="section-head" style="margin-top:10px;padding-left:0;padding-right:0;background:transparent;border-bottom:0;border:none"><h3>核内</h3><span class="section-meta">${selected.tileNum} tiles × ${selected.bufferNum} buffers</span></div>
                         <div class="intra-core-grid" aria-label="单核内部 tile 切分">
-                          ${Array.from({ length: outcome.loopCount }, (_, i) => `<div class="intra-tile" title="loop ${i + 1} · ${outcome.tileLen} elements"><span>loop ${i + 1}</span>${fmt(outcome.tileLen)}</div>`).join('')}
+                          ${Array.from({ length: outcome.loopCount }, (_, i) => `<div class="intra-tile" title="loop ${i + 1} · ${outcome.tileLen}"><span>loop ${i + 1}</span>${fmt(outcome.tileLen)}</div>`).join('')}
                         </div>
                       </div>
                       <div>
@@ -4346,7 +4890,7 @@
             blockDim: state.blockDim,
             tileNum: state.tileNum,
             bufferNum: state.bufferNum,
-            tailPolicy: computeTilingOutcome(currentTilingScheme()).formerNum > 0 ? 'former/tail' : 'branch',
+            tailPolicy: tailPolicyRecommendation().policy,
             paddingPolicy: state.paddingPolicy,
             tilingMode: 'manual',
             custom: true,
@@ -4482,21 +5026,31 @@
         return patches.reduce((sum, patch) => sum + patch.elements.length, 0);
       }
 
-      function load3dContext(patches) {
+      function load3dContextAtStep(patches, step) {
         if (!patches.length) return { patch: null, element: null, step: 0, maxStep: 0 };
         const maxStep = Math.max(0, load3dTotalSteps(patches) - 1);
-        let cursor = Math.max(0, Math.min(maxStep, state.apiStep || 0));
+        const boundedStep = Math.max(0, Math.min(maxStep, Number(step) || 0));
+        let cursor = boundedStep;
         let patch = patches[0];
         let element = patch.elements[0];
-        for (const candidate of patches) {
+        let patchIndex = 0;
+        let elementIndex = 0;
+        for (let index = 0; index < patches.length; index += 1) {
+          const candidate = patches[index];
           if (cursor < candidate.elements.length) {
             patch = candidate;
             element = candidate.elements[cursor];
+            patchIndex = index;
+            elementIndex = cursor;
             break;
           }
           cursor -= candidate.elements.length;
         }
-        return { patch, element, step: Math.max(0, Math.min(maxStep, state.apiStep || 0)), maxStep };
+        return { patch, element, patchIndex, elementIndex, step: boundedStep, maxStep };
+      }
+
+      function load3dContext(patches) {
+        return load3dContextAtStep(patches, state.apiStep);
       }
 
       function load3dSourceLabel(h, w, c, isPadding) {
@@ -4825,9 +5379,9 @@
           ids,
           totalSteps: () => load3dTotalSteps(patches),
           getLabelForStep: (step) => {
-            const stateAtStep = stepToState(step, patches);
-            const patch = patches[stateAtStep.patchIndex];
-            const element = patch?.elements?.[stateAtStep.elementIndex];
+            const stateAtStep = load3dContextAtStep(patches, step);
+            const patch = stateAtStep.patch;
+            const element = stateAtStep.element;
             return element ? `oh ${element.oh}, ow ${element.ow}` : `Step ${step}`;
           },
         });
@@ -4838,8 +5392,10 @@
           controller.sync({ isPlaying: () => state.apiPlaying });
           if (stepLabel) stepLabel.textContent = `${state.apiStep + 1} / ${Math.max(1, load3dTotalSteps(patches))}`;
           if (opname) {
-            const ctx = currentContext(patches);
-            opname.textContent = ctx.element ? `patch ${ctx.patch.row}, element ${ctx.patch.elements.indexOf(ctx.element)}` : '-';
+            const stateAtStep = load3dContextAtStep(patches, state.apiStep);
+            const patch = stateAtStep.patch;
+            const element = stateAtStep.element;
+            opname.textContent = element ? `patch ${patch.row}, element ${stateAtStep.elementIndex}` : '-';
           }
           if (scrubber) scrubber.value = String(state.apiStep);
         };
@@ -5520,7 +6076,7 @@
           tileNum: tilingOutcome.tileNum,
           bufferNum: tilingOutcome.bufferNum,
           tailPolicy: tilingScheme.tailPolicy || 'branch',
-          paddingPolicy: tilingScheme.paddingPolicy || 'padding',
+          paddingPolicy: tilingScheme.paddingPolicy || 'redundant',
           tilingScheme: tilingScheme.name,
           tileLength: tilingOutcome.tileLen,
           ubBudget: `${tilingOutcome.ubPct.toFixed(0)}% (${bytesFmt(tilingOutcome.ubUsed)} / ${tilingOutcome.soc.ubKB} KB)`,
@@ -5530,7 +6086,7 @@
           constraints: [
             `SOC ${tilingOutcome.soc.name} · ${tilingOutcome.soc.coreLabel}`,
             `BLOCK_DIM=${tilingOutcome.blockDim}, TILE_NUM=${tilingOutcome.tileNum}, BUFFER_NUM=${tilingOutcome.bufferNum}`,
-            `tail=${tilingScheme.tailPolicy || 'branch'}, padding=${tilingScheme.paddingPolicy || 'padding'}`,
+            `tail=${tilingScheme.tailPolicy || 'branch'}, padding=${tilingScheme.paddingPolicy || 'redundant'}`,
             `UB ${tilingOutcome.ubPct.toFixed(0)}%, queue ${queueCount}/${queueLimit}`
           ]
         };
@@ -5588,7 +6144,7 @@
                 ['工作负载', contract.workloadSeed],
                 ['SOC / dtype', `${contract.soc} · ${contract.dtype} · ${contract.format}`],
                 ['Tiling', `B${contract.blockDim} / T${contract.tileNum} / DB${contract.bufferNum}`],
-                ['Tile 长度', `${fmt(contract.tileLength)} elems`],
+                ['Tile 长度', `${fmt(contract.tileLength)}`],
                 ['UB 预算', contract.ubBudget],
                 ['队列预算', contract.queueBudget],
                 ['尾块策略', `${contract.tailPolicy} / ${contract.paddingPolicy}`]
@@ -5749,7 +6305,7 @@
               size: tier?.size || 'mock',
               aliveBecause: meta?.aliveBecause || 'tile stage is still active',
               releaseWhen: meta?.releaseWhen || 'stage completes',
-              blocks: meta?.blocks || 'no downstream blocker in this simplified model',
+              blocks: meta?.blocks || 'no downstream blocker in the current scheduling model',
               risk: meta?.risk || 'check profiling evidence'
             };
           });
@@ -5839,79 +6395,322 @@
         `;
       }
 
+      function planTileId(tile) {
+        return String(tile).replace('tile', 't');
+      }
+
+      function renderPlanPipelinePresets() {
+        return `
+          <div class="seg-control plan-pipeline-presets" data-seg="pipeline">
+            ${Object.entries(pipelineScenarios).map(([key, item]) => `
+              <button class="${key === state.pipeline ? 'is-active' : ''}" type="button" data-pipeline="${key}">
+                <span>${escapeHtml(item.shortName)}</span>
+                <small>${escapeHtml(item.metrics.estimatedTime)} · overlap ${escapeHtml(item.metrics.overlapRate)}</small>
+              </button>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function renderPlanComparison() {
+        return `
+          <div class="plan-comparison" aria-label="联合方案对比">
+            ${Object.entries(pipelineScenarios).map(([key, item]) => `
+              <button class="plan-comparison__item ${key === state.pipeline ? 'is-active' : ''}" type="button" data-pipeline="${key}">
+                <span>${escapeHtml(item.shortName)}</span>
+                <b>${escapeHtml(item.metrics.estimatedTime)}</b>
+                <small>重叠 ${escapeHtml(item.metrics.overlapRate)} · 缓冲 ${escapeHtml(item.metrics.peakBuffer)}</small>
+              </button>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      function renderPlanSwimlane(scenario) {
+        return `
+          <section class="plan-swimlane">
+            <div class="plan-swimlane-legend">
+              <span id="planSwimlaneSummary">${escapeHtml(scenario.summary)}</span>
+              <span>估算 ${escapeHtml(scenario.metrics.estimatedTime)} · overlap ${escapeHtml(scenario.metrics.overlapRate)}</span>
+            </div>
+            ${pipelineLanes.map((lane) => {
+              const blocks = scenario.lanes.filter((block) => block.lane === lane.id);
+              return `
+                <div class="plan-lane-label">${escapeHtml(lane.title)}</div>
+                <div class="plan-lane" data-plan-simulation-operation="${lane.id}">
+                  ${blocks.map((block) => {
+                    const tileId = planTileId(block.tile);
+                    const isWait = lane.id === 'sync';
+                    return `<canvas
+                      class="plan-stage ${isWait ? 'wait' : tileId} ${state.selectedPlanTile === tileId && state.selectedPlanLane === lane.id ? 'is-selected' : ''}"
+                      style="--x:${block.start}%;--w:${block.duration}%"
+                      data-plan-task-canvas
+                      data-plan-lane="${lane.id}"
+                      data-plan-stage="${escapeHtml(lane.title)}"
+                      data-plan-tile="${tileId}"
+                      data-plan-block-id="${escapeHtml(block.id)}"
+                      data-plan-duration="${block.duration}"
+                      data-plan-label="${isWait ? 'wait' : tileId}"
+                      role="button"
+                      tabindex="0"
+                      aria-label="${escapeHtml(`${lane.title} · ${isWait ? 'wait' : tileId}`)}"
+                      title="${escapeHtml(isWait ? block.waitReason : `${block.stage} · ${block.api}`)}"></canvas>`;
+                  }).join('')}
+                </div>
+              `;
+            }).join('')}
+          </section>
+        `;
+      }
+
+      function intraCoreTiles(outcome, isFormerCore) {
+        const lastValid = isFormerCore ? outcome.formerLastTileValid : outcome.tailLastTileValid;
+        return Array.from({ length: outcome.tileNum }, (_, index) => ({
+          index,
+          valid: index === outcome.tileNum - 1 ? lastValid : outcome.tileLen,
+          aligned: outcome.tileLen,
+          partial: index === outcome.tileNum - 1 && lastValid < outcome.tileLen
+        }));
+      }
+
+      function renderPlanCodeEditor() {
+        const scenario = currentPipelineScenario();
+        return `
+          <section class="plan-code-preview" aria-label="可编辑 pipeline 代码">
+            <div class="plan-code-editor">
+              <div class="plan-code-editor__toolbar">
+                <span>pipeline_schedule.cpp · ${escapeHtml(scenario.shortName)} · 可编辑</span>
+                <button class="btn btn-sm" type="button" data-apply-plan-pipeline>应用</button>
+              </div>
+              <div class="plan-code-editor__surface">
+                <pre class="plan-code-editor__highlight" id="planPipelineHighlight" aria-hidden="true">${fakeSyntaxHighlight(state.planPipelineCode)}</pre>
+                <textarea class="plan-code-editor__input" id="planPipelineCode" spellcheck="false" aria-label="Pipeline 伪代码">${escapeHtml(state.planPipelineCode)}</textarea>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function updatePlanPipelineSimulation() {
+        const code = state.appliedPlanPipelineCode || state.planPipelineCode;
+        const scenario = currentPipelineScenario();
+        const operationMatchers = {
+          copyin: /\bCopyIn\b/,
+          mte1: /\bLoadData\b/,
+          cube: /\b(Mmad|Compute)\b/,
+          sync: /\b(SetFlag|WaitFlag)\b/,
+          vector: /\b(VectorCompute|Compute)\b/,
+          copyout: /\bCopyOut\b/
+        };
+        let activeCount = 0;
+        $$('[data-plan-simulation-operation]').forEach((lane) => {
+          const isActive = operationMatchers[lane.dataset.planSimulationOperation]?.test(code) ?? true;
+          lane.classList.toggle('is-muted', !isActive);
+          if (isActive) activeCount += 1;
+        });
+        const summary = $('#planSwimlaneSummary');
+        if (summary) summary.textContent = `${scenario.shortName}：已应用代码覆盖 ${activeCount}/6 个阶段`;
+      }
+
+      function drawPlanSwimlaneBars() {
+        const helper = window.PtoSwimlaneTaskPattern;
+        if (!helper?.drawTaskBar || !helper?.createTaskColormap) return;
+        const rootStyles = getComputedStyle(document.documentElement);
+        const asHex = (token, fallback) => {
+          const value = rootStyles.getPropertyValue(token).trim();
+          return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+        };
+        const colors = {
+          t0: asHex('--operator-blue', '#5b8def'),
+          t1: asHex('--operator-purple', '#a97ae6'),
+          t2: asHex('--operator-amber', '#f2a23a'),
+          wait: asHex('--danger', '#ff4b7b')
+        };
+        const colormap = helper.createTaskColormap({ labelColors: colors });
+        const fontFamily = rootStyles.getPropertyValue('--font-sans').trim() || 'sans-serif';
+        $$('[data-plan-task-canvas]').forEach((canvas) => {
+          const rect = canvas.getBoundingClientRect();
+          const width = Math.max(1, Math.round(rect.width));
+          const height = Math.max(1, Math.round(rect.height));
+          const dpr = Math.max(1, window.devicePixelRatio || 1);
+          canvas.width = Math.round(width * dpr);
+          canvas.height = Math.round(height * dpr);
+          const context = canvas.getContext('2d');
+          if (!context) return;
+          context.setTransform(dpr, 0, 0, dpr, 0, 0);
+          context.clearRect(0, 0, width, height);
+          const task = {
+            label: canvas.dataset.planLabel || 't0',
+            displayName: canvas.dataset.planStage || '',
+            laneKind: canvas.dataset.planLane || '',
+            totalCycle: Number(canvas.dataset.planDuration || 0),
+            status: canvas.dataset.planLane === 'sync' ? 'wait' : 'overlap'
+          };
+          canvas.__ptoSwimlaneTask = task;
+          helper.drawTaskBar(context, {
+            task,
+            x: 0,
+            y: 0,
+            width,
+            height,
+            radius: 5,
+            fontFamily,
+            baseColor: colormap.colorForTask(task),
+            isSelected: canvas.classList.contains('is-selected'),
+            isEmphasized: canvas.dataset.planTile === state.selectedPlanTile
+          });
+        });
+      }
+
+      function bindPlanCodeEditor() {
+        const input = $('#planPipelineCode');
+        const highlight = $('#planPipelineHighlight');
+        if (!input || !highlight) return;
+        const syncHighlight = () => { highlight.innerHTML = fakeSyntaxHighlight(input.value); };
+        input.addEventListener('input', syncHighlight);
+        input.addEventListener('scroll', () => {
+          highlight.scrollTop = input.scrollTop;
+          highlight.scrollLeft = input.scrollLeft;
+        });
+        $('[data-apply-plan-pipeline]')?.addEventListener('click', () => {
+          state.planPipelineCode = input.value;
+          state.appliedPlanPipelineCode = input.value;
+          updatePlanPipelineSimulation();
+        });
+      }
+
+      function updatePlanPipelineInspector() {
+        const tile = state.selectedPlanTile;
+        const stage = state.selectedPlanStage;
+        const lane = state.selectedPlanLane || 'copyin';
+        const tileIndex = Number(tile.replace('t', '')) || 0;
+        const scenario = currentPipelineScenario();
+        const scheme = currentTilingScheme();
+        const slotIndex = scheme.bufferNum === 1 ? 0 : tileIndex % scheme.bufferNum;
+        const block = scenario.lanes.find((item) => item.lane === lane && planTileId(item.tile) === tile);
+        const stageMeta = pipelineStageMeta[lane] || {};
+        const lineMatchers = {
+          copyin: /\bCopyIn\b/,
+          mte1: /\bLoadData\b/,
+          cube: /\b(Mmad|Compute)\b/,
+          sync: /\b(SetFlag|WaitFlag)\b/,
+          vector: /\bVectorCompute\b/,
+          copyout: /\bCopyOut\b/
+        };
+        const sourceLines = (state.appliedPlanPipelineCode || state.planPipelineCode || scenario.code).split('\n');
+        const sourceLineIndex = sourceLines.findIndex((line) => lineMatchers[lane]?.test(line));
+        const details = {
+          copyin: { queue: `inQueue slot${slotIndex}`, memory: 'L1 input staging' },
+          mte1: { queue: `L0A/B slot${slotIndex}`, memory: 'L1 → L0A / L0B' },
+          cube: { queue: `Cube ${tile}`, memory: 'L0A / L0B / L0C' },
+          sync: { queue: `sync flag ${tile}`, memory: 'FLOWCTRL event' },
+          vector: { queue: `VECOUT slot${slotIndex}`, memory: 'UB epilogue' },
+          copyout: { queue: `outQueue slot${slotIndex}`, memory: 'GM output' }
+        }[lane] || { queue: '-', memory: '-' };
+        const selected = $('#planInspectorSelected');
+        if (!selected) return;
+        selected.textContent = `${stage} · ${tile}`;
+        $('#planInspectorLine').textContent = sourceLineIndex >= 0 ? `pipeline_schedule.cpp line ${sourceLineIndex + 1}` : '当前代码未包含该阶段';
+        $('#planInspectorDepends').textContent = `TILE_NUM=${scheme.tileNum} · BUFFER_NUM=${scheme.bufferNum}`;
+        $('#planInspectorQueue').textContent = details.queue;
+        $('#planInspectorMemory').textContent = details.memory;
+        $('#planInspectorRisk').textContent = block?.waitReason || stageMeta.risk || scenario.metrics.bottleneck;
+        $('#planInspectorSummary').innerHTML = `<b>${escapeHtml(scenario.shortName)}</b> · 估算 ${escapeHtml(scenario.metrics.estimatedTime)} · overlap ${escapeHtml(scenario.metrics.overlapRate)}。当前选中 <code>${escapeHtml(stage)} · ${escapeHtml(tile)}</code>。`;
+        $$('.plan-swimlane .plan-stage').forEach((node) => {
+          node.classList.toggle('is-selected', node.dataset.planTile === tile && node.dataset.planLane === lane);
+        });
+        drawPlanSwimlaneBars();
+      }
+
+      function bindPlanPipelineTiles() {
+        $$('.plan-swimlane .plan-stage').forEach((node) => {
+          const selectTile = () => {
+            state.selectedPlanTile = node.dataset.planTile || 't0';
+            state.selectedPlanStage = node.dataset.planStage || 'MTE2 / CopyIn';
+            state.selectedPlanLane = node.dataset.planLane || 'copyin';
+            updatePlanPipelineInspector();
+          };
+          node.tabIndex = 0;
+          node.setAttribute('role', 'button');
+          node.addEventListener('click', selectTile);
+          node.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            selectTile();
+          });
+        });
+        updatePlanPipelineInspector();
+      }
+
       function renderPlan() {
         preserveActiveInput(() => {
           const operator = currentOperator();
           const selected = currentTilingScheme();
           const outcome = computeTilingOutcome(selected);
           const scenario = currentPipelineScenario();
-          const activeBlock = currentPipelineBlock(scenario);
-          const verdict = schemeVerdict(outcome);
           const ubOk = outcome.ubUsed <= outcome.soc.ubKB * 1024;
           const tailOk = outcome.formerNum === 0;
-          const queueCount = selected.inputs * selected.bufferNum;
+          const queueCount = outcome.inputs * selected.bufferNum;
           const queueLimit = outcome.soc.maxQueuePerPos * 2;
           const queueOk = queueCount <= queueLimit;
-          const code = tilingCodeForScheme(selected, outcome);
           const activeCores = Math.min(selected.blockDim, outcome.soc.cores);
+          const visualizationCore = Math.max(0, Math.min(state.selectedVisualizationCore, activeCores - 1));
+          state.selectedVisualizationCore = visualizationCore;
+          const visualizationCoreIsFormer = outcome.formerNum === 0 || visualizationCore < outcome.formerNum;
+          const visualizationCoreLength = visualizationCoreIsFormer ? outcome.formerLength : outcome.tailLength;
+          const visualizationTiles = intraCoreTiles(outcome, visualizationCoreIsFormer);
+          const visualizationTail = visualizationTiles[visualizationTiles.length - 1];
+          const output = operator.outputs[0] || ['output', '-', '-'];
+          const outputMeta = splitDtypeFormat(output[2]);
           $('#planView').innerHTML = `
             <div class="operator-plan">
-              <section class="plan-path" aria-label="Plan path">
-                <div class="path-step"><span>1 / Source</span><b>${escapeHtml(operator.title)}</b></div>
-                <div class="path-step"><span>2 / Tiling</span><b>B${outcome.blockDim} / T${outcome.tileNum} / DB${outcome.bufferNum}</b></div>
-                <div class="path-step is-current"><span>3 / Pipeline</span><b>${escapeHtml(scenario.name)}</b></div>
-                <div class="path-step"><span>4 / Validate</span><b>${verdict.label} · UB ${outcome.ubPct.toFixed(0)}%</b></div>
-                <div class="path-step"><span>5 / Handoff</span><b>Kernel + host tiling</b></div>
-              </section>
-
               <section class="plan-summary-grid">
                 <article class="viz-panel">
-                  <header class="section-head"><h3>Constraints</h3><span class="section-meta">hardware · data · tiling</span></header>
+                  <header class="section-head"><h3>总览</h3></header>
                   <div class="section-body plan-constraints">
                     <div class="plan-constraint-group">
-                      <div class="plan-constraint-line"><strong>SOC</strong><span>${outcome.soc.name}</span></div>
-                      <div class="plan-constraint-line"><strong>core</strong><span>${outcome.soc.cores} ${outcome.soc.coreLabel}</span></div>
-                      <div class="plan-constraint-line"><strong>UB</strong><span>${outcome.soc.ubKB} KB / core</span></div>
-                      <div class="plan-constraint-line"><strong>align</strong><span>${outcome.soc.alignBytes}B copy boundary</span></div>
-                      <div class="plan-constraint-line"><strong>vector</strong><span>${outcome.soc.vectorWidthBytes}B width</span></div>
+                      <div class="plan-constraint-line"><strong>目标硬件</strong><span>${outcome.soc.name}</span></div>
+                      <div class="plan-constraint-line"><strong>核数</strong><span>${outcome.soc.cores} ${outcome.soc.coreLabel}</span></div>
+                      <div class="plan-constraint-line"><strong>UB容量</strong><span>${outcome.soc.ubKB} KB / core</span></div>
+                      <div class="plan-constraint-line"><strong>对齐要求</strong><span>${outcome.soc.alignBytes}B copy boundary</span><b class="plan-constraint-status ${outcome.tileAligned ? '' : 'is-warning'}">${outcome.tileAligned ? '通过' : '复核'}</b></div>
+                      <div class="plan-constraint-line"><strong>vector</strong><span>${outcome.soc.vectorWidthBytes}B width</span><b class="plan-constraint-status ${outcome.tileLen >= outcome.soc.vectorWidthBytes / outcome.dtypeBytes ? '' : 'is-warning'}">${outcome.tileLen >= outcome.soc.vectorWidthBytes / outcome.dtypeBytes ? '通过' : '复核'}</b></div>
                     </div>
                     <div class="plan-constraint-group">
                       <div class="plan-constraint-line"><strong>dtype</strong><span>${selected.dtype}</span></div>
-                      <div class="plan-constraint-line"><strong>format</strong><span>${splitDtypeFormat(operator.inputs[0]?.[2]).format}</span></div>
-                      <div class="plan-constraint-line"><strong>input shape</strong><span>${escapeHtml(operator.inputs.map((item) => `${item[0]} ${item[1]}`).join(' · '))}</span></div>
-                      <div class="plan-constraint-line"><strong>total length</strong><span>${fmt(outcome.total)} elems</span></div>
+                      <div class="plan-constraint-line"><strong>Format</strong><span>${splitDtypeFormat(operator.inputs[0]?.[2]).format}</span></div>
+                      <div class="plan-constraint-line"><strong>Input shape</strong><span>${escapeHtml(operator.inputs.map((item) => `${item[0]} ${item[1]}`).join(' · '))}</span></div>
+                      <div class="plan-constraint-line"><strong>输出</strong><span>${escapeHtml(`${output[0]} · ${output[1]}`)}</span></div>
+                      <div class="plan-constraint-line"><strong>输出格式</strong><span>${escapeHtml(outputMeta.format)}</span></div>
+                      <div class="plan-constraint-line"><strong>工作负载</strong><span>${escapeHtml(operatorWorkloadText(operator, outcome))}</span></div>
+                      <div class="plan-constraint-line"><strong>Total length</strong><span>${fmt(outcome.total)}</span></div>
                     </div>
                     <div class="plan-constraint-group">
-                      <div class="plan-constraint-line"><strong>UB usage</strong><span>${outcome.ubPct.toFixed(0)}% / core</span></div>
-                      <div class="plan-constraint-line"><strong>blockLength</strong><span>${fmt(outcome.perCoreDisplay)} elems</span></div>
-                      <div class="plan-constraint-line"><strong>tileLength</strong><span>${fmt(outcome.tileLen)} elems</span></div>
+                      <div class="plan-constraint-line"><strong>UB使用量</strong><span>${outcome.ubPct.toFixed(0)}% / core</span><b class="plan-constraint-status ${ubOk ? '' : 'is-warning'}">${ubOk ? '通过' : '复核'}</b></div>
+                      <div class="plan-constraint-line"><strong>blockLength</strong><span>${fmt(outcome.perCoreDisplay)}</span></div>
+                      <div class="plan-constraint-line"><strong>tileLength</strong><span>${fmt(outcome.tileLen)}</span></div>
                       <div class="plan-constraint-line"><strong>loop times</strong><span>${fmt(outcome.loopCount)}</span></div>
-                      <div class="plan-constraint-line"><strong>former/tail</strong><span>${tailOk ? 'no tail branch' : `${outcome.formerNum} former / ${outcome.tailNum} tail`}</span></div>
+                      <div class="plan-constraint-line"><strong>核间尾块</strong><span>${tailOk ? '无尾块' : `${outcome.formerNum} former / ${outcome.tailNum} tail`}</span><b class="plan-constraint-status ${tailOk ? '' : 'is-warning'}">${tailOk ? '通过' : '复核'}</b></div>
+                      <div class="plan-constraint-line"><strong>GM queue</strong><span>${queueCount} / ${queueLimit}</span><b class="plan-constraint-status ${queueOk ? '' : 'is-warning'}">${queueOk ? '通过' : '复核'}</b></div>
                     </div>
                   </div>
                 </article>
 
                 <article class="viz-panel plan-verdict">
-                  <header class="section-head"><h3>Verdict</h3><span class="section-meta">pass / warning / error</span></header>
-                  <div class="section-body plan-verdict-layout">
+                  <header class="section-head"><h3>工程评估</h3></header>
+                  <div class="section-body">
                     <div>
-                      <h2 class="plan-verdict-title">${verdict.label === 'Invalid' ? 'Capacity risk' : 'Ready for profiling'}</h2>
+                      <h2 class="plan-verdict-title">${escapeHtml(scenario.verdictTitle)}</h2>
                       <div class="plan-status-row">
-                        <span class="plan-status-pill is-pass">${[ubOk, outcome.tileAligned, outcome.tileLen >= outcome.soc.vectorWidthBytes / outcome.dtypeBytes].filter(Boolean).length} pass</span>
-                        <span class="plan-status-pill is-warning">${[!tailOk, !queueOk].filter(Boolean).length} warning</span>
-                        <span class="plan-status-pill is-danger">${verdict.label === 'Invalid' ? 1 : 0} error</span>
+                        <span class="plan-status-pill is-pass">估算 ${escapeHtml(scenario.metrics.estimatedTime)}</span>
+                        <span class="plan-status-pill is-pass">overlap ${escapeHtml(scenario.metrics.overlapRate)}</span>
+                        <span class="plan-status-pill ${scenario.metrics.syncOverhead === 'high' ? 'is-warning' : 'is-pass'}">buffer ${escapeHtml(scenario.metrics.peakBuffer)}</span>
+                        <span class="plan-status-pill ${scenario.metrics.syncOverhead === 'high' ? 'is-warning' : 'is-pass'}">sync ${escapeHtml(scenario.metrics.syncOverhead)}</span>
                       </div>
-                      <p class="soft-note" style="margin-top:12px">当前方案可以作为 profiling 候选；重点观察 CopyIn(next) 是否被 Compute(i) 覆盖，以及 CopyOut 是否造成 output queue back pressure。</p>
-                    </div>
-                    <div>
-                      <div class="plan-pressure-title"><span>UB pressure</span><b>${outcome.ubPct.toFixed(0)}%</b></div>
-                      <div class="plan-pressure-meter" style="--pressure:${Math.min(100, outcome.ubPct).toFixed(0)}%"><span></span></div>
-                      <div class="plan-checks">
-                        <div class="plan-check ${ubOk ? '' : 'is-warning'}"><span>UB 容量</span><b>${ubOk ? 'OK' : 'Overflow'}</b></div>
-                        <div class="plan-check ${outcome.tileAligned ? '' : 'is-warning'}"><span>${outcome.soc.alignBytes}B 对齐</span><b>${outcome.tileAligned ? 'OK' : 'Review'}</b></div>
-                        <div class="plan-check ${tailOk ? '' : 'is-warning'}"><span>TAIL 覆盖</span><b>${tailOk ? 'OK' : 'Review'}</b></div>
-                        <div class="plan-check ${outcome.tileLen >= outcome.soc.vectorWidthBytes / outcome.dtypeBytes ? '' : 'is-warning'}"><span>VECTOR 宽度</span><b>${outcome.tileLen >= outcome.soc.vectorWidthBytes / outcome.dtypeBytes ? 'OK' : 'Review'}</b></div>
-                        <div class="plan-check ${queueOk ? '' : 'is-warning'}"><span>GM queue</span><b>${queueOk ? 'OK' : 'Watch'}</b></div>
+                      <p class="soft-note" style="margin-top:12px">${escapeHtml(scenario.recommendation)} ${escapeHtml(scenario.gainVsBaseline)}。</p>
+                      ${renderPlanComparison()}
+                      <div class="plan-verdict-actions">
+                        <button class="btn btn-sm" type="button" data-open-code-preview>代码预览</button>
+                        <button class="btn btn-sm btn-solid" type="button" data-generate-operator-project>生成算子工程</button>
                       </div>
                     </div>
                   </div>
@@ -5920,14 +6719,10 @@
 
               <section class="operator-plan-grid">
                 <aside class="viz-panel">
-                  <header class="section-head"><h3>Tiling 参数</h3><span class="section-meta">GUI controls</span></header>
+                  <header class="section-head"><h3>变量控制</h3></header>
                   <div class="section-body plan-control-stack">
                     <section class="tiling-group">
-                      <div class="tiling-group__head"><h4>算子形状</h4><span>从 operator 读取</span></div>
-                      ${renderOperatorShapeFacts(operator, outcome)}
-                    </section>
-                    <section class="tiling-group">
-                      <div class="tiling-group__head"><h4>硬件目标</h4><span>${outcome.soc.name} · ${outcome.soc.coreLabel}</span></div>
+                      <div class="tiling-group__head"><h4>目标硬件</h4></div>
                       <div class="control-field">
                         <label>SOC</label>
                         <div class="seg-control" data-seg="soc">
@@ -5942,104 +6737,99 @@
                         </div>
                         <div class="control-hint">影响元素字节数，以及 ${outcome.soc.alignBytes}B 对齐单元对应的元素数。</div>
                       </div>
-                      ${renderHardwareFacts(outcome)}
                     </section>
                     <section class="tiling-group">
-                      <div class="tiling-group__head"><h4>Tiling 方案</h4><span>多方案候选</span></div>
-                      <div class="plan-scheme-list">
-                        ${tilingSchemes.map((scheme, index) => {
-                          const s = computeTilingOutcome(scheme);
-                          return `<button class="plan-scheme-card ${scheme.name === state.tilingScheme ? 'is-active' : ''}" type="button" data-plan-tiling-scheme="${scheme.name}"><b>${index + 1} · ${scheme.name}</b><span>B${scheme.blockDim} / T${scheme.tileNum} / DB${scheme.bufferNum} · UB ${s.ubPct.toFixed(0)}%</span></button>`;
-                        }).join('')}
+                      <div class="tiling-group__head"><h4>Tiling 可调项</h4></div>
+                      <div class="control-field">
+                        <label>Tiling 方案</label>
+                        <div class="plan-scheme-list">
+                          ${tilingSchemes.map((scheme) => {
+                            const s = computeTilingOutcome(scheme);
+                            return `<button class="plan-scheme-card ${scheme.name === state.tilingScheme ? 'is-active' : ''}" type="button" data-plan-tiling-scheme="${scheme.name}"><b>${scheme.name}</b><span>${scheme.blockDim}核${scheme.tileNum}块/Buffer ${scheme.bufferNum}/UB ${s.ubPct.toFixed(0)}%</span></button>`;
+                          }).join('')}
+                        </div>
                       </div>
-                    </section>
-                    <section class="tiling-group">
-                      <div class="tiling-group__head"><h4>Tiling 可调项</h4><span>当前方案参数</span></div>
-                      ${renderWorkloadSummary(operator, outcome)}
                       <div class="stepper-pair">
                         ${stepperField('blockDim', 'BLOCK_DIM', 1, outcome.soc.cores, selected.blockDim, 1)}
                         ${stepperField('tileNum', 'TILE_NUM', 1, 32, selected.tileNum, 1)}
                       </div>
-                      <div class="control-hint">BLOCK_DIM → 激活核数 / 单核工作量；TILE_NUM → tile 长度 / 循环次数。</div>
                       <div class="control-field">
                         <label>BUFFER_NUM</label>
                         <div class="seg-control" data-seg="bufferNum">
                           ${[1, 2].map((num) => `<button type="button" class="${selected.bufferNum === num ? 'is-active' : ''}" data-set-buffer-num="${num}">${num} ${num === 2 ? '（双缓冲）' : '（单缓冲）'}</button>`).join('')}
                         </div>
-                        <div class="control-hint">BUFFER_NUM → UB 压力 / overlap 就绪度；Double Buffer 会成倍增加队列占用。</div>
                       </div>
                       <div class="control-field">
-                        <label>尾块策略</label>
+                        <label>核内尾块策略</label>
                         <div class="seg-control" data-seg="tailPolicy">
-                          ${['former/tail', 'branch', 'pad'].map((policy) => `<button type="button" class="${selected.tailPolicy === policy ? 'is-active' : ''}" data-set-tail-policy="${policy}">${policy}</button>`).join('')}
+                          ${['branch', 'pad'].map((policy) => `<button type="button" class="${selected.tailPolicy === policy ? 'is-active' : ''}" data-set-tail-policy="${policy}">${policy === 'branch' ? 'Branch' : 'Pad'}</button>`).join('')}
                         </div>
-                        <div class="control-hint">决定不均分时，kernel 用分支、former/tail 还是 padding 承接尾块。</div>
+                        <div class="control-hint">${tailPolicyHint(operator)}</div>
                       </div>
-                      <div class="control-field">
-                        <label>填充策略</label>
-                        <div class="seg-control" data-seg="paddingPolicy">
-                          ${['mask', 'padding', 'drop'].map((policy) => `<button type="button" class="${selected.paddingPolicy === policy ? 'is-active' : ''}" data-set-padding-policy="${policy}">${policy}</button>`).join('')}
-                        </div>
-                        <div class="control-hint">决定未覆盖元素是用 mask 保护、补齐计算，还是显式标记为不可接受。</div>
-                      </div>
-                    </section>
-                    <section class="tiling-group">
-                      <div class="tiling-group__head"><h4>核间核内 visualization</h4><span>${selected.blockDim} cores · ${outcome.loopCount} loops</span></div>
-                      <div class="plan-core-map">${Array.from({ length: Math.min(outcome.soc.cores, 16) }, (_, i) => `<span class="plan-core-cell ${i < activeCores ? 'is-active' : ''} ${outcome.formerNum > 0 && i === activeCores - 1 ? 'is-tail' : ''}">c${i}</span>`).join('')}</div>
-                      <div class="plan-tile-map">${Array.from({ length: Math.min(outcome.loopCount, 8) }, (_, i) => `<span class="plan-tile-cell ${i < 2 ? 'is-active' : ''}">loop${i}<br>slot${i % outcome.bufferNum}</span>`).join('')}</div>
+                      ${renderPaddingPolicyControl(operator, selected, outcome)}
                     </section>
                   </div>
                 </aside>
 
-                <section class="viz-panel">
-                  <header class="section-head"><h3>Pipeline</h3><span class="section-meta">pseudo code drives swimlane</span></header>
-                  <div class="section-body plan-pipeline-stack">
-                    <div class="control-field">
-                      <label>preset pipeline scheme</label>
-                      <div class="seg-control" data-seg="pipeline">
-                        ${Object.entries(pipelineScenarios).map(([key, item], index) => `<button class="${key === state.pipeline ? 'is-active' : ''}" type="button" data-pipeline="${key}">${index + 1} ${item.name}</button>`).join('')}
+                <div class="plan-workarea">
+                  <section class="viz-panel">
+                    <header class="section-head"><h3>Tiling 可视化</h3></header>
+                    <div class="section-body">
+                    <section class="plan-core-visualization" aria-label="核间核内 visualization">
+                      <div class="plan-core-visualization__section">
+                        <div class="plan-core-visualization__head"><strong>核间</strong><span>${activeCores} / ${outcome.soc.cores} 个核激活</span></div>
+                        <div class="plan-core-map">${Array.from({ length: outcome.soc.cores }, (_, i) => {
+                          const active = i < activeCores;
+                          const former = active && outcome.formerNum > 0 && i < outcome.formerNum;
+                          const tail = active && outcome.formerNum > 0 && !former;
+                          const length = former ? outcome.formerLength : outcome.tailLength;
+                          return `<button type="button" class="plan-core-cell ${former ? 'is-former' : ''} ${tail ? 'is-tail' : ''} ${i === visualizationCore ? 'is-selected' : ''}" data-plan-core="${i}" ${active ? '' : 'disabled'} title="core ${i} · ${active ? fmt(length) : '空闲'}">${active ? fmt(length) : ''}</button>`;
+                        }).join('')}</div>
                       </div>
+                      <div class="plan-core-visualization__section">
+                        <div class="plan-core-tabs" role="tablist" aria-label="核内可视化切换">
+                          <button type="button" class="btn btn-sm ${visualizationCoreIsFormer ? 'btn-solid' : 'btn-ghost'}" data-plan-core-tab="former">${outcome.formerNum === 0 ? '均分核内' : 'Former 核内'}</button>
+                          ${outcome.formerNum > 0 ? `<button type="button" class="btn btn-sm ${visualizationCoreIsFormer ? 'btn-ghost' : 'btn-solid'}" data-plan-core-tab="tail">Tail 核内</button>` : ''}
+                        </div>
+                        <div class="plan-tile-map">${visualizationTiles.map((tile) => `<span class="plan-tile-cell is-active ${tile.partial ? 'is-tail-partial' : ''}" title="tile ${tile.index} · 有效 ${tile.valid} / 对齐 ${tile.aligned}${tile.partial ? ` · ${selected.tailPolicy === 'branch' ? 'Branch / Mask' : 'Pad'}` : ''}"><b>${fmt(tile.valid)}</b>${tile.partial ? `<small>/${fmt(tile.aligned)}</small>` : ''}</span>`).join('')}</div>
+                        ${visualizationTail?.partial ? `<div class="plan-tail-note">核内末块：有效 ${fmt(visualizationTail.valid)} / 对齐 ${fmt(visualizationTail.aligned)} · ${selected.tailPolicy === 'branch' ? 'Branch / Mask' : 'Pad'}</div>` : ''}
+                      </div>
+                    </section>
                     </div>
-                    <section class="plan-code-preview">
-                      <pre class="plan-code-lines"><span class="plan-code-row"><span class="plan-code-num">01</span><span>// prologue: fill two input slots</span><span class="plan-code-tag">phase</span></span><span class="plan-code-row"><span class="plan-code-num">02</span><span>CopyIn(0);</span><span class="plan-code-tag">slot0</span></span><span class="plan-code-row"><span class="plan-code-num">03</span><span>CopyIn(1);</span><span class="plan-code-tag">slot1</span></span><span class="plan-code-row"><span class="plan-code-num">04</span><span>for (int i = 0; i &lt; loopCount; i++) {</span><span class="plan-code-tag">steady</span></span><span class="plan-code-row"><span class="plan-code-num">05</span><span>  Compute(i);</span><span class="plan-code-tag">VEC</span></span><span class="plan-code-row"><span class="plan-code-num">06</span><span>  CopyOut(i);</span><span class="plan-code-tag">MTE3</span></span><span class="plan-code-row"><span class="plan-code-num">07</span><span>  int next = i + BUFFER_NUM;</span><span class="plan-code-tag">index</span></span><span class="plan-code-row"><span class="plan-code-num">08</span><span>  if (next &lt; loopCount) CopyIn(next);</span><span class="plan-code-tag">prefetch</span></span><span class="plan-code-row"><span class="plan-code-num">09</span><span>}</span><span class="plan-code-tag">drain</span></span></pre>
-                    </section>
-                    <section class="plan-swimlane">
-                      <div class="plan-swimlane-legend"><span>Timeline derived from pseudo code and tiling contract</span><span>tile0 · tile1 · tile2</span></div>
-                      <div class="plan-lane-label">MTE2 / CopyIn</div><div class="plan-lane"><span class="plan-stage t0" style="--x:2%;--w:14%">t0</span><span class="plan-stage t1" style="--x:16%;--w:14%">t1</span><span class="plan-stage t2" style="--x:54%;--w:14%">t2</span></div>
-                      <div class="plan-lane-label">Vector / Compute</div><div class="plan-lane"><span class="plan-stage t0" style="--x:28%;--w:20%">t0</span><span class="plan-stage t1" style="--x:50%;--w:20%">t1</span><span class="plan-stage t2" style="--x:74%;--w:16%">t2</span></div>
-                      <div class="plan-lane-label">MTE3 / CopyOut</div><div class="plan-lane"><span class="plan-stage t0" style="--x:44%;--w:14%">t0</span><span class="plan-stage t1" style="--x:68%;--w:14%">t1</span><span class="plan-stage t2" style="--x:88%;--w:10%">t2</span></div>
-                      <div class="plan-lane-label">FLOWCTRL</div><div class="plan-lane"><span class="plan-stage wait" style="--x:47%;--w:8%">wait</span><span class="plan-stage wait" style="--x:71%;--w:8%">wait</span></div>
-                    </section>
+                  </section>
+
+                  <div class="plan-pipeline-inspector-grid">
+                  <section class="viz-panel">
+                    <header class="section-head"><h3>Pipeline</h3></header>
+                    <div class="section-body plan-pipeline-stack">
+                    <div class="control-field">
+                      <label>Pipeline方案</label>
+                      ${renderPlanPipelinePresets()}
+                    </div>
+                    ${renderPlanCodeEditor()}
+                    ${renderPlanSwimlane(scenario)}
                   </div>
                 </section>
 
                 <aside class="viz-panel">
-                  <header class="section-head"><h3>Inspector</h3><span class="section-meta">why it matters</span></header>
+                  <header class="section-head"><h3>Inspector</h3></header>
                   <div class="section-body plan-inspector-stack">
-                    <div class="soft-note">当前选中 <code>CopyIn(next)</code>。它是 double buffer 是否真正形成 overlap 的关键行：如果 slot1 未释放或 UB pressure 接近上限，prefetch 会从隐藏延迟变成阻塞源。</div>
+                    <div class="soft-note" id="planInspectorSummary">当前选中 <code>CopyIn(next)</code>。它是 double buffer 是否真正形成 overlap 的关键行：如果 slot1 未释放或 UB pressure 接近上限，prefetch 会从隐藏延迟变成阻塞源。</div>
                     <div>
-                      <div class="plan-inspector-row"><span>selected</span><b>CopyIn(next)</b></div>
-                      <div class="plan-inspector-row"><span>source line</span><b>pseudo code line 08</b></div>
-                      <div class="plan-inspector-row"><span>depends on</span><b>BUFFER_NUM=2</b></div>
-                      <div class="plan-inspector-row"><span>queue / slot</span><b>inQueue slot1</b></div>
-                      <div class="plan-inspector-row"><span>memory impact</span><b>UB input slot</b></div>
-                      <div class="plan-inspector-row"><span>risk</span><b>CopyIn not hidden</b></div>
+                      <div class="plan-inspector-row"><span>selected</span><b id="planInspectorSelected">CopyIn(next)</b></div>
+                      <div class="plan-inspector-row"><span>source line</span><b id="planInspectorLine">pseudo code line 08</b></div>
+                      <div class="plan-inspector-row"><span>depends on</span><b id="planInspectorDepends">BUFFER_NUM=2</b></div>
+                      <div class="plan-inspector-row"><span>queue / slot</span><b id="planInspectorQueue">inQueue slot1</b></div>
+                      <div class="plan-inspector-row"><span>memory impact</span><b id="planInspectorMemory">UB input slot</b></div>
+                      <div class="plan-inspector-row"><span>risk</span><b id="planInspectorRisk">CopyIn not hidden</b></div>
                     </div>
-                    <div class="soft-note">Profiling checklist：确认 MTE2 与 Compute 同时出现；观察 CopyOut 是否反向阻塞 output queue；tail core 路径需要单独检查 mask / branch。</div>
+                    <div class="soft-note">Profiling checklist：${escapeHtml(scenario.profilingChecklist.join('；'))}${outcome.hasIntraCoreTail ? '；核内末块只做边界正确性复核。' : '。'}</div>
                   </div>
                 </aside>
+                  </div>
+                </div>
               </section>
 
-              <section class="plan-code-output">
-                <article class="viz-panel">
-                  <header class="section-head"><h3>生成的 kernel 骨架</h3><span class="section-meta">op_kernel/add_custom.cpp</span></header>
-                  <pre>${escapeHtml(code.kernel)}</pre>
-                </article>
-                <article class="viz-panel">
-                  <header class="section-head"><h3>Host 侧 Tiling 结构体</h3><span class="section-meta">op_host/tiling.h</span></header>
-                  <pre>${escapeHtml(code.host)}</pre>
-                </article>
-              </section>
             </div>
           `;
           bindTilingControls('all', $('#planView'));
@@ -6052,12 +6842,25 @@
           });
           $$('[data-pipeline]').forEach((btn) => {
             btn.addEventListener('click', () => {
-              state.pipeline = btn.dataset.pipeline;
-              state.selectedPipelineBlock = null;
-              state.selectedPipelineTime = null;
+              applyPipelineScenario(btn.dataset.pipeline);
               renderAll();
             });
           });
+          $$('[data-plan-core]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              state.selectedVisualizationCore = Number(btn.dataset.planCore);
+              renderAll();
+            });
+          });
+          $$('[data-plan-core-tab]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              state.selectedVisualizationCore = btn.dataset.planCoreTab === 'tail' ? outcome.formerNum : 0;
+              renderAll();
+            });
+          });
+          bindPlanPipelineTiles();
+          bindPlanCodeEditor();
+          updatePlanPipelineSimulation();
         });
       }
 
@@ -6137,9 +6940,7 @@
         `;
         $$('[data-pipeline]').forEach((btn) => {
           btn.addEventListener('click', () => {
-            state.pipeline = btn.dataset.pipeline;
-            state.selectedPipelineBlock = null;
-            state.selectedPipelineTime = null;
+            applyPipelineScenario(btn.dataset.pipeline);
             renderAll();
           });
         });
@@ -6565,9 +7366,39 @@
         $$('[data-view-tab]').forEach((tab) => {
           tab.addEventListener('click', () => {
             state.view = tab.dataset.viewTab;
-            if (state.view === 'plan' && state.operatorId === 'OP-004') state.pipeline = 'auto';
             renderAll();
           });
+        });
+      }
+
+      function initGeneratedCodePreview() {
+        document.addEventListener('click', (event) => {
+          const target = event.target instanceof Element ? event.target : null;
+          if (!target) return;
+          if (target.closest('[data-open-code-preview]')) {
+            openCodePreview();
+            return;
+          }
+          if (target.closest('[data-close-code-preview]')) {
+            closeCodePreview();
+            return;
+          }
+          const fileButton = target.closest('[data-code-preview-file]');
+          if (fileButton) {
+            showGeneratedOperatorFile(fileButton.dataset.codePreviewFile);
+            return;
+          }
+          if (target.closest('[data-regenerate-code-preview]')) {
+            openCodePreview();
+            return;
+          }
+          if (target.closest('[data-generate-operator-project]')) prepareOperatorProject();
+        });
+        $('#operatorCodePreview').addEventListener('click', (event) => {
+          if (event.target === event.currentTarget) closeCodePreview();
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && !$('#operatorCodePreview').hidden) closeCodePreview();
         });
       }
 
@@ -6576,15 +7407,18 @@
         $('#themeToggle').addEventListener('click', () => {
           const root = document.documentElement;
           root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+          drawPlanSwimlaneBars();
         });
         $('#exportBtn').addEventListener('click', () => {
           const mockLog = $('#mockLog');
           if (mockLog) mockLog.textContent = pipelineSnapshotText();
         });
+        window.addEventListener('resize', drawPlanSwimlaneBars);
       }
 
       initTabs();
       renderAll();
+      initGeneratedCodePreview();
       initFrame();
     })();
   </script>
