@@ -3,8 +3,8 @@
   PyPTO 泳道分析器 — Mix 子图核间同步可视化原型
   课题: 04-uxdesign/02-swimlane-profiler/ux-analysis.md (Issue #1121)
 
-  数据等级: L3-placeholder
-    - 所有 task / sync / 耗时为按硬件拓扑与执行逻辑编造的占位数据。
+  数据等级: L2 / schema-generated / share-safe
+    - task literal、schema 与数量级来自登记 L1 来源；组合关系与诊断异常为可追溯 L2 构造。
     - 已植入「瓶颈剧本」: Attention Score 子图 Wrap 06 的 AIC 跑超大 BMM,
       配对 AIV 长时间停等; 同组其他 Wrap 早完空转 (负载不均)。
     - 待 Codex 补 merged_swimlane.json 真实样本后替换 buildModel()。
@@ -1118,7 +1118,37 @@ body {
   font: var(--text-body-sm);
 }
 
+.sl-history-artifact-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  padding: 1px 28px 1px var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.sl-history-artifact-select:not(:disabled) {
+  cursor: pointer;
+}
+
+.sl-history-artifact-select:not(:disabled):hover,
+.sl-history-artifact.is-selected .sl-history-artifact-select {
+  background: var(--state-selected);
+}
+
+.sl-history-artifact-select:disabled {
+  cursor: default;
+}
+
 .sl-history-artifact .nm {
+  flex: 1 1 auto;
   overflow: hidden;
   color: var(--foreground-secondary);
   font-family: var(--font-mono);
@@ -1276,7 +1306,7 @@ body {
         </div>
       </div>
       <div class="pto-ide-frame__topbar-center">
-        <span class="sl-project-placeholder">project_name</span>
+        <span class="sl-project-placeholder" id="projectName">project_name</span>
       </div>
       <div class="pto-ide-frame__topbar-right">
         <div class="pto-ide-frame__window-actions sl-window-actions" data-ide-slot="window-controls" aria-label="面板开关">
@@ -1464,7 +1494,7 @@ body {
                   </div>
                   <div class="pto-ide-frame__terminal-body">
                     <p class="pto-ide-frame__terminal-line"><span class="sl-terminal-prompt">pypto@swimlane-profiler %</span> 终端面板默认关闭，打开后用于承载执行日志与诊断输出。</p>
-                    <p class="pto-ide-frame__terminal-line">当前 demo 使用 L3 占位数据；真实 merged_swimlane.json 接入后在这里同步展示加载与解析状态。</p>
+                    <p class="pto-ide-frame__terminal-line">当前 demo 使用 L2 schema-generated / share-safe 数据；不是一次真实模型运行的原始导出。</p>
                   </div>
                 </div>
               </section>
@@ -1482,10 +1512,11 @@ body {
 <script src="../vendor/pto-design-system/patterns/swimlane-task/pattern.js"></script>
 <script>window.PTO_PASS_IR_GRAPH_NODE_ASSET_PREFIX = '../vendor/pto-design-system/';</script>
 <script src="../vendor/pto-design-system/patterns/pass-ir-graph-node/pattern.js"></script>
+<script src="swimlane-data.js"></script>
 
 <script>
 /* ============================================================
-   4. 数据模型 + 剧本 (L3-placeholder)
+   4. 旧版随机模型生成器（仅保留为历史参考，运行时不调用）
 
    剧本: 一个 transformer 解码层跑 3 次迭代 (L0/L1/L2)。
    解码层被切成 8 个 mix 子图, 静态绑定到 32 个 1C2V wrap
@@ -1736,10 +1767,19 @@ function buildModel() {
 /* ============================================================
    6. 渲染基础
    ============================================================ */
-const MODEL = buildModel();
-const edgeById = {}; MODEL.edges.forEach((e) => { edgeById[e.id] = e; });
-const taskById = {}; MODEL.tasks.forEach((t) => { taskById[t.id] = t; });
-const CURRENT_RUN_ID = 'mix-sync-run-20260709-001';
+const DATASET = window.SWIMLANE_PROFILER_DATA;
+if (!DATASET?.runs?.length) throw new Error('swimlane-data.js 未加载或没有运行记录');
+const RUN_BY_ID = Object.fromEntries(DATASET.runs.map((run) => [run.id, run]));
+let CURRENT_RUN = DATASET.runs[0];
+let MODEL = CURRENT_RUN.model;
+let edgeById = {};
+let taskById = {};
+function rebuildModelIndexes() {
+  edgeById = Object.fromEntries(MODEL.edges.map((edge) => [edge.id, edge]));
+  taskById = Object.fromEntries(MODEL.tasks.map((task) => [task.id, task]));
+}
+rebuildModelIndexes();
+const CURRENT_RUN_ID = CURRENT_RUN.id;
 const ARTIFACT_ZH = {
   'merged swimlane placeholder': '泳道数据',
   'program graph': '执行计算图',
@@ -1748,20 +1788,6 @@ const ARTIFACT_ZH = {
   'runtime execution graph demo model': '执行逻辑图',
   'source code map': '源码映射',
 };
-const PAST_RUNS = [
-  { id: 'mix-sync-run-20260707-1742-004', operator: 'decoder_layer_mix_subgraph', dur: 2570, tasks: 468, completeness: '完整', timestamp: '2026-07-07 17:42' },
-  { id: 'mix-sync-run-20260707-1016-003', operator: 'attention_score_mix', dur: 2314, tasks: 444, completeness: '完整', timestamp: '2026-07-07 10:16' },
-  { id: 'mix-sync-run-20260706-2238-002', operator: 'ffn_up_gelu_mix', dur: 1988, tasks: 392, completeness: '完整', timestamp: '2026-07-06 22:38' },
-  { id: 'mix-sync-run-20260706-1530-001', operator: 'residual_rmsnorm_mix', dur: 1460, tasks: 316, completeness: '完整', timestamp: '2026-07-06 15:30' },
-];
-const RUN_ARTIFACTS = [
-  { name: 'merged_swimlane.json', role: 'merged swimlane placeholder' },
-  { name: 'program.json', role: 'program graph' },
-  { name: 'tilefwk_prof_pmu.csv', role: 'PMU counter rows' },
-  { name: 'dyn_topo.txt', role: 'dynamic topology' },
-  { name: 'execution_logic_graph.json', role: 'runtime execution graph demo model' },
-  { name: 'source_code_map.json', role: 'source code map' },
-];
 const REPORT_TABS = [
   { id: 'overview', label: '概览' },
   { id: 'latency', label: '耗时' },
@@ -1777,16 +1803,16 @@ const TASK_REPORT_TABS = [
   { id: 'optimize', label: '优化' },
 ];
 const PMU_GROUPS = [1, 2, 4, 5, 6, 7, 8];
-const PMU_G2_COUNTERS = [
-  { key: 'pmu_idc_aic_vec_busy_o', label: 'AIC/Vector busy', value: 81240, summary: '向量/AI Core 活跃' },
-  { key: 'cube_instr_busy', label: 'Cube 指令 busy', value: 74380, summary: 'Cube 计算段' },
-  { key: 'scalar_instr_busy', label: 'Scalar 指令 busy', value: 21960, summary: '标量调度段' },
-  { key: 'mte1_instr_busy', label: 'MTE1 指令 busy', value: 18840, summary: 'L1 -> L0 搬运' },
-  { key: 'mte2_instr_busy', label: 'MTE2 指令 busy', value: 67210, summary: 'GM/L2 -> L1/UB 搬运' },
-  { key: 'mte3_instr_busy', label: 'MTE3 指令 busy', value: 28670, summary: 'UB -> GM 写回' },
-  { key: 'icache_req', label: 'I-Cache 请求', value: 14520, summary: '取指请求' },
-  { key: 'icache_miss', label: 'I-Cache Miss', value: 320, summary: '取指缺失' },
-  { key: 'pmu_fix_instr_busy', label: 'FixPipe 指令 busy', value: 9340, summary: 'FixPipe 后处理' },
+const PMU_G2_META = [
+  { key: 'pmu_idc_aic_vec_busy_o', label: 'AIC/Vector busy', summary: '向量/AI Core 活跃' },
+  { key: 'cube_instr_busy', label: 'Cube 指令 busy', summary: 'Cube 计算段' },
+  { key: 'scalar_instr_busy', label: 'Scalar 指令 busy', summary: '标量调度段' },
+  { key: 'mte1_instr_busy', label: 'MTE1 指令 busy', summary: 'L1 -> L0 搬运' },
+  { key: 'mte2_instr_busy', label: 'MTE2 指令 busy', summary: 'GM/L2 -> L1/UB 搬运' },
+  { key: 'mte3_instr_busy', label: 'MTE3 指令 busy', summary: 'UB -> GM 写回' },
+  { key: 'icache_req', label: 'I-Cache 请求', summary: '取指请求' },
+  { key: 'icache_miss', label: 'I-Cache Miss', summary: '取指缺失' },
+  { key: 'pmu_fix_instr_busy', label: 'FixPipe 指令 busy', summary: 'FixPipe 后处理' },
 ];
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (ch) => ({
@@ -1794,15 +1820,15 @@ function escapeHtml(value) {
   }[ch]));
 }
 function runList() {
-  return [{
-    id: CURRENT_RUN_ID,
-    operator: 'decoder_layer_mix_subgraph',
-    dur: Math.round(MODEL.timelineEnd),
-    tasks: MODEL.tasks.length,
-    completeness: 'L3 占位',
-    timestamp: '2026-07-09 10:30',
-    current: true,
-  }, ...PAST_RUNS];
+  return DATASET.runs.map((run) => ({
+    id: run.id,
+    operator: run.operator,
+    dur: Math.round(run.model.timelineEnd),
+    tasks: run.model.tasks.length,
+    completeness: run.completeness,
+    timestamp: run.timestamp,
+    current: run.id === state?.selectedRunId,
+  }));
 }
 
 const ROW_H = 21, SUB_ROW_H = 17, CORE_GAP_H = 6, BAR_PAD = 3, SUB_BAR_PAD = 3, BAR_H = ROW_H - 2 * BAR_PAD, SUB_BAR_H = SUB_ROW_H - 2 * SUB_BAR_PAD;
@@ -1911,6 +1937,7 @@ function buildOrder() {
 
 /* wrap / group 当前可见行区间 [起, 止] (含) */
 function taskSublane(t) {
+  if (t.primarySublane) return t.primarySublane;
   const core = MODEL.cores[t.coreIdx];
   const name = String(t.name || '');
   if (core.kind === 'aic') {
@@ -1944,7 +1971,8 @@ function rowsForCore(coreIdx) {
   return rows;
 }
 function visibleRowsForWrap(w) {
-  const rows = [MODEL.aicIdxOfWrap(w), ...MODEL.aivIdxOfWrap(w)]
+  const coreIds = [...new Set(MODEL.tasks.filter((task) => task.wrap === w).map((task) => task.coreIdx))];
+  const rows = coreIds
     .flatMap((coreIdx) => rowsForCore(coreIdx))
     .filter((row) => Number.isFinite(row));
   return rows;
@@ -1956,9 +1984,17 @@ function wrapRowRange(w) {
 }
 function groupRowRange(g) {
   const rows = [];
-  for (let w = g * 4; w < Math.min((g + 1) * 4, 32); w++) rows.push(...visibleRowsForWrap(w));
+  (MODEL.groups[g]?.wraps || []).forEach((w) => rows.push(...visibleRowsForWrap(w)));
   if (!rows.length) return null;
   return [Math.min(...rows), Math.max(...rows)];
+}
+function groupForWrap(w) {
+  return MODEL.groups.find((group) => (group.wraps || []).includes(w))?.id ?? null;
+}
+function coreParticipates(coreIdx, group = null, wrap = null) {
+  return MODEL.tasks.some((task) => task.coreIdx === coreIdx
+    && (group == null || task.group === group)
+    && (wrap == null || task.wrap === wrap));
 }
 
 const bodyCanvas = document.getElementById('bodyCanvas');
@@ -2232,6 +2268,10 @@ function setupCanvas(canvas, wCss, hCss) {
 
 function copyCanvasPixels(source, target) {
   if (!source || !target || state.secondaryViewMode !== 'comparison') return;
+  if (target === compareBodyCanvas) {
+    renderComparisonBody();
+    return;
+  }
   if (target.width !== source.width) target.width = source.width;
   if (target.height !== source.height) target.height = source.height;
   target.style.width = source.style.width;
@@ -2240,6 +2280,44 @@ function copyCanvasPixels(source, target) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, target.width, target.height);
   ctx.drawImage(source, 0, 0);
+}
+
+function renderComparisonBody() {
+  const run = RUN_BY_ID[state.comparisonRunId];
+  if (!run || !compareBodyCanvas) return;
+  const model = run.model;
+  const scale = pxPerUs();
+  const width = Math.max(bodyW(), Math.ceil(model.timelineEnd * scale + 8));
+  const height = bodyH();
+  const ctx = setupCanvas(compareBodyCanvas, width, height);
+  ctx.clearRect(0, 0, width, height);
+  rowItems.forEach((item, row) => {
+    if (item.type !== 'section') return;
+    ctx.fillStyle = 'rgba(255,255,255,0.026)';
+    ctx.fillRect(0, rowTop(row), width, rowHeight(row));
+  });
+  model.layerMarks.forEach((mark) => {
+    const x = Math.round(mark.t * scale) + 0.5;
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+    ctx.setLineDash([]);
+  });
+  for (const task of model.tasks) {
+    const row = rowOf[task.coreIdx];
+    if (!Number.isFinite(row)) continue;
+    const bar = barMetricsForRow(row);
+    const x = task.start * scale;
+    const y = rowTop(row) + bar.pad;
+    const taskWidth = Math.max(0, task.end - task.start) * scale;
+    if (taskWidth < 1) continue;
+    const group = task.group != null ? model.groups[task.group] : null;
+    window.PtoSwimlaneTaskPattern.drawTaskBar(ctx, {
+      x, y, width: taskWidth, height: bar.height,
+      baseColor: group?.color || KIND_ACCENT[task.kind],
+      fontFamily: "'Inter', sans-serif", task,
+    });
+  }
 }
 
 function syncComparisonCanvases() {
@@ -2257,7 +2335,7 @@ function focusInfo() {
   let dimGroup = null, dimWrap = null;
   const focusTask = state.selTask || state.hoverTask;
   if (state.level === 'group' && state.selGroup != null) dimGroup = state.selGroup;
-  if (state.level === 'wrap' && state.selWrap != null) { dimGroup = Math.floor(state.selWrap / 4); dimWrap = state.selWrap; }
+  if (state.level === 'wrap' && state.selWrap != null) { dimGroup = groupForWrap(state.selWrap); dimWrap = state.selWrap; }
   if (state.level === 'task' && state.selTask) {
     dimGroup = state.selTask.group;
     dimWrap = state.selTask.wrap;
@@ -2327,7 +2405,7 @@ function drawBody() {
   /* mix: group 染色带 (连续 12 行/子图, 圆角虚线框) */
   if (state.mixMode) drawGroupBands(fi);
 
-  /* 迭代范围 barrier：任务区只保留虚线，不延伸局部时间刻度实线。 */
+  /* 调用范围 barrier：任务区只保留虚线，不延伸局部时间刻度实线。 */
   MODEL.layerMarks.forEach((m) => {
     const x = Math.round(m.t * scale) + 0.5;
     bctx.strokeStyle = 'rgba(255,255,255,0.15)'; bctx.setLineDash([4, 4]);
@@ -2343,10 +2421,6 @@ function drawBody() {
   for (const t of MODEL.tasks) {
     const row = taskRow(t);
     if (!Number.isFinite(row)) continue;
-    const x = t.start * scale;
-    const computeW = (t.computeEnd - t.start) * scale;
-    const bar = barMetricsForRow(row);
-    const y = rowTop(row) + bar.pad;
     const related = !fi.dependencyMode || fi.relTasks.has(t.id);
     const baseColor = related ? taskBaseColor(t) : '#6F7480';
 
@@ -2361,22 +2435,40 @@ function drawBody() {
     }
     if (!taskMatchesQuery(t)) alpha = Math.min(alpha, 0.15);
 
-    bctx.globalAlpha = alpha;
-    if (computeW >= 1) {
-      window.PtoSwimlaneTaskPattern.drawTaskBar(bctx, {
-        x, y, width: computeW, height: bar.height, baseColor, fontFamily, task: t,
-        isSelected: state.selTask && state.selTask.id === t.id,
-        isRelated: fi.relTasks.has(t.id) && fi.focusTask && fi.focusTask.id !== t.id,
-        isEmphasized: state.hoverTask && state.hoverTask.id === t.id,
-      });
-    }
-    const waitW = (t.end - t.computeEnd) * scale;
-    if (waitW >= 1) drawWaitSegment(x + computeW, y, waitW, bar.height, fi.dependencyMode && !related);
+    const core = MODEL.cores[t.coreIdx];
+    const expanded = state.expandedLaneCores.has(core.idx);
+    const sourceSegments = expanded
+      ? (t.pipelineSegments || [])
+      : (state.mixMode && t.microSegments?.length ? t.microSegments : [
+        { kind: 'compute', start: t.start, end: t.end },
+      ]);
+    sourceSegments.forEach((segment) => {
+      const segmentRow = expanded ? subRowOf[core.idx]?.[segment.sublane] : row;
+      if (!Number.isFinite(segmentRow)) return;
+      const bar = barMetricsForRow(segmentRow);
+      const x = segment.start * scale;
+      const width = Math.max(0, segment.end - segment.start) * scale;
+      const y = rowTop(segmentRow) + bar.pad;
+      bctx.globalAlpha = alpha;
+      if (segment.kind === 'wait') {
+        if (width >= 1) drawWaitSegment(x, y, width, bar.height, fi.dependencyMode && !related);
+      } else if (segment.kind === 'set') {
+        bctx.fillStyle = '#1FB6C9';
+        bctx.fillRect(Math.round(x), y - 1, 2, bar.height + 2);
+      } else if (width >= 1) {
+        window.PtoSwimlaneTaskPattern.drawTaskBar(bctx, {
+          x, y, width, height: bar.height, baseColor, fontFamily, task: t,
+          isSelected: state.selTask && state.selTask.id === t.id,
+          isRelated: fi.relTasks.has(t.id) && fi.focusTask && fi.focusTask.id !== t.id,
+          isEmphasized: state.hoverTask && state.hoverTask.id === t.id,
+        });
+      }
+    });
     bctx.globalAlpha = 1;
   }
 
-  if (fi.dependencyMode) drawDependencyArcs(fi);
-  else if (state.mixMode) drawArcs(fi);
+  if (fi.dependencyMode) drawDependencyCurves(fi);
+  else if (state.mixMode) drawSyncCurves(fi);
   copyCanvasPixels(bodyCanvas, compareBodyCanvas);
 }
 
@@ -2389,8 +2481,10 @@ function drawGroupBands(fi) {
       const isFocus = fi.dimGroup === g;
       const faded = fi.dimGroup != null && !isFocus;
       const grp = MODEL.groups[g];
-      const winStart = (MODEL.LAYER0 + L * MODEL.LAYER_SPAN + g * MODEL.STAGGER - 40) * scale;
-      const winW = (MODEL.STAGGER + 320) * scale;
+      const windowSpec = grp.windows?.find((windowItem) => windowItem.iteration === L);
+      if (!windowSpec) continue;
+      const winStart = windowSpec.start * scale;
+      const winW = Math.max(1, (windowSpec.end - windowSpec.start) * scale);
       const [r0, r1] = range;
       const y = rowTop(r0), bh = rowBottom(r1) - rowTop(r0);
       bctx.fillStyle = hexToRgba(grp.color, faded ? 0.025 : (isFocus ? 0.085 : 0.045));
@@ -2402,14 +2496,19 @@ function drawGroupBands(fi) {
       bctx.stroke();
       bctx.setLineDash([]);
       /* wrap 选中: 在 group 带内再描出 wrap 子框 */
-      if (fi.dimWrap != null && Math.floor(fi.dimWrap / 4) === g) {
+      if (fi.dimWrap != null && (grp.wraps || []).includes(fi.dimWrap)) {
         const wrapRange = wrapRowRange(fi.dimWrap);
         if (!wrapRange) continue;
+        const wrapTasks = MODEL.tasks.filter((task) => task.wrap === fi.dimWrap && task.iteration === L);
+        if (!wrapTasks.length) continue;
+        const wrapStart = (Math.min(...wrapTasks.map((task) => task.start)) - 1) * scale;
+        const wrapWidth = (Math.max(...wrapTasks.map((task) => task.end))
+          - Math.min(...wrapTasks.map((task) => task.start)) + 2) * scale;
         const [wr0, wr1] = wrapRange;
         bctx.strokeStyle = hexToRgba(grp.color, 0.92);
         bctx.lineWidth = 1.4;
         bctx.beginPath();
-        bctx.roundRect(winStart + 2.5, rowTop(wr0) + 1.5, winW - 5, rowBottom(wr1) - rowTop(wr0) - 3, 6);
+        bctx.roundRect(wrapStart, rowTop(wr0) + 1.5, wrapWidth, rowBottom(wr1) - rowTop(wr0) - 3, 6);
         bctx.stroke();
       }
     }
@@ -2451,15 +2550,15 @@ function drawWaitSegment(x, y, w, h, muted = false) {
   }
 }
 
-/* 同步弧线: 渐进显示
+/* 依赖贝塞尔曲线：渐进显示
    overview -> 不画; group -> 该子图弧线中等; wrap -> 该 wrap 弧线强;
    任务 -> 选中任务弧线最强, 同 Wrap 其余弱 */
-function drawDependencyArcs(fi) {
+function drawDependencyCurves(fi) {
   const edges = MODEL.edges.filter((e) => fi.relEdges.has(e.id));
-  edges.forEach((e) => drawArc(e, true));
+  edges.forEach((e) => drawDependencyCurve(e, true));
 }
 
-function drawArcs(fi) {
+function drawSyncCurves(fi) {
   let visible, strongPred;
   if (fi.focusTask) {
     visible = MODEL.edges.filter((e) => e.wrap === fi.focusTask.wrap);
@@ -2474,8 +2573,8 @@ function drawArcs(fi) {
     return; /* overview: 保持干净, 不画弧线 */
   }
   /* 先弱后强, 保证强线在上层 */
-  visible.filter((e) => !strongPred(e)).forEach((e) => drawArc(e, false));
-  visible.filter((e) => strongPred(e)).forEach((e) => drawArc(e, true));
+  visible.filter((e) => !strongPred(e)).forEach((e) => drawDependencyCurve(e, false));
+  visible.filter((e) => strongPred(e)).forEach((e) => drawDependencyCurve(e, true));
   /* 选中 task 的同步点 barrier 竖线 */
   if (fi.focusTask) {
     fi.focusTask.syncIn.concat(fi.focusTask.syncOut).forEach((eid) => {
@@ -2486,7 +2585,7 @@ function drawArcs(fi) {
   }
 }
 
-function drawArc(e, strong) {
+function drawDependencyCurve(e, strong) {
   const scale = pxPerUs();
   const fromRow = taskRow(taskById[e.fromTask]), toRow = taskRow(taskById[e.toTask]);
   if (!Number.isFinite(fromRow) || !Number.isFinite(toRow)) return;
@@ -2497,23 +2596,24 @@ function drawArc(e, strong) {
   const grad = bctx.createLinearGradient(x1, y1, x2, y2);
   grad.addColorStop(0, hexToRgba(fromColor, strong ? 0.98 : 0.32));
   grad.addColorStop(1, hexToRgba(toColor, strong ? 0.98 : 0.32));
-  const bow = Math.max(14, Math.abs(y2 - y1) * 0.55) * (strong ? 1.15 : 1);
+  const midX = x1 + (x2 - x1) * 0.5;
   bctx.save();
   bctx.strokeStyle = grad;
   bctx.lineWidth = strong ? 1.7 : 1;
-  /* 控制点右推 -> 平滑外凸曲线 */
+  /* 中间控制轴形成清晰的 S 型贝塞尔关系线，不使用圆弧。 */
   bctx.beginPath();
   bctx.moveTo(x1, y1);
-  bctx.bezierCurveTo(x1 + bow, y1, x2 + bow, y2, x2, y2);
+  bctx.bezierCurveTo(midX, y1, midX, y2, x2, y2);
   bctx.stroke();
   bctx.fillStyle = hexToRgba(fromColor, strong ? 1 : 0.5);
   bctx.beginPath(); bctx.arc(x1, y1, strong ? 2.6 : 1.8, 0, Math.PI * 2); bctx.fill();
   bctx.fillStyle = hexToRgba(toColor, strong ? 1 : 0.5);
   const arrow = strong ? 5.2 : 4.2;
+  const direction = Math.sign(x2 - x1) || 1;
   bctx.beginPath();
   bctx.moveTo(x2, y2);
-  bctx.lineTo(x2 + arrow, y2 - arrow * 0.72);
-  bctx.lineTo(x2 + arrow, y2 + arrow * 0.72);
+  bctx.lineTo(x2 - direction * arrow, y2 - arrow * 0.72);
+  bctx.lineTo(x2 - direction * arrow, y2 + arrow * 0.72);
   bctx.closePath();
   bctx.fill();
   bctx.restore();
@@ -2555,7 +2655,7 @@ function drawAxis() {
     actx.fillStyle = hovered ? 'rgba(255,255,255,0.94)' : 'rgba(255,255,255,0.62)';
     actx.font = "600 10px 'Inter', sans-serif";
     actx.textAlign = 'left';
-    actx.fillText('迭代 ' + m.label, x + 4, 22);
+    actx.fillText('调用 ' + m.label, x + 4, 22);
     if (hovered) {
       actx.fillStyle = 'rgba(255,255,255,0.78)';
       actx.fillRect(x + 4, 29, 44, 1);
@@ -2564,9 +2664,7 @@ function drawAxis() {
 }
 
 function layerWindow(layer) {
-  const startBound = MODEL.LAYER0 + layer * MODEL.LAYER_SPAN - 60;
-  const endBound = MODEL.LAYER0 + (layer + 1) * MODEL.LAYER_SPAN;
-  const tasks = MODEL.tasks.filter((t) => t.start >= startBound && t.start < endBound);
+  const tasks = MODEL.tasks.filter((t) => t.iteration === layer);
   if (!tasks.length) return null;
   const start = Math.max(0, Math.min(...tasks.map((t) => t.start)) - 8);
   const end = Math.min(MODEL.timelineEnd, Math.max(...tasks.map((t) => t.end)) + 8);
@@ -2597,10 +2695,20 @@ function hitLayerLabel(canvasX, canvasY) {
 }
 
 function laneUtil(coreIdx, sublane = null) {
+  const core = MODEL.cores[coreIdx];
+  const explicit = sublane ? core?.sublaneUtilization?.[sublane] : core?.utilization;
+  if (Number.isFinite(explicit)) {
+    return { active: explicit * MODEL.timelineEnd, ratio: explicit };
+  }
   let active = 0;
   MODEL.tasks.forEach((t) => {
     if (t.coreIdx !== coreIdx) return;
-    if (sublane && taskSublane(t) !== sublane) return;
+    if (sublane) {
+      (t.pipelineSegments || []).forEach((segment) => {
+        if (segment.sublane === sublane) active += Math.max(0, segment.end - segment.start);
+      });
+      return;
+    }
     active += t.end - t.start;
   });
   const ratio = Math.max(0, Math.min(1, active / Math.max(1, MODEL.timelineEnd)));
@@ -2682,8 +2790,8 @@ function drawLanes() {
       lctx.fillStyle = 'rgba(255,255,255,0.055)';
       lctx.fillRect(0, y, LABEL_W, rh);
     }
-    const dim = (fi.dimWrap != null && c.wrap !== fi.dimWrap)
-      || (fi.dimWrap == null && fi.dimGroup != null && c.group !== fi.dimGroup);
+    const dim = (fi.dimWrap != null && !coreParticipates(c.idx, null, fi.dimWrap))
+      || (fi.dimWrap == null && fi.dimGroup != null && !coreParticipates(c.idx, fi.dimGroup));
 
     if (item.type === 'core' && c.kind === 'aic') {
       lctx.fillStyle = dim ? 'rgba(124,141,184,0.24)' : 'rgba(124,141,184,0.68)';
@@ -2726,7 +2834,10 @@ function drawLanes() {
     lctx.beginPath();
     lctx.roundRect(ux, uy, uw, uh, 2);
     lctx.fill();
-    lctx.fillStyle = dim ? 'rgba(124,141,184,0.28)' : (utilHovered ? 'rgba(124,141,184,0.86)' : 'rgba(124,141,184,0.62)');
+    const utilColor = util.ratio >= CURRENT_RUN.utilizationThreshold
+      ? (utilHovered ? 'rgba(124,141,184,0.86)' : 'rgba(124,141,184,0.62)')
+      : (utilHovered ? 'rgba(255,170,59,0.94)' : 'rgba(255,170,59,0.72)');
+    lctx.fillStyle = dim ? 'rgba(124,141,184,0.28)' : utilColor;
     lctx.beginPath();
     lctx.roundRect(ux, uy, Math.max(2, uw * util.ratio), uh, 2);
     lctx.fill();
@@ -2737,7 +2848,9 @@ function drawLanes() {
       lctx.roundRect(ux + 0.5, uy + 0.5, uw - 1, uh - 1, 2);
       lctx.stroke();
     }
-    lctx.fillStyle = dim ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.42)';
+    lctx.fillStyle = dim
+      ? 'rgba(255,255,255,0.22)'
+      : (util.ratio >= CURRENT_RUN.utilizationThreshold ? 'rgba(255,255,255,0.42)' : 'rgba(255,170,59,0.88)');
     lctx.font = item.type === 'subcore' ? "600 8px 'JetBrains Mono', monospace" : "600 9px 'JetBrains Mono', monospace";
     lctx.textAlign = 'right';
     lctx.fillText(Math.round(util.ratio * 100) + '%', LABEL_W - 7, y + rh / 2 + 0.5);
@@ -2947,20 +3060,25 @@ function artifactMenuKey(runId, artifactName) {
 
 function artifactRowHtml(runId, artifact) {
   const key = artifactMenuKey(runId, artifact.name);
-  const supportsMenu = artifact.name === 'merged_swimlane.json';
-  const supportsCompare = runId !== state.selectedRunId;
-  const menuOpen = supportsMenu && state.openArtifactMenu === key;
+  const available = Boolean(artifact.available);
+  const supportsCompare = available && runId !== state.selectedRunId;
+  const menuOpen = state.openArtifactMenu === key;
+  const selected = available && runId === state.selectedRunId;
   const menu = menuOpen ? `<div class="sl-history-artifact-menu" role="menu" aria-label="${escapeHtml(artifact.name)} 更多操作">
-    <button class="btn btn-sm btn-ghost" type="button" role="menuitem" data-artifact-action="compare" data-run-id="${escapeHtml(runId)}"
+    ${available ? `<button class="btn btn-sm btn-ghost" type="button" role="menuitem" data-artifact-action="compare" data-run-id="${escapeHtml(runId)}"
       ${supportsCompare ? '' : 'disabled aria-disabled="true" title="不能与当前运行记录自身对比"'}>对比...</button>
-    <button class="btn btn-sm btn-ghost" type="button" role="menuitem" data-artifact-action="open-script" data-run-id="${escapeHtml(runId)}">打开脚本文件</button>
+    <button class="btn btn-sm btn-ghost" type="button" role="menuitem" data-artifact-action="open-script" data-run-id="${escapeHtml(runId)}">打开脚本文件</button>`
+    : '<button class="btn btn-sm btn-ghost" type="button" role="menuitem" disabled aria-disabled="true">暂无可用数据</button>'}
   </div>` : '';
-  return `<div class="sl-history-artifact ${menuOpen ? 'is-menu-open' : ''}" data-artifact-name="${escapeHtml(artifact.name)}">
-    <span class="nm" title="${escapeHtml(artifact.name)}">${escapeHtml(artifact.name)}</span>
-    <span class="rl">${escapeHtml(ARTIFACT_ZH[artifact.role] || '')}</span>
+  return `<div class="sl-history-artifact ${selected ? 'is-selected' : ''} ${menuOpen ? 'is-menu-open' : ''}" data-artifact-name="${escapeHtml(artifact.name)}">
+    <button class="sl-history-artifact-select" type="button" data-artifact-select="${escapeHtml(artifact.name)}" data-run-id="${escapeHtml(runId)}"
+      ${available ? '' : 'disabled aria-disabled="true" title="当前 demo 尚未接入该产物数据"'}>
+      <span class="nm" title="${escapeHtml(artifact.name)}">${escapeHtml(artifact.name)}</span>
+      <span class="rl">${escapeHtml(ARTIFACT_ZH[artifact.role] || artifact.role || '')}</span>
+    </button>
     <button class="btn btn-icon btn-ghost sl-history-artifact-more" type="button"
       data-artifact-more="${escapeHtml(key)}" aria-label="${escapeHtml(artifact.name)} 更多"
-      ${supportsMenu ? `aria-haspopup="menu" aria-expanded="${String(menuOpen)}"` : 'disabled aria-disabled="true" title="暂无更多操作"'}>
+      aria-haspopup="menu" aria-expanded="${String(menuOpen)}">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg>
     </button>
     ${menu}
@@ -2970,7 +3088,7 @@ function artifactRowHtml(runId, artifact) {
 function runCardHtml(r) {
   const expanded = state.expandedRuns.has(r.id);
   const selected = state.selectedRunId === r.id;
-  const artifactHtml = RUN_ARTIFACTS.map((artifact) => artifactRowHtml(r.id, artifact)).join('');
+  const artifactHtml = (RUN_BY_ID[r.id]?.artifacts || []).map((artifact) => artifactRowHtml(r.id, artifact)).join('');
   const detail = expanded
     ? `<dl class="sl-history-kv">
         <dt>算子</dt><dd class="sl-history-sm">${escapeHtml(r.operator)}</dd>
@@ -3008,6 +3126,14 @@ function renderRunHistory() {
       renderRunHistory();
     });
   });
+  runHistoryBody.querySelectorAll('[data-artifact-select][data-run-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled || btn.dataset.artifactSelect !== 'merged_swimlane.json') return;
+      state.openArtifactMenu = null;
+      loadRun(btn.dataset.runId);
+      renderRunHistory();
+    });
+  });
   runHistoryBody.querySelectorAll('[data-artifact-more]').forEach((btn) => {
     btn.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -3030,6 +3156,35 @@ function renderRunHistory() {
   });
   const meta = document.getElementById('runHistoryMeta');
   if (meta) meta.textContent = '';
+}
+
+function loadRun(runId) {
+  const next = RUN_BY_ID[runId];
+  if (!next || next === CURRENT_RUN) return;
+  CURRENT_RUN = next;
+  MODEL = next.model;
+  rebuildModelIndexes();
+  taskTooltipPayloads.clear();
+  laneTooltipPayloads.clear();
+  Object.assign(state, {
+    selectedRunId: runId,
+    level: 'overview',
+    selGroup: null,
+    selWrap: null,
+    selTask: null,
+    hoverTask: null,
+    comparisonRunId: null,
+    reportTab: 'overview',
+    taskReportTab: 'overview',
+    pmuGroup: next.pmu.group || 2,
+  });
+  state.expandedLaneCores.clear();
+  state.expandedRuns.add(runId);
+  setBlockGraphOpen(false);
+  buildOrder();
+  layout();
+  renderInspector();
+  document.getElementById('projectName').textContent = next.projectName;
 }
 
 function bindRunHistoryDismiss() {
@@ -3065,8 +3220,14 @@ function hitTest(px, py) {
   const scale = pxPerUs();
   for (const t of MODEL.tasks) {
     if (t.coreIdx !== coreIdx) continue;
-    if (taskRow(t) !== row) continue;
-    if (px >= t.start * scale - 1 && px <= t.end * scale + 1) return t;
+    if (state.expandedLaneCores.has(coreIdx)) {
+      const sublane = rowItems[row]?.sublane;
+      const hit = (t.pipelineSegments || []).some((segment) => segment.sublane === sublane
+        && px >= segment.start * scale - 1 && px <= segment.end * scale + 1);
+      if (hit) return t;
+      continue;
+    }
+    if (taskRow(t) === row && px >= t.start * scale - 1 && px <= t.end * scale + 1) return t;
   }
   return null;
 }
@@ -3205,20 +3366,6 @@ bodyCanvas.addEventListener('click', (e) => {
   const px = e.clientX - rect.left, py = e.clientY - rect.top;
   const t = hitTest(px, py);
   if (t) { selectTask(t); return; }
-  /* 点空白: Mix 模式下按所在 wrap / group 下钻 */
-  if (state.mixMode) {
-    const row = hitRowAt(py);
-    const coreIdx = rowToCore[row];
-    const core = coreIdx != null ? MODEL.cores[coreIdx] : null;
-    if (core && core.wrap != null) {
-      const w = core.wrap;
-      const g = Math.floor(w / 4);
-      if (state.level === 'wrap' && state.selWrap === w) selectGroup(g);
-      else if (state.selGroup === g && state.level !== 'overview') selectWrap(w);
-      else selectGroup(g);
-      return;
-    }
-  }
   goOverview();
 });
 
@@ -3234,7 +3381,7 @@ function selectGroup(g) {
   refresh(); renderInspector();
 }
 function selectWrap(w) {
-  state.level = 'wrap'; state.selWrap = w; state.selGroup = Math.floor(w / 4); state.selTask = null;
+  state.level = 'wrap'; state.selWrap = w; state.selGroup = groupForWrap(w); state.selTask = null;
   refresh(); renderInspector(); scrollWrapIntoView(w);
 }
 function goOverview() {
@@ -3245,8 +3392,8 @@ function goOverview() {
 function scrollWrapIntoView(w) {
   let range = wrapRowRange(w);
   if (!range) {
-    const core = MODEL.cores[MODEL.aicIdxOfWrap(w)];
-    if (core?.laneGroup) state.collapsedLaneGroups.delete(core.laneGroup);
+    const coreIds = [...new Set(MODEL.tasks.filter((task) => task.wrap === w).map((task) => task.coreIdx))];
+    coreIds.forEach((coreIdx) => state.collapsedLaneGroups.delete(MODEL.cores[coreIdx]?.laneGroup));
     buildOrder();
     layout();
     range = wrapRowRange(w);
@@ -3346,9 +3493,17 @@ function groupStats(g) {
   return { compute, wait, ratio: wait / (compute + wait || 1) };
 }
 function wrapStats(w) {
-  const aic = MODEL.aicIdxOfWrap(w), aiv = MODEL.aivIdxOfWrap(w);
-  const s = (ci) => coreStats(ci);
-  const all = [s(aic), s(aiv[0]), s(aiv[1])];
+  const tasks = MODEL.tasks.filter((task) => task.wrap === w);
+  const s = (kind, vector = null) => {
+    const selected = tasks.filter((task) => {
+      const core = MODEL.cores[task.coreIdx];
+      return core.kind === kind && (vector == null || core.vector === vector);
+    });
+    const compute = selected.reduce((sum, task) => sum + task.computeEnd - task.start, 0);
+    const wait = selected.reduce((sum, task) => sum + task.end - task.computeEnd, 0);
+    return { compute, wait, n: selected.length, ratio: wait / (compute + wait || 1) };
+  };
+  const all = [s('aic'), s('aiv', 0), s('aiv', 1)];
   let compute = 0, wait = 0;
   all.forEach((x) => { compute += x.compute; wait += x.wait; });
   return { aic: all[0], aiv0: all[1], aiv1: all[2], ratio: wait / (compute + wait || 1) };
@@ -3375,7 +3530,7 @@ function runAggregateStats() {
     active += t.end - t.start;
   });
   const total = compute + wait || 1;
-  const avgLaneUtil = active / Math.max(1, MODEL.timelineEnd * MODEL.cores.length);
+  const avgLaneUtil = laneUtils.reduce((sum, ratio) => sum + ratio, 0) / Math.max(1, laneUtils.length);
   const minUtil = Math.min(...laneUtils);
   const maxUtil = Math.max(...laneUtils);
   const balance = maxUtil > 0 ? minUtil / maxUtil : 1;
@@ -3387,23 +3542,19 @@ function runAggregateStats() {
     avgLaneUtil,
     avgBubble: 1 - avgLaneUtil,
     loadBalance: balance,
-    extraGmUbKiB: 384,
-    ubHeadroomKiB: 13.5,
-    mte2Util: 0.81,
+    extraGmUbKiB: CURRENT_RUN.summaryMetrics.extraGmUbKiB,
+    ubHeadroomKiB: CURRENT_RUN.summaryMetrics.ubHeadroomKiB,
+    mte2Util: CURRENT_RUN.summaryMetrics.mte2Util,
   };
 }
 
 function topTasks() {
-  return [...MODEL.tasks]
-    .map((t) => {
-      const compute = t.computeEnd - t.start;
-      const wait = t.end - t.computeEnd;
-      const total = t.end - t.start || 1;
-      const score = wait * 2 + total * 0.25;
-      return { task: t, compute, wait, total, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3);
+  return CURRENT_RUN.anomalies.map((anomaly) => {
+    const task = taskById[anomaly.taskId];
+    const compute = task.computeEnd - task.start;
+    const wait = task.end - task.computeEnd;
+    return { task, anomaly, compute, wait, total: task.end - task.start || 1 };
+  });
 }
 
 function defaultReportHtml() {
@@ -3432,9 +3583,9 @@ function overviewReportHtml() {
     { label: '平均核心利用率', value: `${(s.avgLaneUtil * 100).toFixed(1)}%` },
     { label: '平均气泡率', value: `${(s.avgBubble * 100).toFixed(1)}%`, warn: s.avgBubble >= 0.42 },
     { label: '负载均衡度', value: `${(s.loadBalance * 100).toFixed(1)}%`, warn: s.loadBalance < 0.38 },
-    { label: '额外 GM / UB 搬运', value: `${s.extraGmUbKiB.toFixed(0)} KiB`, warn: true },
+    { label: '额外 GM / UB 搬运', value: `${s.extraGmUbKiB.toFixed(0)} KiB`, warn: s.extraGmUbKiB >= 192 },
     { label: 'UB 余量', value: `${s.ubHeadroomKiB.toFixed(1)} KiB`, warn: s.ubHeadroomKiB < 32 },
-    { label: 'MTE 2 利用率', value: `${(s.mte2Util * 100).toFixed(1)}%`, warn: s.mte2Util >= 0.78 },
+    { label: 'MTE 2 利用率', value: `${(s.mte2Util * 100).toFixed(1)}%`, warn: s.mte2Util >= 0.65 },
     { label: '同步路径数量', value: String(s.syncEdges) },
     { label: '同步等待占比', value: `${(s.waitRatio * 100).toFixed(1)}%`, warn: s.waitRatio >= 0.18 },
   ];
@@ -3446,22 +3597,22 @@ function overviewReportHtml() {
         <div class="sl-metric-card__value">${m.value}</div>
       </div>`).join('')}
     </div>
+    <div class="sl-insp-hint">额外 GM/UB 搬运、UB 余量与 MTE 2 利用率为 L2 诊断指标，用于保持三条 run 的同口径比较。</div>
   </div>
   <div class="sl-report-card">
     <div class="sl-report-card__title">Top 任务</div>
-    ${topTasks().map(({ task, wait, total }, idx) => {
+    ${topTasks().map(({ task, anomaly, wait, total }, idx) => {
       const core = MODEL.cores[task.coreIdx];
-      const severity = idx === 0 ? '同步等待最高' : idx === 1 ? '等待链相关' : '次级等待';
       const active = state.selTask && state.selTask.id === task.id;
       return `<div class="sl-top-task ${active ? 'is-active' : ''}" data-task-id="${escapeHtml(task.id)}">
         <div class="sl-top-task__top">
           <span class="sl-top-task__id">${escapeHtml(task.name)}</span>
-          <span class="sl-pill ${idx === 0 ? 'is-warn' : ''}">${severity}</span>
+          <span class="sl-pill is-warn">${escapeHtml(anomaly.label)}</span>
         </div>
         <div class="sl-top-task__row"><span>位置</span><span class="v">${escapeHtml(laneDisplayLabel(core))}</span></div>
         <div class="sl-top-task__row"><span>总耗时</span><span class="v">${total.toFixed(1)}μs</span></div>
         <div class="sl-meter"><div class="sl-meter-fill" style="width:${Math.min(100, wait / total * 100)}%;background:var(--warning)"></div></div>
-        <div class="sl-top-task__sub">同步等待 ${wait.toFixed(1)}μs · 占比 ${(wait / total * 100).toFixed(1)}%</div>
+        <div class="sl-top-task__sub">${escapeHtml(anomaly.reason)}</div>
       </div>`;
     }).join('')}
   </div>`;
@@ -3471,12 +3622,16 @@ function pmuReportHtml() {
   const groupButtons = `<div class="sl-pmu-groups" aria-label="PMU Group">
     ${PMU_GROUPS.map((g) => `<button class="btn btn-sm sl-pmu-group ${state.pmuGroup === g ? 'is-selected' : ''}" type="button" data-pmu-group="${g}">Group ${g}</button>`).join('')}
   </div>`;
-  if (state.pmuGroup !== 2) {
+  if (!CURRENT_RUN.pmu.available || state.pmuGroup !== CURRENT_RUN.pmu.group) {
     return `${groupButtons}<div class="sl-report-card">
       <div class="sl-report-card__title">Group ${state.pmuGroup}</div>
-      <div class="sl-empty-state">当前 demo 暂未采集 PMU Group ${state.pmuGroup}。请切回 Group 2 查看 A5 标准 counters。</div>
+      <div class="sl-empty-state">该运行记录没有采集 PMU Group ${state.pmuGroup}。单次运行只展示实际启用的一个 PMU Group。</div>
     </div>`;
   }
+  const PMU_G2_COUNTERS = PMU_G2_META.map((counter) => ({
+    ...counter,
+    value: CURRENT_RUN.pmu.counters[counter.key] || 0,
+  }));
   const total = PMU_G2_COUNTERS.reduce((sum, c) => sum + c.value, 0) || 1;
   const rows = PMU_G2_COUNTERS.map((c) => `<div class="sl-counter-row">
     <div class="sl-counter-name" title="${c.key}">${c.key}</div>
@@ -3484,6 +3639,9 @@ function pmuReportHtml() {
     <div class="sl-counter-note" title="${c.label} · ${c.summary}">${c.label} · ${(c.value / total * 100).toFixed(1)}%</div>
   </div>`).join('');
   const dominant = [...PMU_G2_COUNTERS].sort((a, b) => b.value - a.value)[0];
+  const clock = CURRENT_RUN.pmu.counters['total cycle'] || 1;
+  const mte2Ratio = (CURRENT_RUN.pmu.counters.mte2_instr_busy || 0) / clock;
+  const missRate = (CURRENT_RUN.pmu.counters.icache_miss || 0) / (CURRENT_RUN.pmu.counters.icache_req || 1);
   return `${groupButtons}<div class="sl-report-card">
     <div class="sl-report-card__title">A5 PMU Group 2 · 全图 counters 明细</div>
     <div class="sl-counter-table">
@@ -3495,8 +3653,8 @@ function pmuReportHtml() {
     <div class="sl-report-card__title">PMU summary</div>
     <div class="sl-metric-grid">
       <div class="sl-metric-card is-warn"><div class="sl-metric-card__label">主导 counter</div><div class="sl-metric-card__value">${dominant.key}</div></div>
-      <div class="sl-metric-card is-warn"><div class="sl-metric-card__label">MTE 2 利用率</div><div class="sl-metric-card__value">81.0%</div></div>
-      <div class="sl-metric-card"><div class="sl-metric-card__label">I-Cache miss rate</div><div class="sl-metric-card__value">2.2%</div></div>
+      <div class="sl-metric-card ${mte2Ratio >= 0.65 ? 'is-warn' : ''}"><div class="sl-metric-card__label">MTE 2 / total cycle</div><div class="sl-metric-card__value">${(mte2Ratio * 100).toFixed(1)}%</div></div>
+      <div class="sl-metric-card"><div class="sl-metric-card__label">I-Cache miss rate</div><div class="sl-metric-card__value">${(missRate * 100).toFixed(1)}%</div></div>
       <div class="sl-metric-card"><div class="sl-metric-card__label">Counter 覆盖</div><div class="sl-metric-card__value">Group 2</div></div>
     </div>
   </div>`;
@@ -3516,7 +3674,7 @@ function latencyReportHtml() {
 function optimizeReportHtml() {
   return `<div class="sl-report-card">
     <div class="sl-report-card__title">优化建议</div>
-    <div class="sl-empty-state">建议优先检查同步路径上的长尾 AIC 任务、MTE 2 搬运占比和 UB 余量。更细建议将在真实 L1/L2 数据接入后补全。</div>
+    ${CURRENT_RUN.recommendations.map((recommendation, index) => `<div class="sl-sync-item"><b>${index + 1}.</b> ${escapeHtml(recommendation)}</div>`).join('')}
   </div>`;
 }
 
@@ -3572,17 +3730,20 @@ function renderInspector() {
 }
 
 function overviewHtml() {
+  const primaryAnomaly = topTasks()[0];
+  const primaryGroup = primaryAnomaly?.task.group;
   let html = defaultReportHtml();
   if (state.reportTab !== 'overview') return html;
   html += `<div class="sl-insp-section">
-    <div class="sl-insp-hint">3 次迭代的解码层, 切成 <b>${MODEL.groups.length} 个 Mix 子图</b>流水执行,
-    各子图静态绑定 4 个 <b>1C2V Wrap</b> (1 AIC + 2 AIV)。点击子图逐层下钻。</div>
+    <div class="sl-insp-hint">3 次算子调用，按 <b>${MODEL.groups.length} 个诊断分组</b>组织。Wrap 是运行时任务分组，
+    不等同于物理 Core 编号；同一物理泳道在不同调用中可承载不同 Wrap。${escapeHtml(CURRENT_RUN.iterationDefinition)}<br>
+    任务颜色按<b>语义诊断分组</b>编码，不按 Core、Wrap 或异常等级编码。虚线框表示跨多个 Wrap 的 L2 诊断分组；选中 Wrap 后出现的实线框表示当前 Wrap 的任务范围。</div>
   </div>
   <div class="sl-insp-section"><div class="sl-insp-section-label">${MODEL.groups.length} 个 Mix 子图 · 同步等待占比</div>`;
   MODEL.groups.forEach((g) => {
     const st = groupStats(g.id);
     const pct = (st.ratio * 100).toFixed(0);
-    const bn = g.id === SCENARIO.bottleneckGroup;
+    const bn = g.id === primaryGroup;
     html += `<div class="sl-row ${bn ? 'is-flag' : ''}" data-group="${g.id}">
         <span class="sl-dot" style="background:${g.color}"></span>
         <span class="sl-row-name">${g.name}${bn ? ' <small>· 瓶颈</small>' : ''}</span>
@@ -3590,7 +3751,7 @@ function overviewHtml() {
       <div class="sl-meter"><div class="sl-meter-fill" style="width:${pct}%;background:${pct >= 35 ? 'var(--warning)' : g.color}"></div></div>`;
   });
   html += `</div>`;
-  const bg = MODEL.groups[SCENARIO.bottleneckGroup];
+  const bg = MODEL.groups[primaryGroup];
   html += `<div class="sl-callout">
     <b>剧本 · 定位提示</b><br>
     <b>${bg.name}</b> 的同步等待占比明显高于其它子图。根因疑似落在它的某个
@@ -3632,12 +3793,12 @@ function groupDetailHtml(g) {
     const flag = w === slowW;
     html += `<div class="sl-row ${flag ? 'is-flag' : ''}" data-wrap="${w}">
         <span class="sl-dot" style="background:${grp.color}"></span>
-        <span class="sl-row-name">Wrap ${String(w).padStart(2, '0')} <small>AIC${String(w).padStart(2, '0')} + AIV${String(w * 2).padStart(2, '0')}/${String(w * 2 + 1).padStart(2, '0')}</small></span>
+        <span class="sl-row-name">Wrap ${String(w).padStart(2, '0')} <small>跨 3 次调用动态映射到物理泳道</small></span>
         <span class="sl-row-meta">${pctw}%</span></div>
       <div class="sl-meter"><div class="sl-meter-fill" style="width:${pctw}%;background:${flag ? 'var(--warning)' : grp.color}"></div></div>`;
   }
   html += `</div>`;
-  if (g === SCENARIO.bottleneckGroup) {
+  if (g === topTasks()[0]?.task.group) {
     html += `<div class="sl-callout">
       <b>Wrap ${String(slowW).padStart(2, '0')}</b> 的等待占比远高于同组其它 Wrap。
       该 Wrap 的 AIC 在跑一个超大 BMM, 同组其它 Wrap 早早算完后空转 —— 典型的<b>核间负载不均</b>。
@@ -3647,10 +3808,13 @@ function groupDetailHtml(g) {
 }
 
 function wrapDetailHtml(w) {
-  const g = Math.floor(w / 4);
+  const g = groupForWrap(w);
   const grp = MODEL.groups[g];
   const ws = wrapStats(w);
-  const aicCore = MODEL.aicIdxOfWrap(w), aivCores = MODEL.aivIdxOfWrap(w);
+  const wrap = MODEL.wraps.find((item) => item.id === w);
+  const representative = wrap?.instances?.[0];
+  const aicCore = representative?.aicCoreIdx;
+  const aivCores = representative?.aivCoreIdxs || [];
   const cores3 = [
     { ci: aicCore, st: ws.aic, role: 'AIC (Cube)' },
     { ci: aivCores[0], st: ws.aiv0, role: 'AIV-0 (Vector)' },
@@ -3661,7 +3825,7 @@ function wrapDetailHtml(w) {
       <span class="sl-pill" style="color:${grp.color}"><span class="sl-dot" style="width:8px;height:8px;background:${grp.color}"></span>${grp.short}</span>
       <span class="sl-pill ${ws.ratio >= 0.4 ? 'is-warn' : 'is-ok'}">${ws.ratio >= 0.4 ? '同步瓶颈' : '健康'}</span>
     </div>
-    <div class="sl-insp-hint">1C2V 单元 = 1 个 Cube 核 + 2 个 Vector 核, 物理上协同执行。</div>
+    <div class="sl-insp-hint">Wrap 是运行时 1C2V 任务分组，不是物理 Core 编号。下表泳道名取调用 1 的映射；后续调用会重映射。</div>
   </div>
   <div class="sl-report-card"><div class="sl-report-card__title">单元内三核 · 计算与同步等待</div>`;
   cores3.forEach((c) => {
@@ -3669,7 +3833,7 @@ function wrapDetailHtml(w) {
     const cp = (c.st.compute / tot * 100), wp = (c.st.wait / tot * 100);
     html += `<div style="margin-top:8px">
       <div class="sl-kv" style="padding-bottom:3px;border:0">
-        <span class="sl-kv-key">${laneDisplayLabel(MODEL.cores[c.ci])} · ${c.role}</span>
+        <span class="sl-kv-key">${c.ci != null ? laneDisplayLabel(MODEL.cores[c.ci]) : '—'} · ${c.role}</span>
         <span class="sl-kv-val">计算 ${c.st.compute.toFixed(0)} / 等待 ${c.st.wait.toFixed(0)}μs</span></div>
       <div class="sl-meter">
         <div class="sl-meter-fill" style="width:${cp}%;background:${grp.color};float:left"></div>
@@ -3681,7 +3845,7 @@ function wrapDetailHtml(w) {
   html += `<div class="sl-report-card">
     <div class="sl-kv"><span class="sl-kv-key">单元内同步边</span><span class="sl-kv-val">${edgeN}</span></div>
   </div>`;
-  if (w === SCENARIO.slowWrap) {
+  if (w === topTasks()[0]?.task.wrap) {
     html += `<div class="sl-callout">
       <b>根因锁定</b> —— <b>${laneDisplayLabel(MODEL.cores[aicCore])}</b> 在跑一个「K 维未切分」的超大 BMM,
       单任务计算量约为正常 tile 的 2.5x。它一直没发出 SyncSet,
@@ -3723,6 +3887,7 @@ function taskOverviewHtml(t) {
         <span class="sl-pill ${ratio >= 0.3 ? 'is-warn' : 'is-ok'}">${ratio >= 0.3 ? '同步瓶颈' : '计算主导'}</span>
       </div>
       <div class="sl-kv"><span class="sl-kv-key">输入 / 输出</span><span class="sl-kv-val">输入 ${t.inputRawMagic.length} · 输出 ${t.outputRawMagic.length}</span></div>
+      ${t.coveredTaskIds ? `<div class="sl-kv"><span class="sl-kv-key">调度覆盖</span><span class="sl-kv-val">${t.coveredTaskIds.length} 个 AI Core 任务</span></div>` : ''}
     </div>
     <div class="sl-insp-section"><div class="sl-insp-section-label">计算与同步等待</div>
       <div class="sl-meter" style="height:14px">
@@ -3754,10 +3919,28 @@ function taskOverviewHtml(t) {
   return `${html}</div>`;
 }
 
+function taskPmuHtml(t) {
+  if (!t.pmu) {
+    return `<div class="sl-task-tab-panel"><div class="sl-empty-state">该任务所在运行记录未采集单任务 PMU；不能用其它 run 的 counter 补齐。</div></div>`;
+  }
+  const rows = PMU_G2_META.map((counter) => `<div class="sl-counter-row">
+    <div class="sl-counter-name">${counter.key}</div>
+    <div class="sl-counter-val">${Number(t.pmu[counter.key] || 0).toLocaleString()}</div>
+    <div class="sl-counter-note">${counter.summary}</div>
+  </div>`).join('');
+  return `<div class="sl-task-tab-panel"><div class="sl-report-card">
+    <div class="sl-report-card__title">A5 PMU Group ${t.pmu.group} · 单任务</div>
+    <div class="sl-counter-table">${rows}</div>
+    <div class="sl-insp-hint">${escapeHtml(CURRENT_RUN.pmu.mappingRule)}</div>
+  </div></div>`;
+}
+
 function taskDetailHtml(t) {
   const total = (t.end - t.start) || 0;
   const tabPanel = state.taskReportTab === 'overview'
     ? taskOverviewHtml(t)
+    : state.taskReportTab === 'pmu'
+      ? taskPmuHtml(t)
     : taskReportPlaceholderHtml(state.taskReportTab);
   return `<section class="sl-task-summary">
     <div class="sl-task-detail-head">
@@ -3770,6 +3953,8 @@ function taskDetailHtml(t) {
     <div class="sl-report-card sl-task-basic-card">
       <div class="sl-kv"><span class="sl-kv-key">泳道</span><span class="sl-kv-val">${taskLaneDisplayLabel(t)}</span></div>
       <div class="sl-kv"><span class="sl-kv-key">所属 Wrap</span><span class="sl-kv-val">${t.wrap != null ? 'Wrap ' + String(t.wrap).padStart(2, '0') : '—'}</span></div>
+      <div class="sl-kv"><span class="sl-kv-key">调用</span><span class="sl-kv-val">${t.iteration != null ? '调用 ' + (t.iteration + 1) : '—'}</span></div>
+      <div class="sl-kv"><span class="sl-kv-key">原始 wrapId 示例</span><span class="sl-kv-val">${t.rawWrapId ?? '—'}</span></div>
       <div class="sl-kv"><span class="sl-kv-key">执行区间</span><span class="sl-kv-val">${t.start.toFixed(1)}–${t.end.toFixed(1)}μs</span></div>
       <div class="sl-kv"><span class="sl-kv-key">耗时</span><span class="sl-kv-val">${total.toFixed(1)}μs</span></div>
       <div class="sl-task-basic-actions">
@@ -3943,9 +4128,11 @@ function openBlockGraph(t) {
 
 function openRunComparison(runId) {
   if (!runId || runId === state.selectedRunId || !blockGraphView) return;
+  const comparedRun = RUN_BY_ID[runId];
+  if (!comparedRun) return;
   state.secondaryViewMode = 'comparison';
   state.comparisonRunId = runId;
-  blockGraphTitle.textContent = `${runId} · merged_swimlane.json`;
+  blockGraphTitle.textContent = `${comparedRun.id} · merged_swimlane`;
   setBlockGraphOpen(true);
 }
 
@@ -4087,7 +4274,7 @@ function bindInspector() {
   const viewBlockGraph = body.querySelector('[data-view-block-graph]');
   if (viewBlockGraph) viewBlockGraph.addEventListener('click', () => openBlockGraph(state.selTask));
   const drill = body.querySelector('[data-drill="bottleneck"]');
-  if (drill) drill.addEventListener('click', () => selectWrap(SCENARIO.slowWrap));
+  if (drill) drill.addEventListener('click', () => selectWrap(topTasks()[0].task.wrap));
 }
 
 function refreshFrameLayout() {
@@ -4205,6 +4392,7 @@ function applyResponsivePaneState() {
    10. 启动
    ============================================================ */
 function init() {
+  document.getElementById('projectName').textContent = CURRENT_RUN.projectName;
   const initialFrameWidth = frameEl.getBoundingClientRect().width;
   if (initialFrameWidth <= 1180) {
     frameEl.dataset.explorerCollapsed = 'true';
