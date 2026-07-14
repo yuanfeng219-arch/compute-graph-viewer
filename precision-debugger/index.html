@@ -711,6 +711,10 @@ body.col-resizing{cursor:col-resize;user-select:none}
 .fmt-cell small{color:var(--foreground-muted);font:700 8px/1 var(--font-mono)}
 .fmt-cell.bad{background:color-mix(in srgb,var(--danger) 22%,var(--surface-3));border-color:color-mix(in srgb,var(--danger) 52%,transparent);color:var(--foreground)}
 .fmt-cell.bad small{color:color-mix(in srgb,var(--danger) 78%,var(--foreground-muted))}
+.fmt-cell.rc{background:color-mix(in srgb,var(--primary) 30%,var(--surface-3));border-color:color-mix(in srgb,var(--primary) 42%,transparent)}
+.fmt-cell.bad.rc{background:color-mix(in srgb,var(--danger) 34%,var(--surface-3));border-color:color-mix(in srgb,var(--danger) 60%,transparent)}
+/* hover 时淡化无关格，突出十字参考+联动格（512 格降噪）*/
+.fmt-scroll.dim .fmt-cell:not(.rc):not(.on){opacity:.32}
 .fmt-cell.on{background:var(--primary);border-color:var(--primary);color:#fff}
 .fmt-cell.bad.on{background:var(--danger);border-color:var(--danger);color:#fff}
 .fmt-cell.on small{color:rgba(255,255,255,.82)}
@@ -723,6 +727,22 @@ body.col-resizing{cursor:col-resize;user-select:none}
 .fmt-stat .st b{color:var(--foreground);font-weight:700}
 .fmt-stat .st.warn{border-color:color-mix(in srgb,var(--warning) 42%,transparent);color:var(--warning)}
 .fmt-stat .st.bad{border-color:color-mix(in srgb,var(--danger) 42%,transparent);color:var(--danger)}
+/* 反向梯度对标（train 专属）*/
+.grad-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.grad-card{border:1px solid var(--border-subtle);border-radius:var(--radius-md);background:var(--surface-1);padding:10px 11px}
+.grad-card h6{margin:0 0 2px;font:700 11px/1.3 var(--font-sans);color:var(--foreground);display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.grad-card .gc-sub{font:var(--text-mono);font-size:9px;color:var(--foreground-muted);font-weight:400;letter-spacing:.02em}
+.grad-card .gc-big{font:var(--text-mono);font-size:15px;font-weight:700;color:var(--foreground);margin:1px 0}
+.grad-card .gc-big.bad{color:var(--danger)}
+.grad-card .gc-big.ok{color:var(--success)}
+.grad-card .gc-note{font:var(--text-body-sm);font-size:10px;color:var(--foreground-secondary);line-height:1.5;margin-top:4px}
+.grad-card .gc-note b{color:var(--foreground)}
+.grad-bars{width:100%;height:44px;display:block;margin-top:3px}
+.grad-rank{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.grad-rank .rk{font:var(--text-mono);font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--border-subtle);background:var(--surface-2);color:var(--foreground-secondary)}
+.grad-rank .rk.bad{border-color:color-mix(in srgb,var(--danger) 45%,transparent);background:color-mix(in srgb,var(--danger) 12%,var(--surface-2));color:var(--danger)}
+table.grid td.gc-mono{font:var(--text-mono);font-size:9.5px;color:var(--foreground-muted)}
+@media (max-width:560px){.grad-cards{grid-template-columns:1fr}}
 table.grid tr.sim-bad td{background:color-mix(in srgb,var(--danger) 10%,transparent)}
 .sim-st{font:700 9px/1.4 var(--font-sans);padding:2px 6px;border-radius:4px;white-space:nowrap}
 .sim-st.crit{background:var(--tone-critical-bg);color:var(--danger)}
@@ -737,6 +757,11 @@ table.grid tr.sim-bad td{background:color-mix(in srgb,var(--danger) 10%,transpar
 .dtab:hover{color:var(--foreground)}
 .dtab:hover{color:var(--foreground)}
 .dtab.on{background:var(--surface-3);color:var(--foreground);box-shadow:var(--shadow-sm)}
+/* 前向 / 反向 pass 段控（比 tab 高一层：pass 轴 × 深度轴）*/
+.drill-pass{display:inline-flex;gap:2px;padding:2px;background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:8px;margin:0 0 8px}
+.drill-pass .dp{font:700 10.5px/1 var(--font-sans);padding:5px 15px;border-radius:6px;border:0;background:transparent;color:var(--foreground-muted);cursor:pointer;transition:background .12s,color .12s}
+.drill-pass .dp.on{background:var(--surface-4);color:var(--foreground)}
+.drill-pass .dp:hover:not(.on){color:var(--foreground-secondary)}
 .lockbtn{margin-left:0}
 /* tensor viz */
 .vframe{margin-top:8px}
@@ -815,6 +840,7 @@ table.diff td{padding:4px 8px;border-bottom:1px solid var(--border-subtle);color
 :root[data-theme='light'] .mcli{background:#f2f2f4}
 .insp-back{flex:0 0 auto;font-size:16px;line-height:1}
 .insp-back[hidden]{display:none}
+.insp-back.has-text{width:auto;min-width:0;height:auto;padding:6px 11px;font-size:12px;font-weight:600;white-space:nowrap}
 /* header rank/step selects */
 .hsel{height:24px;border-radius:var(--radius-md);border:1px solid var(--border-default);background:var(--surface-1);color:var(--foreground);font:var(--text-mono);font-size:11px;padding:0 4px;cursor:pointer}
 .hsel:focus{outline:none;border-color:var(--primary)}
@@ -922,6 +948,146 @@ table.diff td{padding:4px 8px;border-bottom:1px solid var(--border-subtle);color
 .laycurve .lc-cap{display:flex;justify-content:space-between;align-items:baseline;font:var(--text-mono);font-size:10px;color:var(--foreground-muted);margin-bottom:6px}
 .laycurve .lc-cap b{color:var(--foreground);font-size:11px}
 .lc-dot{cursor:pointer}
+/* ===================== GPU→NPU 迁移整网对比 ===================== */
+.wm-seg{display:flex;width:100%}
+.wm-seg .segbtn{flex:1;text-align:center;justify-content:center}
+/* 工作模式显隐（body class 驱动，避免污染现有主流程） */
+body.wm-migration #peelStatusSec{display:none}
+body.wm-peel #migSide{display:none}
+.mig-side{display:flex;flex-direction:column;gap:18px;margin-top:6px}
+.mig-run{border:1px solid var(--border-subtle);border-radius:var(--radius-md);background:var(--surface-1);padding:10px 12px;margin-top:8px}
+.mig-run-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px}
+.mig-run-role{font:700 12px/1.2 var(--font-sans);color:var(--foreground)}
+.mig-run-st{font:var(--text-mono);font-size:9.5px;color:var(--success)}
+.mig-run-impl{font:var(--text-body-sm);font-size:11.5px;color:var(--foreground-secondary);margin-top:3px}
+.mig-run-meta{font:var(--text-mono);font-size:10px;color:var(--foreground-muted);margin-top:3px}
+.mig-run-id{font:var(--text-mono);font-size:10px;color:var(--foreground-muted);margin-top:2px}
+.mig-cmt-grid{display:flex;flex-direction:column;gap:3px;margin-top:4px}
+.mig-cmt{display:flex;align-items:center;gap:6px;font:var(--text-body-sm);font-size:11px;color:var(--foreground-secondary);padding:3px 7px;border-radius:6px;background:var(--surface-2);border:1px solid var(--border-subtle);cursor:pointer}
+.mig-cmt .ci{width:14px;height:14px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex:0 0 auto}
+.mig-cmt.ok .ci{background:var(--success)} .mig-cmt.bad .ci{background:var(--danger)} .mig-cmt.warn .ci{background:var(--warning)}
+.mig-cmt.bad{border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+.mig-cmt-v{margin-left:auto;font:var(--text-mono);font-size:9.5px;color:var(--foreground-muted)}
+.mig-status{border-radius:var(--radius-md);padding:9px 11px;margin-top:2px;border:1px solid var(--border-subtle);font:700 12px/1.3 var(--font-sans);color:var(--foreground)}
+.mig-status.ok{background:linear-gradient(135deg,color-mix(in srgb,var(--success) 12%,var(--surface-1)),var(--surface-1) 60%)}
+.mig-status.diff{background:linear-gradient(135deg,color-mix(in srgb,var(--danger) 12%,var(--surface-1)),var(--surface-1) 60%)}
+.mig-status.blocked{background:linear-gradient(135deg,color-mix(in srgb,var(--danger) 16%,var(--surface-1)),var(--surface-1) 60%)}
+.mig-status-sub{font:var(--text-body-sm);font-size:10.5px;font-weight:400;color:var(--foreground-secondary);margin-top:3px;line-height:1.5}
+.mig-status-first{font:700 11.5px/1.3 var(--font-sans);color:var(--danger);margin-top:5px}
+/* 中央双泳道 */
+.mig-stage{position:absolute;inset:0;background:var(--ide-pane-bg);display:flex;flex-direction:column}
+.mig-head{flex:0 0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 22px 10px;border-bottom:1px solid var(--border-subtle);background:var(--ide-pane-bg)}
+.mig-head .mh-col{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mig-head .mh-col.mid{align-items:center;flex:1}
+.mig-head .mh-col.npu{align-items:flex-end}
+.mig-head .mh-role{font:700 12.5px/1.2 var(--font-sans);color:var(--foreground)}
+.mig-head .mh-sub{font:var(--text-mono);font-size:10px;color:var(--foreground-muted)}
+.mig-scroll{flex:1 1 auto;min-height:0;overflow:auto;padding:8px 22px 16px}
+#migSvg{display:block}
+#migSvg text{font-family:var(--font-mono)}
+.mig-idrole{font:700 11px/1 var(--font-sans);fill:var(--foreground)}
+.mig-idsub{font-size:8.5px;fill:var(--foreground-muted)}
+.mig-ioT{font-size:8px;fill:var(--foreground-muted);text-anchor:middle}
+.mig-lnum{font-size:8.5px;fill:var(--foreground-secondary);text-anchor:middle}
+.mig-fold{font-size:8.5px;fill:var(--success);text-anchor:middle;font-weight:700}
+.mig-tag{font-size:9px;fill:#fff;text-anchor:middle;font-weight:700;font-family:var(--font-sans)}
+.mig-qmark{font-size:11px;fill:var(--foreground-muted);text-anchor:middle;font-weight:700}
+.mig-cell{transition:stroke-width .1s} .mig-cell.hi{stroke-width:2.2px!important}
+.mig-bridge.hi{stroke-width:2.4px!important;opacity:1!important}
+.mig-hit{cursor:pointer;outline:none} .mig-hit:focus-visible{stroke:var(--primary);stroke-width:1.5;stroke-dasharray:3 2}
+/* 迁移 Inspector */
+.mig-sumline{font:700 14px/1.3 var(--font-sans);color:var(--foreground)}
+.mig-subline{font:var(--text-mono);font-size:10.5px;color:var(--foreground-muted);margin-top:3px}
+.mig-sumhead{margin-bottom:2px}
+/* 首个候选 · 红色渐变卡片 */
+.mig-firstcard{border:1px solid color-mix(in srgb,var(--danger) 24%,transparent);border-radius:var(--radius-lg);background:linear-gradient(150deg,color-mix(in srgb,var(--danger) 15%,var(--surface-1)),var(--surface-1) 72%);padding:13px 14px;margin-top:14px}
+.mig-firstcard.ok{border-color:color-mix(in srgb,var(--success) 22%,transparent);background:linear-gradient(150deg,color-mix(in srgb,var(--success) 12%,var(--surface-1)),var(--surface-1) 72%)}
+/* 2.5D 活字块深度面 */
+.iso-f{stroke:none}
+.mig-cell.iso-top.hi{stroke-width:2.2px!important}
+.mig-sumstat{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.mig-sumstat span{font:var(--text-mono);font-size:9.5px;color:var(--foreground-secondary);background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:5px;padding:2px 6px}
+.mig-firsttag{display:inline-block;font:700 10px/1 var(--font-sans);color:#fff;background:var(--danger);border-radius:5px;padding:4px 9px;margin-top:2px;margin-bottom:9px}
+/* 弱化的细滚动条 */
+.mig-scroll::-webkit-scrollbar{width:9px;height:9px}
+.mig-scroll::-webkit-scrollbar-track{background:transparent}
+.mig-scroll::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--foreground) 11%,transparent);border-radius:6px;border:2px solid transparent;background-clip:padding-box}
+.mig-scroll::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--foreground) 20%,transparent);background-clip:padding-box}
+.mig-scroll{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--foreground) 14%,transparent) transparent}
+/* 层详情 hover 浮窗 */
+.mig-tip{position:absolute;z-index:20;pointer-events:none;background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:9px 11px;min-width:190px;opacity:0;transition:opacity .1s;font:var(--text-body-sm)}
+.mig-tip.on{opacity:1}
+.mig-tip .tt-h{font:700 12px/1.2 var(--font-sans);color:var(--foreground);display:flex;align-items:center;gap:6px}
+.mig-tip .tt-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.mig-tip .tt-st{font:var(--text-mono);font-size:10px;margin-left:auto}
+.mig-tip .tt-row{display:flex;justify-content:space-between;gap:14px;font:var(--text-mono);font-size:10.5px;color:var(--foreground-secondary);margin-top:5px}
+.mig-tip .tt-row b{color:var(--foreground);font-weight:600}
+.mig-tip .tt-row .bad{color:var(--danger)}
+.mig-metrics,.mig-metrics3{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mig-metrics span,.mig-metrics3 span{font:var(--text-mono);font-size:10.5px;color:var(--foreground-secondary);background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:5px;padding:3px 7px}
+.mig-metrics .bad,.mig-metrics3 .bad{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+.mig-note-caution{margin-top:9px;font:var(--text-body-sm);font-size:11px;color:var(--warning);background:color-mix(in srgb,var(--warning) 8%,transparent);border:1px solid color-mix(in srgb,var(--warning) 28%,transparent);border-radius:6px;padding:6px 9px}
+.mig-act{width:100%;justify-content:center}
+.mig-map{display:flex;flex-direction:column;gap:4px;margin-top:5px;font:var(--text-mono);font-size:10.5px;color:var(--foreground-secondary)}
+.mig-map code{font-size:9.5px;color:var(--foreground);word-break:break-all}
+.mig-side-lbl{display:inline-block;font:700 8.5px/1 var(--font-sans);border-radius:3px;padding:2px 4px;margin-right:4px;color:#fff}
+.mig-side-lbl.gpu{background:color-mix(in srgb,var(--foreground) 40%,transparent)} .mig-side-lbl.npu{background:color-mix(in srgb,var(--primary) 70%,transparent)}
+.mig-basis{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.mig-basis span{font:var(--text-mono);font-size:9px;color:var(--foreground-muted);background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:4px;padding:2px 5px}
+.mig-evi{font:var(--text-mono);font-size:11px;color:var(--foreground-secondary);margin-top:3px}
+.mig-evi .ev-crit{color:var(--danger)}
+.isec-h{font:700 11px/1.3 var(--font-sans);color:var(--foreground-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.icard.warn{border-color:var(--border-subtle);background:color-mix(in srgb,var(--warning) 3%,var(--surface-1));box-shadow:inset 0 14px 26px -26px color-mix(in srgb,var(--warning) 38%,transparent)}
+/* 迁移 Inspector 字号加大、行距更松，提升可读性 */
+.mig-insp .isec{margin-bottom:14px}
+.mig-insp .isec-h{font-size:11.5px;margin-bottom:6px}
+.mig-insp .hint{font-size:12.5px;line-height:1.65}
+.mig-insp .mig-map{font-size:12px;gap:5px}
+.mig-insp .mig-map code{font-size:11px}
+.mig-insp .mig-side-lbl{font-size:9.5px;padding:2px 5px}
+.mig-insp .mig-metrics3 span{font-size:11.5px;padding:4px 9px}
+.mig-insp .mig-basis span{font-size:10px;padding:3px 6px}
+.mig-insp .mig-evi{font-size:12.5px;line-height:1.6}
+.mig-insp .mig-act{padding:9px 12px;font-size:12.5px}
+/* 对比摘要 · 关键数据平铺 */
+.mig-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+.mig-tile{border:0;border-radius:var(--radius-md);background:color-mix(in srgb,var(--foreground) 4%,transparent);padding:9px 11px}
+.mig-tile .tl{font:var(--text-body-sm);font-size:10.5px;color:var(--foreground-muted)}
+.mig-tile .tv{font:700 17px/1.15 var(--font-sans);color:var(--foreground);margin-top:3px}
+.mig-tile .tv.mono{font-family:var(--font-mono);font-size:13.5px}
+.mig-tile.warn{background:color-mix(in srgb,var(--warning) 8%,transparent)}
+.mig-tile.warn .tv{color:var(--warning)}
+.mig-tile.crit{background:color-mix(in srgb,var(--danger) 9%,transparent)}
+.mig-tile.crit .tv{color:var(--danger)}
+/* 前后证据 · 可视化链 */
+.mig-insp .mig-chain{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mig-cpill{font:var(--text-mono);font-size:11px;padding:4px 9px;border-radius:6px;border:1px solid var(--border-subtle);background:var(--surface-2);color:var(--foreground-secondary)}
+.mig-cpill.cur{font-weight:700}
+.mig-cpill.st-pass{border-color:color-mix(in srgb,var(--success) 34%,transparent);color:var(--success)}
+.mig-cpill.st-first{border-color:color-mix(in srgb,var(--danger) 42%,transparent);color:var(--danger);background:color-mix(in srgb,var(--danger) 9%,var(--surface-2))}
+.mig-cpill.st-prop{border-color:color-mix(in srgb,var(--warning) 34%,transparent);color:var(--warning)}
+.mig-cpill.st-unm{border-color:var(--border-subtle);color:var(--foreground-muted)}
+.mig-carrow{color:var(--foreground-muted);font-size:12px}
+/* 交接来源横幅 */
+.handoff-banner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:9px;background:color-mix(in srgb,var(--danger) 12%,var(--ide-pane-bg));border:1px solid color-mix(in srgb,var(--danger) 34%,transparent);border-radius:var(--radius-md);padding:6px 10px;font:var(--text-body-sm);font-size:11.5px;color:var(--foreground);box-shadow:var(--shadow-sm)}
+.handoff-banner .hb-ic{width:15px;height:15px;color:var(--danger)}
+.handoff-banner .hb-back{padding:3px 9px;font-size:11px}
+.handoff-banner .hb-back svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2}
+.handoff-banner{transition:opacity .38s ease,transform .38s ease}
+.handoff-banner.fade-out{opacity:0;transform:translateX(-50%) translateY(-10px);pointer-events:none}
+/* 竖向双泳道文字 */
+#migSvg{margin:0 auto}
+.mig-cellL{font-size:9.5px;fill:var(--foreground-secondary)}
+.mig-chip-st{font-size:9.5px;font-weight:700;font-family:var(--font-sans)}
+.mig-chip-m{font-size:9.5px;fill:var(--foreground-secondary)}
+.mig-idrole{font-size:11px}
+/* header 里的迁移工具（全部层/只看差异） */
+#migToolsHead{display:none;align-items:center;gap:8px}
+body.wm-migration #migToolsHead{display:inline-flex}
+body.wm-migration #precMode,body.wm-migration #precModeLbl{display:none}
+/* 迁移模式：去掉 peel 的图例与画布缩放控件 */
+body.wm-migration .graph-pane > .canvas-legend,
+body.wm-migration .graph-pane > .canvas-zoom{display:none}
 </style>
 </head>
 <body>
@@ -965,6 +1131,13 @@ table.diff td{padding:4px 8px;border-bottom:1px solid var(--border-subtle);color
       </div>
       <div class="side-body">
         <section class="side-sec">
+          <div class="side-k">工作模式 <span class="help" data-tip="迁移整网对比 = GPU 原始算法 run vs NPU 迁移 run 的跨端层级对比（上游，找首个跨端差异候选）；NPU 精度下钻 = 现有单图 NPU 精度定位。两者与训练/推理是不同维度。">?</span></div>
+          <div class="seg wm-seg" id="wmSeg" title="一级工作模式：迁移整网对比 / NPU 精度下钻">
+            <button class="segbtn on" data-wm="migration" onclick="setWorkMode('migration')">迁移整网对比</button>
+            <button class="segbtn" data-wm="peel" onclick="setWorkMode('peel')">NPU 精度下钻</button>
+          </div>
+        </section>
+        <section class="side-sec">
           <div class="side-k">调试对象 <span class="help" data-tip="candidate = 待测（910B 昇腾）vs golden = 参考（A100 fp32）。场景切训练/推理；rank = 张量并行分片（首错可能只在部分 rank 命中，随 rank 漂移）；step = 训练步（决定采集点）。">?</span></div>
           <div class="side-row"><span class="side-lbl">模型</span>
             <span class="hsel-dd" id="modelDD">
@@ -993,7 +1166,8 @@ table.diff td{padding:4px 8px;border-bottom:1px solid var(--border-subtle);color
           <div class="thr-slider-row"><input type="range" class="thr-range" id="thCosRange" min="0.99" max="0.9999" step="0.00005" value="0.999" title="拖动实时预览：阈值收紧 → 首错层前移"><span class="thr-live" id="thCosLive">首错 L—</span></div>
           <div class="side-row"><span class="side-lbl">rel-p99 ≤</span><input class="thr-in" id="thRel" value="1e-2"></div>
         </section>
-        <section class="side-sec">
+        <div id="migSide" class="mig-side"></div>
+        <section class="side-sec" id="peelStatusSec">
           <div class="side-k">状态 <span class="help" data-tip="首错 = 前向序上第一个越界的算子/层，点击可在图上定位。">?</span></div>
           <div class="fb-chip side-chip" id="fbChip" title="首错状态 · 点击在整网图上定位"><span class="dot"></span><span id="fbText">首错定位中…</span></div>
         </section>
@@ -1061,7 +1235,20 @@ table.diff td{padding:4px 8px;border-bottom:1px solid var(--border-subtle);color
             <button class="segbtn on" data-s="on" onclick="setGraphSem(true)" title="按算子类别染色">类别</button>
           </span>
           </span>
-          <span class="seg-lbl">精度视图</span>
+          <span id="migToolsHead">
+            <span class="seg-lbl">层范围</span>
+            <span class="seg" id="migFocusSeg" title="只看差异：折叠首差异前的达标前缀">
+              <button class="segbtn on" data-f="all" onclick="setMigrationFocus('all')">全部层</button>
+              <button class="segbtn" data-f="diff" onclick="setMigrationFocus('diff')">只看差异</button>
+            </span>
+            <span class="tsep"></span>
+            <span class="seg-lbl">状态染色</span>
+            <span class="seg" id="migColorSeg" title="整网层是否按跨端状态染色">
+              <button class="segbtn" data-mc="off" onclick="setMigColor(false)">关</button>
+              <button class="segbtn on" data-mc="on" onclick="setMigColor(true)">开</button>
+            </span>
+          </span>
+          <span class="seg-lbl" id="precModeLbl">精度视图</span>
           <div class="seg" id="precMode" title="精度视图模式：关 / 叠加着色 / 聚焦首错路径">
             <button class="segbtn" data-m="off" onclick="setPrecMode('off')" title="不叠加精度">关</button>
             <button class="segbtn on" data-m="overlay" onclick="setPrecMode('overlay')" title="在图上着色首错/传播">叠加</button>
@@ -1070,6 +1257,16 @@ table.diff td{padding:4px 8px;border-bottom:1px solid var(--border-subtle);color
         </div>
       </div>
       <div class="pane-body graph-pane">
+        <div id="handoffBanner" class="handoff-banner" hidden>
+          <svg class="hb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          <span class="hb-text">来自迁移整网对比</span>
+          <button class="btn hb-back" onclick="returnToMigrationCompare()"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>返回双整网对比</button>
+        </div>
+        <div id="migStage" class="mig-stage" style="display:none">
+          <div class="mig-head" id="migHead"></div>
+          <div class="mig-scroll"><svg id="migSvg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet"></svg></div>
+          <div class="mig-tip" id="migTip" hidden></div>
+        </div>
         <div id="stage" class="stage"><svg id="gsvg" xmlns="http://www.w3.org/2000/svg"></svg><iframe id="archFrame" title="openPangu 架构图（参考 modelviz + 精度叠加）"></iframe></div>
         <div id="sideWrap" class="side-stage">
           <svg id="sideSvg" width="1520" height="700" viewBox="0 0 1520 700" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -1127,7 +1324,7 @@ table.diff td{padding:4px 8px;border-bottom:1px solid var(--border-subtle);color
     <aside class="inspector" id="inspector">
       <div class="pane-head">
         <div style="display:flex;align-items:center;gap:10px;min-width:0">
-          <button class="btn btn-icon insp-back" id="inspBack" hidden onclick="clearSelection()" title="返回逐算子概览">←</button>
+          <button class="btn btn-icon insp-back" id="inspBack" hidden onclick="inspBackClick()" title="返回">←</button>
           <div style="min-width:0">
             <h2 id="inspTitle">精度概览 · Inspector</h2>
             <div class="meta" id="inspMeta">点击图中算子查看逐算子精度</div>
@@ -1264,6 +1461,58 @@ const COMPAT = [
 function comparable() { return COMPAT.every((c) => c.ok); }
 /* rank 维度：infer 全 rank 一致命中；train 仅 TP 后半 shard（rank4-7）命中 —— 演示首错随 rank 漂移 */
 function rankBad(r) { const rr = r === undefined ? S.rank : r; return S.scenario === 'train' ? rr >= 4 : true; }
+
+/* ===================== GPU→NPU 迁移整网对比（workMode='migration'）=====================
+   与现有 NPU 精度下钻（peel）正交的上游一级工作模式。跨端指标全部复用 activeLayerCos()/layerFirstBad()
+   确定性驱动（模型/场景/rank/step/阈值/fix），不写入 PREC / computePrecision。
+   最高结论只能是「首个跨端差异候选」，不得写成根因已确认。 */
+let workMode = 'migration';              /* 'migration' | 'peel'，默认迁移整网对比 */
+let migSelLayer = null;                  /* 迁移视图当前选中层对，null=摘要态 */
+let migFocus = 'all';                    /* 'all' | 'diff'（只看差异） */
+let migColorOn = true;                   /* 整网层是否按状态染色 */
+let migShowRisk = false;                 /* 是否突出映射风险 */
+let migrationHandoff = null;             /* 交接上下文（进入 peel 时保存，返回时复用） */
+const MIGRATION_RUNS = {
+  gpu: { role: 'baseline', roleLabel: 'GPU Baseline', impl: 'GPU 原始实现', hardware: 'A100', framework: 'PyTorch / Megatron', pathNs: 'megatron.core.transformer.layers', runId: 'run_gpu_0721', status: 'collected' },
+  npu: { role: 'candidate', roleLabel: 'NPU Candidate', impl: 'NPU 迁移实现', hardware: '910B', framework: 'MindSpeed / PyPTO', pathNs: 'mindspeed.core.transformer.layers', runId: 'run_npu_0721', status: 'collected' },
+};
+/* 未映射层：最后一层（图优化/patch 后无法稳定映射，不参与 first-diff 判定） */
+function migUnmatchedLayer() { return SPEC.layers - 1; }
+function migMapping(L) {
+  if (L === migUnmatchedLayer()) return { status: 'unmatched', confidence: 0, basis: [] };
+  return { status: 'mapped', confidence: 0.98, basis: ['逻辑层号', '输入输出 shape', '执行顺序'] };
+}
+/* 逐层对：跨端 cosine=activeLayerCos()（与 peel 同源），状态由 CFG 阈值 + 映射共同决定 */
+function buildMigrationLayerPairs() {
+  const cos = activeLayerCos(), fb = layerFirstBad(), unm = migUnmatchedLayer(), pairs = [];
+  for (let L = 0; L < SPEC.layers; L++) {
+    const m = migMapping(L), c = cos[L];
+    const relP99 = c >= CFG.cos ? (2e-4 + L * 2e-5) : Math.min(9e-2, (1 - c) * 6.17);
+    let st;
+    if (m.status === 'unmatched') st = 'unmatched';
+    else if (fb < 0 || L < fb) st = 'mapped-pass';         /* 无差异 / 首差异前：达标 */
+    else if (L === fb) st = 'first-diff';                  /* 首个跨端差异候选 */
+    else st = (c < CFG.cos) ? 'propagated' : 'mapped-pass';/* 首差异后越界=下游传播 */
+    pairs.push({
+      logicalLayer: L,
+      gpu: { id: `gpu.decoder.layers.${L}`, label: `TransformerLayer ${L}`, path: `${MIGRATION_RUNS.gpu.pathNs}.${L}`, shape: `[B,S,${SPEC.hidden}]`, dtype: 'bf16' },
+      npu: { id: `npu.decoder.layers.${L}`, label: `TransformerLayer ${L}`, path: `${MIGRATION_RUNS.npu.pathNs}.${L}`, shape: `[B,S,${SPEC.hidden}]`, dtype: 'bf16' },
+      mapping: m, metrics: { cosine: c, relP99: relP99, absMax: 0.1875 }, compareStatus: st,
+    });
+  }
+  return pairs;
+}
+function computeMigrationCompare() {
+  const pairs = buildMigrationLayerPairs();
+  const first = pairs.find((p) => p.compareStatus === 'first-diff');
+  const firstDiffLayer = first ? first.logicalLayer : -1;
+  const mapped = pairs.filter((p) => p.mapping.status === 'mapped').length;
+  const propagated = pairs.filter((p) => p.compareStatus === 'propagated').length;
+  const passed = pairs.filter((p) => p.compareStatus === 'mapped-pass').length;
+  const unmatched = pairs.filter((p) => p.compareStatus === 'unmatched').length;
+  return { pairs, firstDiffLayer, mapped, total: SPEC.layers, propagated, passed, unmatched };
+}
+function migLayerPair(L) { return buildMigrationLayerPairs().find((p) => p.logicalLayer === L) || null; }
 const STEPS = [0, 12, 50, 200];
 
 /* per-operator measured precision (910B candidate vs A100 golden), keyed by real op id.
@@ -2574,21 +2823,29 @@ function injectArchCss(doc) {
     + ':root.arch-nocolor .pto-model-graphviz-node.is-op rect,:root.arch-nocolor .pto-model-graphviz-node.is-module rect{fill:color-mix(in srgb,var(--foreground) 14%,var(--background))!important}';
   (doc.head || doc.documentElement).appendChild(st);
 }
-/* 架构图 iframe：点击空白画布（非节点/非控件、未拖拽）→ 自动返回整网 2D/3D 侧视图 */
+/* 架构图 iframe：只有点「图外区域」(图内容并集包围盒之外的边距空白) 才返回整网；
+   图内空白属图内交互(平移/取消选中)不返回；节点→下钻、控件→放行。返回亦可走「整网逐层」面包屑。 */
 function wireArchReturn() {
   const f = archEl(); if (!f || !f.contentDocument) return;
   const doc = f.contentDocument; if (doc.__wiredReturn) return; doc.__wiredReturn = true;
   let dn = null;
   doc.addEventListener('pointerdown', (e) => { dn = { x: e.clientX, y: e.clientY }; }, true);
+  /* capture 相：引擎自身 click 会 stopPropagation，bubble 相收不到 → 图外点击也捕获得到 */
   doc.addEventListener('click', (e) => {
     const d = dn; dn = null;
     if (d && (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 6)) return;   /* 拖拽平移，不算点击 */
     const t = e.target;
-    if (t.closest('.pto-model-graphviz-node[data-node-id]')) return;                /* 点到节点 → 交给引擎/下钻 */
-    /* 排除引擎控件（用具体类名，避免 [class*=mode] 误命中 "model"）*/
+    if (t.closest('.pto-model-graphviz-node[data-node-id]')) return;                /* 节点 → 交给引擎下钻 */
     if (t.closest('button,a,input,select,textarea,[data-popover],.opv-node-popover,.color-panel,.mode-panel,.minimap,.opv-status,.opv-overlay-toggle,[class*="floating"],[class*="playback"],[class*="legend"],[class*="toolbar"]')) return;
-    setMainView('side');
-  }, false);
+    /* 图内容包围盒 = 所有节点 + 簇的并集：点盒内(图内空白)不返回，点盒外(边距)才返回 */
+    const items = doc.querySelectorAll('.pto-model-graphviz-node,.pto-model-graphviz-cluster');
+    if (!items.length) return;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    items.forEach((n) => { const r = n.getBoundingClientRect(); if (r.width || r.height) { if (r.left < x0) x0 = r.left; if (r.top < y0) y0 = r.top; if (r.right > x1) x1 = r.right; if (r.bottom > y1) y1 = r.bottom; } });
+    const pad = 6;
+    if (e.clientX >= x0 - pad && e.clientX <= x1 + pad && e.clientY >= y0 - pad && e.clientY <= y1 + pad) return;   /* 图内空白 → 不返回 */
+    setMainView('side');                                                             /* 图外边距 → 返回整网 */
+  }, true);
 }
 function decorateArch() {
   const f = archEl(); if (!f || !f.contentDocument) return;
@@ -3794,6 +4051,19 @@ function setMainView(v) {
   else { renderActiveGraph({ preserveView: false }); requestAnimationFrame(fit); }
 }
 function syncViewDom() {
+  const migStage = document.getElementById('migStage');
+  if (workMode === 'migration') {                          /* 迁移模式：中央显双泳道，隐藏 peel 的 stage/侧视图 */
+    if (migStage) migStage.style.display = '';
+    if (els.stage) els.stage.style.display = 'none';
+    if (els.sideWrap) els.sideWrap.hidden = true;
+    const got = document.getElementById('graphOnlyTools'); if (got) got.style.display = 'none';
+    const sot = document.getElementById('sideOnlyTools'); if (sot) sot.style.display = 'none';
+    const crumb = document.getElementById('graphCrumb'); if (crumb) crumb.hidden = true;
+    const htitle = document.getElementById('headTitle'); if (htitle) htitle.hidden = false;
+    updateCenterHead(); renderLegend();
+    return;
+  }
+  if (migStage) migStage.style.display = 'none';
   const side = mainView === 'side';
   if (els.stage) els.stage.style.display = side ? 'none' : '';
   if (els.sideWrap) els.sideWrap.hidden = !side;
@@ -3807,6 +4077,11 @@ function syncViewDom() {
   renderLegend();
 }
 function updateCenterHead() {
+  if (workMode === 'migration') {
+    if (els.centerTitle) els.centerTitle.textContent = '迁移整网对比 · GPU 原始算法 ↔ NPU 迁移算法';
+    if (els.graphMeta) els.graphMeta.textContent = `GPU A100/Megatron ↔ NPU 910B/MindSpeed · ${SPEC.name} ×${SPEC.layers} 层 · 自动跨端层级对比`;
+    return;
+  }
   const showStatus = overlayOn && comparable();          /* 仅精度视图开启且可比时才谈达标/首错，精度开关关闭不展示 */
   const fb = showStatus ? layerFirstBad() : -1;
   const L = viewLayer !== null ? viewLayer : (comparable() ? layerFirstBad() : 0);
@@ -3883,7 +4158,325 @@ function rankStripHtml() {
     <div class="rankmx">${cells}</div>
     <div class="hint" style="margin-top:7px">${note}</div></div>`;
 }
+/* ===================== 迁移整网对比：渲染 · 交互 · 交接 ===================== */
+let migView = { W: 800, H: 410 };
+/* 非无限画布：SVG 按容器宽度自然铺满、高度自然、竖向滚动，无缩放 */
+function applyMigTransform() {
+  const svg = document.getElementById('migSvg'); if (!svg) return;
+  svg.setAttribute('width', Math.round(migView.W));
+  svg.setAttribute('height', Math.round(migView.H));
+}
+function migFit() { const sc = document.querySelector('.mig-scroll'); if (sc) { sc.scrollLeft = 0; sc.scrollTop = 0; } }
+function migStColor(st) {
+  return st === 'first-diff' ? 'var(--danger)' : st === 'propagated' ? 'var(--warning)'
+    : st === 'mapped-pass' ? 'var(--success)' : 'var(--foreground-muted)';
+}
+function migStLabel(st) {
+  return { 'mapped-pass': '已映射 · 达标', 'first-diff': '首个跨端差异候选', 'propagated': '下游传播', 'mapping-risk': '映射存疑', 'unmatched': '未映射', 'no-data': '未采集' }[st] || st;
+}
+function migStShort(st) {
+  return { 'mapped-pass': '达标', 'first-diff': '首个候选', 'propagated': '下游传播', 'mapping-risk': '映射存疑', 'unmatched': '未映射', 'no-data': '未采集' }[st] || st;
+}
+/* 扁平层卡（无伪 3D）*/
+function migIsoBlock(x, y, w, h, face, stroke, dash, label, labelColor, migl) {
+  const dm = migl != null ? `data-migl="${migl}"` : '';
+  let g = `<rect ${dm} class="mig-cell" x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="${face}" stroke="${stroke}" ${dash ? 'stroke-dasharray="3 3"' : ''} stroke-width="1"/>`;
+  if (label) g += `<text x="${(x + w / 2).toFixed(1)}" y="${(y + h / 2 + 3).toFixed(1)}" class="mig-cellL" text-anchor="middle" ${labelColor ? `style="fill:${labelColor}"` : ''}>${label}</text>`;
+  return g;
+}
+/* 竖向双泳道：GPU Baseline（左，Megatron 2.5D）· 跨端 cosine 量规+趋势（中，窄）· NPU Candidate（右，MindSpeed 2.5D） */
+function renderMigrationView() {
+  const svg = document.getElementById('migSvg'); if (!svg) return;
+  const cmp = computeMigrationCompare(), pairs = cmp.pairs, fb = cmp.firstDiffLayer, n = SPEC.layers;
+  let rows = [{ t: 'io', k: 'IN', label: 'Input' }, { t: 'io', k: 'EMB', label: 'Embedding' }];
+  const collapseTo = (migFocus === 'diff' && fb > 1) ? Math.max(0, fb - 1) : 0;
+  if (collapseTo > 0) rows.push({ t: 'fold', count: collapseTo });
+  for (let L = collapseTo; L < n; L++) rows.push({ t: 'layer', p: pairs[L] });
+  rows.push({ t: 'io', k: 'OUT', label: 'Output' });
+  const sc = document.querySelector('.mig-scroll');
+  const availW = sc && sc.clientWidth ? sc.clientWidth - 22 : 900;
+  const marginX = 18, gapC = 12, rh = 25, pitch = 31, rowTop = 24;
+  const W = Math.max(460, availW);                          /* 自适应容器宽度（窄到 460 才横向滚动）*/
+  const midWTarget = Math.max(150, Math.min(188, W * 0.22));/* 中间「逐层 cosine」收窄、居中 */
+  let wCell = Math.floor((W - 2 * marginX - 2 * gapC - midWTarget) / 2);
+  wCell = Math.max(130, Math.min(wCell, 480));
+  const xG = marginX, xM = xG + wCell + gapC, xN = W - marginX - wCell, midW = xN - gapC - xM;
+  const H = rowTop + rows.length * pitch + 18, midCx = xM + midW / 2;
+  /* 吸顶表头（HTML，滚动不动） */
+  const mh = document.getElementById('migHead');
+  if (mh) mh.innerHTML = `<div class="mh-col gpu"><span class="mh-role">${esc(MIGRATION_RUNS.gpu.roleLabel)}</span><span class="mh-sub">${esc(MIGRATION_RUNS.gpu.hardware)} · ${esc(MIGRATION_RUNS.gpu.framework)}</span></div>`
+    + `<div class="mh-col mid"><span class="mh-role">逐层 cosine</span><span class="mh-sub">阈值 ${CFG.cos} · 绿达标 / 红首差 / 黄传播</span></div>`
+    + `<div class="mh-col npu"><span class="mh-role">${esc(MIGRATION_RUNS.npu.roleLabel)}</span><span class="mh-sub">${esc(MIGRATION_RUNS.npu.hardware)} · ${esc(MIGRATION_RUNS.npu.framework)}</span></div>`;
+  let s = '';
+  /* 细竖脊（弱化的逐层 cosine 主轴，居中）*/
+  const spineBot = rowTop + (rows.length - 1) * pitch + rh;
+  s += `<line x1="${midCx}" y1="${rowTop}" x2="${midCx}" y2="${spineBot}" stroke="color-mix(in srgb,var(--foreground) 13%,transparent)" stroke-width="1.4"/>`;
+  rows.forEach((c, i) => {
+    const y = rowTop + i * pitch, yc = y + rh / 2, ty = (yc + 3).toFixed(1);
+    if (c.t === 'fold') {
+      s += `<rect x="${xG}" y="${y}" width="${W - 2 * marginX}" height="${rh}" rx="6" fill="color-mix(in srgb,var(--success) 8%,var(--surface-2))" stroke="color-mix(in srgb,var(--success) 26%,transparent)" stroke-dasharray="4 3"/>`;
+      s += `<text x="${midCx}" y="${ty}" class="mig-fold" text-anchor="middle">前 ${c.count} 层可信映射且达标（已折叠）</text>`;
+      return;
+    }
+    if (c.t === 'io') {
+      const iof = 'color-mix(in srgb,var(--foreground) 8%,var(--surface-2))';
+      s += migIsoBlock(xG, y, wCell, rh, iof, 'var(--border-subtle)', false, esc(c.label), 'var(--foreground-muted)', null);
+      s += migIsoBlock(xN, y, wCell, rh, iof, 'var(--border-subtle)', false, esc(c.label), 'var(--foreground-muted)', null);
+      return;
+    }
+    const p = c.p, st = p.compareStatus, L = p.logicalLayer, unm = st === 'unmatched', sel = migSelLayer === L;
+    const col = migStColor(st);   /* 圆点/精度数字/连线恒用状态色，不随「状态染色」开关变灰（开关只控制层卡片底色） */
+    const showLbl = unm;   /* 达标/传播默认不显标签；首差用上方「首个候选」气泡标记（不重复）*/
+    if (sel) s += `<rect x="${xG - 4}" y="${y - 4}" width="${W - 2 * marginX + 8}" height="${rh + 8}" rx="9" fill="color-mix(in srgb,var(--primary) 7%,transparent)" stroke="var(--primary)" stroke-width="1.5"/>`;
+    /* 细淡连接线 卡片→脊点 / cosine→卡片（无标签行连到脊点，有标签行让位给标签）*/
+    s += `<line data-migl="${L}" class="mig-bridge" x1="${xG + wCell}" y1="${yc}" x2="${(showLbl ? midCx - 60 : midCx - 11).toFixed(1)}" y2="${yc}" stroke="${unm ? 'var(--foreground-muted)' : col}" stroke-width="1" opacity=".28"/>`;
+    s += `<line data-migl="${L}" class="mig-bridge" x1="${(midCx + 66).toFixed(1)}" y1="${yc}" x2="${xN}" y2="${yc}" stroke="${unm ? 'var(--foreground-muted)' : col}" stroke-width="1" opacity=".28"/>`;
+    /* GPU 基线活字块（Megatron，偏亮中性 = 基线身份，与右栏 GPU 标签一致） */
+    s += migIsoBlock(xG, y, wCell, rh, 'color-mix(in srgb,var(--foreground) 14%,var(--surface-3))', 'color-mix(in srgb,var(--foreground) 18%,transparent)', false, `Megatron · L${L}`, 'var(--foreground)', L);
+    /* NPU 候选活字块（MindSpeed，蓝 = 候选身份，与右栏 NPU 标签一致；染色开时叠加状态色） */
+    const npuStroke = unm ? 'var(--foreground-muted)' : (migColorOn ? migStColor(st) : 'color-mix(in srgb,var(--primary) 50%,transparent)');
+    const nf = unm ? 'color-mix(in srgb,var(--foreground) 6%,var(--surface-2))'
+      : migColorOn ? `color-mix(in srgb,${migStColor(st)} ${st === 'first-diff' ? 22 : st === 'propagated' ? 15 : 13}%,var(--surface-2))`
+        : 'color-mix(in srgb,var(--primary) 12%,var(--surface-2))';
+    s += migIsoBlock(xN, y, wCell, rh, nf, npuStroke, unm, `MindSpeed · L${L}`, 'var(--foreground-secondary)', L);
+    /* 中间：细竖脊上的状态点，仅首差/未映射显文字标签 */
+    if (showLbl) s += `<text x="${(midCx - 15).toFixed(1)}" y="${ty}" class="mig-chip-st" text-anchor="end" style="fill:${col}">${migStShort(st)}</text>`;
+    s += `<circle data-migl="${L}" class="mig-tp" cx="${midCx}" cy="${yc}" r="${st === 'first-diff' ? 4.5 : 3.2}" fill="${col}" stroke="var(--surface-1)" stroke-width="1.6"/>`;
+    s += `<text x="${(midCx + 15).toFixed(1)}" y="${ty}" class="mig-chip-m" style="fill:${col}">${unm ? '—' : p.metrics.cosine.toFixed(5)}</text>`;
+    if (st === 'first-diff') s += `<g><rect x="${midCx - 30}" y="${y - 15}" width="60" height="15" rx="7.5" fill="var(--danger)"/><text x="${midCx}" y="${(y - 4).toFixed(1)}" class="mig-tag" text-anchor="middle">首个候选</text></g>`;
+    /* 命中区 */
+    s += `<rect class="mig-hit" x="${xG}" y="${y - 2}" width="${W - 2 * marginX}" height="${rh + 4}" fill="transparent" tabindex="0" role="button" aria-label="第 ${L} 层跨端对比 · ${migStLabel(st)} · cosine ${p.metrics.cosine.toFixed(5)}" onmouseenter="migHover(${L},event)" onmousemove="migMoveTip(event)" onmouseleave="migUnhover()" onclick="selectMigrationLayer(${L})" onkeydown="if(event.key==='Enter'){selectMigrationLayer(${L})}"/>`;
+  });
+  migView.W = W; migView.H = H;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
+  svg.innerHTML = `<g id="migContent">${s}</g>`;
+  applyMigTransform();
+}
+function migHover(L, ev) {
+  document.querySelectorAll('.mig-cell.hi,.mig-bridge.hi').forEach((e) => e.classList.remove('hi'));
+  document.querySelectorAll(`[data-migl="${L}"]`).forEach((e) => e.classList.add('hi'));
+  migShowTip(L, ev);
+}
+function migUnhover() {
+  document.querySelectorAll('.mig-cell.hi,.mig-bridge.hi').forEach((e) => e.classList.remove('hi'));
+  const t = document.getElementById('migTip'); if (t) { t.classList.remove('on'); t.hidden = true; }
+}
+function migMoveTip(ev) { const t = document.getElementById('migTip'); if (t && !t.hidden) migPosTip(t, ev); }
+/* hover 浮窗：展示该层跨端详情数据 */
+function migShowTip(L, ev) {
+  const t = document.getElementById('migTip'); if (!t) return;
+  const p = migLayerPair(L); if (!p) return;
+  const st = p.compareStatus, col = migStColor(st), unm = st === 'unmatched';
+  t.innerHTML = `<div class="tt-h"><span class="tt-dot" style="background:${col}"></span>Layer ${L}<span class="tt-st" style="color:${col}">${migStLabel(st)}</span></div>`
+    + (unm ? `<div class="tt-row"><span>映射</span><b>疑 1:N 改写 · 未映射</b></div><div class="tt-row"><span>判定</span><b>暂不参与首差</b></div>`
+      : `<div class="tt-row"><span>cosine</span><b class="${p.metrics.cosine < CFG.cos ? 'bad' : ''}">${p.metrics.cosine.toFixed(5)}</b></div>`
+        + `<div class="tt-row"><span>rel-p99</span><b class="${p.metrics.relP99 > CFG.rel ? 'bad' : ''}">${fmtRel(p.metrics.relP99)}</b></div>`
+        + `<div class="tt-row"><span>abs-max</span><b>${p.metrics.absMax}</b></div>`
+        + `<div class="tt-row"><span>映射置信度</span><b>${(p.mapping.confidence * 100).toFixed(0)}%</b></div>`);
+  t.hidden = false; t.classList.add('on');
+  if (ev) migPosTip(t, ev);
+}
+function migPosTip(t, ev) {
+  const stage = document.getElementById('migStage'); if (!stage) return;
+  const r = stage.getBoundingClientRect();
+  let x = ev.clientX - r.left + 14, y = ev.clientY - r.top + 12;
+  const tw = t.offsetWidth || 200, th = t.offsetHeight || 96;
+  if (x + tw > r.width - 6) x = ev.clientX - r.left - tw - 14;
+  if (y + th > r.height - 6) y = Math.max(6, r.height - th - 6);
+  t.style.left = x.toFixed(0) + 'px'; t.style.top = y.toFixed(0) + 'px';
+}
+function selectMigrationLayer(L) { if (migSelLayer === L) { migDeselect(); return; } migSelLayer = L; renderMigrationView(); renderMigrationInspector(L); }   /* 再次点击同层 → 取消选中 */
+function migDeselect() { migSelLayer = null; renderMigrationView(); renderMigrationSummary(); }
+function inspBackClick() { if (workMode === 'migration') migDeselect(); else clearSelection(); }
+/* 迁移层详情：头部左侧「返回总览」按钮 */
+function migShowBack(on) {
+  const b = els.inspBack; if (!b) return;
+  if (on) { b.hidden = false; b.classList.add('has-text'); b.innerHTML = '← 返回总览'; b.title = '返回对比总览'; }
+  else { b.classList.remove('has-text'); b.innerHTML = '←'; }
+}
+function setMigrationFocus(mode) { migFocus = mode; document.querySelectorAll('#migFocusSeg .segbtn').forEach((b) => b.classList.toggle('on', b.dataset.f === mode)); renderMigrationView(); }
+function setMigColor(on) { migColorOn = !!on; document.querySelectorAll('#migColorSeg .segbtn').forEach((b) => b.classList.toggle('on', (b.dataset.mc === 'on') === migColorOn)); renderMigrationView(); }
+
+/* 右侧 Inspector — 默认摘要态 */
+function renderMigrationSummary() {
+  els.inspTitle.textContent = '迁移整网对比 · Inspector';
+  els.inspMeta.textContent = 'GPU Baseline ↔ NPU Candidate';
+  migShowBack(false); if (els.inspBack) els.inspBack.hidden = true;
+  const cmp = computeMigrationCompare(), fb = cmp.firstDiffLayer, body = els.inspBody;
+  if (!comparable()) {
+    els.inspMeta.textContent = '不可比 · 已拦截';
+    body.innerHTML = compatRef() + `<div class="isec"><div class="icard crit"><div class="hint" style="font-size:12.5px;color:var(--foreground)">⛔ GPU/NPU 两次执行不可比 —— 在<b>左侧「可比性」</b>对齐输入/权重/配置/step 后自动恢复跨端对比。</div></div></div>`;
+    return;
+  }
+  const noDiff = fb < 0;
+  const tile = (label, val, cls) => `<div class="mig-tile ${cls || ''}"><div class="tl">${label}</div><div class="tv ${cls === 'mono' ? 'mono' : ''}">${val}</div></div>`;
+  const fdCos = noDiff ? '—' : activeLayerCos()[fb].toFixed(5);
+  const fdRel = noDiff ? '—' : fmtRel(migLayerPair(fb).metrics.relP99);
+  /* 概览计数平铺（全中性；首差指标只在下方红卡展示，避免颜色/卡片过多） */
+  const tiles = `<div class="mig-tiles">
+    ${tile('逻辑层数', cmp.total)}
+    ${tile('已映射', `${cmp.mapped}/${cmp.total}`)}
+    ${tile('达标层', cmp.passed)}
+    ${tile('下游传播层', cmp.propagated)}
+    ${tile('未映射层', cmp.unmatched)}
+    ${tile('采集点', `step${S.step}·rank${S.rank}`, 'mono')}
+  </div>`;
+  /* 平铺指标（直接落在底层面板，不再卡片套卡片；不重复「自动对比完成」标题） */
+  const head = tiles;
+  /* 首个跨端差异候选 —— 红色渐变卡片包裹 */
+  const bodyCard = noDiff
+    ? `<div class="mig-firstcard ok"><div class="big-metric"><span class="n" style="color:var(--success)">${!rankBad() ? 'rank' + S.rank + ' 达标' : '整网达标'}</span><span class="u">当前阈值下无跨端差异</span></div>
+       <div class="hint" style="margin-top:8px">${!rankBad() ? `当前 rank 无差异；首个跨端差异候选命中在 <b>rank4-7</b> —— 切到命中 rank 查看。` : `cosine ≥ <b>${CFG.cos}</b> 下 GPU↔NPU 各层达标；收紧阈值可观察首个差异候选出现。`}</div></div>`
+    : `<div class="mig-firstcard">
+       <div class="mig-firsttag">首个跨端差异候选</div>
+       <div class="big-metric"><span class="n" style="color:var(--danger)">Layer ${fb}</span><span class="u">TransformerLayer ${fb}</span></div>
+       <div class="mig-metrics"><span class="bad">cosine ${fdCos} &lt; ${CFG.cos}</span><span class="bad">rel-p99 ${fdRel} &gt; ${CFG.rel}</span></div>
+       <div class="mig-note-caution">当前为初步定位结果，不代表根因已确认。</div>
+       <div style="margin-top:11px"><button class="btn btn-solid mig-act" onclick="enterNpuPeelDown(${fb})">进入 NPU 侧下钻 →</button></div>
+       <div style="margin-top:8px"><button class="btn mig-act" onclick="selectMigrationLayer(${fb})">查看该层跨端证据</button></div></div>`;
+  body.innerHTML = `<div class="mig-insp">${head}${bodyCard}</div>`;
+}
+/* 右侧 Inspector — 选中层对态：结论 / 映射 / 指标 / 前后证据 / 风险 / 下一步 */
+function renderMigrationInspector(L) {
+  const p = migLayerPair(L); if (!p) return renderMigrationSummary();
+  els.inspTitle.textContent = `迁移对比 · Layer ${L}`;
+  els.inspMeta.textContent = `${migStLabel(p.compareStatus)} · GPU↔NPU`;
+  migShowBack(true);   /* 头部左侧「返回总览」 */
+  const st = p.compareStatus, fb = computeMigrationCompare().firstDiffLayer, body = els.inspBody;
+  if (st === 'unmatched') {
+    body.innerHTML = `<div class="mig-insp"><div class="isec"><div class="icard warn">
+      <div class="isec-h">当前层映射存疑 / 未映射</div>
+      <div class="mig-map"><div><span class="mig-side-lbl gpu">GPU</span> DotProductAttention 融合路径</div><div><span class="mig-side-lbl npu">NPU</span> SparseFlashAttention + DSA Indexer</div></div>
+      <div class="hint" style="margin-top:8px">疑似 <b>1:N 改写</b>（图优化 / patch 后无法稳定映射），<b>暂不参与首个差异判定</b>。</div>
+      <div class="hint" style="margin-top:6px;color:var(--foreground-muted)">建议：查看两端 tensor 边界，或按逻辑层输出重新建立映射（本 Demo 不含映射编辑器）。</div>
+    </div></div></div>`;
+    return;
+  }
+  const evPrev = L > 0 ? `L${L - 1} ${migLayerPair(L - 1).compareStatus === 'mapped-pass' ? 'pass' : migStLabel(migLayerPair(L - 1).compareStatus)}` : '—';
+  const evNext = L < SPEC.layers - 1 ? `L${L + 1} ${migStLabel(migLayerPair(L + 1).compareStatus)}` : '—';
+  const isFirst = st === 'first-diff';
+  const canHandoff = comparable() && p.mapping.status === 'mapped';
+  const concl = isFirst
+    ? `L${L} 是当前<b>首个可信跨端差异候选</b>，不代表根因已确认。`
+    : st === 'propagated' ? `L${L} 为<b>下游传播</b>差异（上游 L${fb} 已越界），不能作为根因。`
+      : `L${L} 跨端<b>达标</b>，映射可信且指标在阈值内。`;
+  const tileI = (label, val, cls) => `<div class="mig-tile ${cls || ''}"><div class="tl">${label}</div><div class="tv mono">${val}</div></div>`;
+  const pillCls = (s) => ({ 'mapped-pass': 'st-pass', 'first-diff': 'st-first', 'propagated': 'st-prop' }[s] || 'st-unm');
+  const prevP = L > 0 ? migLayerPair(L - 1) : null, nextP = L < SPEC.layers - 1 ? migLayerPair(L + 1) : null;
+  const chain = `<div class="mig-chain">${prevP ? `<span class="mig-cpill ${pillCls(prevP.compareStatus)}">L${L - 1}·${migStShort(prevP.compareStatus)}</span><span class="mig-carrow">→</span>` : ''}`
+    + `<span class="mig-cpill ${pillCls(st)} cur">L${L}·${migStShort(st)}</span>`
+    + `${nextP ? `<span class="mig-carrow">→</span><span class="mig-cpill ${pillCls(nextP.compareStatus)}">L${L + 1}·${migStShort(nextP.compareStatus)}</span>` : ''}</div>`;
+  body.innerHTML = `<div class="mig-insp">
+    <div class="isec"><div class="icard ${isFirst ? 'crit' : st === 'propagated' ? 'warn' : 'ok'}">
+      <div class="isec-h">结论</div><div class="hint" style="color:var(--foreground)">${concl}</div></div></div>
+    <div class="isec"><div class="isec-h">跨端指标</div>
+      <div class="mig-tiles">${tileI('cosine', p.metrics.cosine.toFixed(5), p.metrics.cosine < CFG.cos ? 'crit' : '')}${tileI('rel-p99', fmtRel(p.metrics.relP99), p.metrics.relP99 > CFG.rel ? 'crit' : '')}${tileI('abs-max', p.metrics.absMax, '')}${tileI('映射置信度', (p.mapping.confidence * 100).toFixed(0) + '%', '')}</div></div>
+    <div class="isec"><div class="isec-h">前后证据</div>${chain}</div>
+    <div class="isec"><div class="isec-h">两端映射</div>
+      <div class="mig-map"><div><span class="mig-side-lbl gpu">GPU</span> <code>${esc(p.gpu.path)}</code></div><div><span class="mig-side-lbl npu">NPU</span> <code>${esc(p.npu.path)}</code></div></div>
+      <div class="mig-basis">依据：${p.mapping.basis.map((b) => `<span>${esc(b)}</span>`).join('')}</div></div>
+    <div class="isec"><div class="isec-h">风险</div><div class="hint" style="color:var(--foreground-muted);font-size:11.5px">运行时调用栈可能被 MindSpeed patch 改写；当前映射以<b>模型层级、tensor shape 和执行顺序</b>为主，不以调用栈为唯一依据。</div></div>
+    <div class="isec"><div class="isec-h">下一步</div>
+      ${canHandoff ? `<button class="btn btn-solid mig-act" onclick="enterNpuPeelDown(${L})">进入 NPU 侧下钻 →</button>` : `<div class="hint" style="color:var(--foreground-muted)">该层不满足下钻条件（不可比 / 未映射）。</div>`}</div></div>`;
+}
+/* 左侧面板 · 迁移配置（双端 run 卡 + 可比性/映射 + 状态） */
+function renderMigrationSide() {
+  const host = document.getElementById('migSide'); if (!host) return;
+  const cmp = computeMigrationCompare(), fb = cmp.firstDiffLayer;
+  const runCard = (run) => `<div class="mig-run ${run.role}">
+    <div class="mig-run-h"><span class="mig-run-role">${esc(run.roleLabel)}</span><span class="mig-run-st">● ${run.status === 'collected' ? '数据已采集' : run.status}</span></div>
+    <div class="mig-run-impl">${esc(run.impl)}</div>
+    <div class="mig-run-meta">${esc(run.hardware)} · ${esc(run.framework)}</div>
+    <div class="mig-run-id">${esc(run.runId)}</div></div>`;
+  const compatItems = COMPAT.map((c) => `<div class="mig-cmt ${c.ok ? 'ok' : 'bad'}" onclick="toggleCompat('${c.k}')" title="${esc(c.ok ? c.detail : c.why)}"><span class="ci">${c.ok ? '✓' : '✕'}</span>${esc(c.label.split(' ')[0])}<span class="mig-cmt-v">${c.ok ? '已对齐' : '失配'}</span></div>`).join('');
+  const mapRow = `<div class="mig-cmt ${cmp.unmatched ? 'warn' : 'ok'}"><span class="ci">${cmp.unmatched ? '!' : '✓'}</span>层级映射<span class="mig-cmt-v">${cmp.mapped}/${cmp.total} 已映射</span></div>`;
+  const blocked = !comparable();
+  const statusCard = blocked
+    ? `<div class="mig-status blocked">对比已拦截<div class="mig-status-sub">输入/权重/配置/step 不一致 —— 对齐后自动恢复</div></div>`
+    : fb < 0
+      ? `<div class="mig-status ok">自动对比完成<div class="mig-status-sub">${cmp.mapped}/${cmp.total} 层已映射 · 当前 rank/阈值无差异</div></div>`
+      : `<div class="mig-status diff">自动对比完成<div class="mig-status-sub">${cmp.mapped}/${cmp.total} 层已映射 · ${cmp.propagated} 层传播</div><div class="mig-status-first">首个跨端差异候选 · Layer ${fb}</div></div>`;
+  host.innerHTML = `
+    <section class="side-sec"><div class="side-k">迁移任务</div>
+      <div class="side-row"><span class="side-lbl">采集点</span><span class="cmp-mini">step${S.step} · rank${S.rank} · forward</span></div></section>
+    <section class="side-sec"><div class="side-k">双端运行对象</div>${runCard(MIGRATION_RUNS.gpu)}${runCard(MIGRATION_RUNS.npu)}</section>`;
+}
+function syncWmSeg() { document.querySelectorAll('#wmSeg .segbtn').forEach((b) => b.classList.toggle('on', b.dataset.wm === workMode)); }
+let _handoffTimer = null;
+/* 顶部来源横幅（handoff 后短暂显示 5s 后淡出，不常驻）+ 中央标题 */
+function updateWorkModeChrome() {
+  const banner = document.getElementById('handoffBanner');
+  if (banner) {
+    const show = workMode === 'peel' && migrationHandoff;
+    if (_handoffTimer) { clearTimeout(_handoffTimer); _handoffTimer = null; }
+    if (show) {
+      banner.querySelector('.hb-text').innerHTML = `来自迁移整网对比 · GPU↔NPU · 首个差异候选 <b>L${migrationHandoff.layer}</b>`;
+      banner.hidden = false; banner.classList.remove('fade-out');
+      _handoffTimer = setTimeout(() => {                    /* 3s 后淡出并隐藏 */
+        banner.classList.add('fade-out');
+        _handoffTimer = setTimeout(() => { if (banner.classList.contains('fade-out')) banner.hidden = true; }, 420);
+      }, 3000);
+    } else { banner.hidden = true; banner.classList.remove('fade-out'); }
+  }
+  document.body.classList.toggle('wm-migration', workMode === 'migration');
+  document.body.classList.toggle('wm-peel', workMode === 'peel');
+  syncWmSeg();
+  const mt = document.getElementById('migCenterHead');
+  if (mt) mt.hidden = workMode !== 'migration';
+}
+function setWorkMode(mode) {
+  if (mode === workMode || (mode !== 'migration' && mode !== 'peel')) return;
+  workMode = mode;
+  updateWorkModeChrome();
+  syncViewDom();
+  if (mode === 'migration') {
+    migSelLayer = null;                    /* 切进迁移默认回到对比摘要（不停留在层详情） */
+    renderMigrationSide(); renderMigrationView(); migFit();
+    renderMigrationSummary();
+  } else {
+    if (mainView === 'side') { if (side3d) { render3D(); requestAnimationFrame(fitOrbit); } else { renderSideView(); requestAnimationFrame(fitSide); } }
+    else { renderActiveGraph({ preserveView: true }); requestAnimationFrame(fit); }
+    if (selectedNode) renderInspector(selectedNode); else renderSummary();
+  }
+}
+/* 交接：迁移差异层 → 现有 NPU 层内下钻 */
+function enterNpuPeelDown(L) {
+  const p = migLayerPair(L); if (!p) return;
+  if (!comparable()) { toast('不可比：请先对齐输入/权重/配置/step'); return; }
+  if (p.mapping.status !== 'mapped') { toast('该层映射存疑/未映射，暂不进入下钻'); return; }
+  migrationHandoff = {
+    source: 'gpu-to-npu-migration', modelId: activeModelId, scenario: S.scenario, rank: S.rank, step: S.step, layer: L,
+    gpuNodeId: p.gpu.id, npuNodeId: p.npu.id, gpuPath: p.gpu.path, npuPath: p.npu.path,
+    mappingConfidence: p.mapping.confidence, thresholds: { cos: CFG.cos, rel: CFG.rel },
+    metrics: { cosine: p.metrics.cosine, relP99: p.metrics.relP99 }, status: p.compareStatus,
+  };
+  migSelLayer = L;
+  workMode = 'peel';
+  updateWorkModeChrome();
+  if (!overlayOn) setPrecMode('overlay');
+  mainView = 'side'; syncViewDom();          /* 建立 peel 侧基线，再变焦进入层内 */
+  enterLayer(L);
+  renderSummary();
+}
+function returnToMigrationCompare() {
+  workMode = 'migration';
+  migrationHandoff = null;
+  mainView = 'side';
+  updateWorkModeChrome();
+  syncViewDom();
+  renderMigrationSide();
+  renderMigrationView();                      /* 保留 migView 缩放位置（不 migFit） */
+  if (migSelLayer != null) renderMigrationInspector(migSelLayer); else renderMigrationSummary();
+}
+
+function refreshMigration() {
+  if (workMode !== 'migration') return;
+  renderMigrationSide(); renderMigrationView();
+  if (migSelLayer != null) renderMigrationInspector(migSelLayer); else renderMigrationSummary();
+}
 function renderSummary() {
+  if (workMode === 'migration') { renderMigrationSummary(); return; }   /* 迁移模式右栏走迁移摘要 */
   els.inspTitle.textContent = '精度概览 · Inspector';
   els.inspMeta.textContent = '整网逐算子精度 · 点击任一算子下钻';
   if (els.inspBack) els.inspBack.hidden = true;
@@ -3949,7 +4542,7 @@ function renderInspector(id) {
   els.inspMeta.textContent = node.typeLabel || '';
   const body = els.inspBody;
   const back = '';                 /* back entry now lives in the inspector header */
-  if (els.inspBack) els.inspBack.hidden = false;
+  if (els.inspBack) { migShowBack(false); els.inspBack.hidden = false; }   /* peel 用图标返回箭头 */
 
   /* collapsed module without direct metric → aggregate view */
   if (node.collapsedModule && !(node.id in PREC)) {
@@ -4063,6 +4656,7 @@ function searchEnter() { const m = searchMatches(els.gsearch.value); if (m.lengt
 function searchPick(id) { els.gsearch.value = ''; els.gsearchMenu.hidden = true; closeDrill(); jumpTo(id); }
 function updateFbChip() {
   if (els.statusModel) els.statusModel.textContent = `${SPEC.name} · ${SCEN[S.scenario].label} · rank${S.rank}`;
+  refreshMigration();                           /* 迁移模式：随模型/场景/rank/step/阈值/可比性变化实时重算 */
   syncThCosRange(); updateThCosLive();          /* 阈值滑杆 & 实时首错读数随每次重算同步 */
   if (!comparable()) { els.fbChip.classList.remove('ok'); els.fbText.textContent = '不可比 · 已拦截'; return; }
   const lfb = layerFirstBad(); if (lfb >= 0) S.firstBadLayer = lfb;
@@ -4461,7 +5055,7 @@ const OPDRILL = {
     edges: [['q', 'qk'], ['k', 'idx'], ['idx', 'qk'], ['qk', 'scale'], ['scale', 'sm'], ['v', 'pv'], ['sm', 'pv'], ['pv', 'out']],
   },
 };
-let drillId = null, drillSel = null, drillTab = 'judge', drillLock = true;
+let drillId = null, drillSel = null, drillTab = 'judge', drillLock = true, drillPass = 'fwd';
 let drillView = { tx: 0, ty: 0, z: 1 }, drillFit = true, drillPan = null;
 let _drillRightW = 420;   /* 算子下钻右侧面板宽度（可拖动，320–700，考虑大屏）*/
 
@@ -4574,6 +5168,7 @@ function closeDrill() {
 }
 function drillSelect(k) { drillSel = k; renderDrill(); }
 function setDrillTab(t) { drillTab = t; renderDrill(); }
+function setDrillPass(p) { drillPass = p; drillTab = (p === 'bwd') ? 'gchain' : 'judge'; renderDrill(); }   /* 切 pass → 复位到该轴首个 tab */
 function toggleDrillLock() { drillLock = !drillLock; renderDrill(); }
 function toggleDrillLegend(btn) { const p = btn.parentElement.querySelector('.cl-panel'); p.hidden = !p.hidden; btn.classList.toggle('is-selected', !p.hidden); }
 function drillNeighbors(d, k) {
@@ -4660,11 +5255,13 @@ function drillRight(d) {
   const o = d.nodes[drillSel] || d.nodes[d.root];
   const io = drillIO(o), jg = drillJudge(o);
   const rp = PREC[SPEC.rootId], rcos = rp.cos.toFixed(5), rrel = fmtRel(rp.rel);
+  /* 前向 / 反向 pass 段控暂时去掉，只保留前向三 tab（反向梯度函数保留为休眠、便于日后再挂）*/
   const tabs = [['judge', '判定 · 张量'], ['root', '根因定位'], ['sim', '仿真对标']];
-  const tabBar = `<div class="dtabs-wrap"><div class="dtabs">${tabs.map((t) => `<span class="dtab ${drillTab === t[0] ? 'on' : ''}" onclick="setDrillTab('${t[0]}')">${t[1]}</span>`).join('')}</div></div>`;
+  const activeTab = tabs.some((t) => t[0] === drillTab) ? drillTab : 'judge';
+  const tabBar = `<div class="dtabs-wrap"><div class="dtabs">${tabs.map((t) => `<span class="dtab ${activeTab === t[0] ? 'on' : ''}" onclick="setDrillTab('${t[0]}')">${t[1]}</span>`).join('')}</div></div>`;
   let body;
-  if (drillTab === 'root') body = rootTab(d, o);
-  else if (drillTab === 'sim') body = simTab(d, o);
+  if (activeTab === 'root') body = rootTab(d, o);
+  else if (activeTab === 'sim') body = simTab(d, o);
   else body = judgeTab(d, o, io, jg, rcos, rrel);
   return tabBar + body;
 }
@@ -4721,10 +5318,23 @@ function simRule(fmt, info) {
 function simCellAttr(fmt, r, c, a, bad) {
   return `data-sa="${a.idx}" data-r="${r}" data-c="${c}" data-bad="${bad ? 1 : 0}" data-ir="${a.ir}" data-or="${a.or}" data-ic="${a.ic}" data-oc="${a.oc}" onmouseenter="simHover(this)" onmouseleave="simUnhover()"`;
 }
+/* 只滚动最近的 .fmt-scroll 容器把 cell 带进视野（不动外层 drill-right，避免整栏跳动）*/
+function simScrollCellIntoView(cell) {
+  const sc = cell.closest('.fmt-scroll'); if (!sc) return;
+  const cr = cell.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+  if (cr.left < sr.left) sc.scrollLeft -= (sr.left - cr.left) + 8;
+  else if (cr.right > sr.right) sc.scrollLeft += (cr.right - sr.right) + 8;
+  if (cr.top < sr.top) sc.scrollTop -= (sr.top - cr.top) + 8;
+  else if (cr.bottom > sr.bottom) sc.scrollTop += (cr.bottom - sr.bottom) + 8;
+}
 function simHover(el) {
-  const sa = el.dataset.sa;
-  document.querySelectorAll('.fmt-cell.on').forEach((x) => x.classList.remove('on'));
-  document.querySelectorAll('.fmt-cell[data-sa="' + sa + '"]').forEach((x) => x.classList.add('on'));
+  const sa = el.dataset.sa, hr = el.dataset.r, hc = el.dataset.c;
+  document.querySelectorAll('.fmt-cell.on,.fmt-cell.rc').forEach((x) => x.classList.remove('on', 'rc'));
+  document.querySelectorAll('.fmt-scroll').forEach((s) => s.classList.add('dim'));   /* 淡化无关格 */
+  /* 行 / 列十字参考（仅 2D 矩阵，帮在大网格里读 (r,c)）*/
+  document.querySelectorAll('#simGrid2d .fmt-cell[data-r="' + hr + '"],#simGrid2d .fmt-cell[data-c="' + hc + '"]').forEach((x) => x.classList.add('rc'));
+  /* 同一 @addr 两侧联动高亮 + 把「另一侧」联动格滚进视野（512 格滚动，partner 常在视口外）*/
+  document.querySelectorAll('.fmt-cell[data-sa="' + sa + '"]').forEach((x) => { x.classList.add('on'); if (x !== el) simScrollCellIntoView(x); });
   const t = document.getElementById('simTrace'); if (!t) return;
   const r = el.dataset.r, c = el.dataset.c, bad = el.dataset.bad === '1';
   const fmt = S.simLayout, info = simFmtInfo(fmt);
@@ -4736,9 +5346,10 @@ function simHover(el) {
   t.innerHTML = `<b>逻辑 (${r},${c})</b> → <b>物理 @${sa}</b> ${bad ? '· <span style="color:var(--danger)">偏离尾块</span>' : '· 对齐'}<br>addr(${r},${c}) = ${calc} = ${sa}`;
 }
 function simUnhover() {
-  document.querySelectorAll('.fmt-cell.on').forEach((x) => x.classList.remove('on'));
+  document.querySelectorAll('.fmt-cell.on,.fmt-cell.rc').forEach((x) => x.classList.remove('on', 'rc'));
+  document.querySelectorAll('.fmt-scroll').forEach((s) => s.classList.remove('dim'));
   const t = document.getElementById('simTrace');
-  if (t) t.innerHTML = '在 2D 矩阵或 1D 内存条上悬停单元格 —— 查看同一逻辑坐标 (r,c) 如何编码为物理偏移 @addr（两侧联动高亮）。';
+  if (t) t.innerHTML = '在 2D 矩阵或 1D 内存条上悬停单元格 —— 行列十字定位 (r,c)，两侧同 @addr 联动高亮并自动滚入视野。';
 }
 function simLayoutViz() {
   const fmt = S.simLayout, info = simFmtInfo(fmt), rows = info.rows, cols = info.cols;
@@ -4804,6 +5415,66 @@ function simTab(d, o) {
     <div id="simVizHost">${simVizInner()}</div>
   </div>`;
   return pain + f1 + f2;
+}
+/* ===== 反向梯度对标（train 专属）：grad 逐算子 cosine + 梯度专属指标 =====
+   反向是精度高发区：误差沿链式法则连乘放大 + 梯度动态范围爆表（bf16 下溢/溢出）+ reduce 密集。
+   合成数据均由 SPEC.layers / S.firstBadLayer / rankBad 确定性驱动，与前向首错同源自洽。 */
+function gradNormAt(L, layers) { const t = 1 - L / (layers - 1); return 0.42 + 0.34 * t + 0.05 * Math.sin(L * 0.7); }
+function gradUnderflowAt(L, layers, fb) { const t = 1 - L / (layers - 1); let u = 2 + 11 * t + Math.max(0, 6 - Math.abs(L - fb)) * 0.6; return Math.min(18, u); }
+function gradRankCos(r) { return rankBad(r) ? (0.99080 - (r - 4) * 0.0006) : 0.99998; }
+function gradBars(vals, opts) {
+  const n = vals.length, W = 300, H = 44, bw = W / n, max = opts.max || Math.max.apply(null, vals);
+  let bars = '';
+  for (let i = 0; i < n; i++) {
+    const h = Math.max(1, (vals[i] / max) * (H - 6)), isFb = opts.fb === i;
+    const col = isFb ? 'var(--danger)' : (opts.warnAt && vals[i] >= opts.warnAt ? 'color-mix(in srgb,var(--warning) 72%,transparent)' : 'color-mix(in srgb,var(--primary) 44%,transparent)');
+    bars += `<rect x="${(i * bw).toFixed(1)}" y="${(H - h).toFixed(1)}" width="${Math.max(1, bw - 1).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${col}"><title>L${i} · ${vals[i].toFixed(opts.dp || 2)}${opts.unit || ''}</title></rect>`;
+  }
+  let extra = '';
+  if (opts.line) { const y = H - (opts.line / max) * (H - 6); extra = `<line x1="0" y1="${y.toFixed(1)}" x2="${W}" y2="${y.toFixed(1)}" stroke="var(--foreground-muted)" stroke-width="1" stroke-dasharray="3 3"/>`; }
+  return `<svg class="grad-bars" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}${extra}</svg>`;
+}
+/* 反向 · 深度①：反向逐算子（grad 沿链式法则回流，定位反向首错）*/
+function gradChainTab(d, o) {
+  const bops = [
+    ['Output Proj ᵀ', 'dX=gY·Wₒᵀ / dW=Pᵀ·gY', '1.00000', '0.99998', '0.99999', 'ok'],
+    ['P·V ᵀ (attn values)', 'dP=gY·Vᵀ / dV=Pᵀ·gY', '0.99998', '0.99995', '—', 'ok'],
+    ['Softmax backward', 'dP=P⊙(gY−Σⱼ P·gY)', '0.99995', '0.99080', '—', 'crit'],
+    ['QKᵀ backward', 'dQ=dS·K / dK=dSᵀ·Q', '0.99080', '0.98850', '—', 'high'],
+    ['LayerNorm backward', 'dx=(gy−x̂·⟨gy·x̂⟩−⟨gy⟩)/σ', '0.98850', '0.98790', '0.99120', 'high'],
+  ];
+  const rows = bops.map((r) => `<tr class="${r[5] === 'crit' ? 'sim-bad' : ''}"><td>${esc(r[0])}</td><td class="gc-mono">${esc(r[1])}</td><td>${r[2]}</td><td class="${r[5] === 'ok' ? '' : 'num-bad'}">${r[3]}</td><td>${r[4]}</td><td><span class="sim-st ${r[5]}">${r[5] === 'crit' ? '分歧点' : r[5] === 'high' ? '传播' : '对齐'}</span></td></tr>`).join('');
+  return `<div class="hint" style="margin-bottom:7px">训练态 <b>loss.backward()</b>：梯度沿链式法则从 loss 回流、误差<b>连乘放大</b>。逐算子 grad cosine 定位<b>反向首错</b>。</div>
+    <div class="dsec"><div class="dsec-h">反向链式逐算子对标<span class="dsec-sub">grad 沿链式法则回流 · 定位反向首错</span></div>
+      <div class="gridwrap"><table class="grid"><thead><tr><th>反向算子</th><th>反向式</th><th>grad_out cos</th><th>grad_in cos</th><th>grad_w cos</th><th>对标</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="note-box" style="margin-top:8px"><b>反向首错锚定 Softmax backward</b>（dP 的行归约 Σⱼ 用 bf16 累加，与前向 online-softmax 同源）——误差沿链向<b>上游</b>连乘放大到 QKᵀ / LayerNorm。前向下游传播、反向上游传播，<b>方向相反、根因同一</b>。</div></div>`;
+}
+/* 反向 · 深度②：梯度专属指标（前向逐层 cosine 抓不到的）*/
+function gradMetricsTab(d, o) {
+  const layers = SPEC.layers, fb = S.firstBadLayer;
+  const gn = Array.from({ length: layers }, (_, L) => gradNormAt(L, layers));
+  const uf = Array.from({ length: layers }, (_, L) => gradUnderflowAt(L, layers, fb));
+  const gnGlobal = Math.sqrt(gn.reduce((s, v) => s + v * v, 0) / layers);
+  const ufMax = Math.max.apply(null, uf), ufMaxL = uf.indexOf(ufMax);
+  const ranks = Array.from({ length: 8 }, (_, r) => ({ r, cos: gradRankCos(r), bad: rankBad(r) }));
+  const nDrift = ranks.filter((x) => x.bad).length;
+  const card1 = `<div class="grad-card"><h6>梯度范数 grad-norm<span class="gc-sub">clip@1.0</span></h6>
+    <div class="gc-big ok">${gnGlobal.toFixed(3)}</div>${gradBars(gn, { max: 1.0, line: 1.0, dp: 2 })}
+    <div class="gc-note">全局范数 ${gnGlobal.toFixed(3)} < clip 1.0、逐层无尖峰 → <b>无梯度爆炸</b>（无 inf / nan）。</div></div>`;
+  const card2 = `<div class="grad-card"><h6>下溢占比 bf16→0<span class="gc-sub">越高=消失风险</span></h6>
+    <div class="gc-big ${ufMax >= 10 ? 'bad' : ''}">${ufMax.toFixed(1)}%</div>${gradBars(uf, { max: 20, warnAt: 10, dp: 1, unit: '%' })}
+    <div class="gc-note">早层 L${ufMaxL} 下溢达 ${ufMax.toFixed(1)}% → <b>梯度消失风险</b>；靠 <b>loss scaling</b> 把小梯度抬进 bf16 可表示区。</div></div>`;
+  const card3 = `<div class="grad-card"><h6>动态 loss scale<span class="gc-sub">溢出保护</span></h6>
+    <div class="gc-big">32768</div>
+    <div class="gc-note">近 200 step 无 inf → 未回退；若 <b>Softmax backward</b> 出 inf 触发 scale ÷2 + 跳过该 step。当前为<b>漂移型</b>、非溢出型。</div></div>`;
+  const card4 = `<div class="grad-card"><h6>per-rank 梯度一致性<span class="gc-sub">bf16 allreduce</span></h6>
+    <div class="gc-big ${nDrift ? 'bad' : 'ok'}">${nDrift ? 'rank4–7 漂移' : '8/8 一致'}</div>
+    <div class="grad-rank">${ranks.map((x) => `<span class="rk ${x.bad ? 'bad' : ''}">rank${x.r} ${x.cos.toFixed(4)}</span>`).join('')}</div>
+    <div class="gc-note">bf16 allreduce 各 rank 非 bit 一致 → 参数漂移，首错<b>随 rank 漂移</b>（后半 shard 命中）—— 属<b>参数同步 / 跨卡一致性</b>类。</div></div>`;
+  return `<div class="hint" style="margin-bottom:7px">前向逐层 cosine 抓不到的<b>梯度专属指标</b>：范数（爆炸）、下溢（消失）、loss scale（溢出）、per-rank（跨卡一致性）。</div>
+    <div class="dsec"><div class="dsec-h">梯度专属指标<span class="dsec-sub">前向逐层 cosine 抓不到的</span></div>
+      <div class="grad-cards">${card1}${card2}${card3}${card4}</div></div>
+    <div class="note-box" style="margin-top:9px"><b>反向 signature 判别</b>：本例 cosine 沿链<b>缓慢漂移</b>（Softmax backward 0.99080 → 上游 0.988、无 inf）= <b>累加精度类</b>，与前向 online-softmax 同源（bf16 行归约）→ 反向 Σ 改 <b>fp32 累加 / Kahan</b> 可修。对照：某 op grad 突崩 inf / nan、cosine 瞬间掉 0 = <b>溢出类</b>，走 loss scale 回退 + 定位该 op。</div>`;
 }
 /* 判定 · 张量（合并）：一句话结论 + 核心判断 + dump 对比 + 误差可视化（算子信息见 hover 卡） */
 function judgeTab(d, o, io, jg, rcos, rrel) {
@@ -5150,7 +5821,8 @@ function init() {
     if (mainView === 'graph') { lastDiveOrigin = { x: e.clientX, y: e.clientY }; setMainView('side'); }   /* 点空白 → 从落点平滑变焦回落到整网 */
   });
 
-  if ('ResizeObserver' in window) new ResizeObserver(() => { if (_viewSwapping || _dimSwapping) return; fit(); if (mainView === 'side') { side3d ? fitOrbit() : fitSide(); }; }).observe(els.stage);
+  if ('ResizeObserver' in window) new ResizeObserver(() => { if (_viewSwapping || _dimSwapping) return; if (workMode === 'migration') { renderMigrationView(); return; } fit(); if (mainView === 'side') { side3d ? fitOrbit() : fitSide(); }; }).observe(els.stage);
+  if ('ResizeObserver' in window) { const _ms = document.getElementById('migStage'); if (_ms) new ResizeObserver(() => { if (workMode === 'migration') renderMigrationView(); }).observe(_ms); }   /* 迁移视图随面板宽度自适应（els.stage 在迁移态 display:none 不触发）*/
   if ('ResizeObserver' in window && els.sideWrap) new ResizeObserver(() => { if (_viewSwapping || _dimSwapping) return; if (mainView === 'side') { side3d ? fitOrbit() : fitSide(); }; }).observe(els.sideWrap);
   window.addEventListener('resize', () => { if (_viewSwapping || _dimSwapping) return; fit(); if (mainView === 'side') { side3d ? fitOrbit() : fitSide(); }; });
   document.addEventListener('keydown', (e) => {
@@ -5174,6 +5846,14 @@ function init() {
   updateFbChip();
   renderSummary();
   applyModel('pangu');    /* 默认调试对象 = openPangu-2.0-Flash */
+  /* 默认进入「迁移整网对比」工作模式 */
+  document.body.classList.add('wm-migration');
+  updateWorkModeChrome();
+  syncViewDom();
+  migFit();
+  renderMigrationSide();
+  renderMigrationView();
+  renderMigrationSummary();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
 else init();
