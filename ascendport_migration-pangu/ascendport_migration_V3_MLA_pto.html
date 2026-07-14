@@ -1725,16 +1725,23 @@
     .pstep[disabled]:hover { background: var(--surface-disabled); }
     .pstep.cur[disabled] { background: var(--primary); }
     .plabel[disabled]:hover { color: var(--foreground-muted); }
-    .plabels { display: flex; justify-content: space-between; padding: 0 16px 8px; color: var(--foreground-muted); font-size: 12px; }
+    .plabels { display: grid; gap: 6px; padding: 0 16px 8px; color: var(--foreground-muted); }
     .plabel {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
       border: 0;
       background: transparent;
       color: var(--foreground-muted);
       font: var(--text-label);
-      font-size: 12px;
       cursor: pointer;
       padding: 0;
+      text-align: left;
     }
+    .plabel-num { font-size: 12px; line-height: 1.2; }
+    .plabel-name { min-width: 0; font-size: 10px; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
     .plabel:hover, .plabel.view { color: var(--foreground); }
     .wz-scroll { min-height: 0; overflow: auto; padding: 6px 16px 16px; }
     .stepcard { padding: 14px; margin-bottom: 12px; }
@@ -2335,7 +2342,7 @@
                   <div class="wizard-shell">
                     <div class="wz-h">
                       <div class="kick">AscendPort</div>
-                      <h1>源端到昇腾 · 八阶段流水</h1>
+                      <h1 id="workflowTitle">源端到昇腾 · 七阶段流水</h1>
                       <p>逐步把源端算子迁移为昇腾算子。每一步都可介入，下方按钮执行当前阶段。</p>
                     </div>
                     <div class="prog" id="prog"></div>
@@ -2343,7 +2350,7 @@
                     <div class="wz-scroll" id="wzScroll">
                       <div id="wzContent"></div>
                       <div class="wz-foot">
-                        <div class="foot-hint" id="footHint">共 8 个阶段 · 当前 1 / 8 完成</div>
+                        <div class="foot-hint" id="footHint">共 7 个阶段 · 当前 1 / 7 完成</div>
                         <div class="run-row">
                           <button class="run" id="runBtn" type="button">单步运行 S2</button>
                           <button class="run ghost" id="runAllBtn" type="button">全部执行</button>
@@ -2415,7 +2422,7 @@
   <script src="../vendor/pto-design-system/patterns/aiv-core-object/pattern.js"></script>
   <script src="../vendor/pto-design-system/patterns/aic-core-object/pattern.js"></script>
   <script src="../vendor/pto-design-system/patterns/memory-architecture/pattern.js"></script>
-  <script src="./ascendport_migration_V3_MLA_pto_legacy.js?v=source-link-v10"></script>
+  <script src="./ascendport_migration_V3_MLA_pto_legacy.js?v=seven-stage-graph-v12"></script>
   <script>
     (function wirePtoRefresh() {
       const helper = window.PtoSwimlaneTaskPattern;
@@ -2431,7 +2438,7 @@
       let accuracyModelvizFrameObserver = null;
       let activeModelvizContext = null;
       let modelvizContextFrame = 0;
-      const modelvizUiVersion = 'pages-compat-v11';
+      const modelvizUiVersion = 'seven-stage-graph-v12';
       const modelvizSource = `./mla-model-architecture/assets/modelviz.html?embed=workbench&ui=${modelvizUiVersion}`;
       const accuracyModelvizSource = `./mla-model-architecture/assets/modelviz.html?embed=accuracy&view=accuracy&ui=${modelvizUiVersion}`;
       const tone = {

@@ -26,7 +26,7 @@
     .mla-viz__title h1 { margin: 0; font: var(--text-title-2); white-space: nowrap; }
     .mla-viz__title p { margin: 0; color: var(--foreground-secondary); font: var(--text-body-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .mla-viz__actions { display: flex; align-items: center; gap: var(--space-2); flex: none; }
-    .mla-viz__main { display: grid; grid-template-columns: minmax(0, 1fr) 440px; min-height: 0; }
+    .mla-viz__main { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 0; }
     .mla-viz__canvas { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
     .mla-viz__stage { position: absolute; inset: 0; cursor: grab; user-select: none; touch-action: none; }
     .mla-viz__stage.is-panning { cursor: grabbing; }
@@ -43,37 +43,6 @@
     .accuracy-node-badge.is-fixed rect { fill: var(--primary); }
     .mla-viz__stage .pto-model-graphviz-edge { stroke-linecap: round; stroke-linejoin: round; }
     .mla-viz__status { position: absolute; left: var(--space-4); bottom: var(--space-4); max-width: calc(100% - var(--space-6) * 2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--background-elevated) 92%, transparent); color: var(--foreground-muted); font: var(--text-label); pointer-events: none; }
-    .mla-viz__inspector { min-width: 0; min-height: 0; border-left: 1px solid var(--border-subtle); overflow: hidden; }
-    .mla-viz__inspector.panel-shell { height: 100%; }
-    .mla-viz__inspector .panel-shell-body { height: calc(100% - var(--comp-toolbar-height)); padding: 0; overflow: hidden; }
-    .mapping-pane { display: grid; grid-template-rows: minmax(260px, 46%) minmax(0, 1fr); height: 100%; }
-    .mapping-list-wrap, .mapping-detail { min-height: 0; overflow: auto; }
-    .mapping-list-wrap { padding: 0 var(--space-3) var(--space-3); }
-    .mapping-list-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-3) 0 var(--space-2); background: var(--panel-shell-quiet-bg); }
-    .mapping-list-title { margin: 0; color: var(--foreground-secondary); font: var(--text-label); text-transform: uppercase; letter-spacing: var(--letter-spacing-label); }
-    .mapping-list { display: grid; gap: var(--space-1); }
-    .mapping-row.btn { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: stretch; width: 100%; height: auto; min-height: 0; padding: var(--space-2); text-align: left; white-space: normal; }
-    .mapping-row__flow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: var(--space-2); }
-    .mapping-row__source, .mapping-row__target { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--text-mono); }
-    .mapping-row__arrow { color: var(--foreground-muted); }
-    .mapping-row__meta { display: flex; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-1); color: var(--foreground-muted); font: var(--text-label); }
-    .mapping-row.is-selected .mapping-row__arrow, .mapping-row.is-selected .mapping-row__meta { color: inherit; opacity: .72; }
-    .mapping-detail { padding: var(--space-3) var(--space-4) var(--space-4); border-top: 1px solid var(--border-subtle); }
-    .detail-empty { margin: 0; color: var(--foreground-secondary); font: var(--text-body); }
-    .detail-section { display: grid; gap: var(--space-2); padding-block: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
-    .detail-section:first-child { padding-top: 0; }
-    .detail-section:last-child { border-bottom: 0; }
-    .detail-title { margin: 0; font: var(--text-title-2); }
-    .detail-kicker { margin: 0; color: var(--foreground-secondary); font: var(--text-body-sm); }
-    .detail-label { margin: 0; color: var(--foreground-muted); font: var(--text-label); text-transform: uppercase; letter-spacing: var(--letter-spacing-label); }
-    .detail-code { display: block; padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-1); color: var(--foreground); font: var(--text-mono); overflow-wrap: anywhere; white-space: pre-wrap; }
-    .detail-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: var(--space-2); margin: 0; font: var(--text-body-sm); }
-    .detail-grid dt { color: var(--foreground-muted); }
-    .detail-grid dd { margin: 0; overflow-wrap: anywhere; }
-    .detail-note { margin: 0; color: var(--foreground-secondary); font: var(--text-body); }
-    .detail-edges { display: grid; gap: var(--space-2); }
-    .detail-edge { color: var(--foreground-secondary); font: var(--text-body-sm); }
-    .detail-edge b { display: block; color: var(--foreground); font: var(--text-mono); }
     .operator-detail-popover { border: 0; box-shadow: none; }
     .operator-detail-popover code { color: var(--foreground); font: var(--text-mono); overflow-wrap: anywhere; }
     .operator-detail-popover .pto-model-graphviz-hover-title { justify-content: space-between; }
@@ -86,8 +55,6 @@
     html[data-embed] .mla-viz__status { left: var(--space-2); bottom: var(--space-2); }
     html[data-embed] #operatorDetailPopover { display: none !important; }
     @media (max-width: 1080px) {
-      .mla-viz__main { grid-template-columns: 1fr; }
-      .mla-viz__inspector { display: none; }
       .mla-viz__title p, .mla-viz__actions .toolbar-readout { display: none; }
     }
   </style>
@@ -121,26 +88,6 @@
         <aside class="pto-model-graphviz-hover operator-detail-popover" id="operatorDetailPopover" aria-live="polite" aria-label="选中算子详情"></aside>
       </div>
 
-      <aside class="mla-viz__inspector panel-shell panel-shell-quiet" aria-label="算子关联映射检查器">
-        <header class="panel-shell-header">
-          <div>
-            <div class="panel-shell-title">Operator Association</div>
-            <div class="panel-shell-meta" id="inspectorMeta">Source → Ascend target</div>
-          </div>
-        </header>
-        <div class="panel-shell-body mapping-pane">
-          <section class="mapping-list-wrap" aria-label="算子映射列表">
-            <div class="mapping-list-head">
-              <h2 class="mapping-list-title">源算子 → 目标算子</h2>
-              <span class="toolbar-readout" id="mappingCount">0</span>
-            </div>
-            <div class="mapping-list" id="mappingList"></div>
-          </section>
-          <section class="mapping-detail" id="mappingDetail" aria-live="polite">
-            <p class="detail-empty">点击图节点或映射行，查看源码行、目标 API、执行单元、映射关系及当前实现状态。默认不预选。</p>
-          </section>
-        </div>
-      </aside>
     </section>
   </main>
 
@@ -149,7 +96,7 @@
   <script type="application/json" id="defaultMappingJson">{"schema_version":"operator_mapping.v1","source":{"name":"example_mla_decode.py","framework":"TileLang","sha256":"badfb74e161a19be4b8022b8c13ca059b368598c7d7f8a5b77ea623347341962"},"target":{"platform":"Atlas A3 / Ascend 910C","route":"Ascend C & PTO"},"mappings":[{"id":"map_kernel_dispatch","source":{"primitive":"T.Kernel(..., threads=256)","lines":[128],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":128,"fact":"kernel grid and worker assignment","confidence":"confirmed"}]},"graph_node_ids":["kernel_dispatch"],"semantic_role":"kernel grid and worker assignment","target":{"api":"GetBlockIdx + AI Core SPMD","execution_unit":"Scalar / scheduler","implementation_status":"emitted_s6"},"relation":"structural_rewrite","note":"GPU thread blocks become AI Core work ownership for each batch/head group.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":16,"fact":"S6 assigns work with GetBlockIdx","confidence":"prototype_evidence"}]},{"id":"map_shared_buffers","source":{"primitive":"T.alloc_shared","lines":[34],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":34,"fact":"shared-memory staging","confidence":"confirmed"}]},"graph_node_ids":["q_stage","kv_stage"],"semantic_role":"shared-memory staging","target":{"api":"TQue / T.alloc_L1 / T.alloc_ub","execution_unit":"MTE + L1/UB","implementation_status":"emitted_s6"},"relation":"memory_space_rewrite","note":"Source shared buffers are split by consumer into L1 queues and Vector UB buffers.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":25,"fact":"S6 creates explicit L1 and UB buffers","confidence":"prototype_evidence"}]},{"id":"map_fragment_buffers","source":{"primitive":"T.alloc_fragment","lines":[40],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":40,"fact":"register-fragment accumulators","confidence":"confirmed"}]},"graph_node_ids":["qk_gemm","pe_gemm","score_block_max","pv_gemm"],"semantic_role":"register-fragment accumulators","target":{"api":"L0C LocalTensor + VECCALC buffer","execution_unit":"Cube L0C + Vector UB","implementation_status":"emitted_s6"},"relation":"memory_space_rewrite","note":"Accumulator placement becomes explicit and follows the Cube/Vector split.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":70,"fact":"S6 allocates logits in the Cube output queue","confidence":"prototype_evidence"}]},{"id":"map_q_copy","source":{"primitive":"T.copy(Q / Q_pe -> shared)","lines":[52,53,145,146],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":52,"fact":"query block load","confidence":"confirmed"}]},"graph_node_ids":["q_stage"],"semantic_role":"query block load","target":{"api":"DataCopy GM -> L1 -> L0A","execution_unit":"MTE","implementation_status":"emitted_s6"},"relation":"staged_direct_mapping","note":"Q and Q_pe are staged together before score computation.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":34,"fact":"S6 copies Q and Q_pe into qL1","confidence":"prototype_evidence"}]},{"id":"map_kv_pipeline_copy","source":{"primitive":"T.Pipelined + T.copy(KV / K_pe)","lines":[59,62,63,152,153,154],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":59,"fact":"KV tile load and overlap","confidence":"confirmed"}]},"graph_node_ids":["kv_stage"],"semantic_role":"KV tile load and overlap","target":{"api":"DataCopy GM -> L1 -> L0B + double buffer","execution_unit":"MTE","implementation_status":"emitted_s6"},"relation":"pipeline_rewrite","note":"The source two-stage pipeline becomes TQue depth-2 prefetch of the next KV tile.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":46,"fact":"S6 overlaps next-tile prefetch with compute","confidence":"prototype_evidence"}]},{"id":"map_qk_gemm","source":{"primitive":"T.gemm(Q_shared, KV_shared, transpose_B=True, clear_accum=True)","lines":[65,155],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":65,"fact":"non-positional score matrix multiply","confidence":"confirmed"}]},"graph_node_ids":["qk_gemm"],"semantic_role":"non-positional score matrix multiply","target":{"api":"Mmad / T.gemm_v0(init=True)","execution_unit":"Cube","implementation_status":"emitted_s6"},"relation":"many_to_one_fusion","note":"Q·KV transpose GEMM is fused with the PE GEMM by concatenating DIM and PE_DIM.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":71,"fact":"S6 emits one fused Mmad over DIM + PE_DIM","confidence":"prototype_evidence"}]},{"id":"map_pe_gemm","source":{"primitive":"T.gemm(Q_pe_shared, K_pe_shared, transpose_B=True)","lines":[66,156],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":66,"fact":"positional score accumulation","confidence":"confirmed"}]},"graph_node_ids":["pe_gemm"],"semantic_role":"positional score accumulation","target":{"api":"Mmad / T.gemm_v0(init=False)","execution_unit":"Cube","implementation_status":"emitted_s6"},"relation":"many_to_one_fusion","note":"The second source GEMM is absorbed into the same concatenated Mmad as Q·KV.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":71,"fact":"S6 fuses both score terms into one Mmad","confidence":"prototype_evidence"}]},{"id":"map_warp_policy","source":{"primitive":"T.GemmWarpPolicy.FullCol","lines":[65,66,83,155,156,172],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":65,"fact":"GPU warp-level GEMM policy","confidence":"confirmed"}]},"graph_node_ids":["qk_gemm","pe_gemm","pv_gemm"],"semantic_role":"GPU warp-level GEMM policy","target":{"api":"removed; Cube manages L0 tiling","execution_unit":"Cube scheduler","implementation_status":"emitted_s6"},"relation":"removed_with_replacement","note":"The GPU warp partition has no Ascend equivalent and must not survive code generation.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":78,"fact":"S6 explicitly removes GemmWarpPolicy","confidence":"prototype_evidence"}]},{"id":"map_swizzle","source":{"primitive":"T.use_swizzle(10)","lines":[50],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":50,"fact":"GPU L2 swizzle schedule","confidence":"confirmed"}]},"graph_node_ids":["kernel_dispatch"],"semantic_role":"GPU L2 swizzle schedule","target":{"api":"T.Persistent / AI Core work balancing","execution_unit":"Scheduler","implementation_status":"planned_not_emitted"},"relation":"removed_with_replacement","note":"The analysis prescribes T.Persistent, but the current S6 prototype does not emit that directive.","target_evidence":[]},{"id":"map_reduce_max","source":{"primitive":"T.reduce_max + T.max","lines":[69,159],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":69,"fact":"online softmax maximum","confidence":"confirmed"}]},"graph_node_ids":["score_block_max","running_max_merge"],"semantic_role":"online softmax maximum","target":{"api":"ReduceMax + fmaxf","execution_unit":"Vector","implementation_status":"emitted_s6"},"relation":"semantic_direct_mapping","note":"Block max and historical max remain separate semantic steps.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":79,"fact":"S6 performs Vector ReduceMax and running maximum merge","confidence":"prototype_evidence"}]},{"id":"map_exp2","source":{"primitive":"T.exp2(x * log2(e))","lines":[73,75,108,114,163,165],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":73,"fact":"online softmax exponentials","confidence":"confirmed"}]},"graph_node_ids":["score_exponential","output_rescale"],"semantic_role":"online softmax exponentials","target":{"api":"Exp / expf with natural softmax scale","execution_unit":"Vector","implementation_status":"emitted_s6"},"relation":"numeric_rewrite","note":"Remove the 1.44269504 multiplier and keep LSE math in natural exp/ln space.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":85,"fact":"S6 emits natural Exp rather than exp2","confidence":"prototype_evidence"}]},{"id":"map_reduce_sum","source":{"primitive":"T.reduce_sum","lines":[76,166],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":76,"fact":"online softmax denominator reduction","confidence":"confirmed"}]},"graph_node_ids":["score_sum"],"semantic_role":"online softmax denominator reduction","target":{"api":"ReduceSum","execution_unit":"Vector","implementation_status":"emitted_s6"},"relation":"semantic_direct_mapping","note":"The reduction axis changes from source dim=1 to the local tile's final dimension.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":86,"fact":"S6 emits Vector ReduceSum","confidence":"prototype_evidence"}]},{"id":"map_online_state","source":{"primitive":"T.Parallel logsum / acc_o rescale","lines":[80,82,169,171],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":80,"fact":"online softmax recurrence","confidence":"confirmed"}]},"graph_node_ids":["online_state_update","output_rescale"],"semantic_role":"online softmax recurrence","target":{"api":"Muls + scalar FP32 recurrence","execution_unit":"Vector + Scalar","implementation_status":"emitted_s6"},"relation":"loop_body_rewrite","note":"FP32 running max, denominator, and output rescale preserve the online-softmax invariant.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":87,"fact":"S6 updates the online-softmax state","confidence":"prototype_evidence"}]},{"id":"map_pv_gemm","source":{"primitive":"T.gemm(P, KV, acc_o)","lines":[83,172],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":83,"fact":"probability-value accumulation","confidence":"confirmed"}]},"graph_node_ids":["pv_gemm"],"semantic_role":"probability-value accumulation","target":{"api":"Mmad / Cube GEMM (S2 plan)","execution_unit":"Cube planned; Vector emitted","implementation_status":"prototype_divergence","emitted_api":"Axpy"},"relation":"semantic_mapping_with_codegen_gap","note":"S2 maps P·V to Cube Mmad, while the bundled S6 prototype currently emits per-token Vector Axpy.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":91,"fact":"S6 prototype implements P·V with Axpy","confidence":"prototype_evidence"}]},{"id":"map_normalize","source":{"primitive":"acc_o /= logsum","lines":[85,174],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":85,"fact":"final no-split normalization","confidence":"confirmed"}]},"graph_node_ids":["output_normalize"],"semantic_role":"final no-split normalization","target":{"api":"Div","execution_unit":"Vector","implementation_status":"emitted_s6"},"relation":"semantic_direct_mapping","note":"The accumulated output is divided by the final online-softmax denominator.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":50,"fact":"S6 normalizes output with Vector Div","confidence":"prototype_evidence"}]},{"id":"map_split_workspace","source":{"primitive":"T.alloc_global(glse / Output_partial)","lines":[30,31],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":30,"fact":"split-KV partial result exchange","confidence":"confirmed"}]},"graph_node_ids":["partial_result_store","partial_output_workspace","split_lse_workspace"],"semantic_role":"split-KV partial result exchange","target":{"api":"GM workspace between AI Cores","execution_unit":"MTE / GM","implementation_status":"planned_not_emitted"},"relation":"cross_kernel_workspace","note":"The bundled S6 prototype intentionally implements num_split=1 and has not emitted the GM split workspace.","target_evidence":[]},{"id":"map_split_combine","source":{"primitive":"second T.Kernel + LSE weighted combine","lines":[93,118],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":93,"fact":"flash-decoding split merge","confidence":"confirmed"}]},"graph_node_ids":["split_lse_max","split_lse_sum","partial_weight","split_output_accumulate"],"semantic_role":"flash-decoding split merge","target":{"api":"second-stage Vector reduction in natural exp/ln space","execution_unit":"Vector","implementation_status":"planned_not_emitted"},"relation":"two_stage_rewrite","note":"The target needs a second kernel over GM partial output and LSE; this branch is deferred after no-split correctness.","target_evidence":[]},{"id":"map_output_store","source":{"primitive":"T.copy(O_shared, Output) / Output[...] = ...","lines":[90,118],"provenance":[{"source":"example_mla_decode","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/example_mla_decode.py","line":90,"fact":"final output write","confidence":"confirmed"}]},"graph_node_ids":["no_split_store","split_output_store"],"semantic_role":"final output write","target":{"api":"DataCopy UB -> GM","execution_unit":"MTE","implementation_status":"emitted_no_split_only"},"relation":"staged_direct_mapping","note":"The no-split path is emitted; split output store depends on the deferred combine kernel.","target_evidence":[{"source":"ascend_s6","path":"/Users/yin/pto/ascendport_migration-pangu/mla-model-architecture/outputs/flash_mla_decode_s6.cpp","line":51,"fact":"S6 writes normalized output to GM","confidence":"prototype_evidence"}]}]}</script>
   <script src="../../../vendor/pto-design-system/patterns/model-graphviz/pattern.js"></script>
   <script>
-    const MODEL_VIZ_UI_VERSION = 'pages-compat-v11';
+    const MODEL_VIZ_UI_VERSION = 'seven-stage-graph-v12';
     const state = {
       schema: null,
       graph: null,
@@ -798,6 +745,7 @@
     function updateGraphStatus() {
       const mappingCount = state.mappingDocument?.mappings?.length || 0;
       const accuracyCount = state.accuracyOverlay.size;
+      document.getElementById('mappingReadout').textContent = `${mappingCount} operator mappings`;
       document.getElementById('statusText').textContent = accuracyCount
         ? `${accuracyCount} 个已测算子节点 · ${state.accuracyFixed ? '复测已对齐' : '1 个精度异常'} · 折叠父节点汇总子算子状态`
         : `${state.visibleGraph.nodes.length}/${state.schema.nodes.length} visible nodes · ${state.schema.edges.length} tensor/state edges · ${mappingCount} operator mappings · parent +/− controls`;
@@ -976,112 +924,12 @@
       return changed;
     }
 
-    function renderMappingList() {
-      const mappings = state.mappingDocument?.mappings || [];
-      document.getElementById('mappingCount').textContent = `${mappings.length} mappings`;
-      document.getElementById('mappingReadout').textContent = `${mappings.length} operator mappings`;
-      const list = document.getElementById('mappingList');
-      list.innerHTML = mappings.map((mapping) => `
-        <button class="btn btn-ghost mapping-row ${mapping.id === state.activeMappingId ? 'is-selected' : ''}" type="button" data-mapping-id="${escapeHtml(mapping.id)}">
-          <span class="mapping-row__flow">
-            <span class="mapping-row__source">${escapeHtml(mapping.source.primitive)}</span>
-            <span class="mapping-row__arrow">→</span>
-            <span class="mapping-row__target">${escapeHtml(mapping.target.api)}</span>
-          </span>
-          <span class="mapping-row__meta">
-            <span>${escapeHtml(relationLabel(mapping.relation))}</span>
-            <span>${escapeHtml(mapping.target.implementation_status)}</span>
-          </span>
-        </button>`).join('');
-      list.querySelectorAll('[data-mapping-id]').forEach((button) => {
-        button.addEventListener('click', () => selectMapping(button.dataset.mappingId, true));
-      });
-    }
-
-    function mappingDetailHtml(mapping) {
-      const targetEvidence = mapping.target_evidence?.[0];
-      return `
-        <section class="detail-section">
-          <p class="detail-label">Source primitive</p>
-          <code class="detail-code">${escapeHtml(mapping.source.primitive)}</code>
-          <p class="detail-kicker">example_mla_decode.py · lines ${escapeHtml(mapping.source.lines.join(', '))}</p>
-        </section>
-        <section class="detail-section">
-          <p class="detail-label">Ascend target</p>
-          <h2 class="detail-title">${escapeHtml(mapping.target.api)}</h2>
-          ${mapping.target.emitted_api ? `<p class="detail-kicker">S6 emitted: ${escapeHtml(mapping.target.emitted_api)}</p>` : ''}
-          <dl class="detail-grid">
-            <dt>执行单元</dt><dd>${escapeHtml(mapping.target.execution_unit)}</dd>
-            <dt>映射关系</dt><dd>${escapeHtml(relationLabel(mapping.relation))}</dd>
-            <dt>实现状态</dt><dd>${escapeHtml(mapping.target.implementation_status)}</dd>
-            <dt>关联节点</dt><dd>${escapeHtml(mapping.graph_node_ids.join(', '))}</dd>
-          </dl>
-          <p class="detail-note">${escapeHtml(mapping.note)}</p>
-          ${targetEvidence ? `<p class="detail-kicker">${escapeHtml(targetEvidence.path)}:${escapeHtml(targetEvidence.line)}</p>` : ''}
-        </section>`;
-    }
-
-    function nodeDetailHtml(node) {
-      if (!node) return '';
-      const incoming = state.schema.edges.filter((edge) => edge.target === node.id);
-      const outgoing = state.schema.edges.filter((edge) => edge.source === node.id);
-      const provenance = node.provenance?.[0];
-      const edges = [
-        ...incoming.map((edge) => ({ edge, direction: 'IN' })),
-        ...outgoing.map((edge) => ({ edge, direction: 'OUT' })),
-      ];
-      return `
-        <section class="detail-section">
-          <p class="detail-label">Graph node</p>
-          <h2 class="detail-title">${escapeHtml(node.label)}</h2>
-          <p class="detail-kicker">${escapeHtml(node.kind)} · ${escapeHtml(nodeTypeLabel(node))}</p>
-          ${provenance ? `<p class="detail-note">${escapeHtml(provenance.fact)}</p><p class="detail-kicker">${escapeHtml(provenance.path)}:${escapeHtml(provenance.line)}</p>` : ''}
-        </section>
-        <section class="detail-section">
-          <p class="detail-label">Tensor relations</p>
-          <div class="detail-edges">
-            ${edges.map(({ edge, direction }) => `<div class="detail-edge"><b>${direction} · ${escapeHtml(edge.source)} → ${escapeHtml(edge.target)}</b>${escapeHtml(tensorText(edge))}</div>`).join('') || '<p class="detail-empty">No tensor relations.</p>'}
-          </div>
-        </section>`;
-    }
-
-    function renderDetail() {
-      const mapping = mappingById(state.activeMappingId);
-      const node = nodeById(state.activeNodeId);
-      const detail = document.getElementById('mappingDetail');
-      if (!mapping && !node) {
-        detail.innerHTML = '<p class="detail-empty">点击图节点或映射行，查看源码行、目标 API、执行单元、映射关系及当前实现状态。默认不预选。</p>';
-        return;
-      }
-      detail.innerHTML = `${mapping ? mappingDetailHtml(mapping) : ''}${nodeDetailHtml(node)}`;
-      document.getElementById('inspectorMeta').textContent = mapping
-        ? `${relationLabel(mapping.relation)} · ${mapping.target.implementation_status}`
-        : nodeTypeLabel(node);
-    }
-
-    function selectMapping(mappingId, focusGraph) {
-      const mapping = mappingById(mappingId);
-      if (!mapping) return;
-      state.activeMappingId = mapping.id;
-      const nodeId = mapping.graph_node_ids.find((id) => nodeById(id));
-      if (nodeId) state.activeNodeId = nodeId;
-      renderMappingList();
-      renderDetail();
-      renderOperatorPopover();
-      notifyHostSelection();
-      if (focusGraph && nodeId && !expandForNode(nodeId)) {
-        state.controller?.selectNode?.(nodeId, { source: 'operator-association' });
-      }
-    }
-
     function handleNodeSelection(nodeId) {
       const node = nodeById(nodeId);
       if (!node) return;
       state.activeNodeId = nodeId;
       const mappingIds = node.attrs?.mapping_ids || [];
       if (!mappingIds.includes(state.activeMappingId)) state.activeMappingId = mappingIds[0] || null;
-      renderMappingList();
-      renderDetail();
       renderOperatorPopover();
       notifyHostSelection();
     }
@@ -1105,8 +953,6 @@
         loadJson('../outputs/model_architecture_graph.json', 'defaultGraphJson'),
         loadJson('../outputs/operator_mapping.json', 'defaultMappingJson'),
       ]);
-      renderMappingList();
-
       const pattern = window.PtoModelGraphvizPattern;
       if (!pattern?.renderController) throw new Error('PTO model-graphviz renderer is unavailable');
       state.baseHierarchy = pattern.buildHierarchy(state.graph);

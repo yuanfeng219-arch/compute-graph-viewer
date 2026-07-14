@@ -53,9 +53,11 @@ assert(launchTarget === currentLaunchTarget,
   `AscendPort card opens stale target: ${launchTarget || 'missing'}`);
 assert(launchCard.includes(`{ label: "当前版", href: "${currentLaunchTarget}" }`),
   'AscendPort current-version button does not open the refreshed workbench');
+assert(launchCard.includes('按 S1-S7 引导'), 'AscendPort card still advertises the stale stage count');
+assert(!launchCard.includes('S1-S8'), 'AscendPort card still advertises eight workflow stages');
 assert(fs.existsSync(path.join(repoRoot, currentLaunchTarget)),
   'AscendPort launch target does not exist in the Pages artifact');
-assert(workbench.includes("modelvizUiVersion = 'pages-compat-v11'"), 'workbench modelviz UI version is missing');
+assert(workbench.includes("modelvizUiVersion = 'seven-stage-graph-v12'"), 'workbench modelviz UI version is missing');
 assert(workbench.includes('?embed=workbench&ui=${modelvizUiVersion}'), 'workbench modelviz source is not versioned');
 assert(workbench.includes('?embed=accuracy&view=accuracy&ui=${modelvizUiVersion}'), 'S6 accuracy modelviz source is not versioned');
 assert(workbench.includes("modelvizFrame.className = 'mla-modelviz-frame'"), 'workbench iframe mount is missing');
@@ -99,8 +101,17 @@ assert(legacy.includes("nodeIds:['qk_gemm','pe_gemm']"), 'score GEMM accuracy ro
 assert(legacy.includes("nodeIds:['score_exponential']"), 'Softmax anomaly is not mapped to score_exponential');
 assert(legacy.includes('function getAccuracyModelvizOverlay()'), 'S6 accuracy overlay payload builder is missing');
 assert(legacy.includes("document.getElementById('accuracyReportContent')"), 'S6 report still replaces the graph host');
-assert(workbench.includes('ascendport_migration_V3_MLA_pto_legacy.js?v=source-link-v10'),
+assert(workbench.includes('ascendport_migration_V3_MLA_pto_legacy.js?v=seven-stage-graph-v12'),
   'workflow-gated legacy script is not cache-versioned');
+assert(workbench.includes('id="workflowTitle">源端到昇腾 · 七阶段流水</h1>'),
+  'workbench workflow title does not declare seven stages');
+assert(!workbench.includes('八阶段流水'), 'workbench still renders the stale eight-stage title');
+assert(workbench.includes('.plabel-name {'), 'workflow progress labels do not style the step names');
+assert(legacy.includes('l.style.gridTemplateColumns=`repeat(${STEPS.length}, minmax(0, 1fr))`'),
+  'workflow progress columns are not derived from STEPS');
+assert(legacy.includes('<span class="plabel-name">${s.t}</span>'),
+  'workflow progress rail does not render each step name');
+assert(legacy.includes('stageNames[STEPS.length]'), 'workflow title is not derived from STEPS');
 assert(!legacy.includes('bootAnalysisParams'), 'URL parameters still bypass the staged analysis-tab unlock workflow');
 assert(legacy.includes("const unlockedAnalysisViews=new Set(['graph'])"),
   'the workbench no longer starts with only the source graph unlocked');
@@ -122,7 +133,13 @@ assert(legacy.includes("if(s.n==='S6'){ accFixed=false; setAccProblem(); openAcc
   'S6 completion no longer owns the accuracy-tab unlock');
 assert(modelviz.includes("html[data-embed] .mla-viz__title"), 'modelviz embed presentation is missing');
 assert(modelviz.includes("type: 'pto-mla-modelviz-ready'"), 'modelviz ready message is missing');
-assert(modelviz.includes("MODEL_VIZ_UI_VERSION = 'pages-compat-v11'"), 'modelviz UI version is missing');
+assert(modelviz.includes("MODEL_VIZ_UI_VERSION = 'seven-stage-graph-v12'"), 'modelviz UI version is missing');
+assert(modelviz.includes('.mla-viz__main { display: grid; grid-template-columns: minmax(0, 1fr);'),
+  'modelviz canvas does not reclaim the removed inspector width');
+assert(!modelviz.includes('Operator Association'), 'redundant operator-association inspector is still mounted');
+assert(!modelviz.includes('class="mla-viz__inspector'), 'operator-association inspector DOM is still mounted');
+assert(!modelviz.includes('id="mappingList"'), 'operator-association mapping list is still mounted');
+assert(!modelviz.includes('function renderMappingList()'), 'removed mapping inspector renderer is still active');
 assert(pinnedPattern.includes('renderController'), 'pinned Pages pattern is missing renderController');
 assert(pinnedPattern.includes('standardColormap'), 'pinned Pages pattern is missing the compatibility colormap');
 assert(modelviz.includes('function modelArchitectureColormapFor(pattern, graph)'),

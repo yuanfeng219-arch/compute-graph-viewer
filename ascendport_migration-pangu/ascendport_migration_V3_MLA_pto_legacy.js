@@ -2656,9 +2656,13 @@ const STEPS=[
 const state={step:1, choices:{}, viewStep:0}; // 初始 step=1：S1 已完成，按钮执行 S2
 function renderProg(){
   const p=document.getElementById('prog'), l=document.getElementById('plabels');
+  const stageNames=['零','一','二','三','四','五','六','七','八','九'];
+  const workflowTitle=document.getElementById('workflowTitle');
+  if(workflowTitle) workflowTitle.textContent=`源端到昇腾 · ${stageNames[STEPS.length] || STEPS.length}阶段流水`;
+  l.style.gridTemplateColumns=`repeat(${STEPS.length}, minmax(0, 1fr))`;
   const viewIndex = Math.max(0, Math.min(STEPS.length-1, Number.isFinite(state.viewStep)?state.viewStep:Math.max(0,state.step-1)));
   p.innerHTML=STEPS.map((s,i)=>`<button class="pstep ${i<state.step?'done':''} ${i===viewIndex?'view':''}" type="button" data-step-index="${i}" title="${s.n} · ${s.t}｜${s.sub}" ${i<state.step?'':'disabled'} aria-label="查看 ${s.n} ${s.t}"></button>`).join('');
-  l.innerHTML=STEPS.map((s,i)=>`<button class="plabel ${i===viewIndex?'view':''}" type="button" data-step-index="${i}" title="${s.n} · ${s.t}" ${i<state.step?'':'disabled'}>${s.n}</button>`).join('');
+  l.innerHTML=STEPS.map((s,i)=>`<button class="plabel ${i===viewIndex?'view':''}" type="button" data-step-index="${i}" title="${s.n} · ${s.t}" ${i<state.step?'':'disabled'}><span class="plabel-num">${s.n}</span><span class="plabel-name">${s.t}</span></button>`).join('');
   [...p.querySelectorAll('[data-step-index]'), ...l.querySelectorAll('[data-step-index]')].forEach(el=>{if(el.disabled)return; el.onclick=()=>{
     state.viewStep=Number(el.dataset.stepIndex);
     renderProg();
