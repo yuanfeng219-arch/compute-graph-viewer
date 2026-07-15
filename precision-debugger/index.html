@@ -1024,9 +1024,9 @@ body.wm-peel #migSide{display:none}
 .itask-s.cur i{background:var(--warning);border-color:var(--warning);box-shadow:0 0 0 3px color-mix(in srgb,var(--warning) 24%,transparent)}
 .icta{position:sticky;bottom:0;padding:10px 0 2px;margin-top:6px;background:linear-gradient(to top,var(--surface-1) 72%,transparent)}
 /* ═══ 图2 · Sparse FlashAttention 算法对象下钻：五段式非对称 Diff（45% Ref / 10% 映射 / 45% Cand）═══ */
-.drill{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;background:var(--ide-pane-bg)}
+.drill{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;background:transparent}
 .drill[hidden]{display:none}
-.drill-scroll{flex:1 1 auto;min-height:0;overflow:auto;padding:14px 22px 20px}
+.drill-scroll{flex:1 1 auto;min-height:0;overflow:auto;padding:12px 22px 18px;width:100%}
 .drill-col{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
 /* 上下游上下文：折叠，不抢主图面积 */
 .drill-ctx{border:1px dashed color-mix(in srgb,var(--foreground) 20%,transparent);border-radius:8px;background:color-mix(in srgb,var(--foreground) 2%,transparent)}
@@ -1057,8 +1057,11 @@ body.wm-peel #migSide{display:none}
 .drill-mid{display:grid;grid-template-columns:45fr 10fr 45fr;gap:0;align-items:stretch}
 .drill-side{display:flex;flex-direction:column;border:1px solid var(--border-default);border-radius:10px;background:var(--surface-1);padding:11px;transition:box-shadow .14s ease,border-color .14s ease}
 .drill-side.on{border-color:#5aa2ff;box-shadow:0 0 0 2px color-mix(in srgb,#5aa2ff 34%,transparent)}
-.drill-side-h{font:800 11.5px/1.3 var(--font-sans);color:var(--foreground);margin-bottom:9px}
-.drill-side-h em{display:block;font-style:normal;font:500 8.5px/1.3 var(--font-mono);color:var(--foreground-muted);margin-top:3px}
+.drill-side-h{display:flex;align-items:center;flex-wrap:wrap;gap:7px;font:800 12.5px/1.3 var(--font-sans);color:var(--foreground);margin-bottom:9px}
+/* GPU / NPU 芯片标：两侧标题对称，硬件身份一眼可见 */
+.hw-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;border-radius:6px;border:1.2px solid color-mix(in srgb,var(--hw) 52%,transparent);background:color-mix(in srgb,var(--hw) 14%,transparent);color:var(--hw);font:800 9.5px/1 var(--font-mono);letter-spacing:.5px}
+.hw-chip svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.drill-side-h em{flex:1 1 100%;font-style:normal;font:500 8.5px/1.3 var(--font-mono);color:var(--foreground-muted);margin-top:1px}
 .drill-side-b{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center}
 .drill-side-f{margin-top:9px;padding-top:8px;border-top:1px solid var(--border-subtle);font:500 9px/1.3 var(--font-mono);color:var(--foreground-muted)}
 .drill-step{display:flex;align-items:center;justify-content:center;width:100%;height:32px;padding:0 12px;border-radius:999px;border:1px solid rgba(0,0,0,.34);color:#fff;font:600 10.5px/1 var(--font-mono);cursor:pointer;overflow:hidden;transition:filter .14s ease,box-shadow .14s ease}
@@ -1115,6 +1118,20 @@ body.wm-peel #migSide{display:none}
 .algo-srow .cmp-mini{flex:1 1 auto;min-width:0;text-align:right;white-space:normal;word-break:break-word;font-size:10px;line-height:1.5;color:var(--foreground-muted)}
 .algo-srow .cmp-mini.algo-core{color:var(--danger);font-weight:700;font-size:11px}
 .algo-dot{display:inline-block;width:5px;height:5px;border-radius:50%;margin-right:5px;vertical-align:1px}
+/* 抽屉：算法对象下钻挂在上下文定位下方，与容器等宽、顶边可拖拽改高 */
+.algo-drawer{position:relative;flex:0 0 auto;width:100%;border-top:1px solid var(--border-default);background:var(--surface-1);z-index:20}
+.algo-drawer.open{height:var(--algo-drawer-h,460px);display:flex;flex-direction:column;min-height:0}
+.algo-rs{position:absolute;top:-3px;left:0;right:0;height:7px;cursor:ns-resize;z-index:3}
+.algo-rs::after{content:'';position:absolute;left:50%;top:2px;transform:translateX(-50%);width:46px;height:3px;border-radius:2px;background:color-mix(in srgb,var(--foreground) 18%,transparent);transition:background .14s ease}
+.algo-rs:hover::after,.algo-drawer.resizing .algo-rs::after{background:var(--primary)}
+.algo-drawer-h{flex:0 0 auto;display:flex;align-items:center;gap:9px;width:100%;padding:9px 22px;border:0;background:transparent;color:var(--foreground);font:700 12px/1 var(--font-sans);cursor:pointer;text-align:left}
+.algo-drawer-h span{font:500 9.5px/1 var(--font-mono);color:var(--foreground-muted)}
+.algo-drawer-h:hover{background:color-mix(in srgb,var(--foreground) 4%,transparent)}
+.algo-drawer-h .algo-drawer-b{margin-left:auto;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--danger) 16%,transparent);border:1px solid color-mix(in srgb,var(--danger) 52%,transparent);color:var(--danger);font:700 9px/1 var(--font-mono)}
+.algo-drawer-chev{width:14px;height:14px;fill:none;stroke:var(--foreground-muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease}
+.algo-drawer.open .algo-drawer-chev{transform:rotate(180deg)}
+.algo-drawer-b2{flex:1 1 auto;min-height:0;display:flex;border-top:1px solid var(--border-subtle)}
+.algo-drawer-b2 .drill{flex:1 1 auto;min-height:0}
 /* ═══ 图1 · 架构上下文定位（HTML DOM，非 SVG：节点可点、可 hover、可键盘聚焦）═══ */
 .algo-view{display:flex;flex-direction:column;height:100%;min-height:0}
 /* 算法视图接管滚动：矩阵区自己滚，抽屉钉在底部并与容器等宽 */
@@ -1194,6 +1211,20 @@ body.wm-peel #migSide{display:none}
 .arch-obj:focus-visible{outline:2px solid var(--foreground);outline-offset:2px}
 .arch-obj-l{flex:1 1 auto}
 .arch-obj-b{flex:0 0 auto;padding:2px 7px;border-radius:5px;background:rgba(0,0,0,.28);font:700 9px/1 var(--font-mono)}
+/* 抽屉：算法对象下钻挂在上下文定位下方，与容器等宽、顶边可拖拽改高 */
+.algo-drawer{position:relative;flex:0 0 auto;width:100%;border-top:1px solid var(--border-default);background:var(--surface-1);z-index:20}
+.algo-drawer.open{height:var(--algo-drawer-h,460px);display:flex;flex-direction:column;min-height:0}
+.algo-rs{position:absolute;top:-3px;left:0;right:0;height:7px;cursor:ns-resize;z-index:3}
+.algo-rs::after{content:'';position:absolute;left:50%;top:2px;transform:translateX(-50%);width:46px;height:3px;border-radius:2px;background:color-mix(in srgb,var(--foreground) 18%,transparent);transition:background .14s ease}
+.algo-rs:hover::after,.algo-drawer.resizing .algo-rs::after{background:var(--primary)}
+.algo-drawer-h{flex:0 0 auto;display:flex;align-items:center;gap:9px;width:100%;padding:9px 22px;border:0;background:transparent;color:var(--foreground);font:700 12px/1 var(--font-sans);cursor:pointer;text-align:left}
+.algo-drawer-h span{font:500 9.5px/1 var(--font-mono);color:var(--foreground-muted)}
+.algo-drawer-h:hover{background:color-mix(in srgb,var(--foreground) 4%,transparent)}
+.algo-drawer-h .algo-drawer-b{margin-left:auto;padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--danger) 16%,transparent);border:1px solid color-mix(in srgb,var(--danger) 52%,transparent);color:var(--danger);font:700 9px/1 var(--font-mono)}
+.algo-drawer-chev{width:14px;height:14px;fill:none;stroke:var(--foreground-muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease}
+.algo-drawer.open .algo-drawer-chev{transform:rotate(180deg)}
+.algo-drawer-b2{flex:1 1 auto;min-height:0;display:flex;border-top:1px solid var(--border-subtle)}
+.algo-drawer-b2 .drill{flex:1 1 auto;min-height:0}
 /* ═══ 图1 · 架构上下文定位（HTML DOM，非 SVG：节点可点、可 hover、可键盘聚焦）═══ */
 .algo-view{display:flex;flex-direction:column;height:100%;min-height:0}
 /* 算法视图接管滚动：矩阵区自己滚，抽屉钉在底部并与容器等宽 */
@@ -1589,7 +1620,7 @@ body.wm-migration .graph-pane > .canvas-zoom{display:none}
       <div class="graph-card">
       <div class="pane-head">
         <div class="head-left">
-          <button class="btn mig-arch-back" id="migArchBack" hidden onclick="closeMigArchDiff()" title="返回 openPangu 结构上下文定位"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>返回上下文定位</button>
+          <button class="btn mig-arch-back" id="migArchBack" hidden style="display:none" onclick="closeMigArchDiff()" title="返回 openPangu 结构上下文定位"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>返回上下文定位</button>
           <div class="crumb" id="graphCrumb" hidden>
             <button class="crumb-home" onclick="setMainView('side')" title="返回整网逐层视图"><svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10"/></svg>整网逐层</button>
             <span class="crumb-sep">/</span>
@@ -4856,17 +4887,8 @@ function migToggleArchBack(on) { const b = document.getElementById('migArchBack'
 /* 完整架构图 Diff：左右两张独立竖向层级图；无限画布同步缩放/平移，跨图连线只表达映射。 */
 function migArchEl() { return document.getElementById('migArchFrame'); }
 /* R26：下钻「层内结构对比」= NPU openPangu modelviz（参考引擎，像素一致）主体 + GPU Megatron 紧凑参照 */
-function renderMigArchDiff(L) {
-  const wrap = document.getElementById('migDrillWrap'), sc = document.querySelector('.mig-scroll'), tools = document.getElementById('migCanvasTools'), mh = document.getElementById('migHead');
-  if (mh) { mh.hidden = true; mh.innerHTML = ''; }
-  updateCenterHead(); migToggleArchBack(true);
-  if (sc) { sc.classList.remove('arch-canvas', 'dragging', 'algo-mode'); sc.style.display = 'none'; }
-  const av = document.getElementById('migAlgoView'); if (av) av.hidden = true;
-  ['migLegendFixed', 'migCanvasTools'].forEach((id) => { const e = document.getElementById(id); if (e) e.style.bottom = ''; });
-  if (tools) tools.hidden = true;
-  if (!wrap) return;
-  wrap.hidden = false;
-  renderMigLegend();
+/* 单页形态：算法对象下钻不再是独立页面，而是「上下文定位」下方的抽屉 */
+function sfaPanelHtml(L) {
   const p = migLayerPair(L) || { metrics: { cosine: 1, relP99: 0 } };
   const cos = p.metrics.cosine, rel = p.metrics.relP99, outBad = migColorOn && cos < CFG.cos;
   const on = (k) => sfaSel === k ? ' on' : '';
@@ -4885,9 +4907,10 @@ function renderMigArchDiff(L) {
     <b>${esc(o.label)}</b><em>${esc(o.shape)} · ${esc(o.dtype)}</em>
     <i class="drill-io-ok">shape ✓ dtype ✓ ${esc(o.src)} ✓</i></span>`).join('');
   const outRows = `<span class="drill-io"><b>${esc(SFA_OUT.label)}</b><em>${esc(SFA_OUT.shape)}</em></span>`;
+  const hwChip = (t, c) => `<span class="hw-chip" style="--hw:${c}"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/></svg>${t}</span>`;
   const semc = (o) => migSemOn ? (SEM[o.sem] || SEM.io) : 'color-mix(in srgb,var(--foreground) 30%,var(--surface-2))';
   const refSteps = SFA_REF_STEPS.map((o, i) => `<button type="button" class="drill-step" style="background:${semc(o)}" onclick="sfaPick('fuse')" title="${esc(o.label)} —— 属于被融合的语义子图，不能与 kernel 内部逐个数值比较">${esc(o.label)}</button>${i < SFA_REF_STEPS.length - 1 ? '<div class="drill-rail"></div>' : ''}`).join('');
-  wrap.innerHTML = `<div class="drill-scroll"><div class="drill-col">
+  return `<div class="drill-scroll"><div class="drill-col">
     <div class="drill-run">
       <span class="drill-run-k">运行上下文</span>
       <span>${esc(SFA_RUN.run)} · rank${S.rank} · step${S.step}</span>
@@ -4900,7 +4923,7 @@ function renderMigArchDiff(L) {
     ${bnd('in', '输入', inRows, true, 'ALIGNED', `${SFA_IN.length}/${SFA_IN.length} 已对齐 · 两侧同源注入`, '可比性前提 · 非精度判定')}
     <div class="drill-mid">
       <section class="drill-side ref${on('fuse')}">
-        <div class="drill-side-h">Reference Algorithm<em>原始语义步骤 · PyTorch / Megatron · A100</em></div>
+        <div class="drill-side-h">${hwChip('GPU', 'var(--success)')}Reference Algorithm<em>原始语义步骤 · PyTorch / Megatron · A100</em></div>
         <div class="drill-side-b">${refSteps}</div>
         <div class="drill-side-f">${SFA_REF_STEPS.length} 个语义步骤 · 作为比较基线</div>
       </section>
@@ -4912,7 +4935,7 @@ function renderMigArchDiff(L) {
         <div class="drill-map-w">多对一 · 不可逐节点比较</div>
       </div>
       <section class="drill-side cand${on('fuse')}">
-        <div class="drill-side-h">NPU Candidate<em>融合实现 · MindSpeed / PyPTO / CANN · 910B</em></div>
+        <div class="drill-side-h">${hwChip('NPU', 'var(--primary)')}NPU Candidate<em>融合实现 · MindSpeed / PyPTO / CANN · 910B</em></div>
         <div class="drill-side-b">
           <button type="button" class="drill-kernel${outBad ? ' suspect' : ''}" onclick="sfaPick('fuse')" title="融合 kernel —— 内部 tensor 未采集，按黑盒展示">
             <span class="drill-knode" style="background:${migSemOn ? SEM.attention : 'color-mix(in srgb,var(--foreground) 30%,var(--surface-2))'}">${esc(ALGO_OBJ.name)}</span>
@@ -5005,9 +5028,17 @@ const SFA_OUT = { id: 'ctx', label: 'Attention Context', shape: '[B,48,S,128]' }
 const SFA_CTX_UP = ['Q/KV Latent Linear', 'Q/KV Causal Conv1D', 'Q/KV Up Linear', 'RoPE Apply', 'DSA Indexer'];
 const SFA_CTX_DOWN = ['Output Causal Conv1D', 'Output Projection', 'mHC Attention Merge'];
 let sfaSel = null, sfaCtxOpen = { up: false, down: false };
-function sfaToggleCtx(k) { sfaCtxOpen[k] = !sfaCtxOpen[k]; renderMigArchDiff(migArchDiff); }
+let sfaOpen = false, sfaDrawerH = 460;   /* 算法对象下钻 = 上下文定位下方的抽屉，不再是独立页面 */
+function sfaToggleDrawer() {
+  sfaOpen = !sfaOpen;
+  renderMigrationView();
+  algoCvFit(true); archFitFull();   /* 抽屉开合 = 显式改布局 → 上图强制重新自适应，不受「用户已手动调过」影响 */
+  const fb = computeMigrationCompare().firstDiffLayer;
+  sfaOpen && fb >= 0 ? renderDrillInspector(fb) : renderMigrationSummary();
+}
+function sfaToggleCtx(k) { sfaCtxOpen[k] = !sfaCtxOpen[k]; renderMigrationView(); }
 /* 点 Reference 任一步骤 / 点 fused kernel → 都高亮「整个语义子图 + kernel」，不虚构单节点一一对应 */
-function sfaPick(what) { sfaSel = sfaSel === what ? null : what; renderMigArchDiff(migArchDiff); }
+function sfaPick(what) { sfaSel = sfaSel === what ? null : what; renderMigrationView(); }
 function migGpuArchEl() { return document.getElementById('migGpuArchFrame'); }
 /* 从引擎图移除若干节点，跨被删节点链路透传重连边，再纵向紧凑去空隙 → 得到迁移前「原始」结构 */
 function migReduceGraph(g, remove) {
@@ -5423,8 +5454,17 @@ function renderMigrationView() {
     <div class="mx">${labels}<div class="mx-cols">${cols}</div></div>
     <div class="mx-note">整网图是业务上下文：用来定位算法对象在 ${esc(SPEC.name)} 的哪一层、上下游是谁 —— 不是逐层逐算子的可比对象。点任意一列可就地展开该层的真实层内架构图。</div>
   </div>`;
-  host.innerHTML = `<div class="arch-stage" id="algoStage"><div class="arch-canvas" id="algoCanvas">${arch}</div></div>`;
-  archMountLayerFrame(); algoWireCanvas();
+  const drawer = `<div class="algo-drawer${sfaOpen ? ' open' : ''}" id="algoDrawer" style="--algo-drawer-h:${sfaDrawerH}px">
+    ${sfaOpen ? '<div class="algo-rs" id="algoRs" title="拖动调整抽屉高度（双击复位）"></div>' : ''}
+    <button type="button" class="algo-drawer-h" onclick="sfaToggleDrawer()" aria-expanded="${sfaOpen}">
+      <svg viewBox="0 0 24 24" class="algo-drawer-chev"><path d="M6 9l6 6 6-6"/></svg>
+      ${esc(ALGO_OBJ.name)} · 算法对象下钻<span>Reference 语义子图 ↔ NPU 融合 kernel · 对比共同输入/输出边界</span>
+      ${migColorOn && fb >= 0 ? '<b class="algo-drawer-b">边界 output 超阈</b>' : ''}
+    </button>
+    ${sfaOpen && fb >= 0 ? `<div class="algo-drawer-b2">${sfaPanelHtml(fb)}</div>` : ''}
+  </div>`;
+  host.innerHTML = `<div class="arch-stage" id="algoStage"><div class="arch-canvas" id="algoCanvas">${arch}</div></div>${drawer}`;
+  archMountLayerFrame(); algoWireCanvas(); algoWireResize(); algoLiftLegend();
   if (algoFitPending) { algoFitPending = false; algoCvFit(true); } else algoCvApply();
   const msc = document.querySelector('.mig-scroll'); if (msc) msc.classList.add('algo-mode');
   renderMigLegend(); algoLiftLegend();
@@ -5503,7 +5543,31 @@ function archCenterOpen() {
   });
 }
 /* 画布浮层（左下角图例 + 右下角缩放工具条）抬到抽屉之上，避免压住「算法映射与证据」 */
-function algoLiftLegend() { ['migLegendFixed', 'migCanvasTools'].forEach((id) => { const e = document.getElementById(id); if (e) e.style.bottom = ''; }); }
+function algoLiftLegend() {
+  const dr = document.getElementById('algoDrawer');
+  const b = dr && workMode === 'migration' ? (dr.getBoundingClientRect().height + 12) + 'px' : '';
+  ['migLegendFixed', 'migCanvasTools'].forEach((id) => { const e = document.getElementById(id); if (e) e.style.bottom = b; });
+}
+/* 拖抽屉顶边改高度：上面的上下文定位画布自动让出/收回空间 */
+function algoWireResize() {
+  const rs = document.getElementById('algoRs'), dr = document.getElementById('algoDrawer');
+  if (!rs || !dr || rs.dataset.wired) return;
+  rs.dataset.wired = '1';
+  const stage = document.querySelector('.mig-stage');
+  rs.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); rs.setPointerCapture(e.pointerId); dr.classList.add('resizing');
+    const y0 = e.clientY, h0 = dr.getBoundingClientRect().height;
+    const max = Math.max(240, (stage ? stage.clientHeight : 800) * 0.78);
+    const move = (ev) => {
+      sfaDrawerH = Math.round(Math.max(170, Math.min(max, h0 - (ev.clientY - y0))));
+      dr.style.setProperty('--algo-drawer-h', sfaDrawerH + 'px');
+      algoLiftLegend(); algoCvFit(true); archFitFull();
+    };
+    const up = (ev) => { dr.classList.remove('resizing'); try { rs.releasePointerCapture(ev.pointerId); } catch (_) {} rs.removeEventListener('pointermove', move); rs.removeEventListener('pointerup', up); };
+    rs.addEventListener('pointermove', move); rs.addEventListener('pointerup', up); rs.addEventListener('pointercancel', up);
+  });
+  rs.addEventListener('dblclick', () => { sfaDrawerH = 460; dr.style.setProperty('--algo-drawer-h', '460px'); algoLiftLegend(); algoCvFit(true); archFitFull(); });
+}
 /* Layer 27 展开 = 真正的 openPangu 层内架构图（modelviz 引擎），其余层收起为带状节点 */
 function archLayerEl() { return document.getElementById('archLayerFrame'); }
 function archMountLayerFrame() {
@@ -5592,11 +5656,8 @@ function archToggleLayer(L) {
   if (archOpen !== computeMigrationCompare().firstDiffLayer) algoFocus = false;
   renderMigrationView();
 }
-/* 点架构图上的迁移对象 → 直接进图2 算子级下钻（映射与证据都在那儿讲，图1 不再重复一份） */
-function algoToggleFocus() {
-  const fb = computeMigrationCompare().firstDiffLayer;
-  if (fb >= 0) migRowClick(fb);
-}
+/* 点架构图上的迁移对象 → 展开下方抽屉（单页形态，没有独立下钻页） */
+function algoToggleFocus() { if (!sfaOpen) sfaToggleDrawer(); }
 /* 映射连线：DOM 布局定完再按实际位置画（auto=实线绿 · mapped=虚线中性 · fused=粗黄，多步骤汇聚到单节点）*/
 /* 点算法步骤 → 高亮它与其映射链路 */
 /* 画布左下角固定图例：矩阵态讲精度色，下钻态讲结构/变更/精度标识 */
@@ -5680,11 +5741,7 @@ function migPosTip(t, ev) {
   t.style.left = x.toFixed(0) + 'px'; t.style.top = y.toFixed(0) + 'px';
 }
 /* 点击层行：未选中态下点首差行 → 仅开合默认层内 Diff（右栏保持概览）；其余 → 选中该层（右栏进入层详情）*/
-function migRowClick(L) {
-  const p = migLayerPair(L);
-  if (!p || p.compareStatus === 'unmatched') return;   /* 未映射层无对齐架构，矩阵态右栏保持总览 */
-  openMigArchDiff(L);                                   /* 任意层点击 → 下钻层内架构 GPU↔NPU 对比 */
-}
+function migRowClick(L) { if (!sfaOpen) sfaToggleDrawer(); }   /* 单页：不跳页，展开下方抽屉 */
 function migBlankClick(ev) { if (ev && ev.target && ev.target.closest && ev.target.closest('.mig-hit')) return; migUnhover(); if (migArchDiff == null) renderMigrationSummary(); }   /* 点击空白：矩阵态回到总览 */
 function selectMigrationLayer(L) { if (migSelLayer === L) { migDeselect(); return; } migSelLayer = L; renderMigrationView(); renderMigrationInspector(L); }   /* 再次点击同层 → 取消选中 */
 function migDeselect() { migSelLayer = null; migArchDiff = null; renderMigrationView(); renderMigrationSummary(); }
@@ -5711,16 +5768,18 @@ function toggleMigLegend(ev) {
 const SFA_STEPS = ['配置采集范围', '创建任务', '运行中', '内部 tensor 可用', '进入首错定位'];
 let sfaCollect = -1;   /* -1=未发起 · 0..4=任务阶段 */
 function sfaCollectNext() {
-  if (sfaCollect >= SFA_STEPS.length - 1) { enterNpuPeelDown(migArchDiff != null ? migArchDiff : 0); return; }
-  sfaCollect++; renderDrillInspector(migArchDiff);
+  const fb = computeMigrationCompare().firstDiffLayer;
+  if (sfaCollect >= SFA_STEPS.length - 1) { enterNpuPeelDown(Math.max(0, fb)); return; }
+  sfaCollect++; renderDrillInspector(fb);
 }
-function sfaCollectReset() { sfaCollect = -1; renderDrillInspector(migArchDiff); }
+function sfaCollectReset() { sfaCollect = -1; renderDrillInspector(computeMigrationCompare().firstDiffLayer); }
 /* 下钻态 Inspector · 算子级：主图负责「结果」，这里负责「凭什么 + 下一步」，不重复堆指标 */
 function renderDrillInspector(L) {
   const body = els.inspBody; if (!body) return;
   els.inspTitle.textContent = `${ALGO_OBJ.name} · 算法对象下钻`;
   els.inspMeta.textContent = `${SFA_RUN.run} · rank${S.rank} · step${S.step} · commit ${SFA_RUN.commit}`;
   migShowBack(false); if (els.inspBack) els.inspBack.hidden = true;
+  const fbL = L;
   const p = migLayerPair(L); if (!p) return;
   const bad = migColorOn && p.metrics.cosine < CFG.cos;
   const prev = migLayerPair(L - 1), prevOk = !prev || prev.metrics.cosine >= CFG.cos;
@@ -5760,7 +5819,7 @@ function renderDrillInspector(L) {
 }
 /* 右侧 Inspector — 默认摘要态 */
 function renderMigrationSummary() {
-  if (migArchDiff != null) { renderDrillInspector(migArchDiff); return; }   /* 下钻态右栏 = 算子级面板 */
+  if (sfaOpen) { const f0 = computeMigrationCompare().firstDiffLayer; if (f0 >= 0) { renderDrillInspector(f0); return; } }   /* 抽屉展开 → 右栏讲算法对象 */
   els.inspTitle.textContent = '算法迁移精度定位 · Inspector';
   els.inspMeta.textContent = 'Reference Algorithm ↔ NPU Candidate';
   migShowBack(false); if (els.inspBack) els.inspBack.hidden = true;
@@ -5847,13 +5906,12 @@ function renderMigrationSummary() {
   /* 下一步紧跟结论：结论出来后立刻能动手，不用滚到最底 */
   const actions = noDiff ? '' : `<div class="mig-vsec"><div class="mig-vh">② 下一步</div>
     <div class="mig-vnote">边界已定位，继续取证：下钻看 Reference 语义流 ↔ NPU 执行流怎么映射、证据缺口在哪；或直接进 NPU 侧查 dtype / layout / tiling / fusion pass。</div>
-    <button class="btn btn-solid mig-act" onclick="openMigArchDiff(${fb})">下钻 ${esc(ALGO_OBJ.name)} 双流映射 ↗</button>
+    <button class="btn btn-solid mig-act" onclick="sfaToggleDrawer()">展开 ${esc(ALGO_OBJ.name)} 算法对象下钻 ↓</button>
     <button class="btn mig-act" style="margin-top:8px" onclick="enterNpuPeelDown(${fb})">进入 NPU 侧精度归因 →</button></div>`;
   body.innerHTML = `<div class="mig-insp">${conclusion}${actions}${overview}${bnd}${mapping}${distBar}${spark}${metricTiles}</div>`;
 }
 /* 右侧 Inspector — 选中层对态：结论 / 映射 / 指标 / 前后证据 / 风险 / 下一步 */
 function renderMigrationInspector(L) {
-  if (migArchDiff != null) { renderDrillInspector(L); return; }
   const p = migLayerPair(L); if (!p) return renderMigrationSummary();
   els.inspTitle.textContent = `迁移对比 · Layer ${L}`;
   els.inspMeta.textContent = `${migStLabel(p.compareStatus)} · GPU↔NPU`;
