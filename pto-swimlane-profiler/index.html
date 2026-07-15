@@ -1772,7 +1772,7 @@ function buildModel() {
     }
   }
 
-  const timelineEnd = Math.max(...tasks.map((t) => t.end)) + 70;
+  const timelineEnd = Math.max(...tasks.map((t) => t.end));
   const layerMarks = [];
   for (let L = 0; L < LAYERS; L++) layerMarks.push({ t: LAYER0 + L * LAYER_SPAN, label: String(L + 1), layer: L });
 
@@ -1849,9 +1849,11 @@ function runList() {
 
 const ROW_H = 21, SUB_ROW_H = 17, CORE_GAP_H = 6, BAR_PAD = 3, SUB_BAR_PAD = 3, BAR_H = ROW_H - 2 * BAR_PAD, SUB_BAR_H = SUB_ROW_H - 2 * SUB_BAR_PAD;
 const AXIS_H = 34, ZOOM_MIN = 100, ZOOM_MAX = 480;
+const LOW_UTILIZATION_THRESHOLD = 0.4;
 const KIND_ACCENT = Object.fromEntries(
   ['host', 'memory', 'cpu', 'aic', 'aiv', 'mte'].map((kind) => [kind, TASK_COLORMAP.colorForLaneKind(kind)]),
 );
+KIND_ACCENT.worker = KIND_ACCENT.aic;
 const AIC_SUBLANES = ['Scalar', 'MTE_2', 'MTE_1', 'Cube', 'FixPipe'];
 const AIV_SUBLANES = ['Scalar', 'MTE_2', 'Vector', 'MTE_3'];
 
@@ -1874,7 +1876,7 @@ const state = {
   openArtifactMenu: null,
   secondaryViewMode: null,
   comparisonRunId: null,
-  collapsedLaneGroups: new Set(['host']),
+  collapsedLaneGroups: new Set(['host', 'ai_core_worker_phases']),
   expandedLaneCores: new Set(),
   expandedRuns: new Set([CURRENT_RUN_ID]),
 };
@@ -1882,15 +1884,16 @@ const state = {
 const LANE_GROUPS = [
   { id: 'host', label: 'Host' },
   { id: 'ai_cpu', label: 'AI CPU' },
-  { id: 'die1', label: 'AI Core DIE 0' },
-  { id: 'die2', label: 'AI Core DIE 1' },
+  { id: 'ai_core_worker_phases', label: 'AI Core Worker Phases' },
+  { id: 'die0', label: 'AI Core Die 0' },
+  { id: 'die1', label: 'AI Core Die 1' },
 ];
 
 /* ---- 显示顺序: rowItems[row]={type, ...}; rowToCore[row]=coreIdx|null, rowOf[coreIdx]=row ---- */
 let rowItems = [], rowToCore = [], rowOf = [], subRowOf = [];
 function coreLaneOrder(a, b) {
   if (a.laneGroup !== b.laneGroup) return a.idx - b.idx;
-  if (!a.die || !b.die) return a.idx - b.idx;
+  if (a.die == null || b.die == null) return a.idx - b.idx;
   if (a.core !== b.core) return a.core - b.core;
   const rank = (c) => state.mixMode
     ? (c.kind === 'aic' ? 1 : (c.vector === 0 ? 0 : 2))
@@ -2401,21 +2404,44 @@ function focusInfo() {
     dimGroup = state.selTask.group;
     dimWrap = state.selTask.wrap;
   }
+  let crossLayerMode = null;
+  let dependencyMode = Boolean(state.selTask);
   if (state.selTask) {
     const dep = dependencyClosure(state.selTask);
     dep.tasks.forEach((id) => relTasks.add(id));
     dep.edges.forEach((id) => relEdges.add(id));
+    const crossLayer = crossLayerClosure(state.selTask);
+    crossLayer.tasks.forEach((id) => relTasks.add(id));
+    crossLayerMode = crossLayer.mode;
+    if (crossLayerMode) {
+      dimGroup = null;
+      dimWrap = null;
+    }
   } else if (focusTask) {
-    relTasks.add(focusTask.id);
-    focusTask.syncIn.concat(focusTask.syncOut).forEach((eid) => {
-      const edge = edgeById[eid];
-      if (!edge || !edgeVisibleInCurrentMode(edge)) return;
-      relEdges.add(eid);
-      relTasks.add(edge.fromTask);
-      relTasks.add(edge.toTask);
-    });
+    const crossLayer = crossLayerClosure(focusTask);
+    if (crossLayer.mode) {
+      const dep = dependencyClosure(focusTask);
+      dep.tasks.forEach((id) => relTasks.add(id));
+      dep.edges.forEach((id) => relEdges.add(id));
+      crossLayer.tasks.forEach((id) => relTasks.add(id));
+      crossLayerMode = crossLayer.mode;
+      dimGroup = null;
+      dimWrap = null;
+    } else {
+      relTasks.add(focusTask.id);
+      focusTask.syncIn.concat(focusTask.syncOut).forEach((eid) => {
+        const edge = edgeById[eid];
+        if (!edge || !edgeVisibleInCurrentMode(edge)) return;
+        relEdges.add(eid);
+        relTasks.add(edge.fromTask);
+        relTasks.add(edge.toTask);
+      });
+    }
   }
-  return { relTasks, relEdges, dimGroup, dimWrap, focusTask, dependencyMode: Boolean(state.selTask) };
+  const relCoreIds = new Set([...relTasks].map((id) => taskById[id]?.coreIdx).filter(Number.isFinite));
+  const showDependencyCurves = dependencyMode || (Boolean(crossLayerMode) && relEdges.size > 0);
+  return { relTasks, relEdges, relCoreIds, dimGroup, dimWrap, focusTask,
+    dependencyMode, showDependencyCurves, crossLayerMode };
 }
 
 function edgeVisibleInCurrentMode(edge) {
@@ -2447,6 +2473,86 @@ function dependencyClosure(rootTask) {
   visit(rootTask, 'syncIn', 'fromTask');
   visit(rootTask, 'syncOut', 'toTask');
   return { tasks, edges };
+}
+
+const AICPU_SCHED_TO_WORKER_PHASE = Object.freeze({
+  DEV_TASK_RCV: 'DEV_TASK_RCV_MODEL',
+  DEV_TASK_SEND_FIRST_LEAF_TASK: 'DEV_TASK_WAIT_RCV_FIRST_LEAF_TASK',
+  DEV_TASK_SYNC_CORE_STOP: 'DEV_TASK_WAIT_SYNC_STOP_NOTIFY',
+});
+const AICPU_WORKER_TO_SCHED_PHASE = Object.freeze(Object.fromEntries(
+  Object.entries(AICPU_SCHED_TO_WORKER_PHASE).map(([schedulerPhase, workerPhase]) => [workerPhase, schedulerPhase]),
+));
+
+function crossLayerClosure(rootTask) {
+  const tasks = new Set([rootTask.id]);
+  const devTaskId = rootTask.devTaskId;
+  if (!devTaskId) return { tasks, mode: null };
+
+  const schedulerId = rootTask.schedulerOwnerId ?? rootTask.schedulerId;
+  const isBuild = rootTask.phase === 'DEV_TASK_BUILD';
+  const isSchedExec = rootTask.phase === 'DEV_TASK_SCHED_EXEC';
+  const isWorkerExec = rootTask.phase === 'DEV_TASK_ALL_LEAF_TASK_EXEC';
+  const isMachineTask = rootTask.phase === 'MACHINE_LEAF_TASK' || rootTask.kind === 'aic' || rootTask.kind === 'aiv';
+
+  if (isBuild) {
+    MODEL.tasks.forEach((task) => {
+      if (task.devTaskId === devTaskId) tasks.add(task.id);
+    });
+    return { tasks, mode: 'devtask' };
+  }
+
+  const workerPhase = AICPU_SCHED_TO_WORKER_PHASE[rootTask.phase];
+  if (workerPhase && schedulerId != null) {
+    MODEL.tasks.forEach((task) => {
+      if (task.devTaskId !== devTaskId) return;
+      const sameScheduler = (task.schedulerOwnerId ?? task.schedulerId) === schedulerId;
+      if (task.phase === 'DEV_TASK_BUILD'
+          || (task.phase === rootTask.phase && sameScheduler)
+          || (task.phase === workerPhase && sameScheduler)) tasks.add(task.id);
+    });
+    return { tasks, mode: 'scheduler-phase-pair' };
+  }
+
+  const schedulerPhase = AICPU_WORKER_TO_SCHED_PHASE[rootTask.phase];
+  if (schedulerPhase && schedulerId != null && rootTask.workerCoreId != null) {
+    MODEL.tasks.forEach((task) => {
+      if (task.devTaskId !== devTaskId) return;
+      const sameScheduler = (task.schedulerOwnerId ?? task.schedulerId) === schedulerId;
+      const sameWorker = task.workerCoreId === rootTask.workerCoreId;
+      if (task.phase === 'DEV_TASK_BUILD'
+          || (task.phase === schedulerPhase && sameScheduler)
+          || (task.phase === rootTask.phase && sameScheduler && sameWorker)) tasks.add(task.id);
+    });
+    return { tasks, mode: 'worker-phase-pair' };
+  }
+
+  if (isSchedExec && schedulerId != null) {
+    MODEL.tasks.forEach((task) => {
+      if (task.devTaskId !== devTaskId) return;
+      const sameScheduler = (task.schedulerOwnerId ?? task.schedulerId) === schedulerId;
+      if (task.phase === 'DEV_TASK_BUILD'
+          || (task.phase === 'DEV_TASK_SCHED_EXEC' && sameScheduler)
+          || (task.phase === 'DEV_TASK_ALL_LEAF_TASK_EXEC' && sameScheduler)
+          || (task.phase === 'MACHINE_LEAF_TASK' && sameScheduler)) tasks.add(task.id);
+    });
+    return { tasks, mode: 'scheduler-partition' };
+  }
+
+  if ((isWorkerExec || isMachineTask) && schedulerId != null && rootTask.workerCoreId != null) {
+    MODEL.tasks.forEach((task) => {
+      if (task.devTaskId !== devTaskId) return;
+      const sameScheduler = (task.schedulerOwnerId ?? task.schedulerId) === schedulerId;
+      const sameWorker = task.workerCoreId === rootTask.workerCoreId;
+      if (task.phase === 'DEV_TASK_BUILD'
+          || (task.phase === 'DEV_TASK_SCHED_EXEC' && sameScheduler)
+          || (task.phase === 'DEV_TASK_ALL_LEAF_TASK_EXEC' && sameScheduler && sameWorker)
+          || (task.phase === 'MACHINE_LEAF_TASK' && sameScheduler && sameWorker)) tasks.add(task.id);
+    });
+    return { tasks, mode: 'worker-chain' };
+  }
+
+  return { tasks, mode: null };
 }
 
 function drawBody() {
@@ -2544,7 +2650,7 @@ function drawBody() {
     bctx.globalAlpha = 1;
   }
 
-  if (fi.dependencyMode) drawDependencyCurves(fi);
+  if (fi.showDependencyCurves) drawDependencyCurves(fi);
   else if (state.mixMode) drawSyncCurves(fi);
   copyCanvasPixels(bodyCanvas, compareBodyCanvas);
 }
@@ -2775,7 +2881,7 @@ function drawAxis() {
     actx.fillStyle = hovered ? 'rgba(255,255,255,0.94)' : 'rgba(255,255,255,0.62)';
     actx.font = "600 10px 'Inter', sans-serif";
     actx.textAlign = 'left';
-    actx.fillText('调用 ' + m.label, x + 4, 22);
+    actx.fillText('Stitch ' + m.label, x + 4, 22);
     if (hovered) {
       actx.fillStyle = 'rgba(255,255,255,0.78)';
       actx.fillRect(x + 4, 29, 44, 1);
@@ -2894,7 +3000,8 @@ function drawLanes() {
     const y = rowTop(row), rh = rowHeight(row);
     if (item.type === 'section') {
       const collapsed = state.collapsedLaneGroups.has(item.id);
-      lctx.fillStyle = 'rgba(255,255,255,0.04)';
+      const groupRelated = fi.crossLayerMode && MODEL.cores.some((core) => core.laneGroup === item.id && fi.relCoreIds.has(core.idx));
+      lctx.fillStyle = groupRelated ? 'rgba(255,255,255,0.085)' : 'rgba(255,255,255,0.04)';
       lctx.fillRect(0, y, LABEL_W, rh);
       lctx.fillStyle = 'rgba(255,255,255,0.72)';
       lctx.font = "700 10px 'Inter', sans-serif";
@@ -2926,8 +3033,10 @@ function drawLanes() {
       lctx.fillStyle = 'rgba(255,255,255,0.055)';
       lctx.fillRect(0, y, LABEL_W, rh);
     }
-    const dim = (fi.dimWrap != null && !coreParticipates(c.idx, null, fi.dimWrap))
-      || (fi.dimWrap == null && fi.dimGroup != null && !coreParticipates(c.idx, fi.dimGroup));
+    const dim = fi.crossLayerMode && fi.dependencyMode
+      ? !fi.relCoreIds.has(c.idx)
+      : (fi.dimWrap != null && !coreParticipates(c.idx, null, fi.dimWrap))
+        || (fi.dimWrap == null && fi.dimGroup != null && !coreParticipates(c.idx, fi.dimGroup));
 
     if (item.type === 'core' && c.kind === 'aic') {
       lctx.fillStyle = dim ? 'rgba(124,141,184,0.24)' : 'rgba(124,141,184,0.68)';
@@ -2970,10 +3079,13 @@ function drawLanes() {
     lctx.beginPath();
     lctx.roundRect(ux, uy, uw, uh, 2);
     lctx.fill();
-    const utilColor = util.ratio >= CURRENT_RUN.utilizationThreshold
-      ? (utilHovered ? 'rgba(124,141,184,0.86)' : 'rgba(124,141,184,0.62)')
-      : (utilHovered ? 'rgba(255,170,59,0.94)' : 'rgba(255,170,59,0.72)');
-    lctx.fillStyle = dim ? 'rgba(124,141,184,0.28)' : utilColor;
+    const lowUtilization = util.ratio < LOW_UTILIZATION_THRESHOLD;
+    const utilColor = lowUtilization
+      ? (utilHovered ? 'rgba(255,170,59,0.94)' : 'rgba(255,170,59,0.72)')
+      : (utilHovered ? 'rgba(124,141,184,0.86)' : 'rgba(124,141,184,0.62)');
+    lctx.fillStyle = dim
+      ? (lowUtilization ? 'rgba(255,170,59,0.32)' : 'rgba(124,141,184,0.28)')
+      : utilColor;
     lctx.beginPath();
     lctx.roundRect(ux, uy, Math.max(2, uw * util.ratio), uh, 2);
     lctx.fill();
@@ -2985,8 +3097,8 @@ function drawLanes() {
       lctx.stroke();
     }
     lctx.fillStyle = dim
-      ? 'rgba(255,255,255,0.22)'
-      : (util.ratio >= CURRENT_RUN.utilizationThreshold ? 'rgba(255,255,255,0.42)' : 'rgba(255,170,59,0.88)');
+      ? (lowUtilization ? 'rgba(255,170,59,0.38)' : 'rgba(255,255,255,0.22)')
+      : (lowUtilization ? 'rgba(255,170,59,0.88)' : 'rgba(255,255,255,0.42)');
     lctx.font = item.type === 'subcore' ? "600 8px 'JetBrains Mono', monospace" : "600 9px 'JetBrains Mono', monospace";
     lctx.textAlign = 'right';
     lctx.fillText(Math.round(util.ratio * 100) + '%', LABEL_W - 7, y + rh / 2 + 0.5);
@@ -3024,6 +3136,13 @@ function clampMetric(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
+function physicalAiCoreKey(core) {
+  const die = core?.aiCoreDieId ?? core?.die;
+  if (die != null && core?.core != null) return `${die}:${core.core}`;
+  if (core?.wrap != null) return `wrap:${core.wrap}`;
+  return `lane:${core?.idx}`;
+}
+
 function buildOverviewMetrics() {
   const samples = 72;
   const metricDefs = [
@@ -3038,21 +3157,21 @@ function buildOverviewMetrics() {
     const f = i / Math.max(1, samples - 1);
     const t = f * MODEL.timelineEnd;
     let hostActive = 0, aivTotal = 0, aivWaiting = 0, mteActive = 0;
-    const activeWraps = new Set();
+    const activeAiCores = new Set();
     MODEL.tasks.forEach((task) => {
       const core = MODEL.cores[task.coreIdx];
       const active = t >= task.start && t <= task.end;
       const computing = t >= task.start && t <= task.computeEnd;
       const waiting = t > task.computeEnd && t <= task.end;
       if (core.kind === 'cpu' && active) hostActive++;
-      if ((core.kind === 'aic' || core.kind === 'aiv') && computing) activeWraps.add(core.wrap);
+      if ((core.kind === 'aic' || core.kind === 'aiv') && computing) activeAiCores.add(physicalAiCoreKey(core));
       if (core.kind === 'aiv') {
         aivTotal++;
         if (waiting) aivWaiting++;
       }
       if (core.kind === 'mte' && active) mteActive++;
     });
-    const aiCompute = activeWraps.size;
+    const aiCompute = activeAiCores.size;
     const pulse = 0.5 + 0.5 * Math.sin(f * Math.PI * 9);
     const bottleneck = Math.exp(-Math.pow((t - (MODEL.LAYER0 + MODEL.LAYER_SPAN + MODEL.STAGGER * 1.4)) / 230, 2));
     series[0].values.push(clampMetric(hostActive + 1.6 * pulse + 2.2 * bottleneck, 0, 8));
@@ -3322,6 +3441,7 @@ function loadRun(runId) {
     pmuGroup: next.pmu.group || 2,
   });
   state.expandedLaneCores.clear();
+  state.collapsedLaneGroups = new Set(['host', 'ai_core_worker_phases']);
   state.expandedRuns.add(runId);
   setBlockGraphOpen(false);
   buildOrder();
@@ -3400,6 +3520,19 @@ bodyWrap.addEventListener('scroll', () => {
   syncGlobalRulerBrush();
   hideTimestampGuide();
 });
+function forwardLaneWheel(event, targetWrap) {
+  if (!targetWrap) return;
+  const unit = event.deltaMode === 1 ? ROW_H : event.deltaMode === 2 ? targetWrap.clientHeight : 1;
+  const deltaX = (event.deltaX + (event.shiftKey ? event.deltaY : 0)) * unit;
+  const deltaY = (event.shiftKey ? 0 : event.deltaY) * unit;
+  const beforeLeft = targetWrap.scrollLeft;
+  const beforeTop = targetWrap.scrollTop;
+  targetWrap.scrollLeft += deltaX;
+  targetWrap.scrollTop += deltaY;
+  if (targetWrap.scrollLeft !== beforeLeft || targetWrap.scrollTop !== beforeTop) event.preventDefault();
+}
+laneWrap.addEventListener('wheel', (event) => forwardLaneWheel(event, bodyWrap), { passive: false });
+compareLaneWrap?.addEventListener('wheel', (event) => forwardLaneWheel(event, compareBodyWrap), { passive: false });
 compareBodyWrap?.addEventListener('scroll', () => {
   if (compareLaneWrap) compareLaneWrap.scrollTop = compareBodyWrap.scrollTop;
   if (!syncingComparisonScroll && bodyWrap.scrollLeft !== compareBodyWrap.scrollLeft) {
@@ -3534,7 +3667,8 @@ function selectTask(t, segment = null) {
   state.selSubtask = state.mixMode ? segment : null;
   state.selGroup = t.group; state.selWrap = t.wrap;
   state.taskReportTab = 'overview';
-  refresh(); renderInspector();
+  refresh();
+  renderInspector();
   document.getElementById('inspBody').scrollTop = 0;
 }
 function selectGroup(g) {
@@ -3724,7 +3858,8 @@ function topTasks() {
     const task = taskById[anomaly.taskId];
     const compute = task.computeEnd - task.start;
     const wait = task.end - task.computeEnd;
-    return { task, anomaly, compute, wait, total: task.end - task.start || 1 };
+    const bubble = anomaly.bubbleDuration || 0;
+    return { task, anomaly, compute, wait, bubble, total: task.end - task.start || 1 };
   });
 }
 
@@ -3772,9 +3907,10 @@ function overviewReportHtml() {
   </div>
   <div class="sl-report-card">
     <div class="sl-report-card__title">Top 任务</div>
-    ${topTasks().map(({ task, anomaly, wait, total }, idx) => {
+    ${topTasks().map(({ task, anomaly, wait, bubble, total }, idx) => {
       const core = MODEL.cores[task.coreIdx];
       const active = state.selTask && state.selTask.id === task.id;
+      const diagnosticRatio = bubble > 0 ? bubble / (bubble + total) : wait / total;
       return `<div class="sl-top-task ${active ? 'is-active' : ''}" data-task-id="${escapeHtml(task.id)}">
         <div class="sl-top-task__top">
           <span class="sl-top-task__id">${escapeHtml(task.name)}</span>
@@ -3782,7 +3918,8 @@ function overviewReportHtml() {
         </div>
         <div class="sl-top-task__row"><span>位置</span><span class="v">${escapeHtml(laneDisplayLabel(core))}</span></div>
         <div class="sl-top-task__row"><span>总耗时</span><span class="v">${total.toFixed(1)}μs</span></div>
-        <div class="sl-meter"><div class="sl-meter-fill" style="width:${Math.min(100, wait / total * 100)}%;background:var(--warning)"></div></div>
+        ${bubble > 0 ? `<div class="sl-top-task__row"><span>调度空泡</span><span class="v">${bubble.toFixed(1)}μs</span></div>` : ''}
+        <div class="sl-meter"><div class="sl-meter-fill" style="width:${Math.min(100, diagnosticRatio * 100)}%;background:var(--warning)"></div></div>
         <div class="sl-top-task__sub">${escapeHtml(anomaly.reason)}</div>
       </div>`;
     }).join('')}
@@ -3906,7 +4043,7 @@ function overviewHtml() {
   let html = defaultReportHtml();
   if (state.reportTab !== 'overview') return html;
   html += `<div class="sl-insp-section">
-    <div class="sl-insp-hint">3 次算子调用，按 <b>${MODEL.groups.length} 个诊断分组</b>组织。Wrap 是运行时任务分组，
+    <div class="sl-insp-hint">4 个 Stitch，按 <b>${MODEL.groups.length} 个诊断分组</b>组织。Wrap 是运行时任务分组，
     不等同于物理 Core 编号；同一物理泳道在不同调用中可承载不同 Wrap。${escapeHtml(CURRENT_RUN.iterationDefinition)}<br>
     任务颜色按<b>语义诊断分组</b>编码，不按 Core、Wrap 或异常等级编码。虚线框表示跨多个 Wrap 的 L2 诊断分组；选中 Wrap 后出现的实线框表示当前 Wrap 的任务范围。</div>
   </div>
@@ -3930,7 +4067,7 @@ function overviewHtml() {
     <button class="btn btn-sm btn-solid sl-btn-drill" data-drill="bottleneck">▶ 下钻到瓶颈 Wrap</button>
   </div>
   <div class="sl-insp-section"><div class="sl-insp-section-label">硬件拓扑</div>
-    <div class="sl-kv"><span class="sl-kv-key">AI CPU</span><span class="sl-kv-val">1 个控制核 + 3 个调度核</span></div>
+    <div class="sl-kv"><span class="sl-kv-key">AI CPU</span><span class="sl-kv-val">1 个控制核 + 4 个调度核</span></div>
     <div class="sl-kv"><span class="sl-kv-key">1C2V Wrap</span><span class="sl-kv-val">32 · 每组 1 AIC + 2 AIV</span></div>
     <div class="sl-kv"><span class="sl-kv-key">AIC / AIV</span><span class="sl-kv-val">32 / 64</span></div>
     <div class="sl-kv"><span class="sl-kv-key">DIE</span><span class="sl-kv-val">2 · 每 DIE 16 AIC + 32 AIV</span></div>
@@ -3996,7 +4133,7 @@ function wrapDetailHtml(w) {
       <span class="sl-pill" style="color:${grp.color}"><span class="sl-dot" style="width:8px;height:8px;background:${grp.color}"></span>${grp.short}</span>
       <span class="sl-pill ${ws.ratio >= 0.4 ? 'is-warn' : 'is-ok'}">${ws.ratio >= 0.4 ? '同步瓶颈' : '健康'}</span>
     </div>
-    <div class="sl-insp-hint">Wrap 是运行时 1C2V 任务分组，不是物理 Core 编号。下表泳道名取调用 1 的映射；后续调用会重映射。</div>
+    <div class="sl-insp-hint">Wrap 是运行时 1C2V 任务分组，不是物理 Core 编号。下表泳道名取 Stitch 1 的映射；后续 Stitch 会重映射。</div>
   </div>
   <div class="sl-report-card"><div class="sl-report-card__title">单元内三核 · 计算与同步等待</div>`;
   cores3.forEach((c) => {
@@ -4143,7 +4280,7 @@ function taskDetailHtml(t) {
       ${t.isSubtask ? `<div class="sl-kv"><span class="sl-kv-key">所属父任务</span><span class="sl-kv-val mono">${escapeHtml(t.parentTaskName)}</span></div>
       <div class="sl-kv"><span class="sl-kv-key">子任务类型</span><span class="sl-kv-val">${t.subtaskKind === 'wait' ? '同步等待' : escapeHtml(t.primarySublane || '计算')}</span></div>` : ''}
       <div class="sl-kv"><span class="sl-kv-key">所属 Wrap</span><span class="sl-kv-val">${t.wrap != null ? 'Wrap ' + wrapInstanceDisplayId(t.wrap, t.iteration) : '—'}</span></div>
-      <div class="sl-kv"><span class="sl-kv-key">调用</span><span class="sl-kv-val">${t.iteration != null ? '调用 ' + (t.iteration + 1) : '—'}</span></div>
+      <div class="sl-kv"><span class="sl-kv-key">Stitch</span><span class="sl-kv-val">${t.stitchIndex != null ? 'Stitch ' + (t.stitchIndex + 1) : '—'}</span></div>
       <div class="sl-kv"><span class="sl-kv-key">原始 wrapId 示例</span><span class="sl-kv-val">${t.rawWrapId ?? '—'}</span></div>
       <div class="sl-kv"><span class="sl-kv-key">leafHash</span><span class="sl-kv-val">${t.leafHash ?? '—'}</span></div>
       <div class="sl-kv"><span class="sl-kv-key">执行区间</span><span class="sl-kv-val">${t.start.toFixed(1)}–${t.end.toFixed(1)}μs</span></div>
