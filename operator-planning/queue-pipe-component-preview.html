@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ascend C Queue / TPipe Resource View</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/workbench-shell/pattern.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/ide-frame/pattern.css">
+  <style>
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--ide-frame-page-bg);
+      color: var(--foreground);
+      font-family: var(--font-sans);
+    }
+
+    code,
+    pre { font-family: var(--font-mono); }
+
+    .queue-demo-frame {
+      width: 100vw;
+      height: 100vh;
+      aspect-ratio: auto;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .queue-demo-frame .pto-ide-frame__topbar-center { display: none; }
+    .queue-demo-frame .pto-ide-frame__topbar-left,
+    .queue-demo-frame .pto-ide-frame__topbar-right { flex: 1 1 auto; }
+
+    .workspace-title {
+      color: var(--foreground);
+      font: var(--ide-frame-title-font);
+    }
+
+    .workspace-meta {
+      color: var(--foreground-muted);
+      font: var(--ide-frame-meta-font);
+    }
+
+    .stage-scroll {
+      height: 100%;
+      padding: var(--space-3);
+      overflow: auto;
+    }
+
+    .tpipe-shell {
+      min-width: 800px;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      border: 1px solid color-mix(in srgb, var(--primary) 36%, var(--border-subtle));
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, transparent), transparent 30%),
+        color-mix(in srgb, var(--surface-1) 72%, transparent);
+    }
+
+    .pipe-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+    }
+
+    .pipe-identity {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .pipe-glyph {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--primary) 18%, transparent);
+      color: var(--primary-hover);
+      font: 700 12px / 1 var(--font-mono);
+    }
+
+    .pipe-title {
+      display: grid;
+      gap: 2px;
+    }
+
+    .pipe-title strong {
+      color: var(--foreground);
+      font: var(--text-title-2);
+    }
+
+    .pipe-title span {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .summary-metrics {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+    }
+
+    .summary-metric {
+      min-width: 78px;
+      display: grid;
+      grid-template-columns: auto auto;
+      align-items: baseline;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-3) 68%, transparent);
+    }
+
+    .summary-metric span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      text-transform: uppercase;
+      letter-spacing: var(--letter-spacing-label);
+    }
+
+    .summary-metric b {
+      color: var(--foreground);
+      font: 700 13px / 1 var(--font-mono);
+    }
+
+    .route-strip {
+      display: grid;
+      grid-template-columns: 52px 18px minmax(88px, .8fr) 18px minmax(172px, 1.4fr) 18px minmax(78px, .72fr) 18px minmax(108px, .92fr) 18px minmax(88px, .8fr) 18px 52px;
+      align-items: center;
+      gap: 0;
+      min-height: 62px;
+      padding: var(--space-2);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+    }
+
+    .route-node {
+      min-width: 0;
+      min-height: 42px;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 2px;
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-4) 66%, transparent);
+      text-align: center;
+    }
+
+    .route-node strong {
+      max-width: 100%;
+      overflow: hidden;
+      color: var(--foreground);
+      font: 600 11px / 1.2 var(--font-mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .route-node span {
+      color: var(--foreground-muted);
+      font: 500 9px / 1.2 var(--font-mono);
+    }
+
+    .route-node.is-memory { background: color-mix(in srgb, var(--primary) 13%, transparent); }
+    .route-node.is-compute { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+    .route-node.is-queue { background: color-mix(in srgb, var(--success) 12%, transparent); }
+
+    .route-arrow {
+      position: relative;
+      height: 1px;
+      background: var(--border-strong);
+    }
+
+    .route-arrow::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: 0;
+      width: 5px;
+      height: 5px;
+      border-top: 1px solid var(--foreground-muted);
+      border-right: 1px solid var(--foreground-muted);
+      transform: translateY(-50%) rotate(45deg);
+    }
+
+    .queue-grid {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(240px, 1fr));
+      gap: var(--space-3);
+    }
+
+    .queue-column {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+    }
+
+    .queue-column.is-output {
+      border-color: color-mix(in srgb, var(--primary) 30%, var(--border-subtle));
+    }
+
+    .queue-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+
+    .queue-name {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .queue-name strong {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--foreground);
+      font: 600 13px / 1.2 var(--font-mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .queue-name span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .queue-position {
+      min-height: var(--tag-height);
+      display: inline-flex;
+      align-items: center;
+      padding: 0 var(--tag-padding-x);
+      border-radius: var(--tag-radius);
+      background: color-mix(in srgb, var(--success) 12%, transparent);
+      color: var(--success);
+      font: var(--text-label);
+      white-space: nowrap;
+    }
+
+    .queue-column.is-output .queue-position {
+      background: color-mix(in srgb, var(--primary) 14%, transparent);
+      color: var(--primary-hover);
+    }
+
+    .queue-facts {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-1);
+    }
+
+    .queue-fact {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--surface-3) 58%, transparent);
+    }
+
+    .queue-fact span {
+      color: var(--foreground-muted);
+      font: 500 9px / 1.2 var(--font-mono);
+      text-transform: uppercase;
+    }
+
+    .queue-fact b {
+      overflow: hidden;
+      color: var(--foreground);
+      font: 600 10px / 1.2 var(--font-mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .buffer-slot {
+      min-width: 0;
+      display: grid;
+      gap: var(--space-2);
+      padding: var(--space-2);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-3) 64%, transparent);
+    }
+
+    .buffer-slot[data-state="consumer"] {
+      background: color-mix(in srgb, var(--success) 8%, var(--surface-3));
+    }
+
+    .buffer-slot[data-state="producer"] {
+      background: color-mix(in srgb, var(--primary) 10%, var(--surface-3));
+    }
+
+    .slot-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+
+    .slot-label {
+      color: var(--foreground);
+      font: 600 10px / 1.2 var(--font-mono);
+    }
+
+    .slot-state {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--foreground-muted);
+      font: 500 9px / 1.2 var(--font-mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    [data-state="consumer"] .slot-state { color: var(--success); }
+    [data-state="producer"] .slot-state { color: var(--primary-hover); }
+
+    .cell-grid {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      gap: 3px;
+    }
+
+    .data-cell {
+      min-width: 0;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--success) 16%, var(--surface-4));
+      color: var(--foreground);
+      font: 600 9px / 1 var(--font-mono);
+    }
+
+    .queue-column.is-output .data-cell {
+      background: color-mix(in srgb, var(--primary) 28%, var(--surface-4));
+    }
+
+    .buffer-slot[data-state="reusable"] .data-cell {
+      background: color-mix(in srgb, var(--surface-4) 44%, transparent);
+      color: var(--foreground-muted);
+    }
+
+    .slot-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+      color: var(--foreground-muted);
+      font: 500 9px / 1.2 var(--font-mono);
+    }
+
+    .distinction-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--warning) 8%, var(--surface-2));
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .distinction-strip strong {
+      color: var(--foreground);
+      font-family: var(--font-mono);
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .legend-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: var(--radius-pill);
+      background: var(--foreground-muted);
+    }
+
+    .legend-dot.is-consumer { background: var(--success); }
+    .legend-dot.is-producer { background: var(--primary-hover); }
+
+    .inspector-rail {
+      height: 100%;
+      padding: 0 var(--inspector-rail-padding-x) var(--inspector-rail-padding-bottom);
+    }
+
+    .inspector-section {
+      display: grid;
+      gap: var(--inspector-section-gap);
+      padding: var(--inspector-section-padding-y) 0;
+      border-bottom: 1px solid var(--inspector-section-divider);
+    }
+
+    .inspector-section:last-child { border-bottom: 0; }
+
+    .inspector-section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+
+    .inspector-section-title {
+      margin: 0;
+      color: var(--foreground);
+      font: var(--text-title-2);
+    }
+
+    .inspector-section-kicker {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .inspector-kv {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .inspector-kv-row {
+      display: grid;
+      grid-template-columns: minmax(86px, .82fr) minmax(0, 1fr);
+      gap: var(--space-2);
+      align-items: baseline;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .inspector-kv-row code {
+      min-width: 0;
+      color: var(--foreground);
+      font: var(--text-mono);
+      overflow-wrap: anywhere;
+    }
+
+    .resource-table {
+      width: 100%;
+      border-collapse: collapse;
+      font: var(--text-body-sm);
+    }
+
+    .resource-table th,
+    .resource-table td {
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
+    }
+
+    .resource-table th {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .resource-table td { color: var(--foreground-secondary); }
+    .resource-table td:first-child {
+      color: var(--foreground);
+      font-family: var(--font-mono);
+    }
+
+    .code-sample {
+      margin: 0;
+      padding: var(--space-3);
+      overflow: auto;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-3) 68%, transparent);
+      color: var(--foreground-secondary);
+      font: 500 10px / 1.55 var(--font-mono);
+      white-space: pre-wrap;
+    }
+
+    .inspector-soft-card {
+      display: grid;
+      gap: var(--inspector-soft-card-gap);
+      padding: var(--inspector-soft-card-padding);
+      border-radius: var(--inspector-soft-card-radius);
+      background: var(--inspector-soft-card-bg);
+    }
+
+    .inspector-soft-card.is-info {
+      background: color-mix(in srgb, var(--primary) 10%, var(--inspector-soft-card-bg));
+    }
+
+    .inspector-soft-card strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+    }
+
+    .inspector-soft-card p {
+      margin: 0;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    @media (max-width: 1060px) {
+      .queue-grid { grid-template-columns: repeat(3, minmax(220px, 1fr)); }
+      .summary-metric { min-width: 68px; }
+    }
+  </style>
+</head>
+<body>
+  <section class="pto-ide-frame queue-demo-frame" data-ide-frame data-host="standalone" data-hide-activity-rail="true" aria-label="Ascend C Queue and TPipe resource view">
+    <header class="pto-ide-frame__topbar pto-ide-frame__standalone-chrome">
+      <div class="pto-ide-frame__topbar-left">
+        <div class="pto-ide-frame__host-chip" aria-hidden="true">
+          <svg class="pto-ide-frame__host-icon" viewBox="0 0 24 24">
+            <path d="M4 5h16v14H4z"></path><path d="m8 9 3 3-3 3"></path><path d="M13 15h3"></path>
+          </svg>
+        </div>
+        <div class="pto-ide-frame__workspace">
+          <span class="workspace-title">Ascend C Queue Resource View</span>
+          <span class="workspace-meta">/ Vector Add</span>
+        </div>
+      </div>
+      <div class="pto-ide-frame__topbar-center"></div>
+      <div class="pto-ide-frame__topbar-right">
+        <span class="workspace-meta">Static concept · tile t0</span>
+      </div>
+    </header>
+
+    <div class="pto-ide-frame__body">
+      <div class="pto-ide-frame__workarea">
+        <div class="pto-ide-frame__split" data-ide-split="standalone-main" data-storage-key="ascend-c-queue-pipe-preview-v1" data-split-direction="horizontal" data-sizes="75,25" data-min-size="720,300">
+          <main class="pto-ide-frame__pane" data-ide-pane="editor-preview">
+            <header class="pto-ide-frame__pane-header">
+              <h2 class="pto-ide-frame__pane-title">TPipe / TQue Resource Model</h2>
+              <span class="pto-ide-frame__pane-meta">1 Pipe · 3 Queues · 6 Buffers</span>
+            </header>
+            <div class="pto-ide-frame__pane-body">
+              <div class="stage-scroll">
+                <section class="tpipe-shell" aria-label="TPipe resource boundary">
+                  <header class="pipe-summary">
+                    <div class="pipe-identity">
+                      <span class="pipe-glyph">P0</span>
+                      <div class="pipe-title">
+                        <strong>TPipe · kernel resource boundary</strong>
+                        <span>统一管理 Queue、Buffer 与事件资源；本例只展开 Queue / Buffer。</span>
+                      </div>
+                    </div>
+                    <div class="summary-metrics" aria-label="TPipe resource summary">
+                      <span class="summary-metric"><span>TPipe</span><b>1</b></span>
+                      <span class="summary-metric"><span>Queue</span><b>3</b></span>
+                      <span class="summary-metric"><span>Buffer</span><b>6</b></span>
+                      <span class="summary-metric"><span>UB</span><b>192 B</b></span>
+                    </div>
+                  </header>
+
+                  <div class="route-strip" aria-label="GM to UB to compute to GM pipeline">
+                    <div class="route-node is-memory"><strong>GM</strong><span>X / Y</span></div>
+                    <i class="route-arrow" aria-hidden="true"></i>
+                    <div class="route-node"><strong>CopyIn</strong><span>MTE2</span></div>
+                    <i class="route-arrow" aria-hidden="true"></i>
+                    <div class="route-node is-queue"><strong>inQueueX + inQueueY</strong><span>VECIN · UB</span></div>
+                    <i class="route-arrow" aria-hidden="true"></i>
+                    <div class="route-node is-compute"><strong>Add</strong><span>Vector</span></div>
+                    <i class="route-arrow" aria-hidden="true"></i>
+                    <div class="route-node is-queue"><strong>outQueueZ</strong><span>VECOUT · UB</span></div>
+                    <i class="route-arrow" aria-hidden="true"></i>
+                    <div class="route-node"><strong>CopyOut</strong><span>MTE3</span></div>
+                    <i class="route-arrow" aria-hidden="true"></i>
+                    <div class="route-node is-memory"><strong>GM</strong><span>Z</span></div>
+                  </div>
+
+                  <div class="queue-grid" aria-label="Three TQue objects and six physical buffer slots">
+                    <article class="queue-column">
+                      <header class="queue-head">
+                        <div class="queue-name">
+                          <strong>inQueueX</strong>
+                          <span>CopyIn → Add</span>
+                        </div>
+                        <span class="queue-position">VECIN</span>
+                      </header>
+                      <div class="queue-facts">
+                        <span class="queue-fact"><span>Depth</span><b>1</b></span>
+                        <span class="queue-fact"><span>Buffers</span><b>2</b></span>
+                        <span class="queue-fact"><span>Each</span><b>32 B</b></span>
+                      </div>
+                      <section class="buffer-slot" data-state="consumer">
+                        <header class="slot-head"><span class="slot-label">Buffer 0 · t0</span><span class="slot-state">Consumer holds</span></header>
+                        <div class="cell-grid" aria-label="inQueueX buffer 0 data preview">
+                          <span class="data-cell">1</span><span class="data-cell">4</span><span class="data-cell">2</span><span class="data-cell">8</span><span class="data-cell">5</span><span class="data-cell">7</span><span class="data-cell">3</span><span class="data-cell">6</span>
+                        </div>
+                        <div class="slot-foot"><span>LocalTensor&lt;half&gt;</span><span>8 / 16 shown</span></div>
+                      </section>
+                      <section class="buffer-slot" data-state="reusable">
+                        <header class="slot-head"><span class="slot-label">Buffer 1</span><span class="slot-state">Reusable</span></header>
+                        <div class="cell-grid" aria-label="inQueueX buffer 1 reusable preview">
+                          <span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span>
+                        </div>
+                        <div class="slot-foot"><span>FreeTensor complete</span><span>available</span></div>
+                      </section>
+                    </article>
+
+                    <article class="queue-column">
+                      <header class="queue-head">
+                        <div class="queue-name">
+                          <strong>inQueueY</strong>
+                          <span>CopyIn → Add</span>
+                        </div>
+                        <span class="queue-position">VECIN</span>
+                      </header>
+                      <div class="queue-facts">
+                        <span class="queue-fact"><span>Depth</span><b>1</b></span>
+                        <span class="queue-fact"><span>Buffers</span><b>2</b></span>
+                        <span class="queue-fact"><span>Each</span><b>32 B</b></span>
+                      </div>
+                      <section class="buffer-slot" data-state="consumer">
+                        <header class="slot-head"><span class="slot-label">Buffer 0 · t0</span><span class="slot-state">Consumer holds</span></header>
+                        <div class="cell-grid" aria-label="inQueueY buffer 0 data preview">
+                          <span class="data-cell">7</span><span class="data-cell">2</span><span class="data-cell">5</span><span class="data-cell">1</span><span class="data-cell">4</span><span class="data-cell">3</span><span class="data-cell">6</span><span class="data-cell">8</span>
+                        </div>
+                        <div class="slot-foot"><span>LocalTensor&lt;half&gt;</span><span>8 / 16 shown</span></div>
+                      </section>
+                      <section class="buffer-slot" data-state="reusable">
+                        <header class="slot-head"><span class="slot-label">Buffer 1</span><span class="slot-state">Reusable</span></header>
+                        <div class="cell-grid" aria-label="inQueueY buffer 1 reusable preview">
+                          <span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span>
+                        </div>
+                        <div class="slot-foot"><span>FreeTensor complete</span><span>available</span></div>
+                      </section>
+                    </article>
+
+                    <article class="queue-column is-output">
+                      <header class="queue-head">
+                        <div class="queue-name">
+                          <strong>outQueueZ</strong>
+                          <span>Add → CopyOut</span>
+                        </div>
+                        <span class="queue-position">VECOUT</span>
+                      </header>
+                      <div class="queue-facts">
+                        <span class="queue-fact"><span>Depth</span><b>1</b></span>
+                        <span class="queue-fact"><span>Buffers</span><b>2</b></span>
+                        <span class="queue-fact"><span>Each</span><b>32 B</b></span>
+                      </div>
+                      <section class="buffer-slot" data-state="producer">
+                        <header class="slot-head"><span class="slot-label">Buffer 0 · t0</span><span class="slot-state">Producer owns</span></header>
+                        <div class="cell-grid" aria-label="outQueueZ buffer 0 data preview">
+                          <span class="data-cell">8</span><span class="data-cell">6</span><span class="data-cell">7</span><span class="data-cell">9</span><span class="data-cell">9</span><span class="data-cell">10</span><span class="data-cell">9</span><span class="data-cell">14</span>
+                        </div>
+                        <div class="slot-foot"><span>Add output</span><span>8 / 16 shown</span></div>
+                      </section>
+                      <section class="buffer-slot" data-state="reusable">
+                        <header class="slot-head"><span class="slot-label">Buffer 1</span><span class="slot-state">Reusable</span></header>
+                        <div class="cell-grid" aria-label="outQueueZ buffer 1 reusable preview">
+                          <span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span><span class="data-cell">·</span>
+                        </div>
+                        <div class="slot-foot"><span>waiting for next tile</span><span>available</span></div>
+                      </section>
+                    </article>
+                  </div>
+
+                  <footer class="distinction-strip">
+                    <span><strong>Queue objects 3</strong> ≠ <strong>queue depth 1</strong> ≠ <strong>physical buffers 6</strong></span>
+                    <div class="legend" aria-label="Buffer ownership legend">
+                      <span class="legend-item"><i class="legend-dot is-consumer"></i>Consumer holds</span>
+                      <span class="legend-item"><i class="legend-dot is-producer"></i>Producer owns</span>
+                      <span class="legend-item"><i class="legend-dot"></i>Reusable</span>
+                    </div>
+                  </footer>
+                </section>
+              </div>
+            </div>
+          </main>
+
+          <aside class="pto-ide-frame__pane" data-ide-pane="inspector">
+            <header class="pto-ide-frame__pane-header">
+              <h2 class="pto-ide-frame__pane-title">Resource Inspector</h2>
+              <span class="pto-ide-frame__pane-meta">static snapshot</span>
+            </header>
+            <div class="pto-ide-frame__pane-body inspector-rail">
+              <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">当前数量</h3>
+                  <span class="inspector-section-kicker">per kernel</span>
+                </div>
+                <div class="inspector-kv">
+                  <div class="inspector-kv-row"><span>TPipe</span><code>1</code></div>
+                  <div class="inspector-kv-row"><span>Queue objects</span><code>3</code></div>
+                  <div class="inspector-kv-row"><span>Queue depth</span><code>1 / queue</code></div>
+                  <div class="inspector-kv-row"><span>Buffer blocks</span><code>3 × 2 = 6</code></div>
+                  <div class="inspector-kv-row"><span>Aligned length</span><code>32 B / buffer</code></div>
+                  <div class="inspector-kv-row"><span>Total preview</span><code>192 B UB</code></div>
+                </div>
+              </section>
+
+              <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">Queue 配置</h3>
+                </div>
+                <table class="resource-table">
+                  <thead><tr><th>Queue</th><th>Pos.</th><th>D</th><th>Buf.</th></tr></thead>
+                  <tbody>
+                    <tr><td>inQueueX</td><td>VECIN</td><td>1</td><td>2</td></tr>
+                    <tr><td>inQueueY</td><td>VECIN</td><td>1</td><td>2</td></tr>
+                    <tr><td>outQueueZ</td><td>VECOUT</td><td>1</td><td>2</td></tr>
+                  </tbody>
+                </table>
+              </section>
+
+              <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">声明与分配</h3>
+                  <span class="inspector-section-kicker">one queue</span>
+                </div>
+                <pre class="code-sample">TQue&lt;TPosition::VECIN, 1&gt; inQueueX;
+
+pipe.InitBuffer(
+  inQueueX,
+  2,      // physical buffers
+  32      // bytes each
+);</pre>
+              </section>
+
+              <section class="inspector-section">
+                <div class="inspector-soft-card is-info">
+                  <strong>参考图有用，但只回答“数据格子里是什么”</strong>
+                  <p>这里把格子缩进 Buffer slot，外面补上 TPipe 资源边界、Queue 数量、Position、depth、buffer 数和当前所有权。</p>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+
+        <footer class="pto-ide-frame__status-strip pto-ide-frame__standalone-chrome">
+          <span>Static preview · no playback</span>
+          <span>1 TPipe · 3 Queue objects · 6 physical buffer blocks</span>
+        </footer>
+      </div>
+    </div>
+  </section>
+
+  <script src="../vendor/pto-design-system/patterns/workbench-shell/pattern.js"></script>
+  <script src="../vendor/pto-design-system/patterns/ide-frame/pattern.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      window.PtoIdeFrame?.initAll?.();
+    });
+  </script>
+</body>
+</html>

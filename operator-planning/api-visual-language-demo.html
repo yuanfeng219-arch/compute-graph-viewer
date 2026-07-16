@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ascend C API Visual Language Demo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/workbench-shell/pattern.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/ide-frame/pattern.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/swimlane-task/pattern.css">
+  <style>
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--ide-frame-page-bg);
+      color: var(--foreground);
+      font-family: var(--font-sans);
+    }
+
+    .api-demo-frame {
+      width: 100vw;
+      height: 100vh;
+      aspect-ratio: auto;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .api-demo-frame .pto-ide-frame__topbar-center { display: none; }
+    .api-demo-frame .pto-ide-frame__topbar-left,
+    .api-demo-frame .pto-ide-frame__topbar-right { flex: 1 1 auto; }
+
+    .demo-workspace-title {
+      color: var(--foreground);
+      font: var(--ide-frame-title-font);
+    }
+
+    .demo-workspace-meta {
+      color: var(--foreground-muted);
+      font: var(--ide-frame-meta-font);
+    }
+
+    .api-nav {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      padding: var(--space-3) var(--space-2) var(--space-5);
+    }
+
+    .api-nav-group {
+      display: grid;
+      gap: var(--space-1);
+    }
+
+    .api-nav-group-title {
+      padding: 0 var(--space-2) var(--space-1);
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      letter-spacing: var(--letter-spacing-label);
+      text-transform: uppercase;
+    }
+
+    .api-nav-item {
+      min-height: 34px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 0 var(--space-2);
+      border: 0;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+      text-align: left;
+    }
+
+    .api-nav-item.is-selected {
+      background: var(--state-selected);
+      color: var(--foreground);
+    }
+
+    .api-nav-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: var(--font-mono);
+    }
+
+    .api-nav-role {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      white-space: nowrap;
+    }
+
+    .api-nav-item.is-selected .api-nav-role { color: var(--primary-hover); }
+
+    .canvas-shell {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .context-strip {
+      display: grid;
+      grid-template-columns: minmax(220px, 1.3fr) repeat(4, minmax(100px, 0.7fr));
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      background: color-mix(in srgb, var(--surface-1) 48%, transparent);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .context-intro {
+      min-width: 0;
+      display: grid;
+      gap: var(--space-1);
+      align-content: center;
+    }
+
+    .context-intro strong {
+      color: var(--foreground);
+      font: var(--text-title-2);
+    }
+
+    .context-intro span {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .context-fact {
+      min-width: 0;
+      display: grid;
+      gap: var(--space-1);
+      align-content: center;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+    }
+
+    .context-fact span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      text-transform: uppercase;
+      letter-spacing: var(--letter-spacing-label);
+    }
+
+    .context-fact code {
+      color: var(--foreground);
+      font: var(--text-mono);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .viz-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding: 0 var(--space-4) var(--space-5);
+    }
+
+    .viz-section {
+      padding: var(--space-5) 0;
+    }
+
+    .viz-section + .viz-section { border-top: 1px solid var(--border-subtle); }
+
+    .viz-section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-4);
+      margin-bottom: var(--space-4);
+    }
+
+    .viz-section-title {
+      display: grid;
+      gap: var(--space-1);
+    }
+
+    .viz-section-title h3 {
+      margin: 0;
+      color: var(--foreground);
+      font: var(--text-title-2);
+    }
+
+    .viz-section-title p {
+      max-width: 720px;
+      margin: 0;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .grammar-tag {
+      min-height: var(--tag-height);
+      display: inline-flex;
+      align-items: center;
+      padding: 0 var(--tag-padding-x);
+      border-radius: var(--tag-radius);
+      background: var(--comp-tag-bg);
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+      white-space: nowrap;
+    }
+
+    .lifecycle-flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(100px, 1fr));
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
+
+    .lifecycle-state {
+      min-width: 0;
+      min-height: 66px;
+      position: relative;
+      display: grid;
+      align-content: center;
+      gap: var(--space-1);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+    }
+
+    .lifecycle-state:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: calc(var(--space-2) * -1);
+      width: var(--space-2);
+      height: 1px;
+      background: var(--border-strong);
+    }
+
+    .lifecycle-state span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .lifecycle-state code {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--foreground);
+      font: var(--text-mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lifecycle-state.is-key {
+      background: var(--state-selected);
+    }
+
+    .timeline-shell {
+      position: relative;
+      min-width: 720px;
+      padding: var(--space-3);
+      border-radius: var(--radius-lg);
+      background: color-mix(in srgb, var(--surface-1) 54%, transparent);
+    }
+
+    .timeline-axis {
+      display: grid;
+      grid-template-columns: 92px repeat(5, 1fr);
+      align-items: end;
+      margin-bottom: var(--space-2);
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .timeline-axis span:not(:first-child) {
+      border-left: 1px solid var(--border-subtle);
+      padding-left: var(--space-2);
+    }
+
+    .timeline-grid {
+      position: relative;
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      align-items: center;
+      min-height: 30px;
+    }
+
+    .timeline-label {
+      color: var(--foreground-secondary);
+      font: var(--text-mono);
+    }
+
+    .timeline-track {
+      position: relative;
+      height: 24px;
+      background-image: linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px);
+      background-size: 20% 100%;
+    }
+
+    .timeline-canvas {
+      position: absolute;
+      inset: 3px 0;
+      display: block;
+      width: 100%;
+      height: 18px;
+    }
+
+    .timeline-events {
+      position: absolute;
+      left: 92px;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+
+    .timeline-events svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .dependency-line {
+      fill: none;
+      stroke: var(--warning);
+      stroke-width: 1.2;
+      stroke-dasharray: 4 4;
+      opacity: 0.78;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .dependency-line.is-queue { stroke: var(--primary-hover); }
+
+    .event-chip {
+      position: absolute;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      min-height: 18px;
+      padding: 0 6px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-3);
+      color: var(--foreground);
+      font: 500 9px / 1 var(--font-mono);
+      transform: translate(-50%, -50%);
+      white-space: nowrap;
+    }
+
+    .event-chip.is-queue { color: var(--primary-hover); }
+    .event-chip.is-sync { color: var(--warning); }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+      margin-top: var(--space-3);
+      color: var(--foreground-muted);
+      font: var(--text-body-sm);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+    }
+
+    .legend-swatch {
+      width: 14px;
+      height: 6px;
+      border-radius: var(--radius-pill);
+      background: var(--primary-hover);
+    }
+
+    .legend-swatch.is-compute { background: var(--accent); }
+    .legend-swatch.is-sync { background: var(--warning); }
+    .legend-swatch.is-release { background: var(--success); }
+
+    .inspector-rail { height: 100%; }
+
+    .inspector-kv {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .inspector-kv-row {
+      display: grid;
+      grid-template-columns: minmax(76px, 0.7fr) minmax(0, 1fr);
+      gap: var(--space-2);
+      align-items: baseline;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .inspector-kv-row code {
+      min-width: 0;
+      color: var(--foreground);
+      font: var(--text-mono);
+      overflow-wrap: anywhere;
+    }
+
+    .check-list {
+      display: grid;
+      gap: var(--space-2);
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .check-list li {
+      display: grid;
+      grid-template-columns: 16px minmax(0, 1fr);
+      gap: var(--space-2);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .check-mark {
+      width: 16px;
+      height: 16px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: var(--radius-pill);
+      background: color-mix(in srgb, var(--success) 16%, transparent);
+      color: var(--success);
+      font: 700 10px / 1 var(--font-sans);
+    }
+
+    .inspector-soft-card p {
+      margin: 0;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .inspector-soft-card strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+    }
+
+    .handoff-table {
+      width: 100%;
+      border-collapse: collapse;
+      font: var(--text-body-sm);
+    }
+
+    .handoff-table th,
+    .handoff-table td {
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .handoff-table th {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .handoff-table td { color: var(--foreground-secondary); }
+    .handoff-table td:first-child {
+      color: var(--foreground);
+      font-family: var(--font-mono);
+    }
+
+    @media (max-width: 1120px) {
+      .context-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .context-intro { grid-column: 1 / -1; }
+      .lifecycle-flow { grid-template-columns: repeat(3, minmax(110px, 1fr)); }
+      .lifecycle-state:nth-child(3)::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="pto-ide-frame api-demo-frame" data-ide-frame data-host="standalone" aria-label="Ascend C API visualizer concept">
+    <header class="pto-ide-frame__topbar pto-ide-frame__standalone-chrome">
+      <div class="pto-ide-frame__topbar-left">
+        <div class="pto-ide-frame__host-chip" aria-hidden="true">
+          <svg class="pto-ide-frame__host-icon" viewBox="0 0 24 24">
+            <path d="M4 5h16v14H4z"></path><path d="m8 9 3 3-3 3"></path><path d="M13 15h3"></path>
+          </svg>
+        </div>
+        <div class="pto-ide-frame__workspace">
+          <span class="demo-workspace-title">Ascend C API Visualizer</span>
+          <span class="demo-workspace-meta">/ visual language study</span>
+        </div>
+      </div>
+      <div class="pto-ide-frame__topbar-center"></div>
+      <div class="pto-ide-frame__topbar-right">
+        <span class="demo-workspace-meta">Static layout review · 910B</span>
+      </div>
+    </header>
+
+    <div class="pto-ide-frame__body">
+      <nav class="pto-ide-frame__activity-rail pto-ide-frame__standalone-chrome" aria-label="Activity rail">
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button is-selected" type="button" data-ide-toggle="explorer" aria-label="Toggle Explorer" aria-controls="api-explorer" aria-expanded="true" aria-pressed="true" title="Explorer">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9l-.81-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Search" title="Search">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Source control" title="Source control">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><path d="M13 6h3a2 2 0 0 1 2 2v7"></path><path d="M6 9v12"></path></svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Terminal" title="Terminal">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m7 9 3 3-3 3"></path><path d="M12 15h5"></path></svg>
+        </button>
+      </nav>
+
+      <div class="pto-ide-frame__workarea">
+        <div class="pto-ide-frame__split" data-ide-split="standalone-main" data-storage-key="ascend-c-api-visual-language-demo-v1" data-split-direction="horizontal" data-sizes="20,55,25" data-min-size="220,520,280">
+          <aside class="pto-ide-frame__pane pto-ide-frame__explorer" data-ide-pane="explorer" id="api-explorer">
+            <header class="pto-ide-frame__pane-header">
+              <h2 class="pto-ide-frame__pane-title">API Explorer</h2>
+              <span class="pto-ide-frame__pane-meta">11 API / 5 grammars</span>
+            </header>
+            <div class="pto-ide-frame__pane-body">
+              <div class="api-nav">
+                <section class="api-nav-group">
+                  <div class="api-nav-group-title">空间映射</div>
+                  <div class="api-nav-item"><span class="api-nav-name">DataCopy</span><span class="api-nav-role">MTE</span></div>
+                  <div class="api-nav-item"><span class="api-nav-name">Load3D</span><span class="api-nav-role">MTE1</span></div>
+                </section>
+                <section class="api-nav-group">
+                  <div class="api-nav-group-title">计算数据流</div>
+                  <div class="api-nav-item"><span class="api-nav-name">Add</span><span class="api-nav-role">Vector</span></div>
+                  <div class="api-nav-item"><span class="api-nav-name">Mmad / Matmul</span><span class="api-nav-role">Cube</span></div>
+                </section>
+                <section class="api-nav-group">
+                  <div class="api-nav-group-title">资源生命周期</div>
+                  <div class="api-nav-item is-selected"><span class="api-nav-name">InitBuffer</span><span class="api-nav-role">capacity</span></div>
+                  <div class="api-nav-item is-selected"><span class="api-nav-name">AllocTensor</span><span class="api-nav-role">acquire</span></div>
+                  <div class="api-nav-item is-selected"><span class="api-nav-name">FreeTensor</span><span class="api-nav-role">release</span></div>
+                </section>
+                <section class="api-nav-group">
+                  <div class="api-nav-group-title">依赖与同步</div>
+                  <div class="api-nav-item is-selected"><span class="api-nav-name">EnQue / DeQue</span><span class="api-nav-role">handoff</span></div>
+                  <div class="api-nav-item is-selected"><span class="api-nav-name">SetFlag / WaitFlag</span><span class="api-nav-role">event</span></div>
+                </section>
+                <section class="api-nav-group">
+                  <div class="api-nav-group-title">执行上下文</div>
+                  <div class="api-nav-item"><span class="api-nav-name">GetBlockIdx</span><span class="api-nav-role">core</span></div>
+                </section>
+              </div>
+            </div>
+          </aside>
+
+          <main class="pto-ide-frame__pane" data-ide-pane="editor-preview">
+            <div class="pto-ide-frame__tabstrip">
+              <div class="tab-control" role="tablist" aria-label="API visual grammar tabs">
+                <button class="tab-control-item is-selected" type="button" role="tab">Lifecycle + Sync</button>
+                <button class="tab-control-item" type="button" role="tab">Spatial mapping</button>
+                <button class="tab-control-item" type="button" role="tab">Compute flow</button>
+              </div>
+            </div>
+            <header class="pto-ide-frame__pane-header">
+              <h2 class="pto-ide-frame__pane-title">TQue Buffer 生命周期与跨阶段交接</h2>
+              <span class="pto-ide-frame__pane-meta">Vector Add · double buffer</span>
+            </header>
+            <div class="pto-ide-frame__pane-body">
+              <div class="canvas-shell">
+                <section class="context-strip" aria-label="Current visualization context">
+                  <div class="context-intro">
+                    <strong>同一段代码，两种问题</strong>
+                    <span>上半部看“资源现在归谁”，下半部看“消费者何时可以继续”。</span>
+                  </div>
+                  <div class="context-fact"><span>Queue</span><code>VECIN → VECOUT</code></div>
+                  <div class="context-fact"><span>BUFFER_NUM</span><code>2 slots</code></div>
+                  <div class="context-fact"><span>Tile</span><code>2048 × fp16</code></div>
+                  <div class="context-fact"><span>Pipeline</span><code>CopyIn / Add / CopyOut</code></div>
+                </section>
+
+                <div class="viz-scroll">
+                  <section class="viz-section">
+                    <div class="viz-section-head">
+                      <div class="viz-section-title">
+                        <h3>1. Resource lifecycle</h3>
+                        <p>生命周期不是一组离散 API 图标，而是 Queue slot 的状态机：容量先建立，Tensor 被取得、发布、消费，最后才允许复用。</p>
+                      </div>
+                      <span class="grammar-tag">语法 3 · 资源生命周期</span>
+                    </div>
+
+                    <div class="lifecycle-flow" aria-label="Tensor lifecycle state machine">
+                      <div class="lifecycle-state"><span>建立容量</span><code>InitBuffer</code></div>
+                      <div class="lifecycle-state is-key"><span>slot → producer</span><code>AllocTensor</code></div>
+                      <div class="lifecycle-state"><span>数据可交接</span><code>EnQue</code></div>
+                      <div class="lifecycle-state"><span>slot → consumer</span><code>DeQue</code></div>
+                      <div class="lifecycle-state"><span>消费期间</span><code>Add / DataCopy</code></div>
+                      <div class="lifecycle-state is-key"><span>允许复用</span><code>FreeTensor</code></div>
+                    </div>
+
+                    <div class="timeline-shell" aria-label="Double-buffer slot lifecycle timeline">
+                      <div class="timeline-axis"><span>Queue slot</span><span>0</span><span>20</span><span>40</span><span>60</span><span>80 cycles</span></div>
+                      <div class="timeline-grid" id="lifecycleTimeline">
+                        <div class="timeline-row"><span class="timeline-label">inQueue · 0</span><div class="timeline-track"><canvas class="timeline-canvas" data-lifecycle-row="0"></canvas></div></div>
+                        <div class="timeline-row"><span class="timeline-label">inQueue · 1</span><div class="timeline-track"><canvas class="timeline-canvas" data-lifecycle-row="1"></canvas></div></div>
+                        <div class="timeline-row"><span class="timeline-label">outQueue · 0</span><div class="timeline-track"><canvas class="timeline-canvas" data-lifecycle-row="2"></canvas></div></div>
+                        <div class="timeline-row"><span class="timeline-label">outQueue · 1</span><div class="timeline-track"><canvas class="timeline-canvas" data-lifecycle-row="3"></canvas></div></div>
+                      </div>
+                    </div>
+                    <div class="legend-row">
+                      <span class="legend-item"><i class="legend-swatch"></i>Allocated / ready</span>
+                      <span class="legend-item"><i class="legend-swatch is-compute"></i>Held by consumer</span>
+                      <span class="legend-item"><i class="legend-swatch is-release"></i>Released / reusable</span>
+                    </div>
+                  </section>
+
+                  <section class="viz-section">
+                    <div class="viz-section-head">
+                      <div class="viz-section-title">
+                        <h3>2. Dependency &amp; synchronization</h3>
+                        <p>同一个 Tensor 的生命周期正确，并不自动意味着 pipeline 顺序正确。这里单独表达 producer/consumer handoff、跨 pipe event 和等待位置。</p>
+                      </div>
+                      <span class="grammar-tag">语法 4 · 依赖时间线</span>
+                    </div>
+
+                    <div class="timeline-shell" aria-label="CopyIn Compute CopyOut synchronization timeline">
+                      <div class="timeline-axis"><span>Engine</span><span>0</span><span>20</span><span>40</span><span>60</span><span>100 cycles</span></div>
+                      <div class="timeline-grid" id="syncTimeline">
+                        <div class="timeline-row"><span class="timeline-label">MTE2</span><div class="timeline-track"><canvas class="timeline-canvas" data-sync-row="0"></canvas></div></div>
+                        <div class="timeline-row"><span class="timeline-label">VECIN Queue</span><div class="timeline-track"><canvas class="timeline-canvas" data-sync-row="1"></canvas></div></div>
+                        <div class="timeline-row"><span class="timeline-label">Vector</span><div class="timeline-track"><canvas class="timeline-canvas" data-sync-row="2"></canvas></div></div>
+                        <div class="timeline-row"><span class="timeline-label">VECOUT Queue</span><div class="timeline-track"><canvas class="timeline-canvas" data-sync-row="3"></canvas></div></div>
+                        <div class="timeline-row"><span class="timeline-label">MTE3</span><div class="timeline-track"><canvas class="timeline-canvas" data-sync-row="4"></canvas></div></div>
+                        <div class="timeline-row"><span class="timeline-label">Event / Flag</span><div class="timeline-track"><canvas class="timeline-canvas" data-sync-row="5"></canvas></div></div>
+                        <div class="timeline-events" aria-hidden="true">
+                          <svg viewBox="0 0 100 228" preserveAspectRatio="none">
+                            <path class="dependency-line is-queue" d="M21 15 C21 30 26 30 26 52"></path>
+                            <path class="dependency-line is-queue" d="M47 91 C47 107 52 107 52 129"></path>
+                            <path class="dependency-line is-queue" d="M51 15 C51 30 56 30 56 52"></path>
+                            <path class="dependency-line is-queue" d="M77 91 C77 107 82 107 82 129"></path>
+                            <path class="dependency-line" d="M47 91 C47 163 52 163 52 205"></path>
+                            <path class="dependency-line" d="M77 91 C77 163 82 163 82 205"></path>
+                          </svg>
+                          <span class="event-chip is-queue" style="left:21%;top:15%">EnQue t0</span>
+                          <span class="event-chip is-queue" style="left:26%;top:24%">DeQue t0</span>
+                          <span class="event-chip is-queue" style="left:47%;top:46%">EnQue out</span>
+                          <span class="event-chip is-sync" style="left:52%;top:91%">WaitFlag</span>
+                          <span class="event-chip is-sync" style="left:77%;top:91%">SetFlag</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="legend-row">
+                      <span class="legend-item"><i class="legend-swatch"></i>Queue ownership handoff</span>
+                      <span class="legend-item"><i class="legend-swatch is-sync"></i>Cross-pipe visibility dependency</span>
+                      <span class="legend-item"><i class="legend-swatch is-compute"></i>Executable interval</span>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </main>
+
+          <aside class="pto-ide-frame__pane" data-ide-pane="inspector">
+            <header class="pto-ide-frame__pane-header">
+              <h2 class="pto-ide-frame__pane-title">API Contract Inspector</h2>
+              <span class="pto-ide-frame__pane-meta">current story</span>
+            </header>
+            <div class="pto-ide-frame__pane-body inspector-rail">
+              <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">当前解释对象</h3>
+                  <span class="inspector-section-kicker">TQue pipeline</span>
+                </div>
+                <div class="inspector-kv">
+                  <div class="inspector-kv-row"><span>逻辑对象</span><code>inQueueX / outQueueZ</code></div>
+                  <div class="inspector-kv-row"><span>物理资源</span><code>UB · 2 buffer slots</code></div>
+                  <div class="inspector-kv-row"><span>生产者</span><code>MTE2 / CopyIn</code></div>
+                  <div class="inspector-kv-row"><span>消费者</span><code>Vector / MTE3</code></div>
+                  <div class="inspector-kv-row"><span>粒度</span><code>tile × queue slot</code></div>
+                </div>
+              </section>
+
+              <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">两张图的分工</h3>
+                </div>
+                <div class="inspector-soft-card is-info">
+                  <strong>Lifecycle：资源能否复用</strong>
+                  <p>回答 slot 当前归谁、何时释放、峰值占用是否超过 InitBuffer 容量。</p>
+                </div>
+                <div class="inspector-soft-card is-warning">
+                  <strong>Synchronization：消费者何时可继续</strong>
+                  <p>回答数据何时可见、哪个 pipe 在等待，以及同步是否压缩了 overlap。</p>
+                </div>
+              </section>
+
+              <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">API → 状态变化</h3>
+                </div>
+                <table class="handoff-table">
+                  <thead><tr><th>API</th><th>可视语义</th></tr></thead>
+                  <tbody>
+                    <tr><td>InitBuffer</td><td>建立容量边界</td></tr>
+                    <tr><td>AllocTensor</td><td>slot 归 producer</td></tr>
+                    <tr><td>EnQue</td><td>发布为 ready</td></tr>
+                    <tr><td>DeQue</td><td>所有权交给 consumer</td></tr>
+                    <tr><td>FreeTensor</td><td>回到 reusable</td></tr>
+                    <tr><td>Set/WaitFlag</td><td>建立跨 pipe happens-before</td></tr>
+                  </tbody>
+                </table>
+              </section>
+
+              <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">正确性检查</h3>
+                  <span class="inspector-section-kicker">static rules</span>
+                </div>
+                <ul class="check-list">
+                  <li><span class="check-mark">✓</span><span><code>FreeTensor</code> 晚于最后一个 consumer。</span></li>
+                  <li><span class="check-mark">✓</span><span><code>EnQue</code> 之前 producer 已完成写入。</span></li>
+                  <li><span class="check-mark">✓</span><span><code>DeQue</code> 与目标 Queue、slot、tile 对应。</span></li>
+                  <li><span class="check-mark">✓</span><span><code>SetFlag / WaitFlag</code> 的方向与 pipe 匹配。</span></li>
+                </ul>
+              </section>
+
+              <section class="inspector-section">
+                <div class="inspector-soft-card is-success">
+                  <strong>当前版面判断</strong>
+                  <p>中间画布只保留一条主故事；参数、约束和检查项固定在右侧，避免图中标签承担过多解释。</p>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+
+        <footer class="pto-ide-frame__status-strip pto-ide-frame__standalone-chrome">
+          <span>API visual grammar · static concept</span>
+          <span>Lifecycle ≠ synchronization · both are required</span>
+        </footer>
+      </div>
+    </div>
+  </section>
+
+  <script src="../vendor/pto-design-system/patterns/workbench-shell/pattern.js"></script>
+  <script src="../vendor/pto-design-system/patterns/ide-frame/pattern.js"></script>
+  <script src="../vendor/pto-design-system/patterns/swimlane-task/pattern.js"></script>
+  <script>
+    (() => {
+      const helper = window.PtoSwimlaneTaskPattern;
+      if (!helper) return;
+
+      const colormap = helper.createTaskColormap({
+        semanticAliases: {
+          allocate: 'mte_load',
+          ready: 'cpu_sched',
+          consume: 'vec_elementwise',
+          release: 'vec_reduce',
+          copyin: 'mte_load',
+          queue: 'cpu_sched',
+          compute: 'vec_elementwise',
+          copyout: 'mte_load',
+          sync: 'vec_reduce'
+        }
+      });
+
+      const lifecycleRows = [
+        [
+          { start: 2, end: 18, key: 'allocate', label: 'Alloc t0' },
+          { start: 18, end: 28, key: 'ready', label: 'Ready' },
+          { start: 28, end: 52, key: 'consume', label: 'Consumer holds t0' },
+          { start: 52, end: 62, key: 'release', label: 'Free' },
+          { start: 62, end: 80, key: 'allocate', label: 'Alloc t2' }
+        ],
+        [
+          { start: 0, end: 22, key: 'release', label: 'Free' },
+          { start: 22, end: 38, key: 'allocate', label: 'Alloc t1' },
+          { start: 38, end: 48, key: 'ready', label: 'Ready' },
+          { start: 48, end: 72, key: 'consume', label: 'Consumer holds t1' },
+          { start: 72, end: 80, key: 'release', label: 'Free' }
+        ],
+        [
+          { start: 0, end: 39, key: 'release', label: 'Free' },
+          { start: 39, end: 55, key: 'allocate', label: 'Alloc out0' },
+          { start: 55, end: 70, key: 'consume', label: 'CopyOut owns' },
+          { start: 70, end: 80, key: 'release', label: 'Free' }
+        ],
+        [
+          { start: 0, end: 59, key: 'release', label: 'Free' },
+          { start: 59, end: 72, key: 'allocate', label: 'Alloc out1' },
+          { start: 72, end: 80, key: 'consume', label: 'CopyOut' }
+        ]
+      ];
+
+      const syncRows = [
+        [
+          { start: 2, end: 21, key: 'copyin', label: 'DataCopy t0' },
+          { start: 32, end: 51, key: 'copyin', label: 'DataCopy t1' }
+        ],
+        [
+          { start: 21, end: 26, key: 'queue', label: 'handoff' },
+          { start: 51, end: 56, key: 'queue', label: 'handoff' }
+        ],
+        [
+          { start: 26, end: 47, key: 'compute', label: 'Add t0' },
+          { start: 56, end: 77, key: 'compute', label: 'Add t1' }
+        ],
+        [
+          { start: 47, end: 52, key: 'queue', label: 'handoff' },
+          { start: 77, end: 82, key: 'queue', label: 'handoff' }
+        ],
+        [
+          { start: 52, end: 69, key: 'copyout', label: 'DataCopy t0' },
+          { start: 82, end: 99, key: 'copyout', label: 'DataCopy t1' }
+        ],
+        [
+          { start: 46, end: 53, key: 'sync', label: 'Set → Wait' },
+          { start: 76, end: 83, key: 'sync', label: 'Set → Wait' }
+        ]
+      ];
+
+      function renderTimeline(selector, rows, domainMax) {
+        document.querySelectorAll(selector).forEach((canvas, rowIndex) => {
+          const rect = canvas.getBoundingClientRect();
+          const width = Math.max(1, Math.round(rect.width));
+          const height = Math.max(1, Math.round(rect.height));
+          const dpr = window.devicePixelRatio || 1;
+          canvas.width = width * dpr;
+          canvas.height = height * dpr;
+          const ctx = canvas.getContext('2d');
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.scale(dpr, dpr);
+          ctx.clearRect(0, 0, width, height);
+
+          (rows[rowIndex] || []).forEach((segment) => {
+            const x = segment.start / domainMax * width;
+            const barWidth = Math.max(4, (segment.end - segment.start) / domainMax * width - 2);
+            const task = {
+              opName: segment.label,
+              label: segment.label,
+              colorKey: segment.key,
+              laneKind: segment.key === 'copyin' || segment.key === 'copyout' ? 'MTEIn' : 'AIV',
+              totalCycle: segment.end - segment.start
+            };
+            helper.drawTaskBar(ctx, {
+              task,
+              x,
+              y: 0,
+              width: barWidth,
+              height,
+              baseColor: colormap.colorForTask(task),
+              radius: 3,
+              fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-sans').trim() || 'sans-serif'
+            });
+          });
+        });
+      }
+
+      function render() {
+        renderTimeline('[data-lifecycle-row]', lifecycleRows, 80);
+        renderTimeline('[data-sync-row]', syncRows, 100);
+      }
+
+      render();
+      window.addEventListener('resize', render);
+    })();
+  </script>
+</body>
+</html>

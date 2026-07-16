@@ -1,0 +1,3151 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Explainable Design Advisor · Recommendation Trace</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/tokens/components.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/css/style.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/workbench-shell/pattern.css">
+  <link rel="stylesheet" href="../vendor/pto-design-system/patterns/ide-frame/pattern.css">
+  <style>
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--ide-frame-page-bg);
+      color: var(--foreground);
+      font-family: var(--font-sans);
+    }
+
+    code { font-family: var(--font-mono); }
+
+    .trace-demo-frame {
+      width: 100vw;
+      height: 100vh;
+      aspect-ratio: auto;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .trace-demo-frame .pto-ide-frame__topbar-center { display: none; }
+    .trace-demo-frame .pto-ide-frame__topbar-left,
+    .trace-demo-frame .pto-ide-frame__topbar-right { flex: 1 1 auto; }
+
+    .workspace-title {
+      color: var(--foreground);
+      font: var(--ide-frame-title-font);
+    }
+
+    .workspace-meta {
+      color: var(--foreground-muted);
+      font: var(--ide-frame-meta-font);
+    }
+
+    .pane-scroll {
+      height: 100%;
+      overflow: auto;
+    }
+
+    .eyebrow {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      letter-spacing: var(--letter-spacing-label);
+      text-transform: uppercase;
+    }
+
+    .operator-input-panel {
+      display: grid;
+      padding: 0 var(--space-3) var(--space-4);
+    }
+
+    .operator-context-hero,
+    .operator-input-section {
+      min-width: 0;
+      display: grid;
+      gap: var(--space-2);
+      padding: var(--space-3) 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .context-title {
+      margin: 0;
+      color: var(--foreground);
+      font: var(--text-title-2);
+    }
+
+    .context-kv {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .context-kv-row {
+      display: grid;
+      grid-template-columns: minmax(64px, .68fr) minmax(0, 1fr);
+      gap: var(--space-2);
+      align-items: baseline;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .context-kv-row code {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--foreground);
+      font: var(--text-mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .operator-input-section-head {
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+
+    .operator-input-section-head h3 {
+      margin: 0;
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .operator-input-section-head span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      white-space: nowrap;
+    }
+
+    .operator-io-table {
+      min-width: 0;
+      display: grid;
+      overflow: hidden;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+    }
+
+    .operator-io-head,
+    .operator-io-row {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 32px minmax(76px, 1fr) minmax(70px, .9fr);
+      gap: 6px;
+      align-items: center;
+      padding: 7px var(--space-2);
+    }
+
+    .operator-io-head {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .operator-io-row {
+      border-top: 1px solid var(--border-subtle);
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+    }
+
+    .operator-io-row strong {
+      color: var(--foreground);
+      font: 600 11px / 1.25 var(--font-mono);
+    }
+
+    .operator-io-row code,
+    .operator-io-row span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .operator-io-row code { color: var(--foreground); }
+
+    .operator-formula {
+      display: block;
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-3) 70%, transparent);
+      color: var(--foreground);
+      font: 600 11px / 1.55 var(--font-mono);
+      overflow-wrap: anywhere;
+    }
+
+    .operator-api-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-1);
+    }
+
+    .operator-api-pill {
+      min-height: 28px;
+      padding-inline: var(--space-2);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-mono);
+    }
+
+    .operator-api-note {
+      min-height: 54px;
+      display: grid;
+      gap: 2px;
+      padding-top: var(--space-1);
+    }
+
+    .operator-api-note strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+    }
+
+    .operator-api-note p {
+      margin: 0;
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+      line-height: 1.45;
+    }
+
+    .operator-goal { margin-top: var(--space-3); }
+
+    .goal-note {
+      display: grid;
+      gap: var(--space-1);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--primary) 9%, var(--inspector-soft-card-bg));
+    }
+
+    .goal-note strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+    }
+
+    .goal-note span {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .center-workbench {
+      min-width: 640px;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .recommendation-panel[hidden],
+    .trace-surface[hidden] { display: none !important; }
+
+    .convergence-map-shell {
+      min-height: 330px;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      background: color-mix(in srgb, var(--surface-2) 66%, transparent);
+      animation: trace-view-in var(--duration-base) var(--easing-out);
+    }
+
+    .convergence-map-head {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4) 0;
+    }
+
+    .convergence-map-head strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .convergence-map-head span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .convergence-map-scroll {
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow: auto hidden;
+    }
+
+    .convergence-svg {
+      width: 100%;
+      min-width: 720px;
+      height: 100%;
+      min-height: 300px;
+      display: block;
+    }
+
+    .convergence-svg .chart-guide {
+      stroke: var(--border-subtle);
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .convergence-svg .api-river-stream {
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+      transition:
+        opacity var(--duration-fast) var(--easing-default),
+        filter var(--duration-fast) var(--easing-default);
+    }
+
+    .convergence-svg .api-river-stream.is-pass {
+      fill: url(#api-pass-river);
+      stroke: color-mix(in srgb, var(--success) 36%, transparent);
+    }
+
+    .convergence-svg .api-river-stream.is-rejection {
+      opacity: .82;
+      stroke: color-mix(in srgb, var(--foreground) 18%, transparent);
+    }
+
+    .convergence-svg .api-river-stream.is-rejection:hover {
+      opacity: 1;
+      filter: drop-shadow(0 0 5px currentColor);
+    }
+
+    .convergence-svg .convergence-river {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .convergence-svg .convergence-river.is-selected .api-river-stream {
+      opacity: 1;
+      filter: drop-shadow(0 0 5px var(--primary-hover));
+    }
+
+    .convergence-svg .convergence-river:focus-visible .api-river-stream.is-pass {
+      stroke: var(--primary-hover);
+      stroke-width: 2;
+    }
+
+    .convergence-svg .api-river-stream.tone-1 { fill: var(--danger); color: var(--danger); }
+    .convergence-svg .api-river-stream.tone-2 { fill: var(--warning); color: var(--warning); }
+    .convergence-svg .api-river-stream.tone-3 { fill: var(--primary-hover); color: var(--primary-hover); }
+    .convergence-svg .api-river-stream.tone-4 { fill: var(--accent); color: var(--accent); }
+    .convergence-svg .api-river-stream.tone-5 { fill: var(--success); color: var(--success); }
+    .convergence-svg .api-river-stream.tone-6 { fill: var(--foreground-muted); color: var(--foreground-muted); }
+
+    .convergence-svg .api-river-label {
+      fill: var(--foreground-secondary);
+      font: 600 8.5px / 1 var(--font-mono);
+    }
+
+    .convergence-svg .api-river-total {
+      fill: var(--danger);
+      font: 700 9px / 1 var(--font-mono);
+    }
+
+    .convergence-svg .api-river-note {
+      fill: var(--foreground-muted);
+      font: 500 8px / 1 var(--font-mono);
+    }
+
+    .convergence-svg .stage-plane {
+      fill: color-mix(in srgb, var(--surface-3) 62%, transparent);
+      stroke: var(--border-subtle);
+      stroke-width: 1;
+      transition:
+        fill var(--duration-fast) var(--easing-default),
+        stroke var(--duration-fast) var(--easing-default);
+    }
+
+    .convergence-svg .stage-group {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .convergence-svg .stage-group:hover .stage-plane,
+    .convergence-svg .stage-group.is-selected .stage-plane {
+      fill: color-mix(in srgb, var(--surface-4) 62%, transparent);
+      stroke: var(--border-default);
+    }
+
+    .convergence-svg .stage-group.is-selected .stage-plane {
+      fill: color-mix(in srgb, var(--primary) 18%, var(--surface-4));
+      stroke: var(--primary-hover);
+      stroke-width: 1.5;
+    }
+
+    .convergence-svg .stage-group:focus-visible .stage-plane {
+      stroke: var(--primary-hover);
+      stroke-width: 2;
+    }
+
+    .convergence-svg .stage-kicker,
+    .convergence-svg .filter-kicker,
+    .convergence-svg .filter-meta {
+      fill: var(--foreground-muted);
+      font: 500 9px / 1 var(--font-mono);
+      letter-spacing: .4px;
+      text-transform: uppercase;
+    }
+
+    .convergence-svg .stage-count {
+      fill: var(--foreground);
+      font: 700 18px / 1 var(--font-mono);
+    }
+
+    .convergence-svg .stage-label {
+      fill: var(--foreground-secondary);
+      font: 600 10px / 1.2 var(--font-sans);
+    }
+
+    .convergence-svg .candidate-dot {
+      fill: color-mix(in srgb, var(--foreground) 78%, var(--primary));
+      opacity: .86;
+      transition: opacity var(--duration-fast) var(--easing-default);
+    }
+
+    .convergence-svg .stage-group:hover .candidate-dot { opacity: 1; }
+
+    .convergence-svg .candidate-dot.is-final {
+      fill: var(--success);
+      opacity: 1;
+      filter: drop-shadow(0 0 5px color-mix(in srgb, var(--success) 55%, transparent));
+    }
+
+    .convergence-svg .candidate-name {
+      fill: var(--foreground);
+      font: 700 9px / 1 var(--font-mono);
+    }
+
+    .convergence-svg .filter-group {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .convergence-svg .filter-hit { fill: transparent; }
+
+    .convergence-svg .filter-axis {
+      stroke: var(--border-strong);
+      stroke-width: 1;
+      stroke-dasharray: 3 5;
+      vector-effect: non-scaling-stroke;
+      transition: stroke var(--duration-fast) var(--easing-default);
+    }
+
+    .convergence-svg .filter-orb {
+      fill: var(--surface-3);
+      stroke: var(--border-strong);
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+      transition:
+        fill var(--duration-fast) var(--easing-default),
+        stroke var(--duration-fast) var(--easing-default);
+    }
+
+    .convergence-svg .filter-value {
+      fill: var(--danger);
+      font: 700 10px / 1 var(--font-mono);
+    }
+
+    .convergence-svg .filter-group:hover .filter-axis,
+    .convergence-svg .filter-group.is-selected .filter-axis {
+      stroke: var(--primary-hover);
+    }
+
+    .convergence-svg .filter-group:hover .filter-orb,
+    .convergence-svg .filter-group.is-selected .filter-orb {
+      fill: color-mix(in srgb, var(--primary) 20%, var(--surface-3));
+      stroke: var(--primary-hover);
+    }
+
+    .convergence-svg .filter-group.is-selected .filter-kicker,
+    .convergence-svg .filter-group.is-selected .filter-meta { fill: var(--foreground); }
+
+    .convergence-svg .filter-group:focus-visible .filter-orb {
+      stroke: var(--primary-hover);
+      stroke-width: 2;
+    }
+
+    .convergence-svg .survival-caption {
+      fill: var(--foreground-muted);
+      font: 500 9px / 1 var(--font-mono);
+    }
+
+    .trace-section {
+      flex: 0 0 auto;
+      display: grid;
+      gap: var(--space-3);
+      padding: var(--space-4);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .trace-summary {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-4);
+    }
+
+    .trace-summary-copy {
+      min-width: 0;
+      display: grid;
+      gap: var(--space-1);
+    }
+
+    .trace-summary-copy h1 {
+      margin: 0;
+      color: var(--foreground);
+      font: var(--text-title-2);
+    }
+
+    .trace-summary-copy p {
+      margin: 0;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .trace-summary-actions {
+      flex: 0 0 auto;
+      display: grid;
+      justify-items: end;
+      gap: var(--space-2);
+    }
+
+    .trace-surface-tabs {
+      padding: 2px;
+      border-color: transparent;
+      background: color-mix(in srgb, var(--surface-1) 64%, transparent);
+    }
+
+    .trace-surface-tabs > .btn {
+      min-width: 44px;
+      min-height: 24px;
+      padding-inline: var(--space-2);
+      font: var(--text-label);
+    }
+
+    .trace-total {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: var(--space-2);
+      align-items: baseline;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-3) 68%, transparent);
+    }
+
+    .trace-total span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      text-transform: uppercase;
+    }
+
+    .trace-total b {
+      color: var(--foreground);
+      font: 700 15px / 1 var(--font-mono);
+    }
+
+    .trace-path {
+      min-width: 0;
+      display: grid;
+      grid-template-columns:
+        minmax(72px, 1fr) 14px
+        minmax(82px, 1fr) 14px
+        minmax(86px, 1fr) 14px
+        minmax(90px, 1fr) 14px
+        minmax(90px, 1fr) 14px
+        minmax(78px, 1fr);
+      align-items: center;
+    }
+
+    .trace-stage {
+      min-width: 0;
+      width: 100%;
+      min-height: 58px;
+      display: grid;
+      align-content: center;
+      gap: 3px;
+      padding: var(--space-2);
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-3) 58%, transparent);
+      color: inherit;
+      font: inherit;
+      outline: none;
+      text-align: left;
+      cursor: pointer;
+      transition:
+        background var(--duration-fast) var(--easing-default),
+        border-color var(--duration-fast) var(--easing-default),
+        box-shadow var(--duration-fast) var(--easing-default);
+    }
+
+    .trace-stage:hover {
+      background: color-mix(in srgb, var(--surface-4) 72%, transparent);
+    }
+
+    .trace-stage.is-complete {
+      background: color-mix(in srgb, var(--success) 8%, var(--surface-3));
+    }
+
+    .trace-stage.is-current {
+      border-color: color-mix(in srgb, var(--primary) 44%, transparent);
+      background: color-mix(in srgb, var(--primary) 14%, var(--surface-4));
+    }
+
+    .trace-stage.is-selected {
+      border-color: color-mix(in srgb, var(--primary) 70%, transparent);
+      background: color-mix(in srgb, var(--primary) 18%, var(--surface-4));
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+
+    .trace-stage:focus-visible,
+    .trace-link:focus-visible {
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+
+    .trace-stage small {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--foreground-muted);
+      font: 500 9px / 1.2 var(--font-mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .trace-stage strong {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--foreground);
+      font: 600 10px / 1.2 var(--font-sans);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .trace-stage b {
+      color: var(--foreground);
+      font: 700 13px / 1 var(--font-mono);
+    }
+
+    .trace-link {
+      position: relative;
+      width: 100%;
+      height: 58px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .trace-link::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: 0;
+      left: 0;
+      height: 1px;
+      background: var(--border-strong);
+      transition: background var(--duration-fast) var(--easing-default);
+    }
+
+    .trace-link::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: 0;
+      width: 5px;
+      height: 5px;
+      border-top: 1px solid var(--foreground-muted);
+      border-right: 1px solid var(--foreground-muted);
+      transform: translateY(-50%) rotate(45deg);
+      transition: border-color var(--duration-fast) var(--easing-default);
+    }
+
+    .trace-link:hover::before,
+    .trace-link.is-selected::before { background: var(--primary-hover); }
+
+    .trace-link.is-selected {
+      background: color-mix(in srgb, var(--primary) 10%, transparent);
+    }
+
+    .trace-link:hover::after,
+    .trace-link.is-selected::after {
+      border-color: var(--primary-hover);
+    }
+
+    .trace-link span {
+      position: absolute;
+      left: 50%;
+      bottom: calc(50% + 6px);
+      color: var(--danger);
+      font: 600 8px / 1 var(--font-mono);
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .trace-link.is-expansion span { color: var(--primary-hover); }
+    .trace-link.is-selected span { color: var(--primary-hover); }
+
+    .candidate-section {
+      min-height: 0;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      padding: var(--space-4);
+    }
+
+    .candidate-section[hidden],
+    .trace-detail-section[hidden],
+    .trace-inspector-panel[hidden] { display: none; }
+
+    .trace-detail-section {
+      min-height: 0;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      padding: var(--space-4);
+      animation: trace-view-in var(--duration-base) var(--easing-out);
+    }
+
+    .trace-detail-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
+
+    .trace-detail-metric {
+      min-width: 0;
+      display: grid;
+      gap: var(--space-1);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-3) 58%, transparent);
+    }
+
+    .trace-detail-metric span {
+      overflow: hidden;
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .trace-detail-metric strong {
+      overflow: hidden;
+      color: var(--foreground);
+      font: 700 15px / 1.2 var(--font-mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .api-rejection-browser[hidden] { display: none; }
+
+    .api-rejection-browser {
+      display: grid;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+    }
+
+    .rejection-browser-head,
+    .rejection-case-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+
+    .rejection-browser-title,
+    .rejection-case-title {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+    }
+
+    .rejection-browser-title strong,
+    .rejection-case-title strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .rejection-browser-title span,
+    .rejection-case-title span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .rejection-categories {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
+
+    .rejection-category,
+    .rejection-case {
+      min-width: 0;
+      appearance: none;
+      border: 0;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-3) 58%, transparent);
+      color: var(--foreground-secondary);
+      text-align: left;
+    }
+
+    .rejection-category {
+      min-height: 54px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-2);
+      align-items: center;
+      padding: var(--space-2) var(--space-3);
+      cursor: pointer;
+    }
+
+    .rejection-category:hover:not(:disabled),
+    .rejection-case:hover {
+      background: color-mix(in srgb, var(--surface-4) 72%, transparent);
+      color: var(--foreground);
+    }
+
+    .rejection-category.is-selected,
+    .rejection-case.is-selected {
+      background: var(--state-selected);
+      color: var(--foreground);
+    }
+
+    .rejection-category:focus-visible,
+    .rejection-case:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+
+    .rejection-category:disabled {
+      cursor: not-allowed;
+      opacity: .48;
+    }
+
+    .rejection-category-copy {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+
+    .rejection-category-copy strong {
+      overflow: hidden;
+      color: inherit;
+      font: 600 10px / 1.25 var(--font-sans);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rejection-category-copy span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .rejection-category b {
+      color: inherit;
+      font: 700 14px / 1 var(--font-mono);
+    }
+
+    .rejection-case-browser {
+      display: grid;
+      gap: var(--space-2);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .rejection-case-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
+
+    .rejection-case {
+      min-height: 66px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: var(--space-3);
+      align-items: start;
+      padding: var(--space-3);
+      cursor: pointer;
+    }
+
+    .rejection-case-id {
+      color: var(--danger);
+      font: 700 10px / 1.3 var(--font-mono);
+    }
+
+    .rejection-case-copy {
+      min-width: 0;
+      display: grid;
+      gap: var(--space-1);
+    }
+
+    .rejection-case-copy strong {
+      overflow: hidden;
+      color: inherit;
+      font: 600 11px / 1.25 var(--font-sans);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rejection-case-copy span {
+      overflow: hidden;
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .contract-visual[hidden] { display: none; }
+
+    .contract-visual {
+      display: grid;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-2) 74%, transparent);
+      animation: trace-view-in var(--duration-base) var(--easing-out);
+    }
+
+    .contract-visual-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-3);
+    }
+
+    .contract-visual-head strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .contract-visual-head span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      white-space: nowrap;
+    }
+
+    .contract-flow {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(118px, .7fr) minmax(0, 1fr);
+      gap: var(--space-3);
+      align-items: center;
+    }
+
+    .contract-endpoint,
+    .contract-gate {
+      min-width: 0;
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .contract-endpoint-label {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-2);
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .contract-endpoint-label code {
+      color: var(--foreground-secondary);
+      font: var(--text-mono);
+    }
+
+    .contract-fragments {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
+      gap: var(--space-1);
+    }
+
+    .contract-fragment {
+      min-width: 0;
+      min-height: 38px;
+      display: grid;
+      place-items: center;
+      padding: var(--space-1);
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--primary) 14%, var(--surface-3));
+      color: var(--primary-hover);
+      font: 700 10px / 1 var(--font-mono);
+      text-align: center;
+    }
+
+    .contract-fragment.is-gap {
+      background: color-mix(in srgb, var(--warning) 12%, var(--surface-3));
+      color: var(--warning);
+      font-size: 8px;
+      line-height: 1.2;
+    }
+
+    .contract-fragments.is-expected .contract-fragment {
+      background: color-mix(in srgb, var(--success) 12%, var(--surface-3));
+      color: var(--success);
+    }
+
+    .contract-caption {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .contract-gate {
+      justify-items: center;
+      text-align: center;
+    }
+
+    .contract-gate strong {
+      color: var(--foreground);
+      font: 600 10px / 1.2 var(--font-mono);
+    }
+
+    .contract-gate span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .contract-gate-mark {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 22px 1fr;
+      align-items: center;
+      color: var(--danger);
+    }
+
+    .contract-gate-mark i {
+      height: 1px;
+      background: var(--danger);
+      opacity: .62;
+    }
+
+    .contract-gate-mark b {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius-pill);
+      background: color-mix(in srgb, var(--danger) 14%, var(--surface-3));
+      color: var(--danger);
+      font: 700 12px / 1 var(--font-mono);
+    }
+
+    .contract-verdicts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .granularity-compare {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+      gap: var(--space-3);
+      align-items: stretch;
+    }
+
+    .granularity-value {
+      min-width: 0;
+      display: grid;
+      place-content: center;
+      gap: var(--space-1);
+      min-height: 66px;
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+
+    .granularity-value.is-actual {
+      background: color-mix(in srgb, var(--danger) 10%, var(--surface-3));
+    }
+
+    .granularity-value.is-contract {
+      background: color-mix(in srgb, var(--success) 9%, var(--surface-3));
+    }
+
+    .granularity-value b,
+    .granularity-value code {
+      color: var(--foreground);
+      font: 700 16px / 1.2 var(--font-mono);
+    }
+
+    .granularity-value span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .granularity-mark {
+      display: grid;
+      place-items: center;
+      color: var(--danger);
+      font: 700 18px / 1 var(--font-mono);
+    }
+
+    .granularity-ruler {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+      gap: var(--space-1);
+    }
+
+    .granularity-ruler span {
+      min-height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--surface-3) 70%, transparent);
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .granularity-ruler span.is-invalid {
+      background: color-mix(in srgb, var(--danger) 12%, var(--surface-3));
+      color: var(--danger);
+    }
+
+    .case-inspector-value {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .case-inspector-value code {
+      color: var(--foreground);
+      font: var(--text-mono);
+      white-space: normal;
+    }
+
+    .case-inspector-value p {
+      margin: 0;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .trace-detail-grid {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1.14fr) minmax(220px, .86fr);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .trace-detail-column {
+      min-width: 0;
+      display: grid;
+      align-content: start;
+      gap: var(--space-3);
+      padding: var(--space-4) 0;
+    }
+
+    .trace-detail-column + .trace-detail-column {
+      margin-left: var(--space-4);
+      padding-left: var(--space-4);
+    }
+
+    .trace-detail-column h3 {
+      margin: 0;
+      color: var(--foreground);
+      font: var(--text-body-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .trace-detail-list {
+      display: grid;
+      margin: 0;
+    }
+
+    .trace-detail-row {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(108px, .72fr) minmax(0, 1.28fr);
+      gap: var(--space-3);
+      align-items: baseline;
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      font: var(--text-body-sm);
+    }
+
+    .trace-detail-row:last-child { border-bottom: 0; }
+
+    .trace-detail-row dt {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--foreground-muted);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .trace-detail-row dd {
+      min-width: 0;
+      margin: 0;
+      color: var(--foreground);
+      font-family: var(--font-mono);
+    }
+
+    .trace-stage-note {
+      display: grid;
+      gap: var(--space-2);
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      background: var(--inspector-soft-card-bg);
+    }
+
+    .trace-stage-note strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+    }
+
+    .trace-stage-note p {
+      margin: 0;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    @keyframes trace-view-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .candidate-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .candidate-head-copy {
+      min-width: 0;
+      display: grid;
+      gap: var(--space-1);
+    }
+
+    .candidate-head h2 {
+      margin: 0;
+      color: var(--foreground);
+      font: var(--text-title-2);
+    }
+
+    .candidate-head p {
+      margin: 0;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .recommendation-status {
+      background: color-mix(in srgb, var(--primary) 16%, var(--stat-chip-bg));
+      color: var(--primary-hover);
+    }
+
+    .candidate-table-wrap {
+      min-width: 0;
+      overflow-x: auto;
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--surface-2) 68%, transparent);
+    }
+
+    .candidate-table {
+      width: 100%;
+      min-width: 590px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font: var(--text-body-sm);
+    }
+
+    .candidate-table th,
+    .candidate-table td {
+      height: 36px;
+      padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .candidate-table thead th {
+      height: 52px;
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .candidate-table th:first-child,
+    .candidate-table td:first-child {
+      width: 27%;
+      color: var(--foreground-muted);
+    }
+
+    .candidate-table th:not(:first-child),
+    .candidate-table td:not(:first-child) { width: 24.333%; }
+
+    .candidate-table tbody td:not(:first-child) {
+      color: var(--foreground);
+      font-family: var(--font-mono);
+    }
+
+    .candidate-table .is-recommended {
+      background: color-mix(in srgb, var(--primary) 7%, transparent);
+    }
+
+    .candidate-title {
+      display: grid;
+      gap: 3px;
+    }
+
+    .candidate-title strong {
+      color: var(--foreground);
+      font: 600 12px / 1.2 var(--font-mono);
+    }
+
+    .candidate-title span {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .candidate-title.is-recommended strong { color: var(--primary-hover); }
+    .cell-positive { color: var(--success) !important; }
+    .cell-warning { color: var(--warning) !important; }
+
+    .candidate-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding-top: var(--space-3);
+      color: var(--foreground-muted);
+      font: var(--text-body-sm);
+    }
+
+    .candidate-footer strong {
+      color: var(--foreground-secondary);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .inspector-rail {
+      height: 100%;
+      padding: 0 var(--inspector-rail-padding-x) var(--inspector-rail-padding-bottom);
+    }
+
+    .inspector-section {
+      display: grid;
+      gap: var(--inspector-section-gap);
+      padding: var(--inspector-section-padding-y) 0;
+      border-bottom: 1px solid var(--inspector-section-divider);
+    }
+
+    .inspector-section:last-child { border-bottom: 0; }
+
+    .inspector-section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+
+    .inspector-section-title {
+      margin: 0;
+      color: var(--foreground);
+      font: var(--text-title-2);
+    }
+
+    .inspector-section-kicker {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+      white-space: nowrap;
+    }
+
+    .inspector-soft-card {
+      display: grid;
+      gap: var(--inspector-soft-card-gap);
+      padding: var(--inspector-soft-card-padding);
+      border-radius: var(--inspector-soft-card-radius);
+      background: var(--inspector-soft-card-bg);
+    }
+
+    .inspector-soft-card.is-info {
+      background: color-mix(in srgb, var(--primary) 11%, var(--inspector-soft-card-bg));
+    }
+
+    .inspector-soft-card strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+    }
+
+    .inspector-soft-card p {
+      margin: 0;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .evidence-types {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .evidence-type {
+      min-height: var(--tag-height);
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 0 var(--tag-padding-x);
+      border-radius: var(--tag-radius);
+      background: var(--comp-tag-bg);
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+    }
+
+    .evidence-type::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: var(--radius-pill);
+      background: var(--foreground-muted);
+    }
+
+    .evidence-type.is-fact::before { background: var(--success); }
+    .evidence-type.is-estimate::before { background: var(--warning); }
+    .evidence-type.is-recommendation::before { background: var(--primary-hover); }
+    .evidence-type.is-failure::before { background: var(--danger); }
+
+    .reason-list {
+      display: grid;
+      gap: var(--space-2);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .reason-list li {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: var(--space-2);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .reason-index {
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius-pill);
+      background: color-mix(in srgb, var(--primary) 13%, transparent);
+      color: var(--primary-hover);
+      font: 700 9px / 1 var(--font-mono);
+    }
+
+    .tradeoff-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: var(--space-2) var(--space-3);
+      align-items: baseline;
+      font: var(--text-body-sm);
+    }
+
+    .tradeoff-grid span { color: var(--foreground-secondary); }
+    .tradeoff-grid code { color: var(--foreground); }
+    .tradeoff-grid .tradeoff-head {
+      color: var(--foreground-muted);
+      font: var(--text-label);
+    }
+
+    .source-list {
+      display: grid;
+      gap: var(--space-2);
+      margin: 0;
+      padding-left: var(--space-4);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    @media (max-width: 1180px) {
+      .trace-summary-copy p { display: none; }
+      .candidate-table th,
+      .candidate-table td { padding-inline: var(--space-2); }
+      .rejection-categories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .contract-flow {
+        grid-template-columns: minmax(0, 1fr) 102px minmax(0, 1fr);
+        gap: var(--space-2);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .trace-stage,
+      .trace-link::before,
+      .trace-link::after { transition: none; }
+      .trace-detail-section,
+      .convergence-map-shell { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="pto-ide-frame trace-demo-frame" data-ide-frame data-host="standalone" data-hide-activity-rail="true" aria-label="Explainable Design Advisor recommendation trace concept">
+    <header class="pto-ide-frame__topbar pto-ide-frame__standalone-chrome">
+      <div class="pto-ide-frame__topbar-left">
+        <div class="pto-ide-frame__host-chip" aria-hidden="true">
+          <svg class="pto-ide-frame__host-icon" viewBox="0 0 24 24">
+            <path d="M4 5h16v14H4z"></path><path d="m8 9 3 3-3 3"></path><path d="M13 15h3"></path>
+          </svg>
+        </div>
+        <div class="pto-ide-frame__workspace">
+          <span class="workspace-title">Explainable Design Advisor</span>
+          <span class="workspace-meta">/ MatMul · Run 07</span>
+        </div>
+      </div>
+      <div class="pto-ide-frame__topbar-center"></div>
+      <div class="pto-ide-frame__topbar-right">
+        <span class="workspace-meta">Ascend 910B · performance first · mock data</span>
+      </div>
+    </header>
+
+    <div class="pto-ide-frame__body">
+      <nav class="pto-ide-frame__activity-rail" hidden aria-label="Activity rail"></nav>
+
+      <div class="pto-ide-frame__workarea">
+        <div class="pto-ide-frame__split" data-ide-split="standalone-main" data-storage-key="recommendation-trace-framework-demo-v3" data-split-direction="horizontal" data-sizes="20,58,22" data-min-size="236,600,260">
+          <aside class="pto-ide-frame__pane pto-ide-frame__explorer" data-ide-pane="explorer">
+            <header class="pto-ide-frame__pane-header">
+              <h2 class="pto-ide-frame__pane-title">Operator Input</h2>
+              <span class="pto-ide-frame__pane-meta">MatMul · FP16</span>
+            </header>
+            <div class="pto-ide-frame__pane-body pane-scroll">
+              <div class="operator-input-panel">
+                <section class="operator-context-hero" aria-labelledby="problemTitle">
+                  <div>
+                    <div class="eyebrow">Operator</div>
+                    <h3 class="context-title" id="problemTitle">MatMul</h3>
+                  </div>
+                  <div class="context-kv">
+                    <div class="context-kv-row"><span>Shape</span><code>M/K/N = 4096</code></div>
+                    <div class="context-kv-row"><span>Layout</span><code>ND → ND</code></div>
+                    <div class="context-kv-row"><span>SoC</span><code>Ascend 910B</code></div>
+                  </div>
+                </section>
+
+                <section class="operator-input-section" aria-labelledby="operatorInputTitle">
+                  <div class="operator-input-section-head">
+                    <h3 id="operatorInputTitle">Input</h3>
+                    <span>2 tensors</span>
+                  </div>
+                  <div class="operator-io-table" role="table" aria-label="MatMul inputs">
+                    <div class="operator-io-head" role="row"><span>Name</span><span>Shape</span><span>dtype / format</span></div>
+                    <div class="operator-io-row" role="row"><strong>A</strong><code>4096 × 4096</code><span>FP16 / ND</span></div>
+                    <div class="operator-io-row" role="row"><strong>B</strong><code>4096 × 4096</code><span>FP16 / ND</span></div>
+                  </div>
+                </section>
+
+                <section class="operator-input-section" aria-labelledby="operatorOutputTitle">
+                  <div class="operator-input-section-head">
+                    <h3 id="operatorOutputTitle">Output</h3>
+                    <span>1 tensor</span>
+                  </div>
+                  <div class="operator-io-table" role="table" aria-label="MatMul output">
+                    <div class="operator-io-head" role="row"><span>Name</span><span>Shape</span><span>dtype / format</span></div>
+                    <div class="operator-io-row" role="row"><strong>C</strong><code>4096 × 4096</code><span>FP16 / ND</span></div>
+                  </div>
+                </section>
+
+                <section class="operator-input-section" aria-labelledby="operatorFormulaTitle">
+                  <div class="operator-input-section-head">
+                    <h3 id="operatorFormulaTitle">Algorithm</h3>
+                    <span>matrix multiply</span>
+                  </div>
+                  <code class="operator-formula">C[M,N] = Σₖ A[M,K] × B[K,N]</code>
+                </section>
+
+                <section class="operator-input-section" aria-labelledby="operatorApiTitle">
+                  <div>
+                    <div class="operator-input-section-head">
+                      <h3 id="operatorApiTitle">Required APIs</h3>
+                      <span>click to inspect</span>
+                    </div>
+                  </div>
+                  <div class="operator-api-pills" role="group" aria-label="Required APIs">
+                    <button class="btn btn-sm operator-api-pill" type="button" data-operator-api="DataCopy" aria-pressed="false">DataCopy</button>
+                    <button class="btn btn-sm operator-api-pill" type="button" data-operator-api="LoadData" aria-pressed="false">LoadData</button>
+                    <button class="btn btn-sm operator-api-pill" type="button" data-operator-api="Mmad" aria-pressed="false">Mmad</button>
+                    <button class="btn btn-sm operator-api-pill" type="button" data-operator-api="SetFlag" aria-pressed="false">SetFlag</button>
+                    <button class="btn btn-sm operator-api-pill" type="button" data-operator-api="WaitFlag" aria-pressed="false">WaitFlag</button>
+                  </div>
+                  <div class="operator-api-note" aria-live="polite">
+                    <strong data-operator-api-title>API chain</strong>
+                    <p data-operator-api-copy>选择一个 API，查看它在 MatMul 数据搬运、计算或流水同步中的职责。</p>
+                  </div>
+                </section>
+
+                <div class="goal-note operator-goal">
+                  <strong>Optimization goal</strong>
+                  <span>性能优先，但不能超过片上存储限制。</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <main class="pto-ide-frame__pane" data-ide-pane="editor-preview">
+            <header class="pto-ide-frame__pane-header">
+              <h2 class="pto-ide-frame__pane-title">Recommendation Trace</h2>
+              <span class="pto-ide-frame__pane-meta" data-center-meta>Candidates · final design-time stage</span>
+            </header>
+            <div class="pto-ide-frame__pane-body pane-scroll">
+              <div class="center-workbench" id="decisionTracePanel">
+                <section class="trace-section" aria-labelledby="traceTitle">
+                  <div class="trace-summary">
+                    <div class="trace-summary-copy">
+                      <h1 id="traceTitle">设计空间如何从 288 收敛到 3</h1>
+                      <p data-trace-summary-copy>每一步记录应用的约束、被排除的候选，以及结论属于事实、估计还是建议。</p>
+                    </div>
+                    <div class="trace-summary-actions">
+                      <div class="segmented-control segmented-control-muted trace-surface-tabs" role="tablist" aria-label="Trace visualization">
+                        <button class="btn btn-sm is-selected" type="button" role="tab" id="tracePathTab" aria-controls="tracePathSurface" aria-selected="true" data-trace-surface="path">Trace</button>
+                        <button class="btn btn-sm" type="button" role="tab" id="traceMapTab" aria-controls="traceMapSurface" aria-selected="false" tabindex="-1" data-trace-surface="map">Map</button>
+                      </div>
+                      <div class="trace-total"><span data-trace-total-label>Remaining</span><b data-trace-total-value>3</b></div>
+                    </div>
+                  </div>
+
+                  <div class="trace-surface" id="tracePathSurface" role="tabpanel" aria-labelledby="tracePathTab" data-trace-surface-panel="path">
+                    <div class="trace-path" aria-label="Recommendation trace stages and transitions">
+                      <button class="trace-stage is-complete" type="button" data-trace-view="define" aria-pressed="false" title="查看问题定义阶段">
+                        <small>01 · input</small><strong>Define</strong><b>Ready</b>
+                      </button>
+                      <button class="trace-link is-expansion" type="button" data-trace-view="expand-space" aria-pressed="false" aria-label="查看从问题定义展开为 288 个设计组合的过程" title="查看设计空间展开过程"><span>×288</span></button>
+                      <button class="trace-stage is-complete" type="button" data-trace-view="design-space" aria-pressed="false" title="查看设计空间构成">
+                        <small>02 · expand</small><strong>Design Space</strong><b>288</b>
+                      </button>
+                      <button class="trace-link" type="button" data-trace-view="filter-api" aria-pressed="false" aria-label="查看 API 约束排除的 96 个组合" title="查看 API 约束如何排除 96 个组合"><span>−96</span></button>
+                      <button class="trace-stage is-complete" type="button" data-trace-view="api-constraints" aria-pressed="false" title="查看通过 API 约束的方案">
+                        <small>03 · filter</small><strong>API Constraints</strong><b>192</b>
+                      </button>
+                      <button class="trace-link" type="button" data-trace-view="filter-resources" aria-pressed="false" aria-label="查看资源约束排除的 156 个组合" title="查看资源约束如何排除 156 个组合"><span>−156</span></button>
+                      <button class="trace-stage is-complete" type="button" data-trace-view="resources" aria-pressed="false" title="查看满足片上资源限制的方案">
+                        <small>04 · filter</small><strong>Resources</strong><b>36</b>
+                      </button>
+                      <button class="trace-link" type="button" data-trace-view="filter-pipeline" aria-pressed="false" aria-label="查看流水可行性检查排除的 24 个组合" title="查看流水检查如何排除 24 个组合"><span>−24</span></button>
+                      <button class="trace-stage is-complete" type="button" data-trace-view="pipeline" aria-pressed="false" title="查看流水可行方案">
+                        <small>05 · check</small><strong>Pipeline</strong><b>12</b>
+                      </button>
+                      <button class="trace-link" type="button" data-trace-view="shortlist" aria-pressed="false" aria-label="查看候选排序排除的 9 个方案" title="查看 12 个可行方案如何收敛为 3 个候选"><span>−9</span></button>
+                      <button class="trace-stage is-current is-selected" type="button" data-trace-view="candidates" aria-pressed="true" title="查看最终候选比较">
+                        <small>06 · compare</small><strong>Candidates</strong><b>3</b>
+                      </button>
+                    </div>
+                  </div>
+
+                  <figure class="convergence-map-shell trace-surface" id="traceMapSurface" role="tabpanel" aria-labelledby="traceMapTab" data-trace-surface-panel="map" hidden>
+                    <figcaption class="convergence-map-head">
+                      <strong id="convergenceMapTitle">Candidate population flow</strong>
+                      <span>Every split conserves counts · band width = local candidate share</span>
+                    </figcaption>
+                    <div class="convergence-map-scroll">
+                      <svg class="convergence-svg" data-convergence-svg viewBox="0 0 1120 420" role="img" aria-labelledby="convergenceMapTitle" aria-label="Design space converges from 288 to 3 candidates through four explainable rejection stages"></svg>
+                    </div>
+                  </figure>
+                </section>
+
+                <section class="candidate-section" data-view-panel="candidates" aria-labelledby="candidateTitle">
+                  <header class="candidate-head">
+                    <div class="candidate-head-copy">
+                      <h2 id="candidateTitle">三个可行候选，而不是一个黑盒答案</h2>
+                      <p>方案 B 以 18% 的 L1 余量获得接近方案 C 的预计性能。</p>
+                    </div>
+                    <span class="stat-chip recommendation-status">B · Recommended</span>
+                  </header>
+
+                  <div class="candidate-table-wrap">
+                    <table class="candidate-table" aria-label="Candidate comparison">
+                      <thead>
+                        <tr>
+                          <th scope="col">Decision factor</th>
+                          <th scope="col"><span class="candidate-title"><strong>A · Stable</strong><span>resource safe</span></span></th>
+                          <th scope="col" class="is-recommended"><span class="candidate-title is-recommended"><strong>B · Recommended</strong><span>balanced choice</span></span></th>
+                          <th scope="col"><span class="candidate-title"><strong>C · Aggressive</strong><span>latency first</span></span></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>Tile</td><td>64×64×32</td><td class="is-recommended">128×128×64</td><td>128×128×64</td></tr>
+                        <tr><td>Buffer</td><td>1 · single</td><td class="is-recommended">2 · double</td><td>3 · triple</td></tr>
+                        <tr><td>Estimated time</td><td>2.46 ms</td><td class="is-recommended cell-positive">1.82 ms</td><td class="cell-positive">1.79 ms</td></tr>
+                        <tr><td>L1 headroom</td><td class="cell-positive">46%</td><td class="is-recommended">18%</td><td class="cell-warning">4%</td></tr>
+                        <tr><td>Copy / Compute overlap</td><td>Low</td><td class="is-recommended cell-positive">High</td><td class="cell-positive">High</td></tr>
+                        <tr><td>Implementation complexity</td><td>Low</td><td class="is-recommended">Medium</td><td class="cell-warning">High</td></tr>
+                        <tr><td>Main risk</td><td>Performance ceiling</td><td class="is-recommended">No blocking risk</td><td class="cell-warning">Resource pressure</td></tr>
+                        <tr><td>Evidence confidence</td><td>High</td><td class="is-recommended">Medium–high</td><td>Medium</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <footer class="candidate-footer">
+                    <strong>Design-time recommendation only</strong>
+                    <span>All latency values are mock estimates, not benchmark results.</span>
+                  </footer>
+                </section>
+
+                <section class="trace-detail-section" data-view-panel="trace-detail" aria-labelledby="detailTitle" aria-live="polite" hidden>
+                  <header class="candidate-head">
+                    <div class="candidate-head-copy">
+                      <h2 id="detailTitle" data-detail-title>阶段审查</h2>
+                      <p data-detail-subtitle></p>
+                    </div>
+                    <span class="stat-chip" data-detail-badge></span>
+                  </header>
+
+                  <div class="trace-detail-metrics" aria-label="Stage counts">
+                    <div class="trace-detail-metric"><span data-metric-label="0"></span><strong data-metric-value="0"></strong></div>
+                    <div class="trace-detail-metric"><span data-metric-label="1"></span><strong data-metric-value="1"></strong></div>
+                    <div class="trace-detail-metric"><span data-metric-label="2"></span><strong data-metric-value="2"></strong></div>
+                  </div>
+
+                  <section class="api-rejection-browser" data-api-rejection-browser aria-labelledby="rejectionBrowserTitle" hidden>
+                    <header class="rejection-browser-head">
+                      <div class="rejection-browser-title">
+                        <strong id="rejectionBrowserTitle">Primary rejection reason</strong>
+                        <span>每个被排除候选只计入一个主分类 · Mock distribution</span>
+                      </div>
+                      <span class="stat-chip">2 active · 4 fake</span>
+                    </header>
+                    <div class="rejection-categories" data-api-rejection-categories aria-label="API rejection categories"></div>
+
+                    <section class="rejection-case-browser" aria-labelledby="rejectionCaseTitle">
+                      <header class="rejection-case-head">
+                        <div class="rejection-case-title">
+                          <strong id="rejectionCaseTitle" data-api-case-list-title></strong>
+                          <span data-api-case-list-meta></span>
+                        </div>
+                        <span class="workspace-meta">Representative cases · 2</span>
+                      </header>
+                      <div class="rejection-case-list" data-api-rejection-cases></div>
+                    </section>
+                  </section>
+
+                  <section class="contract-visual" data-case-visual="layout" aria-labelledby="contractVisualTitle" hidden>
+                    <header class="contract-visual-head">
+                      <strong id="contractVisualTitle" data-layout-title>#047 · Direct path contract mismatch</strong>
+                      <span data-layout-meta>Story example · FP16</span>
+                    </header>
+                    <div class="contract-flow">
+                      <div class="contract-endpoint">
+                        <div class="contract-endpoint-label"><span data-layout-source-label>L1 actual</span><code data-layout-source-code>A1 / B1</code></div>
+                        <div class="contract-fragments" data-layout-source-fragments aria-label="Actual producer layout"></div>
+                        <span class="contract-caption" data-layout-source-caption></span>
+                      </div>
+
+                      <div class="contract-gate">
+                        <strong data-layout-gate-title>Direct LoadData</strong>
+                        <div class="contract-gate-mark" aria-label="Current direct LoadData mapping fails"><i></i><b>×</b><i></i></div>
+                        <span data-layout-gate-copy></span>
+                      </div>
+
+                      <div class="contract-endpoint">
+                        <div class="contract-endpoint-label"><span data-layout-target-label>Cube expected</span><code data-layout-target-code>A2 / B2</code></div>
+                        <div class="contract-fragments is-expected" data-layout-target-fragments aria-label="Expected consumer layout"></div>
+                        <span class="contract-caption" data-layout-target-caption></span>
+                      </div>
+                    </div>
+                    <div class="contract-verdicts" data-layout-verdicts aria-label="Contract verdicts"></div>
+                  </section>
+
+                  <section class="contract-visual" data-case-visual="granularity" aria-labelledby="granularityVisualTitle" hidden>
+                    <header class="contract-visual-head">
+                      <strong id="granularityVisualTitle" data-granularity-title></strong>
+                      <span data-granularity-meta></span>
+                    </header>
+                    <div class="granularity-compare">
+                      <div class="granularity-value is-actual">
+                        <b data-granularity-actual></b>
+                        <span data-granularity-actual-meta></span>
+                      </div>
+                      <div class="granularity-mark" aria-label="Contract mismatch">≠</div>
+                      <div class="granularity-value is-contract">
+                        <code data-granularity-contract></code>
+                        <span data-granularity-contract-meta></span>
+                      </div>
+                    </div>
+                    <div class="granularity-ruler" data-granularity-ruler aria-label="Valid contract range or granularity"></div>
+                    <div class="contract-verdicts" data-granularity-verdicts aria-label="Contract verdicts"></div>
+                  </section>
+
+                  <div class="trace-detail-grid" data-generic-trace-detail>
+                    <section class="trace-detail-column">
+                      <h3 data-detail-list-title></h3>
+                      <dl class="trace-detail-list" data-detail-list></dl>
+                    </section>
+                    <section class="trace-detail-column">
+                      <h3 data-detail-output-title></h3>
+                      <div class="trace-stage-note">
+                        <strong data-detail-output-strong></strong>
+                        <p data-detail-output-copy></p>
+                      </div>
+                      <dl class="trace-detail-list" data-detail-output-list></dl>
+                    </section>
+                  </div>
+
+                  <footer class="candidate-footer" data-generic-trace-footer>
+                    <strong data-detail-footer-strong></strong>
+                    <span data-detail-footer-copy></span>
+                  </footer>
+                </section>
+              </div>
+            </div>
+          </main>
+
+          <aside class="pto-ide-frame__pane" data-ide-pane="inspector">
+            <header class="pto-ide-frame__pane-header">
+              <h2 class="pto-ide-frame__pane-title">Why Inspector</h2>
+              <span class="pto-ide-frame__pane-meta" data-inspector-meta>Overview · 285 explained</span>
+            </header>
+            <div class="pto-ide-frame__pane-body pane-scroll inspector-rail">
+              <div class="trace-inspector-panel" data-inspector-panel="candidates" hidden>
+                <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">当前结论</h3>
+                  <span class="inspector-section-kicker">medium–high confidence</span>
+                </div>
+                <div class="inspector-soft-card is-info">
+                  <strong>推荐 B · Double Buffer</strong>
+                  <p>两块 Buffer 已能覆盖主要搬运延迟；第三块 Buffer 的预计收益不足以抵消资源余量下降。</p>
+                </div>
+                </section>
+
+                <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">结论性质</h3>
+                </div>
+                <div class="evidence-types">
+                  <span class="evidence-type is-fact">硬约束</span>
+                  <span class="evidence-type is-estimate">模型估计</span>
+                  <span class="evidence-type is-recommendation">工程建议</span>
+                </div>
+                </section>
+
+                <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">推荐理由</h3>
+                  <span class="inspector-section-kicker">trace evidence</span>
+                </div>
+                <ol class="reason-list">
+                  <li><span class="reason-index">1</span><span>API、dtype、layout 和对齐条件全部满足。</span></li>
+                  <li><span class="reason-index">2</span><span>Double Buffer 落在当前 L1 / L0 容量预算内。</span></li>
+                  <li><span class="reason-index">3</span><span>CopyIn 与 Mmad 时间接近，预计能够形成有效 overlap。</span></li>
+                  <li><span class="reason-index">4</span><span>Triple Buffer 只带来约 1.8% 的额外预计吞吐。</span></li>
+                </ol>
+                </section>
+
+                <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">资源与性能权衡</h3>
+                  <span class="inspector-section-kicker">estimated</span>
+                </div>
+                <div class="inspector-soft-card">
+                  <strong>边际性能收益不足以覆盖资源代价</strong>
+                  <p>B → C 预计仅缩短 0.03 ms，而 L1 余量会从 18% 降至 4%。</p>
+                </div>
+                </section>
+
+                <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">B 与 C 的差异</h3>
+                  <span class="inspector-section-kicker">estimated</span>
+                </div>
+                <div class="tradeoff-grid">
+                  <span class="tradeoff-head">Factor</span><span class="tradeoff-head">B</span><span class="tradeoff-head">C</span>
+                  <span>Buffer</span><code>2</code><code>3</code>
+                  <span>Time</span><code>1.82 ms</code><code>1.79 ms</code>
+                  <span>L1 headroom</span><code>18%</code><code>4%</code>
+                  <span>Complexity</span><code>Medium</code><code>High</code>
+                </div>
+                </section>
+
+                <section class="inspector-section">
+                <div class="inspector-section-head">
+                  <h3 class="inspector-section-title">数据来源</h3>
+                  <span class="inspector-section-kicker">mock contract</span>
+                </div>
+                <ul class="source-list">
+                  <li>Ascend 910B resource profile</li>
+                  <li>Mmad / Load3D API contract</li>
+                  <li>Static buffer capacity calculation</li>
+                  <li>Design-time latency cost model</li>
+                </ul>
+                </section>
+              </div>
+
+              <div class="trace-inspector-panel" data-inspector-panel="api-case" aria-live="polite" hidden>
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">方案意图</h3>
+                    <span class="inspector-section-kicker" data-case-category></span>
+                  </div>
+                  <div class="inspector-soft-card is-info">
+                    <strong data-case-intent-title></strong>
+                    <p data-case-intent-copy></p>
+                  </div>
+                </section>
+
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">实际检测</h3>
+                    <span class="inspector-section-kicker">observed</span>
+                  </div>
+                  <div class="case-inspector-value">
+                    <code data-case-actual></code>
+                    <p data-case-actual-copy></p>
+                  </div>
+                </section>
+
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">违反规则</h3>
+                    <span class="inspector-section-kicker">hard contract</span>
+                  </div>
+                  <div class="case-inspector-value">
+                    <code data-case-rule></code>
+                    <p data-case-rule-copy></p>
+                  </div>
+                  <div class="evidence-types">
+                    <span class="evidence-type is-failure">原候选 · Rejected</span>
+                    <span class="evidence-type is-fact">硬约束 / 事实</span>
+                  </div>
+                </section>
+
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">为什么失败</h3>
+                    <span class="inspector-section-kicker">causal chain</span>
+                  </div>
+                  <ol class="reason-list" data-case-causal-chain></ol>
+                </section>
+
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">候选处理</h3>
+                    <span class="inspector-section-kicker" data-case-action-type></span>
+                  </div>
+                  <div class="inspector-soft-card">
+                    <strong data-case-action-title></strong>
+                    <p data-case-action-copy></p>
+                  </div>
+                </section>
+
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">规则来源</h3>
+                    <span class="inspector-section-kicker">mock contract</span>
+                  </div>
+                  <ul class="source-list" data-case-sources></ul>
+                </section>
+              </div>
+
+              <div class="trace-inspector-panel" data-inspector-panel="trace-detail" aria-live="polite" hidden>
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">当前审查对象</h3>
+                    <span class="inspector-section-kicker" data-inspector-confidence></span>
+                  </div>
+                  <div class="inspector-soft-card is-info">
+                    <strong data-inspector-conclusion></strong>
+                    <p data-inspector-conclusion-copy></p>
+                  </div>
+                </section>
+
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">结论性质</h3>
+                  </div>
+                  <div class="evidence-types" data-inspector-types></div>
+                </section>
+
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">推导依据</h3>
+                    <span class="inspector-section-kicker">trace evidence</span>
+                  </div>
+                  <ol class="reason-list" data-inspector-reasons></ol>
+                </section>
+
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">数量变化</h3>
+                    <span class="inspector-section-kicker" data-inspector-ledger-kicker></span>
+                  </div>
+                  <div class="tradeoff-grid" data-inspector-ledger></div>
+                </section>
+
+                <section class="inspector-section">
+                  <div class="inspector-section-head">
+                    <h3 class="inspector-section-title">数据来源</h3>
+                    <span class="inspector-section-kicker">mock contract</span>
+                  </div>
+                  <ul class="source-list" data-inspector-sources></ul>
+                </section>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <footer class="pto-ide-frame__status-strip pto-ide-frame__standalone-chrome">
+          <span data-status-stage>Convergence Map · 288 → 3 · 285 explained rejections</span>
+          <span>Mock / estimated data · no profiling · no benchmark</span>
+        </footer>
+      </div>
+    </div>
+  </section>
+
+  <script src="../vendor/pto-design-system/patterns/workbench-shell/pattern.js"></script>
+  <script src="../vendor/pto-design-system/patterns/ide-frame/pattern.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      window.PtoIdeFrame?.initAll?.();
+
+      const traceViews = {
+        define: {
+          summaryTitle: 'Define · 先固定设计问题',
+          summaryCopy: '输入事实和优化目标会成为后续枚举、过滤与排序的共同前提。',
+          totalLabel: 'State', totalValue: 'Ready',
+          paneMeta: 'Stage 01 · Define', status: 'Interactive framework concept · Define stage',
+          title: '问题定义已完整，可以进入设计空间展开',
+          subtitle: '这一阶段不生成方案，只消除输入歧义并锁定不可违反的边界。',
+          badge: 'Input contract',
+          metrics: [['Input', '1 brief'], ['Excluded', '0'], ['Output', 'Ready']],
+          listTitle: '已锁定的设计上下文',
+          list: [
+            ['Operation', 'MatMul'],
+            ['Shape', '4096 × 4096 × 4096'],
+            ['Dtype / Layout', 'FP16 · ND'],
+            ['Target', 'Ascend 910B'],
+            ['Goal', 'Performance first']
+          ],
+          outputTitle: '交给下一步的内容',
+          outputStrong: 'Normalized design brief',
+          outputCopy: '后续 288 个组合都继承同一份 shape、dtype、layout、SoC 与优化目标。',
+          outputList: [['Dynamic shape', 'No'], ['Hard boundary', 'On-chip memory'], ['Decision owner', 'Design-time model']],
+          footerStrong: '事实层', footerCopy: '这里记录输入，不做性能判断。',
+          inspector: {
+            meta: 'Stage 01', confidence: 'input facts',
+            conclusion: '问题定义足够完整',
+            copy: '当前信息可以确定设计空间的维度，并为所有候选建立统一比较基线。',
+            types: ['fact'],
+            reasons: ['Shape、dtype、layout 和目标 SoC 均已知。', '优化目标明确为性能优先。', '片上存储限制被声明为硬边界。'],
+            ledgerKicker: 'no filtering', ledger: [['Input', '1 brief', 'fact'], ['Excluded', '0', 'fact'], ['Output', 'Ready', 'fact']],
+            sources: ['User design brief', 'Operator schema', 'Target SoC selection']
+          }
+        },
+        'expand-space': {
+          summaryTitle: 'Expand · 从 1 份设计问题展开为 288 个组合',
+          summaryCopy: '连线表示一次设计空间变换：这里只枚举可能性，还不判断是否合法。',
+          totalLabel: 'Generated', totalValue: '288',
+          paneMeta: 'Transition · Expand ×288', status: 'Interactive framework concept · Expand transition',
+          title: '枚举五个设计维度的笛卡尔积',
+          subtitle: '把隐含选择显式化，后续约束才能解释每一个组合为什么被保留或排除。',
+          badge: '1 → 288',
+          metrics: [['From', '1 brief'], ['Operation', '×288'], ['To', '288']],
+          listTitle: '展开规则',
+          list: [['Tile', '4 choices'], ['Buffer', '3 choices'], ['Dataflow', '3 choices'], ['Core split', '4 choices'], ['Schedule', '2 choices']],
+          outputTitle: '数量是如何得到的',
+          outputStrong: '4 × 3 × 3 × 4 × 2 = 288',
+          outputCopy: '这 288 个组合只是“可被讨论的设计”，并不等于 288 个合法实现。',
+          outputList: [['Legality check', 'Not applied'], ['Resource check', 'Not applied'], ['Ranking', 'Not applied']],
+          footerStrong: '空间展开', footerCopy: '点击后续红色连线可查看每轮排除原因。',
+          inspector: {
+            meta: 'Expand ×288', confidence: 'enumeration rule',
+            conclusion: '设计空间已显式展开',
+            copy: '用户可以看到 288 的构成，而不是接受一个来源不明的搜索数字。',
+            types: ['fact', 'recommendation'],
+            reasons: ['Tile、Buffer、Dataflow、Core split 和 Schedule 是本故事的五个控制维度。', '所有维度先做组合，再交给约束层逐步过滤。', '枚举阶段不使用预计性能做排序。'],
+            ledgerKicker: 'expansion', ledger: [['From', '1', 'fact'], ['Generated', '+288', 'fact'], ['To review', '288', 'recommendation']],
+            sources: ['Mock search-space schema', 'Static option catalog', 'Design brief inheritance']
+          }
+        },
+        'design-space': {
+          summaryTitle: 'Design Space · 288 个待验证组合',
+          summaryCopy: '阶段节点展示当前状态；它回答“现在手里有什么”，而不是“刚才排除了什么”。',
+          totalLabel: 'Remaining', totalValue: '288',
+          paneMeta: 'Stage 02 · Design Space', status: 'Interactive framework concept · Design Space stage',
+          title: '设计空间由五个可解释维度组成',
+          subtitle: '每个组合都可以追溯到明确的 Tile、Buffer、Dataflow、Core split 和 Schedule 选择。',
+          badge: '288 combinations',
+          metrics: [['Input', '1 brief'], ['Dimensions', '5'], ['Output', '288']],
+          listTitle: '设计维度与选项',
+          list: [
+            ['Tile · 4', '64²×32 · 128²×32 · 128²×64 · 256²×64'],
+            ['Buffer · 3', 'Single · Double · Triple'],
+            ['Dataflow · 3', 'Direct · Vector bridge · Mixed'],
+            ['Core split · 4', 'M · N · 2D · Grouped'],
+            ['Schedule · 2', 'Serial · Overlap']
+          ],
+          outputTitle: '当前状态',
+          outputStrong: 'Complete but unresolved',
+          outputCopy: '空间已经完整，但还包含 API 不支持、资源超限或无法形成有效流水的组合。',
+          outputList: [['API legal', 'Unknown'], ['Resource fit', 'Unknown'], ['Pipeline fit', 'Unknown']],
+          footerStrong: '候选全集', footerCopy: '288 是设计空间规模，不是运行次数。',
+          inspector: {
+            meta: 'Stage 02', confidence: 'enumerated',
+            conclusion: '288 个组合等待约束过滤',
+            copy: '当前阶段强调覆盖完整性；合法性、资源与性能结论尚未产生。',
+            types: ['fact'],
+            reasons: ['五个维度的选择均已显式记录。', '每个组合都有稳定 ID，可在后续阶段追踪。', '尚未应用 API、资源或流水规则。'],
+            ledgerKicker: 'stage state', ledger: [['Input', '1 brief', 'fact'], ['Dimensions', '5', 'fact'], ['Remaining', '288', 'fact']],
+            sources: ['Mock search-space schema', 'Static option catalog', 'Candidate ID map']
+          }
+        },
+        'filter-api': {
+          summaryTitle: 'Filter · API 约束排除 96 个组合',
+          summaryCopy: '这条连线按主要失败原因解释 288 如何变成 192；每个候选只计入一个主分类。',
+          totalLabel: 'Excluded', totalValue: '96',
+          paneMeta: 'Transition · API −96', status: 'Interactive framework concept · API filter transition',
+          title: '96 个候选为什么被 API Contract 排除',
+          subtitle: '先按违反的契约维度浏览分类，再选择具体 Case 查看统一解释骨架和可视证据。',
+          badge: '288 → 192',
+          metrics: [['Input', '288'], ['Excluded', '96'], ['Output', '192']],
+          browser: 'api-rejections',
+          listTitle: '#047 的逐项检查',
+          list: [['FP16 K granularity', '32 = 2 × 16 · Pass'], ['L1 source order', 'K0 · gap / other slice · K1'], ['Direct LoadData map', 'Current stride / order · Fail'], ['Mmad destination', 'Adjacent K0 · K1 required']],
+          outputTitle: '如何处理这个方案',
+          outputStrong: '过滤 #047 Direct，不静默修复',
+          outputCopy: '加入 Pack / Transpose 会改变 Buffer、搬运时间和流水关系，因此应生成新的 #047-R，再进入资源与流水检查。',
+          outputList: [['Original candidate', '#047 Direct · Rejected'], ['Rewrite candidate', '#047-R Repack · Optional'], ['Conclusion type', 'Path contract']],
+          footerStrong: 'Direct path 硬约束', footerCopy: '−96 为故事用 Mock 数量；具体参数需按目标 CANN / SoC contract 验证。',
+          inspector: {
+            meta: 'API filter −96', confidence: 'path contract',
+            conclusion: '#047 Direct path 被过滤',
+            copy: 'K tile 32 本身合法；当前 L1 分片顺序无法被这一候选的 Direct LoadData 参数直接映射到 A2 / B2。',
+            types: ['fact', 'recommendation'],
+            reasons: ['FP16 下 K=32 可拆成两个 16-wide 分形，粒度检查通过。', '当前切分让 K0 与 K1 在 L1 中非连续、错序或存在无法表达的 stride。', '当前 Direct LoadData 参数不能一步生成 Mmad 需要的规则 A2 / B2 分形顺序。', '增加 Pack / Transpose 会改变资源和流水，因此应作为 #047-R 新候选重新评估。'],
+            ledgerKicker: 'filter result', ledger: [['Input', '288', 'fact'], ['Excluded', '96', 'fact'], ['Remaining', '192', 'fact']],
+            sources: ['Story-specific #047 layout contract', 'Mock LoadData / Mmad contract', 'Target CANN / SoC version check required']
+          }
+        },
+        'api-constraints': {
+          summaryTitle: 'API Constraints · 192 个调用合法组合',
+          summaryCopy: '节点展示过滤后的集合，以及这批方案获得了什么新的确定性。',
+          totalLabel: 'Remaining', totalValue: '192',
+          paneMeta: 'Stage 03 · API Constraints', status: 'Interactive framework concept · API Constraints stage',
+          title: '192 个组合通过 API 合法性检查',
+          subtitle: '这些组合可以继续做静态资源预算，但尚不能说明一定放得下或跑得快。',
+          badge: 'API legal',
+          metrics: [['Input', '288'], ['Passed', '192'], ['Pass rate', '66.7%']],
+          listTitle: '已满足的契约',
+          list: [['DataCopy', 'Alignment satisfied'], ['LoadData', 'Format / stride supported'], ['Mmad', 'Tile / dtype supported'], ['Tensor lifecycle', 'Alloc / Free paired']],
+          outputTitle: '进入资源阶段的资格',
+          outputStrong: 'Legal does not mean feasible',
+          outputCopy: 'API 合法只说明调用形式成立；下一步仍需验证 L1、L0 和 UB 容量预算。',
+          outputList: [['Compile contract', 'Pass'], ['On-chip fit', 'Unknown'], ['Latency', 'Unknown']],
+          footerStrong: '合法方案集', footerCopy: '排除结果可通过上一条 −96 连线回溯。',
+          inspector: {
+            meta: 'Stage 03', confidence: 'contract pass',
+            conclusion: '192 个组合具备合法调用形态',
+            copy: '它们满足本故事定义的 DataCopy、LoadData、Mmad 与 Tensor 生命周期约束。',
+            types: ['fact'],
+            reasons: ['所有保留组合都满足对齐假设。', 'format、stride 与 dtype 组合在支持范围内。', '资源占用和流水收益尚未参与判断。'],
+            ledgerKicker: 'stage state', ledger: [['Input', '288', 'fact'], ['Passed', '192', 'fact'], ['Remaining', '192', 'fact']],
+            sources: ['Mock API contract set', 'Static legality checker', 'Candidate trace IDs']
+          }
+        },
+        'filter-resources': {
+          summaryTitle: 'Filter · 资源约束排除 156 个组合',
+          summaryCopy: '这条连线解释为什么大量 API 合法方案仍然无法放进片上存储。',
+          totalLabel: 'Excluded', totalValue: '156',
+          paneMeta: 'Transition · Resources −156', status: 'Interactive framework concept · Resource filter transition',
+          title: '将每个组合映射到 L1、L0 与 UB 容量预算',
+          subtitle: '资源检查仍是硬约束：容量超限的方案不能靠预计性能抵消。',
+          badge: '192 → 36',
+          metrics: [['Input', '192'], ['Excluded', '156'], ['Output', '36']],
+          listTitle: '排除桶',
+          list: [['L1 capacity', '84 excluded'], ['L0A / L0B tile fit', '48 excluded'], ['UB workspace', '24 excluded']],
+          outputTitle: '被排除的代表案例',
+          outputStrong: 'Triple Buffer + largest tile',
+          outputCopy: '该组合调用合法，但同时驻留的 tile 与临时空间超过本故事的片上容量预算。',
+          outputList: [['API contract', 'Pass'], ['Resource budget', 'Fail'], ['Next stage', 'Not admitted']],
+          footerStrong: '容量过滤', footerCopy: '资源用量为静态 Mock 预算，不是设备实测。',
+          inspector: {
+            meta: 'Resource filter −156', confidence: 'capacity model',
+            conclusion: '156 个组合超过片上资源预算',
+            copy: '主要淘汰来自大 Tile 与多 Buffer 同时驻留造成的容量压力。',
+            types: ['fact', 'estimate'],
+            reasons: ['84 个组合超过 L1 容量预算。', '48 个组合无法同时容纳 L0A / L0B tile。', '24 个组合的 UB workspace 预算超限。'],
+            ledgerKicker: 'filter result', ledger: [['Input', '192', 'fact'], ['Excluded', '156', 'estimate'], ['Remaining', '36', 'estimate']],
+            sources: ['Ascend 910B mock resource profile', 'Static tile-size calculator', 'Mock workspace estimator']
+          }
+        },
+        resources: {
+          summaryTitle: 'Resources · 36 个容量可行组合',
+          summaryCopy: '节点展示当前方案都能放得下，但资源余量并不相同。',
+          totalLabel: 'Remaining', totalValue: '36',
+          paneMeta: 'Stage 04 · Resources', status: 'Interactive framework concept · Resources stage',
+          title: '36 个组合进入流水可行性检查',
+          subtitle: '它们满足静态容量预算；后续将判断 Queue、Buffer 与同步关系能否形成有效 overlap。',
+          badge: 'Resource fit',
+          metrics: [['Input', '192'], ['Passed', '36'], ['Pass rate', '18.8%']],
+          listTitle: '已通过的资源边界',
+          list: [['L1 resident set', 'Within budget'], ['L0A / L0B tiles', 'Within budget'], ['L0C accumulation', 'Within budget'], ['UB workspace', 'Within budget']],
+          outputTitle: '仍然未知的部分',
+          outputStrong: 'Fit does not imply overlap',
+          outputCopy: '容量可行不代表 Queue 深度、Buffer 数量和 Event 依赖能够支撑并行流水。',
+          outputList: [['Queue depth', 'To check'], ['Event ordering', 'To check'], ['Bubble ratio', 'To estimate']],
+          footerStrong: '资源可行集', footerCopy: '可点击上一条 −156 连线查看容量排除分布。',
+          inspector: {
+            meta: 'Stage 04', confidence: 'static estimate',
+            conclusion: '36 个组合落在片上容量预算内',
+            copy: '它们可以继续做 Pipeline 可行性审查，但资源余量从宽松到紧张不等。',
+            types: ['fact', 'estimate'],
+            reasons: ['L1、L0A、L0B、L0C 和 UB 预算均未超限。', '多 Buffer 组合仍需保留最小安全余量。', '尚未使用预计 latency 进行最终排序。'],
+            ledgerKicker: 'stage state', ledger: [['Input', '192', 'fact'], ['Passed', '36', 'estimate'], ['Remaining', '36', 'estimate']],
+            sources: ['Mock capacity calculator', 'Candidate buffer map', 'Static memory plan']
+          }
+        },
+        'filter-pipeline': {
+          summaryTitle: 'Filter · 流水可行性排除 24 个组合',
+          summaryCopy: '这条连线解释为什么“放得下”仍不等于“能够形成有效流水”。',
+          totalLabel: 'Excluded', totalValue: '24',
+          paneMeta: 'Transition · Pipeline −24', status: 'Interactive framework concept · Pipeline filter transition',
+          title: '检查 Queue、Buffer、Event 与阶段时长关系',
+          subtitle: '这一轮同时包含可证明的依赖问题和基于静态时长模型的可行性估计。',
+          badge: '36 → 12',
+          metrics: [['Input', '36'], ['Excluded', '24'], ['Output', '12']],
+          listTitle: '排除桶',
+          list: [['Queue / Buffer mismatch', '8 excluded'], ['No useful overlap window', '10 excluded'], ['Event dependency serialization', '6 excluded']],
+          outputTitle: '被排除的代表案例',
+          outputStrong: 'Double Buffer but serialized events',
+          outputCopy: 'Buffer 数量看似足够，但 SetFlag / WaitFlag 顺序使 CopyIn 与 Mmad 仍然串行。',
+          outputList: [['Resource fit', 'Pass'], ['Dependency graph', 'Serialized'], ['Overlap', 'Ineffective']],
+          footerStrong: '流水过滤', footerCopy: '时长与 overlap 均为设计期 Mock 估计。',
+          inspector: {
+            meta: 'Pipeline filter −24', confidence: 'mixed evidence',
+            conclusion: '24 个组合无法形成可信流水',
+            copy: '部分组合依赖不成立，部分组合虽然可执行但没有足够的 overlap 收益。',
+            types: ['fact', 'estimate'],
+            reasons: ['8 个组合的 Queue 深度与 Buffer 数量不匹配。', '10 个组合缺少足够的 Copy / Compute 重叠窗口。', '6 个组合被 Event 依赖重新串行化。'],
+            ledgerKicker: 'filter result', ledger: [['Input', '36', 'fact'], ['Excluded', '24', 'estimate'], ['Remaining', '12', 'estimate']],
+            sources: ['Mock Queue / Buffer graph', 'Event dependency checker', 'Design-time latency model']
+          }
+        },
+        pipeline: {
+          summaryTitle: 'Pipeline · 12 个可形成流水的方案',
+          summaryCopy: '节点展示通过 Queue、Buffer、Event 与 overlap 审查后的可行集合。',
+          totalLabel: 'Remaining', totalValue: '12',
+          paneMeta: 'Stage 05 · Pipeline', status: 'Interactive framework concept · Pipeline stage',
+          title: '12 个方案具有可解释的执行流水',
+          subtitle: '这些方案都能建立 CopyIn → Load3D → Mmad → CopyOut 的合法依赖，但成本和余量不同。',
+          badge: 'Pipeline feasible',
+          metrics: [['Input', '36'], ['Passed', '12'], ['Pass rate', '33.3%']],
+          listTitle: '流水检查结果',
+          list: [['Queue ownership', 'Valid'], ['Buffer lifecycle', 'Paired'], ['Event ordering', 'Acyclic'], ['Copy / Compute window', 'Useful']],
+          outputTitle: '进入候选排序',
+          outputStrong: 'Feasible, not yet recommended',
+          outputCopy: '12 个方案都可以执行；下一步使用 Pareto、重复方案和证据置信度收敛为 3 个代表候选。',
+          outputList: [['Correctness', 'Pass'], ['Resource fit', 'Pass'], ['Recommendation', 'Pending']],
+          footerStrong: '流水可行集', footerCopy: '点击右侧 −9 连线查看 shortlist 依据。',
+          inspector: {
+            meta: 'Stage 05', confidence: 'mixed evidence',
+            conclusion: '12 个方案通过流水可行性检查',
+            copy: '它们具备合法依赖和预计有效的 Copy / Compute 重叠窗口。',
+            types: ['fact', 'estimate'],
+            reasons: ['Buffer 的分配、入队、出队与释放形成完整生命周期。', 'Event 依赖无环且不会把主要阶段完全串行化。', '预计 overlap 收益达到 shortlist 的最低门槛。'],
+            ledgerKicker: 'stage state', ledger: [['Input', '36', 'fact'], ['Passed', '12', 'estimate'], ['Remaining', '12', 'estimate']],
+            sources: ['Mock pipeline graph', 'Queue / Event lifecycle rules', 'Static overlap estimator']
+          }
+        },
+        shortlist: {
+          summaryTitle: 'Compare · 从 12 个可行方案收敛到 3 个代表候选',
+          summaryCopy: '最后一条连线不是硬约束过滤，而是基于 Pareto 与证据质量的可解释 shortlist。',
+          totalLabel: 'Excluded', totalValue: '9',
+          paneMeta: 'Transition · Shortlist −9', status: 'Interactive framework concept · Shortlist transition',
+          title: '去掉被支配、重复或证据不足的方案',
+          subtitle: '被排除的 9 个方案不是非法方案，而是没有为最终比较提供新的权衡位置。',
+          badge: '12 → 3',
+          metrics: [['Input', '12'], ['Shortlisted out', '9'], ['Output', '3']],
+          listTitle: 'Shortlist 规则',
+          list: [['Pareto dominated', '5 removed'], ['Equivalent schedule', '2 merged'], ['Low confidence evidence', '2 removed']],
+          outputTitle: '保留三个代表点',
+          outputStrong: 'Stable · Balanced · Aggressive',
+          outputCopy: 'A、B、C 分别代表资源安全、平衡推荐和激进性能三个不同决策位置。',
+          outputList: [['A', 'Resource safe'], ['B', 'Balanced choice'], ['C', 'Latency first']],
+          footerStrong: '工程 shortlist', footerCopy: '这一步属于建议层，不把预计值伪装成实测。',
+          inspector: {
+            meta: 'Shortlist −9', confidence: 'engineering rule',
+            conclusion: '9 个可行方案未进入最终对比',
+            copy: '它们并非错误，而是被更优或等价方案覆盖，或证据不足以支撑推荐。',
+            types: ['estimate', 'recommendation'],
+            reasons: ['5 个方案在性能和资源两个维度上同时被支配。', '2 个方案与已保留方案具有等价调度。', '2 个方案的时长证据置信度低于阈值。'],
+            ledgerKicker: 'shortlist', ledger: [['Input', '12', 'estimate'], ['Not shown', '9', 'recommendation'], ['Candidates', '3', 'recommendation']],
+            sources: ['Mock Pareto comparison', 'Schedule equivalence rule', 'Evidence confidence threshold']
+          }
+        }
+      };
+
+      const convergenceStages = [
+        { id: 'space', traceView: 'design-space', label: 'Design Space', kicker: 'enumerated', count: 288, x: 92, columns: 18, rows: 16, width: 76, height: 176 },
+        { id: 'api-pass', traceView: 'api-constraints', label: 'API Legal', kicker: 'contract pass', count: 192, x: 326, columns: 16, rows: 12, width: 68, height: 117.333 },
+        { id: 'resource-pass', traceView: 'resources', label: 'Resource Fit', kicker: 'capacity pass', count: 36, x: 570, columns: 6, rows: 6, width: 42, height: 62 },
+        { id: 'pipeline-pass', traceView: 'pipeline', label: 'Pipeline Fit', kicker: 'feasible', count: 12, x: 808, columns: 4, rows: 3, width: 28, height: 30 },
+        { id: 'final', traceView: 'candidates', label: 'Candidates', kicker: 'shortlisted', count: 3, x: 1018, columns: 1, rows: 3, width: 0, height: 34 }
+      ];
+
+      const convergenceFilters = [
+        {
+          id: 'api', traceView: 'filter-api', label: 'API Contract', shortLabel: 'API', from: 288, rejected: 96, to: 192,
+          evidence: ['fact'], evidenceMeta: 'hard contract',
+          title: '96 个候选违反 API Contract',
+          copy: '先验证 SoC、dtype、TPosition、shape、参数范围与生产者到消费者的路径组合；不合法的调用不会进入资源估算。',
+          categories: [
+            ['Shape 与分形粒度', 20], ['API 路径组合', 18], ['存储位置与地址对齐', 17],
+            ['数据类型与精度签名', 15], ['参数范围与条件组合', 14], ['产品与接口支持', 12]
+          ],
+          riverLabels: ['Shape', 'API path', 'TPosition', 'Dtype', 'Params', 'SoC'],
+          reasons: ['每个候选只计入第一个主失败分类，避免重复计算。', '不静默修复失败方案；重排或切分会生成新的候选 ID。', '硬契约结论不被预计性能覆盖。'],
+          sources: ['Mock API contract set', 'Static legality checker', 'Candidate trace IDs']
+        },
+        {
+          id: 'resources', traceView: 'filter-resources', label: 'Resources', shortLabel: 'Resource', from: 192, rejected: 156, to: 36,
+          evidence: ['fact', 'estimate'], evidenceMeta: 'static capacity model',
+          title: '156 个 API 合法方案放不进片上资源预算',
+          copy: '大 Tile 与多 Buffer 的组合造成主要压力；每个候选都按 L1、L0A / L0B 与 UB 的静态预算得到明确去向。',
+          categories: [['L1 capacity', 84], ['L0A / L0B tile fit', 48], ['UB workspace', 24]],
+          riverLabels: ['L1 cap', 'L0 tile', 'UB ws'],
+          reasons: ['API 合法只代表调用形式成立，不代表资源可容纳。', '同时驻留的 Tile、Buffer 与 workspace 按峰值相加。', '容量超限是阻断条件，不能用 latency 估计抵消。'],
+          sources: ['Ascend 910B mock resource profile', 'Static tile-size calculator', 'Mock workspace estimator']
+        },
+        {
+          id: 'pipeline', traceView: 'filter-pipeline', label: 'Pipeline', shortLabel: 'Pipeline', from: 36, rejected: 24, to: 12,
+          evidence: ['fact', 'estimate'], evidenceMeta: 'mixed evidence',
+          title: '24 个资源可行方案无法形成可信流水',
+          copy: '系统继续检查 Queue、Buffer、Event 和预计阶段时长；放得下但无法 overlap 的方案不会进入最终比较。',
+          categories: [['No useful overlap window', 10], ['Queue / Buffer mismatch', 8], ['Event dependency serialization', 6]],
+          riverLabels: ['No overlap', 'Queue / buf', 'Event serial'],
+          reasons: ['Queue 深度和 Buffer 数量必须形成完整生命周期。', 'Event 依赖不能把 CopyIn 与 Mmad 重新串行化。', '只有达到最低 overlap 收益的方案才进入 shortlist。'],
+          sources: ['Mock Queue / Buffer graph', 'Event dependency checker', 'Design-time latency model']
+        },
+        {
+          id: 'shortlist', traceView: 'shortlist', label: 'Shortlist', shortLabel: 'Shortlist', from: 12, rejected: 9, to: 3,
+          evidence: ['estimate', 'recommendation'], evidenceMeta: 'engineering recommendation',
+          title: '9 个可行方案未进入最终对比',
+          copy: '最后一步不是合法性过滤，而是去掉被支配、等价或证据不足的点，让 3 个候选代表清晰不同的决策位置。',
+          categories: [['Pareto dominated', 5], ['Equivalent schedule', 2], ['Low confidence evidence', 2]],
+          riverLabels: ['Dominated', 'Equivalent', 'Low conf.'],
+          reasons: ['被 Pareto 支配的方案没有新增性能或资源权衡。', '等价调度合并到同一个代表候选。', '证据不足的预计值不会被包装成确定推荐。'],
+          sources: ['Mock Pareto comparison', 'Schedule equivalence rule', 'Evidence confidence threshold']
+        }
+      ];
+
+      const apiRejectionCategories = [
+        { id: 'support', label: '产品与接口支持 · fake', baseLabel: '产品与接口支持', count: 12, enabled: false, hint: 'SoC / overload' },
+        { id: 'dtype', label: '数据类型与精度签名 · fake', baseLabel: '数据类型与精度签名', count: 15, enabled: false, hint: 'dtype tuple' },
+        { id: 'position', label: '存储位置与地址对齐 · fake', baseLabel: '存储位置与地址对齐', count: 17, enabled: false, hint: 'TPosition / address' },
+        { id: 'shape', label: 'Shape 与分形粒度', baseLabel: 'Shape 与分形粒度', count: 20, enabled: true, hint: 'range / alignment' },
+        { id: 'parameter', label: '参数范围与条件组合 · fake', baseLabel: '参数范围与条件组合', count: 14, enabled: false, hint: 'range / dependency' },
+        { id: 'path', label: 'API 路径组合', baseLabel: 'API 路径组合', count: 18, enabled: true, hint: 'producer → consumer' }
+      ];
+
+      const apiRejectionCases = {
+        shape: [
+          {
+            id: '#064',
+            title: 'b16 起点不在分形边界',
+            meta: 'LoadData · Reject Direct',
+            category: 'Shape 与分形粒度',
+            visual: 'granularity',
+            visualData: {
+              title: '#064 · Fragment start mismatch',
+              meta: 'Story example · b16',
+              actual: '24',
+              actualMeta: 'kStartPt · observed',
+              contract: 'n × 16',
+              contractMeta: 'b16 fragment boundary',
+              ruler: [
+                { label: '0' }, { label: '16' }, { label: '24 · fail', invalid: true }, { label: '32' }, { label: '48' }
+              ],
+              verdicts: [
+                ['fact', 'dtype b16'],
+                ['failure', '24 % 16 ≠ 0'],
+                ['recommendation', 'Realign → #064-R']
+              ]
+            },
+            skeleton: {
+              intentTitle: '从 K=24 开始把当前 tile 搬入 A2',
+              intentCopy: '候选希望保留当前切分边界，并使用一次 Direct LoadData 完成 L1 → L0A 搬运。',
+              actual: 'dtype=b16 · kStartPt=24 · destination=A2',
+              actualCopy: '起点落在 16-wide 分形内部，而不是一个可直接编码的分形边界。',
+              rule: 'kStartPt % 16 = 0',
+              ruleCopy: '故事采用的 LoadData 3D v2 contract 要求 b16 的 K 起点按 16 对齐。',
+              causal: ['当前 tiling 产生 K=24 的起点。', 'Direct LoadData 只能从合法分形边界开始解释目标矩阵。', '起点无法编码，因此该 Direct 候选不能进入资源检查。'],
+              actionType: 'rewrite',
+              actionTitle: '过滤 #064 Direct，生成 #064-R',
+              actionCopy: '将 K 起点改到 16 或 32，并重新计算 tail、padding、Buffer 与搬运长度。',
+              sources: ['Mock LoadData3DParamsV2 contract', 'kStartPt alignment rule · b16', 'Target CANN / SoC version check required']
+            }
+          },
+          {
+            id: '#071',
+            title: '单次 Mmad 的 K 超出参数范围',
+            meta: 'Mmad · Split required',
+            category: 'Shape 与分形粒度',
+            visual: 'granularity',
+            visualData: {
+              title: '#071 · Parameter range overflow',
+              meta: 'Story example · Mmad',
+              actual: '4096',
+              actualMeta: 'mmadParams.k · observed',
+              contract: '[0, 4095]',
+              contractMeta: 'single-call range',
+              ruler: [
+                { label: '0' }, { label: '1024' }, { label: '2048' }, { label: '3072' }, { label: '4095' }, { label: '4096 · fail', invalid: true }
+              ],
+              verdicts: [
+                ['fact', 'Global K = 4096'],
+                ['failure', 'Single-call k overflow'],
+                ['recommendation', 'Split K → #071-R']
+              ]
+            },
+            skeleton: {
+              intentTitle: '用一次 Mmad 消费完整 K=4096',
+              intentCopy: '候选没有在 K 方向继续切分，希望一条 Mmad 完成该 tile 的矩阵乘加。',
+              actual: 'mmadParams.k=4096',
+              actualCopy: '设计对象的全局 K 被直接写入单次调用参数，没有形成可编码的 K 子块。',
+              rule: 'mmadParams.k ∈ [0, 4095]',
+              ruleCopy: '当前故事 contract 中，单次 Mmad 的 m、n、k 参数均有上界。',
+              causal: ['候选把全局 K=4096 作为单次调用长度。', '4096 超出该调用参数可表达的上界 4095。', '接口无法表示这次调用，必须先改变 tiling。'],
+              actionType: 'rewrite',
+              actionTitle: '过滤 #071 Single-call，生成 K-split 候选',
+              actionCopy: '把 K 拆成多个合法子块并显式累加；新候选需要重新评估 L0C 生命周期和同步关系。',
+              sources: ['Mock MmadParams contract', 'm / n / k range rule', 'Target CANN / SoC version check required']
+            }
+          }
+        ],
+        path: [
+          {
+            id: '#047',
+            title: 'Direct LoadData 无法表达当前布局',
+            meta: 'LoadData → Mmad · Rewrite',
+            category: 'API 路径组合',
+            visual: 'layout',
+            visualData: {
+              title: '#047 · Direct path contract mismatch',
+              meta: 'Story example · FP16',
+              sourceLabel: 'L1 actual', sourceCode: 'A1 / B1',
+              sourceFragments: [{ text: 'K0 · 16' }, { text: 'other slice / stride gap', tone: 'gap' }, { text: 'K1 · 16' }],
+              sourceCaption: 'K=32 合法，但两个 K 分形未按 Direct path 要求连续排列',
+              gateTitle: 'Direct LoadData', gateCopy: '当前 stride / order 无法表达该映射',
+              targetLabel: 'Cube expected', targetCode: 'A2 / B2',
+              targetFragments: [{ text: 'K0 · 16' }, { text: 'K1 · 16' }],
+              targetCaption: 'Mmad 需要可直接消费的规则分形顺序',
+              verdicts: [
+                ['fact', 'K tile 32 · Pass'],
+                ['failure', 'Direct layout mapping · Fail'],
+                ['recommendation', 'Pack / Transpose → #047-R']
+              ]
+            },
+            skeleton: {
+              intentTitle: '用 Direct LoadData 把当前 L1 tile 送入 Cube',
+              intentCopy: '候选希望不增加中间重排，直接生成 Mmad 可消费的 A2 / B2 分形。',
+              actual: 'L1 order = K0 · gap / other slice · K1',
+              actualCopy: 'K tile 的总长度合法，但当前切分让两个 K 分形非连续、错序或存在无法表达的 stride。',
+              rule: 'producer layout → Direct LoadData → consumer layout',
+              ruleCopy: 'Direct 路径必须能用当前参数一步生成 Mmad 需要的规则 A2 / B2 分形顺序。',
+              causal: ['K=32 的粒度检查通过。', '当前 L1 分片顺序无法被 Direct LoadData 参数完整表达。', 'Mmad 将无法按预期坐标解释目标分形，因此原路径被过滤。'],
+              actionType: 'rewrite',
+              actionTitle: '过滤 #047 Direct，生成 #047-R',
+              actionCopy: '加入 Pack / Transpose 会改变 Buffer、搬运时间和流水关系，所以必须作为新候选重新检查。',
+              sources: ['Story-specific #047 layout contract', 'Mock LoadData / Mmad contract', 'Target CANN / SoC version check required']
+            }
+          },
+          {
+            id: '#081',
+            title: 'A2 输出被当作 Mmad 的 B 输入',
+            meta: 'TPosition / format · Rewrite',
+            category: 'API 路径组合',
+            visual: 'layout',
+            visualData: {
+              title: '#081 · Producer / consumer role mismatch',
+              meta: 'Story example · FP16',
+              sourceLabel: 'LoadData output', sourceCode: 'A2 / Zz',
+              sourceFragments: [{ text: 'M × K tile' }, { text: 'Zz order' }],
+              sourceCaption: '数据已经按左矩阵 A 的物理位置和分形语义生成',
+              gateTitle: 'Mmad filter input', gateCopy: '不能把 A2 / Zz 解释为 B2 / Zn',
+              targetLabel: 'Consumer expected', targetCode: 'B2 / Zn',
+              targetFragments: [{ text: 'K × N tile' }, { text: 'Zn order' }],
+              targetCaption: 'Mmad 的 filter 端要求右矩阵 B 的物理位置与分形语义',
+              verdicts: [
+                ['fact', 'LoadData output · A2'],
+                ['failure', 'Mmad filter expects · B2'],
+                ['recommendation', 'B-side LoadData → #081-R']
+              ]
+            },
+            skeleton: {
+              intentTitle: '复用同一份 LoadData 结果作为 Mmad 的 B 输入',
+              intentCopy: '候选试图减少一次搬运，把已经生成的左矩阵分形直接接到 Mmad filter 端。',
+              actual: 'producer dst = A2 / Zz · consumer port = filter',
+              actualCopy: '数据位于左矩阵物理位置，并使用左矩阵分形顺序。',
+              rule: 'Mmad.fm = A2 / Zz · Mmad.filter = B2 / Zn',
+              ruleCopy: '生产者输出的 TPosition 与 format 必须和下游输入端口角色一致。',
+              causal: ['LoadData 生成了 A2 / Zz 形式的左矩阵数据。', '候选把它连接到要求 B2 / Zn 的 Mmad filter 端。', '下游会按错误矩阵角色解释分形坐标，因此这条复用路径不成立。'],
+              actionType: 'rewrite',
+              actionTitle: '过滤 #081 Reuse，生成 B-side LoadData 候选',
+              actionCopy: '为 B 输入建立独立的 B1 → B2 搬运和格式变换，再重新计算 Buffer 与流水成本。',
+              sources: ['Mock TPosition / format contract', 'Mmad A2 / B2 operand role', 'Target CANN / SoC version check required']
+            }
+          }
+        ]
+      };
+
+      const typeLabels = {
+        fact: ['is-fact', '硬约束 / 事实'],
+        estimate: ['is-estimate', '模型估计'],
+        recommendation: ['is-recommendation', '工程建议'],
+        failure: ['is-failure', '硬约束 / Fail']
+      };
+
+      const $ = (selector, root = document) => root.querySelector(selector);
+      const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+      const setText = (selector, value, root = document) => {
+        const node = $(selector, root);
+        if (node) node.textContent = value;
+      };
+
+      const operatorApis = {
+        DataCopy: {
+          title: 'DataCopy · GM ↔ L1 / UB',
+          copy: '把 A、B tile 从 GM 对齐搬入片上存储，并把累加结果写回；搬运长度、stride 与对齐规则会参与 API Contract 收敛。'
+        },
+        LoadData: {
+          title: 'LoadData · L1 → L0A / L0B',
+          copy: '把 L1 tile 变换为 Mmad 可消费的 A2 / B2 分形；TPosition、format 与参数组合必须和下游矩阵角色一致。'
+        },
+        Mmad: {
+          title: 'Mmad · Cube matrix multiply',
+          copy: '执行 M × K 与 K × N tile 的矩阵乘加；M/N/K 粒度、输入位置和累加类型共同限制合法候选。'
+        },
+        SetFlag: {
+          title: 'SetFlag · producer event',
+          copy: '生产者在搬运或计算完成后发出事件，声明对应 buffer 已可被下一条流水消费。'
+        },
+        WaitFlag: {
+          title: 'WaitFlag · consumer sync',
+          copy: '消费者等待正确的 producer event，避免读取未完成数据；event 配对与 buffer 复用关系会进入 Pipeline Check。'
+        }
+      };
+
+      const fillDefinitionList = (root, rows) => {
+        root.replaceChildren(...rows.map(([label, value]) => {
+          const row = document.createElement('div');
+          row.className = 'trace-detail-row';
+          const term = document.createElement('dt');
+          const detail = document.createElement('dd');
+          term.textContent = label;
+          detail.textContent = value;
+          row.append(term, detail);
+          return row;
+        }));
+      };
+
+      const fillInspector = (view) => {
+        const inspector = view.inspector;
+        setText('[data-inspector-meta]', inspector.meta);
+        setText('[data-inspector-confidence]', inspector.confidence);
+        setText('[data-inspector-conclusion]', inspector.conclusion);
+        setText('[data-inspector-conclusion-copy]', inspector.copy);
+        setText('[data-inspector-ledger-kicker]', inspector.ledgerKicker);
+
+        const typesRoot = $('[data-inspector-types]');
+        typesRoot.replaceChildren(...inspector.types.map((type) => {
+          const [className, label] = typeLabels[type];
+          const chip = document.createElement('span');
+          chip.className = `evidence-type ${className}`;
+          chip.textContent = label;
+          return chip;
+        }));
+
+        const reasonsRoot = $('[data-inspector-reasons]');
+        reasonsRoot.replaceChildren(...inspector.reasons.map((reason, index) => {
+          const item = document.createElement('li');
+          const marker = document.createElement('span');
+          const copy = document.createElement('span');
+          marker.className = 'reason-index';
+          marker.textContent = String(index + 1);
+          copy.textContent = reason;
+          item.append(marker, copy);
+          return item;
+        }));
+
+        const ledgerRoot = $('[data-inspector-ledger]');
+        const ledgerNodes = [];
+        ['Measure', 'Value', 'Nature'].forEach((label) => {
+          const head = document.createElement('span');
+          head.className = 'tradeoff-head';
+          head.textContent = label;
+          ledgerNodes.push(head);
+        });
+        inspector.ledger.forEach(([label, value, type]) => {
+          const labelNode = document.createElement('span');
+          const valueNode = document.createElement('code');
+          const typeNode = document.createElement('span');
+          labelNode.textContent = label;
+          valueNode.textContent = value;
+          typeNode.textContent = typeLabels[type][1];
+          ledgerNodes.push(labelNode, valueNode, typeNode);
+        });
+        ledgerRoot.replaceChildren(...ledgerNodes);
+
+        const sourceRoot = $('[data-inspector-sources]');
+        sourceRoot.replaceChildren(...inspector.sources.map((source) => {
+          const item = document.createElement('li');
+          item.textContent = source;
+          return item;
+        }));
+      };
+
+      const svgNamespace = 'http://www.w3.org/2000/svg';
+      const createSvgNode = (tag, attributes = {}, text = '') => {
+        const node = document.createElementNS(svgNamespace, tag);
+        Object.entries(attributes).forEach(([name, value]) => node.setAttribute(name, String(value)));
+        if (text) node.textContent = text;
+        return node;
+      };
+
+      const stageCloudBounds = (stage) => {
+        const centerY = 174;
+        return {
+          left: stage.x - stage.width / 2,
+          right: stage.x + stage.width / 2,
+          top: centerY - stage.height / 2,
+          bottom: centerY + stage.height / 2
+        };
+      };
+
+      const createRiverRibbonPath = ({ startX, startTop, startBottom, endX, endTop, endBottom }) => {
+        const forwardControl = startX + (endX - startX) * .42;
+        const backwardControl = startX + (endX - startX) * .72;
+        return [
+          `M ${startX} ${startTop}`,
+          `C ${forwardControl} ${startTop}, ${backwardControl} ${endTop}, ${endX} ${endTop}`,
+          `L ${endX} ${endBottom}`,
+          `C ${backwardControl} ${endBottom}, ${forwardControl} ${startBottom}, ${startX} ${startBottom}`,
+          'Z'
+        ].join(' ');
+      };
+
+      const renderFilterRiver = (svg, filter, filterIndex) => {
+        const sourceStage = convergenceStages[filterIndex];
+        const targetStage = convergenceStages[filterIndex + 1];
+        const source = stageCloudBounds(sourceStage);
+        const target = stageCloudBounds(targetStage);
+        const startX = source.right + 11;
+        const targetX = target.left - 11;
+        const categoryTotal = filter.categories.reduce((sum, [, count]) => sum + count, 0);
+        const conservedTotal = filter.to + categoryTotal;
+        if (conservedTotal !== filter.from || categoryTotal !== filter.rejected) {
+          throw new Error(`${filter.label} river does not conserve candidates`);
+        }
+
+        const pixelsPerCandidate = sourceStage.height / filter.from;
+        const passThickness = filter.to * pixelsPerCandidate;
+        const passStartTop = source.top;
+        const passStartBottom = passStartTop + passThickness;
+        const passEndTop = 174 - passThickness / 2;
+        const passEndBottom = 174 + passThickness / 2;
+        const group = createSvgNode('g', {
+          class: 'convergence-river',
+          role: 'button',
+          tabindex: '0',
+          'aria-label': `查看 ${filter.label} 连线：${filter.from} → ${filter.to}，排除 ${filter.rejected}`,
+          'aria-pressed': 'false',
+          'data-trace-view': filter.traceView,
+          'data-convergence-river': filter.id,
+          'data-input-count': filter.from,
+          'data-pass-count': filter.to,
+          'data-rejected-count': filter.rejected,
+          'data-conserved-count': conservedTotal
+        });
+
+        const passPath = createSvgNode('path', {
+          class: 'api-river-stream is-pass',
+          d: createRiverRibbonPath({
+            startX,
+            startTop: passStartTop,
+            startBottom: passStartBottom,
+            endX: targetX,
+            endTop: passEndTop,
+            endBottom: passEndBottom
+          }),
+          'data-flow-count': filter.to,
+          'data-flow-thickness': passThickness.toFixed(3)
+        });
+        passPath.append(createSvgNode('title', {}, `${filter.label} pass: ${filter.to} candidates · ${(filter.to / filter.from * 100).toFixed(1)}% of input`));
+        group.append(passPath);
+
+        let sourceCursor = passStartBottom;
+        const endpointStarts = [272, 250, 286, 298];
+        let endpointCursor = endpointStarts[filterIndex];
+        const endpointX = targetX - 3;
+        const endpointGap = 3;
+        let lastEndpointBottom = endpointCursor;
+
+        filter.categories.forEach(([label, count], index) => {
+          const thickness = count * pixelsPerCandidate;
+          const sourceTop = sourceCursor;
+          const sourceBottom = sourceTop + thickness;
+          const endpointTop = endpointCursor;
+          const endpointBottom = endpointTop + thickness;
+          const stream = createSvgNode('path', {
+            class: `api-river-stream is-rejection tone-${index + 1}`,
+            d: createRiverRibbonPath({
+              startX,
+              startTop: sourceTop,
+              startBottom: sourceBottom,
+              endX: endpointX,
+              endTop: endpointTop,
+              endBottom: endpointBottom
+            }),
+            'data-flow-category': label,
+            'data-flow-count': count,
+            'data-flow-thickness': thickness.toFixed(3)
+          });
+          stream.append(createSvgNode('title', {}, `${label}: ${count} candidates · ${(count / filter.from * 100).toFixed(1)}% of input`));
+          group.append(stream);
+          group.append(createSvgNode('text', {
+            class: 'api-river-label',
+            x: endpointX + 7,
+            y: endpointTop + thickness / 2 + 3
+          }, `${filter.riverLabels[index]} · ${count}`));
+          sourceCursor = sourceBottom;
+          lastEndpointBottom = endpointBottom;
+          endpointCursor = endpointBottom + endpointGap;
+        });
+
+        group.append(createSvgNode('text', {
+          class: 'api-river-total',
+          x: endpointX,
+          y: lastEndpointBottom + 12,
+          'text-anchor': 'end'
+        }, `Σ ${filter.rejected} rejected`));
+        group.append(createSvgNode('text', {
+          class: 'api-river-note',
+          x: endpointX,
+          y: lastEndpointBottom + 24,
+          'text-anchor': 'end'
+        }, `${filter.categories.length} buckets · local scale`));
+        svg.append(group);
+      };
+
+      const renderConvergenceRivers = (svg) => {
+        convergenceFilters.forEach((filter, filterIndex) => renderFilterRiver(svg, filter, filterIndex));
+      };
+
+      const renderConvergenceMap = () => {
+        const svg = $('[data-convergence-svg]');
+        svg.replaceChildren();
+
+        const defs = createSvgNode('defs');
+        const apiPassGradient = createSvgNode('linearGradient', { id: 'api-pass-river', x1: '0%', y1: '0%', x2: '100%', y2: '0%' });
+        apiPassGradient.append(
+          createSvgNode('stop', { offset: '0%', 'stop-color': 'var(--foreground)', 'stop-opacity': '.10' }),
+          createSvgNode('stop', { offset: '56%', 'stop-color': 'var(--primary-hover)', 'stop-opacity': '.24' }),
+          createSvgNode('stop', { offset: '100%', 'stop-color': 'var(--success)', 'stop-opacity': '.28' })
+        );
+        defs.append(apiPassGradient);
+        svg.append(defs);
+
+        [72, 174, 276].forEach((y) => {
+          svg.append(createSvgNode('line', { class: 'chart-guide', x1: 26, y1: y, x2: 1094, y2: y }));
+        });
+        svg.append(createSvgNode('text', { class: 'survival-caption', x: 26, y: 28 }, '100% enumerated population'));
+        svg.append(createSvgNode('text', { class: 'survival-caption', x: 1094, y: 28, 'text-anchor': 'end' }, '1.04% shortlisted'));
+
+        renderConvergenceRivers(svg);
+
+        convergenceStages.forEach((stage, stageIndex) => {
+          const bounds = stageCloudBounds(stage);
+          const group = createSvgNode('g', {
+            class: 'stage-group',
+            role: 'button',
+            tabindex: '0',
+            'aria-label': `查看 ${stage.label} 节点：${stage.count} 个候选`,
+            'aria-pressed': 'false',
+            'data-trace-view': stage.traceView,
+            'data-stage-id': stage.id
+          });
+          group.append(createSvgNode('rect', {
+            class: 'stage-plane',
+            x: bounds.left - 12,
+            y: bounds.top - 14,
+            width: Math.max(42, stage.width + 24),
+            height: stage.height + 28,
+            rx: 14
+          }));
+          group.append(createSvgNode('text', { class: 'stage-kicker', x: stage.x, y: 54, 'text-anchor': 'middle' }, stage.kicker));
+          group.append(createSvgNode('text', { class: 'stage-count', x: stage.x, y: 78, 'text-anchor': 'middle' }, stage.count));
+
+          for (let index = 0; index < stage.count; index += 1) {
+            const column = index % stage.columns;
+            const row = Math.floor(index / stage.columns);
+            const x = stage.columns === 1 ? stage.x : bounds.left + (column / (stage.columns - 1)) * stage.width;
+            const y = stage.rows === 1 ? 174 : bounds.top + (row / (stage.rows - 1)) * stage.height;
+            const dot = createSvgNode('circle', {
+              class: `candidate-dot${stageIndex === convergenceStages.length - 1 ? ' is-final' : ''}`,
+              cx: x,
+              cy: y,
+              r: stageIndex < 2 ? 1.75 : stageIndex === 2 ? 2.2 : 2.8
+            });
+            group.append(dot);
+            if (stage.id === 'final') {
+              group.append(createSvgNode('text', { class: 'candidate-name', x: x + 10, y: y + 3 }, ['A', 'B', 'C'][index]));
+            }
+          }
+          group.append(createSvgNode('text', { class: 'stage-label', x: stage.x, y: 386, 'text-anchor': 'middle' }, stage.label));
+          svg.append(group);
+        });
+
+        convergenceFilters.forEach((filter, filterIndex) => {
+          const source = convergenceStages[filterIndex];
+          const target = convergenceStages[filterIndex + 1];
+          const x = (source.x + target.x) / 2;
+          const group = createSvgNode('g', {
+            class: 'filter-group',
+            'aria-hidden': 'true',
+            'data-trace-view': filter.traceView,
+            'data-convergence-filter-group': filter.id
+          });
+          group.append(createSvgNode('rect', { class: 'filter-hit', x: x - 48, y: 34, width: 96, height: 330, rx: 12 }));
+          group.append(createSvgNode('text', { class: 'filter-kicker', x, y: 48, 'text-anchor': 'middle' }, filter.label));
+          group.append(createSvgNode('text', { class: 'filter-meta', x, y: 63, 'text-anchor': 'middle' }, `${filter.from} → ${filter.to}`));
+          group.append(createSvgNode('line', { class: 'filter-axis', x1: x, y1: 76, x2: x, y2: 286 }));
+          group.append(createSvgNode('circle', { class: 'filter-orb', cx: x, cy: 174, r: 18 }));
+          group.append(createSvgNode('text', { class: 'filter-value', x, y: 178, 'text-anchor': 'middle' }, `−${filter.rejected}`));
+          svg.append(group);
+        });
+      };
+
+      let selectedApiCategory = 'path';
+      let selectedApiCase = '#047';
+
+      const renderEvidenceChips = (root, verdicts) => {
+        root.replaceChildren(...verdicts.map(([type, label]) => {
+          const chip = document.createElement('span');
+          chip.className = `evidence-type ${typeLabels[type][0]}`;
+          chip.textContent = label;
+          return chip;
+        }));
+      };
+
+      const renderLayoutVisual = (caseData) => {
+        const visual = $('[data-case-visual="layout"]');
+        const data = caseData.visualData;
+        visual.hidden = false;
+        setText('[data-layout-title]', data.title, visual);
+        setText('[data-layout-meta]', data.meta, visual);
+        setText('[data-layout-source-label]', data.sourceLabel, visual);
+        setText('[data-layout-source-code]', data.sourceCode, visual);
+        setText('[data-layout-source-caption]', data.sourceCaption, visual);
+        setText('[data-layout-gate-title]', data.gateTitle, visual);
+        setText('[data-layout-gate-copy]', data.gateCopy, visual);
+        setText('[data-layout-target-label]', data.targetLabel, visual);
+        setText('[data-layout-target-code]', data.targetCode, visual);
+        setText('[data-layout-target-caption]', data.targetCaption, visual);
+
+        const makeFragment = ({ text, tone }) => {
+          const fragment = document.createElement('span');
+          fragment.className = `contract-fragment${tone === 'gap' ? ' is-gap' : ''}`;
+          fragment.textContent = text;
+          return fragment;
+        };
+        $('[data-layout-source-fragments]', visual).replaceChildren(...data.sourceFragments.map(makeFragment));
+        $('[data-layout-target-fragments]', visual).replaceChildren(...data.targetFragments.map(makeFragment));
+        renderEvidenceChips($('[data-layout-verdicts]', visual), data.verdicts);
+      };
+
+      const renderGranularityVisual = (caseData) => {
+        const visual = $('[data-case-visual="granularity"]');
+        const data = caseData.visualData;
+        visual.hidden = false;
+        setText('[data-granularity-title]', data.title, visual);
+        setText('[data-granularity-meta]', data.meta, visual);
+        setText('[data-granularity-actual]', data.actual, visual);
+        setText('[data-granularity-actual-meta]', data.actualMeta, visual);
+        setText('[data-granularity-contract]', data.contract, visual);
+        setText('[data-granularity-contract-meta]', data.contractMeta, visual);
+
+        const ruler = $('[data-granularity-ruler]', visual);
+        ruler.replaceChildren(...data.ruler.map((marker) => {
+          const item = document.createElement('span');
+          item.className = marker.invalid ? 'is-invalid' : '';
+          item.textContent = marker.label;
+          return item;
+        }));
+        renderEvidenceChips($('[data-granularity-verdicts]', visual), data.verdicts);
+      };
+
+      const renderApiCaseInspector = (caseData) => {
+        const skeleton = caseData.skeleton;
+        setText('[data-inspector-meta]', `${caseData.id} · ${caseData.category}`);
+        setText('[data-case-category]', caseData.category);
+        setText('[data-case-intent-title]', skeleton.intentTitle);
+        setText('[data-case-intent-copy]', skeleton.intentCopy);
+        setText('[data-case-actual]', skeleton.actual);
+        setText('[data-case-actual-copy]', skeleton.actualCopy);
+        setText('[data-case-rule]', skeleton.rule);
+        setText('[data-case-rule-copy]', skeleton.ruleCopy);
+        setText('[data-case-action-type]', skeleton.actionType);
+        setText('[data-case-action-title]', skeleton.actionTitle);
+        setText('[data-case-action-copy]', skeleton.actionCopy);
+
+        const causalRoot = $('[data-case-causal-chain]');
+        causalRoot.replaceChildren(...skeleton.causal.map((reason, index) => {
+          const item = document.createElement('li');
+          const marker = document.createElement('span');
+          const copy = document.createElement('span');
+          marker.className = 'reason-index';
+          marker.textContent = String(index + 1);
+          copy.textContent = reason;
+          item.append(marker, copy);
+          return item;
+        }));
+
+        const sourceRoot = $('[data-case-sources]');
+        sourceRoot.replaceChildren(...skeleton.sources.map((source) => {
+          const item = document.createElement('li');
+          item.textContent = source;
+          return item;
+        }));
+      };
+
+      const renderApiCase = (caseData) => {
+        $$('[data-case-visual]').forEach((visual) => { visual.hidden = true; });
+        if (caseData.visual === 'layout') renderLayoutVisual(caseData);
+        if (caseData.visual === 'granularity') renderGranularityVisual(caseData);
+        renderApiCaseInspector(caseData);
+        setText('[data-status-stage]', `Interactive framework concept · ${caseData.id} contract failure`);
+      };
+
+      const renderApiRejectionBrowser = () => {
+        const categoryRoot = $('[data-api-rejection-categories]');
+        categoryRoot.replaceChildren(...apiRejectionCategories.map((category) => {
+          const button = document.createElement('button');
+          const copy = document.createElement('span');
+          const title = document.createElement('strong');
+          const hint = document.createElement('span');
+          const count = document.createElement('b');
+          button.type = 'button';
+          button.dataset.apiCategory = category.id;
+          button.className = `btn btn-ghost rejection-category${category.id === selectedApiCategory ? ' is-selected' : ''}`;
+          button.disabled = !category.enabled;
+          button.setAttribute('aria-pressed', String(category.id === selectedApiCategory));
+          button.title = category.enabled ? `查看 ${category.baseLabel} cases` : `${category.baseLabel} 在本 Demo 中不生效`;
+          copy.className = 'rejection-category-copy';
+          title.textContent = category.label;
+          hint.textContent = category.hint;
+          count.textContent = String(category.count);
+          copy.append(title, hint);
+          button.append(copy, count);
+          if (category.enabled) {
+            button.addEventListener('click', () => {
+              selectedApiCategory = category.id;
+              selectedApiCase = apiRejectionCases[category.id][0].id;
+              renderApiRejectionBrowser();
+            });
+          }
+          return button;
+        }));
+
+        const category = apiRejectionCategories.find((item) => item.id === selectedApiCategory);
+        const cases = apiRejectionCases[selectedApiCategory];
+        const selectedCase = cases.find((item) => item.id === selectedApiCase) || cases[0];
+        selectedApiCase = selectedCase.id;
+        setText('[data-api-case-list-title]', `${category.baseLabel} · ${category.count} excluded`);
+        setText('[data-api-case-list-meta]', '点击 Case 查看相同的六段解释骨架');
+
+        const caseRoot = $('[data-api-rejection-cases]');
+        caseRoot.replaceChildren(...cases.map((caseData) => {
+          const button = document.createElement('button');
+          const id = document.createElement('span');
+          const copy = document.createElement('span');
+          const title = document.createElement('strong');
+          const meta = document.createElement('span');
+          button.type = 'button';
+          button.dataset.apiCase = caseData.id;
+          button.className = `btn btn-ghost rejection-case${caseData.id === selectedApiCase ? ' is-selected' : ''}`;
+          button.setAttribute('aria-pressed', String(caseData.id === selectedApiCase));
+          button.setAttribute('aria-label', `查看 ${caseData.id} ${caseData.title}`);
+          id.className = 'rejection-case-id';
+          id.textContent = caseData.id;
+          copy.className = 'rejection-case-copy';
+          title.textContent = caseData.title;
+          meta.textContent = caseData.meta;
+          copy.append(title, meta);
+          button.append(id, copy);
+          button.addEventListener('click', () => {
+            selectedApiCase = caseData.id;
+            renderApiRejectionBrowser();
+          });
+          return button;
+        }));
+
+        renderApiCase(selectedCase);
+      };
+
+      const renderTraceDetail = (view) => {
+        setText('#traceTitle', view.summaryTitle);
+        setText('[data-trace-summary-copy]', view.summaryCopy);
+        setText('[data-trace-total-label]', view.totalLabel);
+        setText('[data-trace-total-value]', view.totalValue);
+        setText('[data-center-meta]', view.paneMeta);
+        setText('[data-status-stage]', view.status);
+        setText('[data-detail-title]', view.title);
+        setText('[data-detail-subtitle]', view.subtitle);
+        setText('[data-detail-badge]', view.badge);
+        setText('[data-detail-list-title]', view.listTitle);
+        setText('[data-detail-output-title]', view.outputTitle);
+        setText('[data-detail-output-strong]', view.outputStrong);
+        setText('[data-detail-output-copy]', view.outputCopy);
+        setText('[data-detail-footer-strong]', view.footerStrong);
+        setText('[data-detail-footer-copy]', view.footerCopy);
+
+        const apiBrowserSelected = view.browser === 'api-rejections';
+        $('[data-api-rejection-browser]').hidden = !apiBrowserSelected;
+        $('[data-generic-trace-detail]').hidden = apiBrowserSelected;
+        $('[data-generic-trace-footer]').hidden = apiBrowserSelected;
+        $$('[data-case-visual]').forEach((visual) => { visual.hidden = true; });
+
+        view.metrics.forEach(([label, value], index) => {
+          setText(`[data-metric-label="${index}"]`, label);
+          setText(`[data-metric-value="${index}"]`, value);
+        });
+        if (apiBrowserSelected) {
+          renderApiRejectionBrowser();
+        } else {
+          fillDefinitionList($('[data-detail-list]'), view.list);
+          fillDefinitionList($('[data-detail-output-list]'), view.outputList);
+          fillInspector(view);
+        }
+      };
+
+      const setSelectedControl = (key) => {
+        $$('[data-trace-view]').forEach((control) => {
+          const selected = control.dataset.traceView === key;
+          control.classList.toggle('is-selected', selected);
+          control.setAttribute('aria-pressed', String(selected));
+        });
+      };
+
+      let lastTraceView = 'candidates';
+
+      const selectTraceView = (key) => {
+        lastTraceView = key;
+        const candidatesSelected = key === 'candidates';
+        const apiCasesSelected = key === 'filter-api';
+        setSelectedControl(key);
+        $('[data-view-panel="candidates"]').hidden = !candidatesSelected;
+        $('[data-view-panel="trace-detail"]').hidden = candidatesSelected;
+        $('[data-inspector-panel="candidates"]').hidden = !candidatesSelected;
+        $('[data-inspector-panel="api-case"]').hidden = !apiCasesSelected;
+        $('[data-inspector-panel="trace-detail"]').hidden = candidatesSelected || apiCasesSelected;
+
+        if (candidatesSelected) {
+          setText('#traceTitle', '设计空间如何从 288 收敛到 3');
+          setText('[data-trace-summary-copy]', '每一步记录应用的约束、被排除的候选，以及结论属于事实、估计还是建议。');
+          setText('[data-trace-total-label]', 'Remaining');
+          setText('[data-trace-total-value]', '3');
+          setText('[data-center-meta]', 'Candidates · final design-time stage');
+          setText('[data-inspector-meta]', 'Candidate B');
+          setText('[data-status-stage]', 'Interactive framework concept · Candidates stage');
+        } else {
+          renderTraceDetail(traceViews[key]);
+        }
+
+        const centerScroll = $('[data-ide-pane="editor-preview"] .pane-scroll');
+        const inspectorScroll = $('[data-ide-pane="inspector"] .pane-scroll');
+        centerScroll?.scrollTo({ top: 0, behavior: 'smooth' });
+        inspectorScroll?.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      let activeTraceSurface = 'path';
+
+      const selectTraceSurface = (key) => {
+        activeTraceSurface = key;
+        $$('[data-trace-surface]').forEach((tab) => {
+          const selected = tab.dataset.traceSurface === key;
+          tab.classList.toggle('is-selected', selected);
+          tab.setAttribute('aria-selected', String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+        });
+        $$('[data-trace-surface-panel]').forEach((panel) => {
+          panel.hidden = panel.dataset.traceSurfacePanel !== key;
+        });
+
+        $('[data-ide-pane="editor-preview"] .pane-scroll')?.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      let selectedOperatorApi = null;
+
+      const selectOperatorApi = (key) => {
+        selectedOperatorApi = selectedOperatorApi === key ? null : key;
+        $$('[data-operator-api]').forEach((control) => {
+          const selected = control.dataset.operatorApi === selectedOperatorApi;
+          control.classList.toggle('is-selected', selected);
+          control.setAttribute('aria-pressed', String(selected));
+        });
+
+        const api = operatorApis[selectedOperatorApi];
+        setText('[data-operator-api-title]', api ? api.title : 'API chain');
+        setText(
+          '[data-operator-api-copy]',
+          api ? api.copy : '选择一个 API，查看它在 MatMul 数据搬运、计算或流水同步中的职责。'
+        );
+
+        if (!api) return;
+        selectTraceView('filter-api');
+      };
+
+      document.addEventListener('click', (event) => {
+        const operatorApi = event.target.closest('[data-operator-api]');
+        if (operatorApi) {
+          selectOperatorApi(operatorApi.dataset.operatorApi);
+          return;
+        }
+
+        const traceSurface = event.target.closest('[data-trace-surface]');
+        if (traceSurface) {
+          selectTraceSurface(traceSurface.dataset.traceSurface);
+          return;
+        }
+
+        const traceControl = event.target.closest('[data-trace-view]');
+        if (traceControl) {
+          selectTraceView(traceControl.dataset.traceView);
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        const surfaceTab = event.target.closest('[data-trace-surface]');
+        if (surfaceTab && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+          event.preventDefault();
+          const target = surfaceTab.dataset.traceSurface === 'path' ? 'map' : 'path';
+          selectTraceSurface(target);
+          $(`[data-trace-surface="${target}"]`)?.focus();
+          return;
+        }
+
+        const traceControl = event.target.closest('[data-trace-view]');
+        if (!traceControl || traceControl.tagName.toLowerCase() === 'button') return;
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        selectTraceView(traceControl.dataset.traceView);
+      });
+
+      renderConvergenceMap();
+      selectTraceSurface(activeTraceSurface);
+      selectTraceView(lastTraceView);
+    });
+  </script>
+</body>
+</html>
