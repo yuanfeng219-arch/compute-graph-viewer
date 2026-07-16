@@ -84,7 +84,11 @@ function resizeCanvas(canvas, width, height) {
 export function createAnalysisDock({ tabsRoot, titleEl, metaEl, views, initialView = 'timeline', onViewChange }) {
   const viewMap = new Map(views.map(view => [view.id, view]));
   const tabs = new Map();
+  const tabHandlers = new Map();
+  const mountedViews = new Set();
   let activeView = viewMap.has(initialView) ? initialView : views[0]?.id;
+  let renderFrame = 0;
+  let destroyed = false;
 
   tabsRoot.innerHTML = '';
   views.forEach(view => {
@@ -93,14 +97,39 @@ export function createAnalysisDock({ tabsRoot, titleEl, metaEl, views, initialVi
     tab.className = 'opv-analysis-tab';
     tab.dataset.analysisTab = view.id;
     tab.textContent = view.label;
-    tab.addEventListener('click', () => setActiveView(view.id));
+    const onClick = () => setActiveView(view.id);
+    tab.addEventListener('click', onClick);
     tabsRoot.appendChild(tab);
     tabs.set(view.id, tab);
+    tabHandlers.set(view.id, onClick);
     view.panel.hidden = true;
-    view.mount?.();
   });
 
+  function viewIsVisible(view) {
+    if (!view || view.panel.hidden) return false;
+    if (typeof view.panel.getClientRects !== 'function') return true;
+    return view.panel.getClientRects().length > 0;
+  }
+
+  function mountView(view) {
+    if (mountedViews.has(view.id)) return true;
+    if (!viewIsVisible(view)) return false;
+    view.mount?.();
+    mountedViews.add(view.id);
+    return true;
+  }
+
+  function scheduleRender(view) {
+    if (renderFrame) cancelAnimationFrame(renderFrame);
+    renderFrame = requestAnimationFrame(() => {
+      renderFrame = 0;
+      if (destroyed || activeView !== view.id || !viewIsVisible(view) || !mountedViews.has(view.id)) return;
+      view.render?.();
+    });
+  }
+
   function setActiveView(id) {
+    if (destroyed) return;
     const next = viewMap.has(id) ? id : views[0]?.id;
     if (!next) return;
     activeView = next;
@@ -111,23 +140,50 @@ export function createAnalysisDock({ tabsRoot, titleEl, metaEl, views, initialVi
       tabs.get(view.id)?.setAttribute('aria-pressed', String(active));
     });
     const view = viewMap.get(activeView);
+    mountView(view);
     titleEl.textContent = view.title || view.label;
     metaEl.textContent = typeof view.meta === 'function' ? view.meta() : (view.meta || '');
-    localStorage.setItem('op-rank-time-analysis-view', activeView);
-    requestAnimationFrame(() => view.render?.());
+    try {
+      localStorage.setItem('op-rank-time-analysis-view', activeView);
+    } catch {
+      // Storage can be unavailable in sandboxed or privacy-restricted embeds.
+    }
+    scheduleRender(view);
     onViewChange?.(activeView);
   }
 
   function refresh() {
-    viewMap.get(activeView)?.render?.();
+    if (destroyed) return;
+    const view = viewMap.get(activeView);
+    if (!viewIsVisible(view) || !mountView(view)) return;
+    view.render?.();
   }
 
   function resize() {
-    viewMap.get(activeView)?.resize?.();
+    if (destroyed) return;
+    const view = viewMap.get(activeView);
+    if (!viewIsVisible(view) || !mountView(view)) return;
+    view.resize?.();
+  }
+
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    if (renderFrame) {
+      cancelAnimationFrame(renderFrame);
+      renderFrame = 0;
+    }
+    tabs.forEach((tab, id) => tab.removeEventListener('click', tabHandlers.get(id)));
+    mountedViews.forEach(id => viewMap.get(id)?.destroy?.());
+    views.forEach(view => { view.panel.hidden = true; });
+    tabsRoot.innerHTML = '';
+    tabs.clear();
+    tabHandlers.clear();
+    mountedViews.clear();
   }
 
   setActiveView(activeView);
-  return { setActiveView, refresh, resize, get activeView() { return activeView; } };
+  return { setActiveView, refresh, resize, destroy, get activeView() { return activeView; } };
 }
 
 export function createMoeLoadView({ panel, viewModel, onSelect, distribution, a2aTail }) {
@@ -144,6 +200,16 @@ export function createMoeLoadView({ panel, viewModel, onSelect, distribution, a2
   let a2aCursor = null;   // A2A Tail 图当前游标 step（默认落在 P99 最差的 step）
   let a2aHoverRank = null; // 掉队者条中鼠标悬停的 rank（高亮 + 加粗数值）
   let a2aheatCanvas, a2aheatTip, a2aheatCursor = null;  // A2A 热力：左分位带 + 右 EP×专家 热力图（联动）
+  const updateStats = () => {
+    const root = panel.querySelector('.opv-analysis-stats');
+    if (!root) return;
+    root.innerHTML = viewModel.stats.map(stat => `
+      <div class="opv-analysis-stat">
+        <span>${esc(stat.label)}</span>
+        <b>${esc(stat.value)}</b>
+      </div>
+    `).join('');
+  };
   // 自定义气泡定位：用气泡真实尺寸钳制在容器内，避免溢出屏幕
   function showDistTip(event, html) {
     if (!distTipEl) return;
@@ -843,7 +909,15 @@ export function createMoeLoadView({ panel, viewModel, onSelect, distribution, a2
   }
 
   function renderByMode() { mode === 'distribution' ? drawDistribution() : mode === 'a2aheat' ? drawA2AHeat() : draw(); }
-  function setViewModel(next) { viewModel = next; selectedCell = null; hoverCell = null; mount(); renderByMode(); }
+  function setViewModel(next) {
+    viewModel = next;
+    selectedCell = null;
+    hoverCell = null;
+    if (!canvas?.isConnected) return;
+    if (!viewModel.metricOptions.some(item => item.id === metricId)) metricId = viewModel.metricOptions[0]?.id || 'loadRatio';
+    updateStats();
+    renderByMode();
+  }
 
   return { panel, mount, render: renderByMode, resize: renderByMode, setViewModel };
 }

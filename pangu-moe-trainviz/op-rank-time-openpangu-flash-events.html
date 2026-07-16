@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="../vendor/pto-design-system/patterns/workbench-shell/pattern.css" />
 <link rel="stylesheet" href="../vendor/pto-design-system/patterns/floating-playback-control/pattern.css" />
 <link rel="stylesheet" href="../vendor/pto-design-system/patterns/ide-frame/pattern.css" />
-<link rel="stylesheet" href="./vendor/swimlane-task/pattern.css?v=20260625-single-segment" />
+<link rel="stylesheet" href="./vendor/swimlane-task/pattern.css?v=20260716-tooltip-bg" />
 <style>
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;overflow:hidden;background:var(--ide-frame-page-bg);color:var(--foreground);font-family:var(--font-sans)}
@@ -23,8 +23,16 @@
   /* 框架铺满视口（页面级取舍：覆盖 ide-frame 默认 4:3 框中窗，让 3D 舞台更大） */
   .pto-ide-frame{
     width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;box-shadow:none;--floating-playback-expanded-width:880px;
+    --opv-ui-toolbar-bg:var(--surface-1);--opv-ui-panel-bg:var(--surface-2);--opv-ui-surface-border:var(--border-default);
     --ide-gradient-left-alpha:.30;--ide-gradient-right-alpha:.28;--ide-gradient-center-alpha:.18;--ide-gradient-lower-alpha:.15;
     --ide-aura-left-alpha:.38;--ide-aura-right-alpha:.34;--ide-aura-center-alpha:.22;--ide-aura-lower-alpha:.18;--ide-aura-bottom-alpha:.18;
+  }
+  #opRankIdeFrame[data-surface="solid"]{
+    --ide-frame-pane-fill:var(--ide-frame-pane-bg);--ide-frame-pane-header-fill:var(--ide-frame-pane-bg);
+    --ide-frame-pane-backdrop-filter:none;--ide-frame-pane-shadow:none;
+    --ide-frame-control-bg:var(--surface-2);--ide-frame-control-border:var(--border-subtle);--ide-frame-control-shadow:none;
+    --ide-frame-selected-bg:var(--surface-3);--ide-frame-selected-border:var(--border-subtle);--ide-frame-selected-shadow:none;
+    --surface-backdrop-filter:none;--surface-backdrop-filter-soft:none;--surface-backdrop-filter-strong:none;
   }
   #opRankIdeFrame{--ide-cursor-alpha:0;--ide-dot-opacity:0}
   #opRankIdeFrame::after{display:none}
@@ -122,8 +130,7 @@
   /* 说明/图例/坐标系 弹窗（右上角 info icon 打开） */
   .opv-popup{position:fixed;top:52px;right:14px;z-index:150;width:340px;max-height:calc(100vh - 96px);overflow:auto;
     padding:14px;display:flex;flex-direction:column;gap:16px;
-    background:var(--ide-frame-pane-fill);border:1px solid var(--ide-frame-pane-border);border-radius:var(--radius-md);
-    box-shadow:var(--ide-frame-pane-shadow);backdrop-filter:var(--ide-frame-pane-backdrop-filter);-webkit-backdrop-filter:var(--ide-frame-pane-backdrop-filter)}
+    background:var(--opv-ui-panel-bg);border:1px solid var(--ide-frame-pane-border);border-radius:var(--radius-md);box-shadow:none}
   .opv-popup[hidden]{display:none}
   .opv-popup__head{display:flex;align-items:center;justify-content:space-between}
   .opv-popup__title{font:var(--ide-frame-title-font);color:var(--foreground)}
@@ -168,9 +175,11 @@
   :root[data-theme='light'] .opv-focus .meta,
   :root[data-theme='light'] .opv-focus .opdesc,
   :root[data-theme='light'] .opv-focus .maptag{color:#0f0f10}
-  .opv-stage{position:relative;overflow:hidden;padding:0}
+  .opv-stage{position:relative;isolation:isolate;overflow:hidden;padding:0}
   #app{position:absolute;inset:0}
-  .opv-cssdeck{position:absolute;inset:0;z-index:18;overflow:hidden;display:none;perspective:9000px;perspective-origin:50% 50%;
+  .opv-stage-overlay-plane{position:absolute;inset:0;z-index:500;isolation:isolate;contain:layout paint;overflow:hidden;pointer-events:none}
+  .opv-stage-overlay-plane [data-stage-ui]{pointer-events:auto}
+  .opv-cssdeck{position:absolute;inset:0;z-index:18;isolation:isolate;contain:layout paint;overflow:hidden;display:none;perspective:9000px;perspective-origin:50% 50%;
     cursor:grab;background:
       radial-gradient(120% 95% at 52% 42%,color-mix(in srgb,var(--primary) 5%,transparent) 0%,transparent 48%),
       radial-gradient(132% 112% at 52% 44%,transparent 56%,rgba(0,0,0,.22) 100%)}
@@ -183,11 +192,48 @@
   .opv-stage.is-cssdeck .opv-training-object-overlay,
   .opv-stage.is-cssdeck .opv-axis-overlay{display:none}
   .opv-cssdeck__scene{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;transform-origin:0 0;will-change:transform}
+  .opv-cssdeck-pp-wireframe{position:absolute;inset:0;z-index:26;display:none;width:100%;height:100%;overflow:hidden;
+    contain:strict;pointer-events:none}
+  .opv-cssdeck-pp-labels{position:absolute;inset:0;z-index:27;display:none;overflow:hidden;pointer-events:none}
+  .opv-cssdeck[data-css-view="iso"][data-pp-partitions="on"] .opv-cssdeck-pp-wireframe,
+  .opv-cssdeck[data-css-view="iso"][data-pp-partitions="on"] .opv-cssdeck-pp-labels{display:block}
+  .opv-cssdeck-pp-wireframe path{fill:none;stroke:#22c55e;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+  .opv-cssdeck-pp-wireframe [data-part="far"]{stroke-width:.9;stroke-opacity:.42}
+  .opv-cssdeck-pp-wireframe [data-part="depth"]{stroke-width:1.35;stroke-opacity:.66}
+  .opv-cssdeck-pp-wireframe [data-part="near"]{stroke-width:2.25;stroke-opacity:.90}
+  .opv-cssdeck-pp-wireframe [data-layer-slices]{stroke:color-mix(in srgb,var(--foreground-muted) 72%,transparent);stroke-width:.7;stroke-opacity:.24}
+  .opv-cssdeck-pp-label{position:absolute;left:0;top:0;display:inline-flex;align-items:center;height:28px;padding:0 11px;
+    border:1px solid rgba(34,197,94,.84);border-radius:var(--radius-pill);background:#052e16;
+    color:#dcfce7;font:800 13px/1 var(--font-mono);letter-spacing:.02em;white-space:nowrap;will-change:transform}
+  :root[data-theme='light'] .opv-cssdeck-pp-label{background:#f0fdf4;color:#166534}
   .opv-cssdeck-card{position:absolute;left:-360px;top:-590px;width:720px;height:1180px;transform-style:preserve-3d;
     opacity:var(--deck-fade,1);transition:transform var(--duration-base) var(--easing-out),opacity var(--duration-base) var(--easing-out)}
   .opv-cssdeck-card:hover,.opv-cssdeck-card.is-hover,.opv-cssdeck-card.is-selected{opacity:1;z-index:5;--deck-lift:-24px}
   .opv-cssdeck[data-css-view="iso"] .opv-cssdeck-card{pointer-events:auto}
-  .opv-cssdeck[data-css-view="front"]{perspective:none;cursor:default}
+  .opv-cssdeck[data-css-view="iso"] .opv-cssdeck-card,
+  .opv-cssdeck[data-css-view="iso"] .opv-cssdeck-static,
+  .opv-cssdeck[data-css-view="iso"] .opv-cssgraph{transform-style:flat;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+  .opv-cssdeck[data-css-view="iso"] .opv-cssdeck-card[data-stage-role="first"]{opacity:1}
+  .opv-cssdeck[data-css-view="iso"] .opv-cssdeck-card[data-stage-role="repeat"]{
+    opacity:.08;
+    --deck-norm:var(--foreground-muted);--deck-attn:var(--foreground-muted);--deck-linear:var(--foreground-muted);
+    --deck-gate:var(--foreground-muted);--deck-moe:var(--foreground-muted);--deck-comm:var(--foreground-muted);
+    --deck-state:var(--foreground-muted);--deck-residual:var(--foreground-muted);--deck-hidden:var(--foreground-muted)}
+  .opv-cssdeck[data-css-view="iso"] .opv-cssdeck-card[data-stage-role="repeat"].is-selected,
+  .opv-cssdeck[data-css-view="iso"] .opv-cssdeck-card[data-stage-role="repeat"].is-activity-live,
+  .opv-cssdeck[data-css-view="iso"] .opv-cssdeck-card[data-stage-role="repeat"].is-card-linked{opacity:.28}
+  .opv-cssdeck[data-css-view="iso"] .opv-cssdeck-card[data-stage-role="repeat"]:hover,
+  .opv-cssdeck[data-css-view="iso"] .opv-cssdeck-card[data-stage-role="repeat"].is-hover{
+    opacity:1;
+    --deck-norm:inherit;--deck-attn:inherit;--deck-linear:inherit;--deck-gate:inherit;--deck-moe:inherit;
+    --deck-comm:inherit;--deck-state:inherit;--deck-residual:inherit;--deck-hidden:inherit}
+  .opv-cssdeck[data-css-view="iso"][data-pp-partitions="on"] .opv-cssdeck-card[data-stage-sample="false"]{display:none}
+  .opv-cssdeck[data-css-view="iso"][data-pp-partitions="on"] .opv-cssdeck-card[data-stage-sample="false"].is-selected,
+  .opv-cssdeck[data-css-view="iso"][data-pp-partitions="on"] .opv-cssdeck-card[data-stage-sample="false"].is-activity-live,
+  .opv-cssdeck[data-css-view="iso"][data-pp-partitions="on"] .opv-cssdeck-card[data-stage-sample="false"].is-card-linked{display:block}
+  .opv-cssdeck[data-css-view="front"]{perspective:none}
+  .opv-cssdeck[data-css-view="front"],
+  .opv-cssdeck[data-css-view="right"]{cursor:grab}
   .opv-cssdeck[data-css-view="front"] .opv-cssdeck-card{opacity:0;pointer-events:none}
   .opv-cssdeck[data-css-view="front"] .opv-cssdeck-card.is-front-layer{opacity:1;pointer-events:auto;--deck-lift:0px}
   .opv-cssdeck[data-css-view="front"] .opv-cssdeck-static{display:block}
@@ -252,6 +298,20 @@
   .opv-cssdeck-node.is-activity-live,.opv-cssdeck-experts.is-activity-live{z-index:8;opacity:1;filter:saturate(1.32) contrast(1.08);
     border-color:var(--activity-color,#4369ef);background:color-mix(in srgb,var(--activity-color,#4369ef) 38%,var(--surface-1));
     box-shadow:0 0 0 3px color-mix(in srgb,var(--activity-color,#4369ef) 30%,transparent),0 10px 28px color-mix(in srgb,var(--activity-color,#4369ef) 32%,transparent)}
+  .opv-cssdeck__scene.is-profiling-span-focused .opv-cssdeck-node:not(.is-profile-related),
+  .opv-cssdeck__scene.is-profiling-span-focused .opv-cssdeck-experts:not(.is-profile-related){
+    opacity:.16!important;filter:grayscale(.72) saturate(.08) contrast(.86)!important;box-shadow:none!important}
+  .opv-cssdeck__scene.is-profiling-span-focused .opv-cssgraph__cluster:not(.is-profile-related){
+    opacity:.16!important;filter:grayscale(.72) saturate(.08)!important}
+  .opv-cssdeck__scene.is-profiling-span-focused .opv-cssgraph__edges path:not(.is-profile-related){
+    opacity:.07!important;filter:grayscale(.78) saturate(.06)!important}
+  .opv-cssdeck__scene.is-profiling-span-focused .opv-cssgraph__layer-label{opacity:.24;filter:saturate(.12)}
+  .opv-cssdeck__scene.is-profiling-span-focused .is-profile-related{opacity:1!important;filter:none!important}
+  .opv-cssdeck__scene.is-profiling-span-focused .opv-cssdeck-card.is-profiling-span-context,
+  .opv-cssdeck__scene.is-profiling-span-focused .opv-cssdeck-static.is-profiling-span-context{opacity:1;z-index:8}
+  .opv-cssdeck-node.is-profile-linked,.opv-cssdeck-experts.is-profile-linked{z-index:9;opacity:1!important;filter:saturate(1.28) contrast(1.08)!important;
+    border-color:var(--profile-link-color,var(--primary))!important;background:color-mix(in srgb,var(--profile-link-color,var(--primary)) 38%,var(--surface-1))!important;
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--profile-link-color,var(--primary)) 34%,transparent),0 12px 30px color-mix(in srgb,var(--profile-link-color,var(--primary)) 34%,transparent)!important}
   .opv-cssdeck[data-css-view="right"] .opv-cssdeck-node:hover,
   .opv-cssdeck[data-css-view="right"] .opv-cssdeck-node.is-selected{transform:none}
   .opv-cssdeck[data-css-view="right"] .opv-cssdeck-card,
@@ -264,9 +324,12 @@
   .opv-cssdeck[data-css-view="right"] .opv-cssdeck-node::after{content:"";position:absolute;left:100%;top:-1px;width:4px;height:calc(100% + 2px);
     transform:rotateY(90deg);transform-origin:left center;pointer-events:none;border:1px solid color-mix(in srgb,var(--deck-color,var(--foreground)) 54%,transparent);
     border-radius:2px;background:color-mix(in srgb,var(--deck-color,var(--foreground)) 72%,var(--surface-1));box-shadow:0 0 5px color-mix(in srgb,var(--deck-color,var(--foreground)) 22%,transparent)}
-  .opv-cssdeck[data-css-view="right"] .opv-cssdeck-experts::after{content:"";position:absolute;left:100%;top:-1px;width:6px;height:calc(100% + 2px);
+  .opv-cssdeck[data-css-view="right"] .opv-cssdeck-experts.is-expanded::after{content:"";position:absolute;left:100%;top:-1px;width:6px;height:calc(100% + 2px);
     transform:rotateY(90deg);transform-origin:left center;pointer-events:none;border:1px solid color-mix(in srgb,var(--deck-moe) 64%,transparent);
     border-radius:2px;background:color-mix(in srgb,var(--deck-moe) 76%,var(--surface-1));box-shadow:0 0 6px color-mix(in srgb,var(--deck-moe) 26%,transparent)}
+  .opv-cssdeck[data-css-view="right"] .opv-cssdeck-experts.is-collapsed::after{content:"";position:absolute;left:100%;top:-1px;width:4px;height:calc(100% + 2px);
+    transform:rotateY(90deg);transform-origin:left center;pointer-events:none;border:1px solid color-mix(in srgb,var(--deck-moe) 54%,transparent);
+    border-radius:2px;background:color-mix(in srgb,var(--deck-moe) 72%,var(--surface-1));box-shadow:0 0 5px color-mix(in srgb,var(--deck-moe) 22%,transparent)}
   .opv-cssdeck[data-css-view="right"] .opv-cssdeck-node.is-activity-live::after,
   .opv-cssdeck[data-css-view="right"] .opv-cssdeck-experts.is-activity-live::after{width:12px;border-color:var(--activity-color,#4369ef);
     background:var(--activity-color,#4369ef);box-shadow:0 0 0 2px color-mix(in srgb,var(--activity-color,#4369ef) 34%,transparent),
@@ -287,34 +350,50 @@
   .opv-cssdeck-node--wide{min-height:38px}
   .opv-cssdeck-node--add{width:32px;height:32px;min-height:32px;padding:0;border-radius:999px;font:900 17px/1 var(--font-sans)}
   .opv-cssdeck-node--add.opv-cssdeck-node--compact-add{width:24px;height:24px;min-height:24px;font-size:14px}
-  .opv-cssdeck-experts{position:absolute;display:grid;grid-template-columns:repeat(12,1fr);gap:3px;padding:12px;border-radius:8px;
+  .opv-cssdeck-experts{--deck-color:var(--deck-moe);position:absolute;cursor:pointer;
+    transition:transform var(--duration-fast),box-shadow var(--duration-fast),border-color var(--duration-fast),background var(--duration-fast)}
+  .opv-cssdeck-experts.is-expanded{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;padding:12px;border-radius:8px;
     border:1px dashed color-mix(in srgb,var(--deck-moe) 36%,transparent);background:color-mix(in srgb,var(--deck-moe) 11%,transparent)}
-  .opv-cssdeck-experts:hover,.opv-cssdeck-experts.is-selected{border-color:color-mix(in srgb,var(--deck-moe) 64%,transparent);box-shadow:0 8px 18px color-mix(in srgb,var(--deck-moe) 18%,transparent);background:color-mix(in srgb,var(--deck-moe) 16%,transparent);cursor:pointer}
-  .opv-cssdeck-experts::before{content:"Expert Pool";position:absolute;left:10px;top:-8px;padding:0 5px;background:var(--card-bg);color:var(--foreground-secondary);font:800 10px/1 var(--font-sans)}
-  .opv-cssdeck-experts span{border-radius:3px;background:color-mix(in srgb,var(--deck-moe) 36%,var(--surface-1));min-height:9px}
+  .opv-cssdeck-experts.is-expanded:hover,.opv-cssdeck-experts.is-expanded.is-selected{border-color:color-mix(in srgb,var(--deck-moe) 64%,transparent);
+    box-shadow:0 8px 18px color-mix(in srgb,var(--deck-moe) 18%,transparent);background:color-mix(in srgb,var(--deck-moe) 16%,transparent)}
+  .opv-cssdeck-experts.is-expanded::before{content:"Expert Pool · 72";position:absolute;left:10px;top:-8px;padding:0 5px;background:var(--card-bg);
+    color:var(--foreground-secondary);font:800 10px/1 var(--font-sans)}
+  .opv-cssdeck-experts.is-expanded span{border-radius:3px;background:color-mix(in srgb,var(--deck-moe) 36%,var(--surface-1));min-height:9px}
+  .opv-cssdeck-experts.is-collapsed{min-height:32px;display:flex;align-items:center;justify-content:center;text-align:center;padding:6px 8px;
+    border:1px solid color-mix(in srgb,var(--deck-moe) 28%,transparent);border-radius:8px;
+    background:color-mix(in srgb,var(--deck-moe) 24%,var(--surface-1));color:var(--foreground);font:800 11px/1.18 var(--font-sans)}
+  .opv-cssdeck-experts.is-collapsed:hover,.opv-cssdeck-experts.is-collapsed.is-selected{transform:translateY(-1px);
+    border-color:color-mix(in srgb,var(--deck-moe) 62%,transparent);box-shadow:0 8px 18px color-mix(in srgb,var(--deck-moe) 22%,transparent);
+    background:color-mix(in srgb,var(--deck-moe) 34%,var(--surface-1))}
+  .opv-cssdeck-experts.is-collapsed.is-activity-live{border-color:var(--activity-color,#4369ef);
+    background:color-mix(in srgb,var(--activity-color,#4369ef) 38%,var(--surface-1));
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--activity-color,#4369ef) 30%,transparent),0 10px 28px color-mix(in srgb,var(--activity-color,#4369ef) 32%,transparent)}
+  .opv-cssdeck[data-css-view="right"] .opv-cssdeck-experts.is-collapsed:hover,
+  .opv-cssdeck[data-css-view="right"] .opv-cssdeck-experts.is-collapsed.is-selected{transform:none}
+  .opv-cssdeck-experts.is-collapsed::before{content:"Expert Pool";position:static;padding:0;background:transparent;color:inherit;font:inherit}
   .opv-cssdeck-static{position:absolute;left:-360px;width:720px;height:120px;transform-style:preserve-3d}
   .opv-cssdeck-static--input{top:-700px;height:178px}
   .opv-cssdeck-static--output{top:520px;height:526px}
   .opv-cssdeck-static__title{position:absolute;left:12px;top:0;font:800 12px/1 var(--font-sans);color:var(--foreground-muted)}
-  .opv-viewport-title{position:absolute;top:14px;left:16px;z-index:39;display:flex;align-items:center;gap:8px;pointer-events:none;
+  .opv-viewport-title{position:absolute;top:14px;left:16px;z-index:360;display:flex;align-items:center;gap:8px;pointer-events:none;
     color:var(--foreground);text-shadow:0 1px 8px var(--ide-frame-pane-bg),0 0 18px var(--ide-frame-pane-bg)}
   .opv-viewport-title__text{font:var(--text-title-2);font-weight:800;letter-spacing:0}
   .opv-viewport-title__tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border:1px solid var(--comp-tag-border);
     border-radius:var(--tag-radius);background:var(--comp-tag-bg);color:var(--foreground-secondary);font:var(--text-label);font-weight:700;letter-spacing:0}
-  .opv-stage-tools{position:absolute;top:12px;right:12px;bottom:12px;z-index:120;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;
+  .opv-stage-tools{position:absolute;top:12px;right:12px;bottom:12px;z-index:420;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;
     isolation:isolate}
   .opv-stage-tools>*{pointer-events:auto}
   .opv-stage-toolbar{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:flex-end;gap:8px;opacity:1}
   .opv-lens-switch{height:42px;display:inline-grid;grid-template-columns:repeat(4,max-content);align-items:center;gap:2px;padding:4px;
     border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);border-radius:var(--radius-pill);
-    background:var(--ide-frame-pane-bg);box-shadow:0 10px 34px rgba(0,0,0,.18);opacity:1}
+    background:var(--opv-ui-toolbar-bg);box-shadow:none;opacity:1}
   .opv-lens-btn{height:28px;padding:0 9px;border:0;border-radius:var(--radius-pill);background:transparent;color:var(--foreground-muted);
     font:750 10px/1 var(--font-sans);cursor:pointer;white-space:nowrap}
   .opv-lens-btn:hover{background:var(--state-hover);color:var(--foreground-secondary)}
   .opv-lens-btn.is-active{background:var(--primary);color:#fff}
   .opv-zoom-control{display:flex;align-items:center;gap:6px;
     padding:6px;border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);border-radius:999px;
-    background:var(--ide-frame-pane-bg);box-shadow:0 10px 34px rgba(0,0,0,.18);opacity:1}
+    background:var(--opv-ui-toolbar-bg);box-shadow:none;opacity:1}
   .opv-zoom-control.is-collapsed>:not(.opv-zoom-control-toggle){display:none}
   .opv-zoom-control-toggle{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:999px;
     background:color-mix(in srgb,var(--foreground) 6%,transparent);color:var(--foreground);cursor:pointer}
@@ -336,18 +415,16 @@
   .opv-axis-overlay .opv-axis-figure{width:104px;height:92px;border:0;border-radius:0;background:transparent;box-shadow:none;
     backdrop-filter:none;-webkit-backdrop-filter:none;overflow:visible}
   .opv-view-btns{display:flex;align-items:center;gap:6px;padding:6px;border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);
-    border-radius:999px;background:var(--ide-frame-pane-bg);box-shadow:0 10px 34px rgba(0,0,0,.18);opacity:1}
+    border-radius:999px;background:var(--opv-ui-toolbar-bg);box-shadow:none;opacity:1}
   .opv-view-btn{width:42px;height:28px;border-radius:999px;font:700 12px/1 var(--font-sans);white-space:nowrap;letter-spacing:0}
   .opv-view-btn[data-view="iso"]{width:48px}
   .opv-view-btn.is-active{background:#4f6df6;color:#fff}
   .opv-side-config-toggle{width:42px;height:42px;padding:0;border-color:color-mix(in srgb,var(--foreground) 13%,transparent);
-    background:color-mix(in srgb,var(--ide-frame-pane-bg) 82%,transparent);box-shadow:0 10px 34px rgba(0,0,0,.18);
-    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+    background:var(--opv-ui-toolbar-bg);box-shadow:none}
   .opv-side-config-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .opv-side-config-toggle.is-active{background:#4f6df6;border-color:#4f6df6;color:#fff}
   .opv-side-config{width:318px;padding:10px;border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);border-radius:var(--radius-md);
-    background:color-mix(in srgb,var(--ide-frame-pane-bg) 90%,transparent);box-shadow:0 16px 44px rgba(0,0,0,.18);
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+    background:var(--opv-ui-panel-bg);box-shadow:none}
   .opv-side-config[hidden]{display:none}
   .opv-side-config__section+.opv-side-config__section{margin-top:10px;padding-top:10px;border-top:1px solid var(--border-subtle)}
   .opv-side-config__heading{margin-bottom:8px;font:700 11px/1 var(--font-sans);letter-spacing:.04em;text-transform:uppercase;color:var(--foreground-secondary)}
@@ -361,12 +438,11 @@
     background:var(--surface-disabled);color:var(--foreground-secondary);font:700 11px/1 var(--font-sans);cursor:pointer}
   .opv-side-config__actions button:hover{background:var(--state-hover);color:var(--foreground)}
   .opv-filter-toggle{width:42px;height:42px;padding:0;border-color:color-mix(in srgb,var(--foreground) 13%,transparent);
-    background:var(--ide-frame-pane-bg);box-shadow:0 10px 34px rgba(0,0,0,.18);opacity:1}
+    background:var(--opv-ui-toolbar-bg);box-shadow:none;opacity:1}
   .opv-filter-toggle svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .opv-filter-toggle.is-active{background:#4f6df6;border-color:#4f6df6;color:#fff}
-  .opv-layer-playback{position:absolute;z-index:46;top:86px;left:50%;right:auto;bottom:auto;display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);
-    border-radius:999px;background:color-mix(in srgb,var(--ide-frame-pane-bg) 82%,transparent);box-shadow:0 10px 34px rgba(0,0,0,.18);
-    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transform:translateX(-50%);pointer-events:auto}
+  .opv-layer-playback{position:absolute;z-index:380;top:12px;left:50%;right:auto;bottom:auto;display:flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);
+    border-radius:999px;background:var(--opv-ui-toolbar-bg);box-shadow:none;transform:translateX(-50%);pointer-events:auto}
   .opv-layer-playback[hidden]{display:none}
   .opv-layer-readout{display:inline-flex;align-items:center;gap:5px;min-width:0;height:28px;padding:0 6px;border-radius:999px;
     background:color-mix(in srgb,var(--foreground) 5%,transparent);font:700 11px/1 var(--font-sans);color:var(--foreground-secondary)}
@@ -378,8 +454,7 @@
   .opv-layer-btn.is-active{background:#4f6df6;color:#fff}
   .opv-object-panel{position:absolute;right:12px;top:66px;z-index:42;width:340px;max-width:min(340px,calc(100% - 24px));max-height:min(560px,calc(100% - 90px));overflow:auto;
     padding:10px;border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);border-radius:12px;
-    background:color-mix(in srgb,var(--ide-frame-pane-bg) 88%,transparent);box-shadow:0 16px 44px rgba(0,0,0,.18);
-    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+    background:var(--opv-ui-panel-bg);box-shadow:none}
   .opv-object-panel[hidden]{display:none}
   .opv-object-panel__head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
   .opv-object-panel__title{font:var(--text-label);font-weight:700;color:var(--foreground)}
@@ -444,7 +519,7 @@
   [data-ide-pane="analysis-dock"]>.pto-ide-frame__pane-header{display:flex;align-items:center;gap:8px}
   .opv-comm-toggle{margin-left:auto;flex:none}
   .opv-swim-zoom{display:inline-flex;align-items:center;gap:3px;height:27px;padding:2px 3px;border:1px solid var(--border-subtle);border-radius:var(--radius-pill);
-    background:color-mix(in srgb,var(--foreground) 4%,transparent);flex:none}
+    background:var(--opv-ui-toolbar-bg);flex:none}
   .opv-swim-zoom-btn{width:23px;height:21px;padding:0;border:0;border-radius:var(--radius-pill);background:transparent;color:var(--foreground);
     font:800 15px/1 var(--font-sans);cursor:pointer}
   .opv-swim-zoom-btn:hover:not(:disabled){background:var(--state-hover)}
@@ -457,7 +532,7 @@
   :root[data-theme='light'] .opv-zoom-control{background:#fff;border-color:rgba(15,15,16,.14)}
   :root[data-theme='light'] .opv-zoom-btn{color:#0f0f10;background:rgba(15,15,16,.06)}
   :root[data-theme='light'] .opv-zoom-value{color:#0f0f10}
-  :root[data-theme='light'] .opv-layer-playback{background:rgba(255,255,255,.86);border-color:rgba(15,15,16,.14)}
+  :root[data-theme='light'] .opv-layer-playback{background:var(--opv-ui-toolbar-bg);border-color:var(--border-default)}
   :root[data-theme='light'] .opv-layer-readout,
   :root[data-theme='light'] .opv-layer-btn{color:#0f0f10;background:rgba(15,15,16,.06)}
   :root[data-theme='light'] .opv-layer-btn.is-active{background:#4f6df6;color:#fff}
@@ -632,6 +707,7 @@
     box-shadow:0 0 0 4px color-mix(in srgb,var(--highlight-copy-blue-source) 18%,transparent),0 8px 20px color-mix(in srgb,var(--highlight-copy-blue-source) 18%,transparent)}
   .opv-cssdeck-card.is-card-linked{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--highlight-copy-blue-source) 62%,transparent)}
   .opv-swimlane{position:relative;display:flex;flex-direction:column;height:100%;padding:6px 8px}
+  :root[data-theme='light'] #swimlaneView{--pto-swimlane-tooltip-bg:#F8F8F8}
   .opv-swim-axis-scroll{height:44px;flex:none;overflow:hidden}
   .opv-swim-axis{display:block;height:44px}
   .opv-swim-scroll{flex:1;min-height:0;overflow:auto}
@@ -737,10 +813,10 @@
   .opv-cssdeck-live-badge.is-left::after{right:auto;left:100%}
   .opv-cssdeck-live-badge::before{content:"";width:7px;height:7px;border-radius:2px;background:var(--activity-color,#4369ef);
     box-shadow:0 0 8px color-mix(in srgb,var(--activity-color,#4369ef) 58%,transparent)}
-  .opv-parallel-event-legend{position:absolute;z-index:46;top:86px;left:50%;right:auto;display:flex;align-items:center;justify-content:center;gap:6px;
+  .opv-parallel-event-legend{position:absolute;z-index:380;top:12px;left:50%;right:auto;display:flex;align-items:center;justify-content:center;gap:6px;
     width:max-content;max-width:calc(100% - 24px);padding:6px;border:1px solid color-mix(in srgb,var(--foreground) 13%,transparent);border-radius:999px;
-    background:color-mix(in srgb,var(--ide-frame-pane-bg) 82%,transparent);box-shadow:0 10px 34px rgba(0,0,0,.18);
-    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transform:translateX(-50%);overflow-x:auto;scrollbar-width:none;pointer-events:auto}
+    background:var(--opv-ui-toolbar-bg);box-shadow:none;transform:translateX(-50%);
+    overflow-x:auto;scrollbar-width:none;pointer-events:auto;isolation:isolate;contain:layout paint}
   .opv-parallel-event-legend::-webkit-scrollbar{display:none}
   .opv-parallel-event-legend[hidden]{display:none}
   .opv-parallel-event-legend__label{display:inline-flex;align-items:center;gap:5px;margin:0 3px;color:var(--foreground-muted);font:800 10px/1 var(--font-mono);white-space:nowrap}
@@ -748,13 +824,14 @@
   .opv-parallel-event-legend__group{display:inline-flex;align-items:center;gap:3px;min-width:0;white-space:nowrap}
   .opv-parallel-event-filter{height:28px;min-width:42px;padding:0 10px;border:1px solid color-mix(in srgb,var(--event-color) 42%,transparent);
     border-radius:999px;background:color-mix(in srgb,var(--ide-frame-pane-bg) 86%,var(--event-color) 14%);
-    color:color-mix(in srgb,var(--event-color) 78%,var(--foreground));font:900 11px/1 var(--font-mono);cursor:pointer}
+    color:color-mix(in srgb,var(--event-color) 78%,var(--foreground));font:900 11px/1 var(--font-mono);cursor:pointer;
+    touch-action:manipulation;user-select:none;-webkit-user-select:none}
   .opv-parallel-event-filter:hover,.opv-parallel-event-filter.is-active{border-color:var(--event-color);color:var(--foreground);
     background:color-mix(in srgb,var(--ide-frame-pane-bg) 68%,var(--event-color) 32%)}
   .opv-parallel-event-filter[disabled]{opacity:.42;cursor:default;filter:saturate(.35)}
   .opv-parallel-event-filter[data-event-scope]{min-width:52px}
   .opv-parallel-event-legend__divider{width:1px;height:20px;margin:0 2px;background:color-mix(in srgb,var(--foreground-muted) 24%,transparent)}
-  .opv-parallel-event-overlay{position:absolute;inset:0;z-index:45;display:none;overflow:hidden;pointer-events:none}
+  .opv-parallel-event-overlay{position:absolute;inset:0;z-index:300;display:none;overflow:hidden;pointer-events:none}
   .opv-stage.is-cssdeck .opv-parallel-event-overlay{display:block}
   .opv-parallel-event-badge{position:absolute;display:flex;align-items:center;gap:5px;min-height:24px;max-width:190px;padding:3px 8px 3px 5px;
     transform:translate(9px,-50%);border:1.5px solid color-mix(in srgb,var(--event-color) 72%,var(--foreground));border-radius:var(--radius-pill);
@@ -771,6 +848,9 @@
     background:var(--event-color);color:#fff;font:900 8.5px/1 var(--font-mono)}
   .opv-parallel-event-name{overflow:hidden;text-overflow:ellipsis}
   .opv-parallel-event-phase{color:var(--foreground-muted);font-size:8px}
+  .opv-parallel-event-overlay.is-profiling-span-focused .opv-parallel-event-badge:not(.is-profile-related){
+    opacity:.16;filter:grayscale(.78) saturate(.08)}
+  .opv-parallel-event-overlay.is-profiling-span-focused .opv-parallel-event-badge.is-profile-related{opacity:1;filter:none}
   .opv-cssdeck-node.is-event-linked{box-shadow:0 0 0 2px color-mix(in srgb,var(--event-link-color,var(--primary)) 64%,transparent),
     0 0 12px color-mix(in srgb,var(--event-link-color,var(--primary)) 34%,transparent)!important}
   .opv-cssgraph__layer-label.is-event-linked{color:var(--event-link-color,var(--primary));filter:saturate(1.2)}
@@ -998,7 +1078,7 @@
   .opv-numerics-rail__head span:last-child{color:var(--foreground-muted);font-size:8px}
   .opv-numerics-item{width:100%;min-height:34px;display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:center;gap:7px;padding:5px 8px;
     border:1px solid color-mix(in srgb,var(--numerics-role-color,#2563eb) 36%,var(--border-subtle));border-radius:var(--radius-sm);
-    background:color-mix(in srgb,var(--ide-frame-pane-fill) 90%,transparent);color:var(--foreground);box-shadow:var(--shadow-sm);cursor:pointer;text-align:left}
+    background:var(--surface-1);color:var(--foreground);box-shadow:none;cursor:pointer;text-align:left}
   .opv-numerics-item:hover,.opv-numerics-item.is-selected{border-color:var(--numerics-role-color,#2563eb);background:color-mix(in srgb,var(--numerics-role-color,#2563eb) 9%,var(--ide-frame-pane-fill))}
   .opv-numerics-item__dot{width:7px;height:7px;border-radius:50%;background:var(--numerics-role-color,#2563eb)}
   .opv-numerics-item[data-severity="warn"] .opv-numerics-item__dot{background:var(--warning);box-shadow:0 0 0 3px color-mix(in srgb,var(--warning) 16%,transparent)}
@@ -1097,6 +1177,14 @@
   .pto-tmchart__legend-item{display:inline-flex;align-items:center;gap:6px;font:var(--text-body-sm);color:var(--foreground-secondary)}
   .pto-tmchart__legend-swatch{width:14px;height:3px;border-radius:2px}
 
+  /* Unified solid surface contract for product-owned toolbars and panels. */
+  [data-ui-surface]{
+    --opv-ui-surface-bg:var(--opv-ui-toolbar-bg);
+    background:var(--opv-ui-surface-bg);border-color:var(--opv-ui-surface-border);box-shadow:none;
+    backdrop-filter:none;-webkit-backdrop-filter:none
+  }
+  [data-ui-surface="panel"]{--opv-ui-surface-bg:var(--opv-ui-panel-bg)}
+
   @media (max-width:920px){
     .opv-monitor-row{flex-direction:column}
     .opv-monitor-chart{flex:0 0 auto;max-width:100%;height:160px}
@@ -1136,7 +1224,7 @@
 </head>
 <body>
 
-<section class="pto-ide-frame" id="opRankIdeFrame" data-ide-frame data-host="standalone" data-cursor-dots="false" data-inspector-open="true" data-analysis-open="true" data-explorer-collapsed="false" aria-label="Pangu MoE TrainViz IDE frame">
+<section class="pto-ide-frame" id="opRankIdeFrame" data-ide-frame data-host="standalone" data-surface="solid" data-cursor-dots="false" data-inspector-open="true" data-analysis-open="true" data-explorer-collapsed="false" aria-label="Pangu MoE TrainViz IDE frame">
   <header class="pto-ide-frame__topbar pto-ide-frame__standalone-chrome">
     <div class="pto-ide-frame__topbar-left">
       <div class="pto-ide-frame__host-chip">
@@ -1181,7 +1269,7 @@
       </button>
     </nav>
     <div class="pto-ide-frame__workarea">
-      <div class="pto-ide-frame__split" data-ide-split="op-rank-vertical" data-storage-key="pangu-moe-trainviz-vertical-v1" data-split-direction="vertical" data-sizes="60,40" data-min-size="280,200">
+      <div class="pto-ide-frame__split" data-ide-split="op-rank-vertical" data-storage-key="pangu-moe-trainviz-vertical-v2" data-split-direction="vertical" data-sizes="60,40" data-min-size="280,200">
 
         <section class="pto-ide-frame__pane pto-ide-frame__pane--stack" data-ide-pane="stage-row">
           <div class="pto-ide-frame__split" data-ide-split="standalone-main" data-storage-key="pangu-moe-trainviz-main-v1" data-split-direction="horizontal" data-sizes="18,56,26" data-pixel-sizes="280" data-min-size="220,380,260">
@@ -1193,7 +1281,10 @@
                 <div id="app"></div>
                 <div id="cssDeck" class="opv-cssdeck" aria-label="CSS 3D model graph stack">
                   <div id="cssDeckScene" class="opv-cssdeck__scene"></div>
+                  <svg id="cssDeckPpWireframe" class="opv-cssdeck-pp-wireframe" aria-label="PP=4 pipeline stage wireframes" aria-hidden="true"></svg>
+                  <div id="cssDeckPpLabels" class="opv-cssdeck-pp-labels" aria-hidden="true"></div>
                 </div>
+                <div class="opv-stage-overlay-plane" id="stageOverlayPlane" aria-label="Visualization overlays and controls">
                 <div class="opv-viewport-title" aria-label="当前模型架构">
                   <span class="opv-viewport-title__text">Pangu模型架构</span>
                   <span class="opv-viewport-title__tag">openPangu-2.0-Flash · Parallel Events Preview</span>
@@ -1201,8 +1292,8 @@
                 <div class="opv-anomaly-layer" id="anomalyLayer" aria-label="异常徽标"></div>
                 <div class="opv-ep-label-layer" id="epLabelLayer" aria-label="EP bucket 标注"></div>
                 <div class="opv-cssdeck-operator-labels" id="cssDeckOperatorLabels" aria-label="侧视算子名称"></div>
-                <div class="opv-parallel-event-legend" id="parallelEventLegend" aria-label="并行事件筛选"></div>
-                <div class="opv-layer-playback" id="executionPlayback" hidden aria-label="1F1B 执行播放控制">
+                <div class="opv-parallel-event-legend" id="parallelEventLegend" data-stage-ui="parallel-events" data-ui-surface="toolbar" aria-label="并行事件筛选"></div>
+                <div class="opv-layer-playback" id="executionPlayback" data-stage-ui="execution-playback" data-ui-surface="toolbar" hidden aria-label="1F1B 执行播放控制">
                   <div class="opv-layer-readout"><span>step</span><b id="stepLayerLabel">—</b></div>
                   <div class="opv-layer-divider"></div>
                   <div class="opv-layer-readout"><span>1F1B</span><b id="innerTickLabel">—</b></div>
@@ -1214,7 +1305,7 @@
                 <div class="opv-transfer-table" id="layerTransferTable" aria-label="Layer transfer gap metrics"></div>
                 <div class="opv-numerics-front" id="numericsFrontOverlay" hidden aria-label="前向、参数和反向数值状态"></div>
                 <div class="opv-training-object-overlay" id="trainingObjectOverlay" aria-label="训练对象覆盖标识"></div>
-                <div class="opv-object-panel" id="objectPanel" aria-label="筛选与定位" hidden>
+                <div class="opv-object-panel" id="objectPanel" data-stage-ui="object-filter" data-ui-surface="panel" aria-label="筛选与定位" hidden>
                   <div class="opv-object-panel__head">
                     <span class="opv-object-panel__title">筛选 / 定位</span>
                     <button class="opv-object-panel__reset" type="button" data-focus-object="all">清除聚焦</button>
@@ -1277,10 +1368,9 @@
                     </div>
                   </div>
                 </div>
-              </div>
-                <div class="opv-stage-tools" aria-label="3D 视图工具">
+                <div class="opv-stage-tools" data-stage-ui="stage-tools" aria-label="3D 视图工具">
                   <div class="opv-stage-toolbar">
-                    <div class="opv-zoom-control is-collapsed" id="zoomControl" aria-label="3D 视图缩放">
+                    <div class="opv-zoom-control is-collapsed" id="zoomControl" data-ui-surface="toolbar" aria-label="3D 视图缩放">
                       <button id="zoomOut" class="opv-zoom-btn" type="button" title="缩小" aria-label="缩小">−</button>
                       <input id="zoomSlider" class="opv-zoom-slider" type="range" min="0" max="100" step="1" aria-label="3D 视图缩放">
                       <button id="zoomIn" class="opv-zoom-btn" type="button" title="放大" aria-label="放大">+</button>
@@ -1291,26 +1381,26 @@
                         <span class="opv-zoom-control-toggle__collapse" aria-hidden="true">›</span>
                       </button>
                     </div>
-                    <div class="opv-view-btns" role="group" aria-label="视角预设">
-                      <button id="viewIso" class="opv-zoom-btn opv-view-btn is-active" data-view="iso" type="button" title="正交轴测视图" aria-label="正交轴测视图">轴测</button>
-                      <button id="viewFront" class="opv-zoom-btn opv-view-btn" data-view="front" type="button" title="正交正视图（锁定旋转）" aria-label="正交正视图（锁定旋转）">正视</button>
-                      <button id="viewRight" class="opv-zoom-btn opv-view-btn" data-view="right" type="button" title="右侧视图" aria-label="右侧视图">侧视</button>
+                    <div class="opv-view-btns" data-ui-surface="toolbar" role="group" aria-label="视角预设">
+                      <button id="viewIso" class="opv-zoom-btn opv-view-btn is-active" data-view="iso" type="button" title="轴测：拖拽旋转，Ctrl/Command + 拖拽平移，滚轮缩放" aria-label="正交轴测视图">轴测</button>
+                      <button id="viewFront" class="opv-zoom-btn opv-view-btn" data-view="front" type="button" title="正视：拖拽平移，滚轮缩放" aria-label="正交正视图（锁定旋转）">正视</button>
+                      <button id="viewRight" class="opv-zoom-btn opv-view-btn" data-view="right" type="button" title="侧视：拖拽平移，滚轮缩放" aria-label="右侧视图">侧视</button>
                       <button id="viewCssDeck" class="opv-zoom-btn opv-view-btn" data-view="cssdeck" type="button" title="CSS 3D model graph stack 试验视图" aria-label="CSS 3D model graph stack">Graph</button>
                     </div>
-                    <div class="opv-lens-switch" id="lensSwitch" role="group" aria-label="观察模式">
+                    <div class="opv-lens-switch" id="lensSwitch" data-ui-surface="toolbar" role="group" aria-label="观察模式">
                       <button class="opv-lens-btn" type="button" data-lens="structure">结构</button>
                       <button class="opv-lens-btn" type="button" data-lens="numerics">数值</button>
                       <button class="opv-lens-btn" type="button" data-lens="communication">通信</button>
                       <button class="opv-lens-btn" type="button" data-lens="execution">执行</button>
                     </div>
-                    <button id="sideConfigToggle" class="opv-zoom-btn opv-side-config-toggle" type="button" hidden aria-expanded="false" aria-controls="sideConfigPanel" title="显示设置" aria-label="显示设置">
+                    <button id="sideConfigToggle" class="opv-zoom-btn opv-side-config-toggle" data-ui-surface="toolbar" type="button" hidden aria-expanded="false" aria-controls="sideConfigPanel" title="显示设置" aria-label="显示设置">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8.92 4a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.48.5.82.5H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.5Z"></path></svg>
                     </button>
-                    <button id="filterToggle" class="opv-zoom-btn opv-filter-toggle" type="button" aria-expanded="false" aria-controls="objectPanel" title="筛选与定位" aria-label="筛选与定位">
+                    <button id="filterToggle" class="opv-zoom-btn opv-filter-toggle" data-ui-surface="toolbar" type="button" aria-expanded="false" aria-controls="objectPanel" title="筛选与定位" aria-label="筛选与定位">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18"></path><path d="M7 12h10"></path><path d="M10 19h4"></path></svg>
                     </button>
                   </div>
-                  <div class="opv-side-config" id="sideConfigPanel" hidden aria-label="显示设置">
+                  <div class="opv-side-config" id="sideConfigPanel" data-ui-surface="panel" hidden aria-label="显示设置">
                     <div class="opv-side-config__section">
                       <div class="opv-side-config__heading">View</div>
                       <label class="opv-side-config__row">
@@ -1346,6 +1436,8 @@
                     <div class="opv-axis-figure"><div id="axisViewport" aria-hidden="true"></div></div>
                   </div>
                 </div>
+                </div>
+              </div>
                 <div class="pto-ide-frame__floating-playback-mount" id="playbackMount"></div>
             </section>
 
@@ -1398,7 +1490,7 @@
             <span class="pto-ide-frame__pane-meta" id="analysisMeta">DP2 × PP4 × TP2 × EP2 · chunk-level schedule</span>
             <button id="commModeToggle" class="opv-object-btn opv-comm-toggle" type="button" aria-pressed="false"
               title="通信展示：细条子轨 ⇄ 与计算同款双轨（行高×2）">通信双轨</button>
-            <div class="opv-swim-zoom" id="swimZoomControl" role="group" aria-label="Swimlane 时间轴缩放">
+            <div class="opv-swim-zoom" id="swimZoomControl" data-ui-surface="toolbar" role="group" aria-label="Swimlane 时间轴缩放">
               <button class="opv-swim-zoom-btn" id="swimZoomOut" type="button" title="缩小时间轴" aria-label="缩小时间轴">−</button>
               <output class="opv-swim-zoom-value" id="swimZoomValue">1.5×</output>
               <button class="opv-swim-zoom-btn" id="swimZoomIn" type="button" title="放大时间轴" aria-label="放大时间轴">+</button>
@@ -1448,14 +1540,14 @@
   </div>
 </section>
 
-<aside id="infoPanel" class="opv-popup" hidden aria-label="说明 · 图例 · 坐标系">
+<aside id="infoPanel" class="opv-popup" data-ui-surface="panel" hidden aria-label="说明 · 图例 · 坐标系">
   <div class="opv-popup__head">
     <span class="opv-popup__title">说明 · 图例 · 坐标系</span>
     <button class="opv-popup__close" id="infoClose" type="button" aria-label="关闭">✕</button>
   </div>
   <div>
     <div class="opv-section-label">说明</div>
-    <p class="opv-note">上方是<b>openPangu-2.0-Flash 模型几何投影</b>：正视是锁定的正交投影，普通拖拽不旋转；按住 Command/Ctrl 拖拽可平移视窗。同一模型投影从上到下显示 Input / Parallel Embedding、当前 Layer 平面、Final RMSNorm / LM Head / Logits 与 <b>MTP L46–L48 ×3</b> 尾支。模型深度包含 <b>Dense L0–L1 ×2</b> 与 <b>MoE L2–L45 ×44</b>，在侧视中以独立层段展开，并与 PP、mHC state 和通信指标联动。下方 32 卡按 1F1B 流水播放，竖线连到当前算子的卡。</p>
+    <p class="opv-note">上方是<b>openPangu-2.0-Flash 模型几何投影</b>：轴测视图拖拽旋转、按住 Ctrl/Command 拖拽平移；正视和侧视锁定旋转，直接拖拽即可平移；三种视图均可直接滚轮缩放。同一模型投影从上到下显示 Input / Parallel Embedding、当前 Layer 平面、Final RMSNorm / LM Head / Logits 与 <b>MTP L46–L48 ×3</b> 尾支。模型深度包含 <b>Dense L0–L1 ×2</b> 与 <b>MoE L2–L45 ×44</b>，在侧视中以独立层段展开，并与 PP、mHC state 和通信指标联动。下方 32 卡按 1F1B 流水播放，竖线连到当前算子的卡。</p>
     <p class="opv-note" style="margin-top:6px">代表配置 <em>DP2 × PP4 × TP2 × EP2 = 32 ranks</em>；这是基于 <code>openpangu_2_0_flash_modelviz.html</code> 的训练通信 demo，保留 TP/EP/PP 通信映射并把 routed experts 改为 256。</p>
     <p class="opv-note" style="margin-top:6px"><b>通信域：</b>TP/SP AG/RS 固定 DP/PP/EP 坐标，只改变 TP rank；EP <code>dispatch_combine</code> 固定 DP/PP/TP 坐标，只改变 EP rank；PP send/recv 连接相邻 stage 的对应 DP/TP/EP rank；DP gradient sync 固定 PP/TP/EP 坐标，只改变 DP replica。Shared Expert 与 routed + shared add 均为本地计算，不属于 EP collective。</p>
     <p class="opv-note" style="margin-top:6px"><b>证据口径：</b>本页逐 Layer 数值均为 <em>simulated</em> 演示数据，不冒充 profiler 实测。侧视图四条蓝线表示同一 Layer-boundary mHC state 的 4 支 stream；每个 X<sub>l</sub> hover 会列出 residual / activation / dHidden 与完整 D/PP/TP/EP/rank、local/logical shape。三条数值轨道的浅色阴影表示 rank group p10–p90。通信轨道只画 <b>Exposed Comm</b>，同一 PP stage 内显示 —；Active、Wait、Exposed 在 tooltip 与泳道中分开。</p>
@@ -1500,8 +1592,9 @@
 <!-- 设计系统 patterns（classic globals，须在 module 之前加载） -->
 <script src="../vendor/pto-design-system/patterns/workbench-shell/pattern.js"></script>
 <script src="../vendor/pto-design-system/patterns/floating-playback-control/pattern.js"></script>
-<script src="./vendor/swimlane-task/pattern.js?v=20260625-single-segment"></script>
+<script src="./vendor/swimlane-task/pattern.js?v=20260716-tooltip-bg"></script>
 <script src="../vendor/pto-design-system/patterns/ide-frame/pattern.js"></script>
+<script src="./js/frame-bootstrap.js?v=20260715-frame-stability"></script>
 <script src="../js/colormap.js"></script>
 <script src="./pangu-palette.js"></script>
 
@@ -1537,6 +1630,24 @@ import {
   createMoeLoadView,
   createCardLoadView,
 } from './js/analysis-dock.js';
+import {createInteractionStore} from './js/interaction-state.js';
+
+const frameBootstrap=window.OpenPanguFrameBootstrap;
+const pageStorage=frameBootstrap?.storage||{
+  get(key,fallback=null){try{const value=localStorage.getItem(key);return value==null?fallback:value;}catch(_){return fallback;}},
+  set(key,value){try{localStorage.setItem(key,String(value));return true;}catch(_){return false;}},
+  remove(key){try{localStorage.removeItem(key);return true;}catch(_){return false;}},
+  getBoolean(key,fallback=false){const value=this.get(key,null);return value==null?fallback:value==='true';},
+  setBoolean(key,value){return this.set(key,value?'true':'false');},
+  getJSON(key,fallback=null){try{const value=this.get(key,null);return value==null?fallback:JSON.parse(value);}catch(_){return fallback;}},
+  setJSON(key,value){try{return this.set(key,JSON.stringify(value));}catch(_){return false;}}
+};
+const interactionStore=createInteractionStore({
+  filter:{objectFocus:'all'},
+  view:{lens:'numerics',camera:'iso'},
+  time:{step:null,tick:null,microbatch:null,window:null}
+});
+window.OpenPanguInteractionStore=interactionStore;
 
 /* ===== 粗连线（Line2，真实像素宽度，浏览器不会忽略） ===== */
 const LINE_RES=new THREE.Vector2(1,1), fatMats=new Set();
@@ -1621,6 +1732,18 @@ function normalizeTraceForFlash(trace){
 TRACE=normalizeTraceForFlash(TRACE);
 document.getElementById('traceMeta').textContent=`${String(TRACE.fidelity||'trace')} · ${TRACE.config.schedule||'1F1B schedule'} · ${TRACE.ticks.length} ticks`;
 
+/* ===== 有限 profiling task 下钻（mock JSON；仅覆盖最开始的几个 F/B slot） ===== */
+const PROFILE_DRILLDOWN_URL='data/profiling-task-drilldown-mock.json';
+let PROFILE_DRILLDOWN_DATA={schema:'pto.mock-profiling-drilldown.empty',source:'unavailable',fidelity:'none',tasks:[]};
+try{
+  PROFILE_DRILLDOWN_DATA=await fetch(PROFILE_DRILLDOWN_URL,{cache:'no-store'}).then(response=>{
+    if(!response.ok)throw new Error(`${response.status} ${response.statusText}`);
+    return response.json();
+  });
+}catch(err){
+  console.warn('Failed to load profiling task drilldown mock',err);
+}
+
 /* 播放控制 / 状态条 DOM 引用（在 IDE frame 段赋值，此处先声明避免 TDZ） */
 let pbOpname=null,pbCounter=null,pbScrubber=null,statusLeft=null,statusRight=null;
 let analysisDockController=null;
@@ -1646,6 +1769,10 @@ function syncThemeToggle(theme){
   themeBtn.setAttribute('aria-pressed',theme==='dark'?'true':'false');
 }
 function refreshAfterInspectorToggle(){
+  if(frameBootstrap?.ready){
+    frameBootstrap.scheduleLayout('panel-toggle');
+    return;
+  }
   requestAnimationFrame(()=>{
     if(threeSceneReady&&typeof sizeRenderer==='function')sizeRenderer();
     if(threeSceneReady&&typeof resizeAxisRenderer==='function')resizeAxisRenderer();
@@ -1654,34 +1781,40 @@ function refreshAfterInspectorToggle(){
     if(threeSceneReady&&typeof redraw==='function')redraw();
   });
 }
-function setAnalysisDockOpen(open){
-  ideFrame.dataset.analysisOpen=open?'true':'false';
-  analysisToggle.classList.toggle('is-active',open);
-  analysisToggle.setAttribute('aria-expanded',open?'true':'false');
-  analysisToggle.title=open?'隐藏底部分析面板':'打开底部分析面板';
-  analysisToggle.setAttribute('aria-label',analysisToggle.title);
+function setAnalysisDockOpen(open,{persist=false}={}){
+  if(frameBootstrap?.ready)frameBootstrap.setAnalysisOpen(open,{persist});
+  else{
+    ideFrame.dataset.analysisOpen=open?'true':'false';
+    analysisToggle.classList.toggle('is-active',open);
+    analysisToggle.setAttribute('aria-expanded',open?'true':'false');
+    analysisToggle.title=open?'隐藏底部分析面板':'打开底部分析面板';
+    analysisToggle.setAttribute('aria-label',analysisToggle.title);
+    if(persist)pageStorage.setBoolean('op-rank-time-analysis-open',open);
+  }
   refreshAfterInspectorToggle();
 }
 analysisToggle.addEventListener('click',event=>{
   event.stopPropagation();
   const next=ideFrame.dataset.analysisOpen!=='true';
-  localStorage.setItem('op-rank-time-analysis-open',next?'true':'false');
-  setAnalysisDockOpen(next);
+  setAnalysisDockOpen(next,{persist:true});
 });
-function setInspectorOpen(open){
-  ideFrame.dataset.inspectorOpen=open?'true':'false';
-  inspectorPane?.setAttribute('aria-hidden',open?'false':'true');
-  inspectorToggle.classList.toggle('is-active',open);
-  inspectorToggle.setAttribute('aria-expanded',open?'true':'false');
-  inspectorToggle.title=open?'隐藏 Inspect 面板':'打开 Inspect 面板';
-  inspectorToggle.setAttribute('aria-label',inspectorToggle.title);
+function setInspectorOpen(open,{persist=false}={}){
+  if(frameBootstrap?.ready)frameBootstrap.setInspectorOpen(open,{persist});
+  else{
+    ideFrame.dataset.inspectorOpen=open?'true':'false';
+    inspectorPane?.setAttribute('aria-hidden',open?'false':'true');
+    inspectorToggle.classList.toggle('is-active',open);
+    inspectorToggle.setAttribute('aria-expanded',open?'true':'false');
+    inspectorToggle.title=open?'隐藏 Inspect 面板':'打开 Inspect 面板';
+    inspectorToggle.setAttribute('aria-label',inspectorToggle.title);
+    if(persist)pageStorage.setBoolean('op-rank-time-inspector-open',open);
+  }
   refreshAfterInspectorToggle();
 }
 inspectorToggle.addEventListener('click',event=>{
   event.stopPropagation();
   const next=ideFrame.dataset.inspectorOpen!=='true';
-  localStorage.setItem('op-rank-time-inspector-open',next?'true':'false');
-  setInspectorOpen(next);
+  setInspectorOpen(next,{persist:true});
 });
 const SCENE_THEMES={
   dark:{
@@ -1707,13 +1840,13 @@ function applyUiTheme(theme){
 }
 const themeParam=new URLSearchParams(location.search).get('theme');
 const savedTheme=(themeParam==='light'||themeParam==='dark')?themeParam:'light';
-localStorage.setItem('op-rank-time-theme',savedTheme);
+pageStorage.set('op-rank-time-theme',savedTheme);
 applyUiTheme(savedTheme);
-setAnalysisDockOpen(localStorage.getItem('op-rank-time-analysis-open')!=='false');
-setInspectorOpen(localStorage.getItem('op-rank-time-inspector-open')!=='false');
+setAnalysisDockOpen(frameBootstrap?.getPanelOpen('analysis')??pageStorage.getBoolean('op-rank-time-analysis-open',true));
+setInspectorOpen(frameBootstrap?.getPanelOpen('inspector')??pageStorage.getBoolean('op-rank-time-inspector-open',true));
 themeBtn.onclick=()=>{
   const next=document.documentElement.dataset.theme==='light'?'dark':'light';
-  localStorage.setItem('op-rank-time-theme',next);
+  pageStorage.set('op-rank-time-theme',next);
   applyUiTheme(next);
   refreshVizTheme();
   if(typeof redraw==='function')redraw();
@@ -1922,7 +2055,7 @@ const trainingObjectState={
   strategy:'all',
   microbatch:2,
   flowPhase:'all',
-  labelsVisible:localStorage.getItem('op-rank-time-training-object-labels')==='true',
+  labelsVisible:pageStorage.getBoolean('op-rank-time-training-object-labels',false),
   revealed:false
 };
 let trainingObjectOverlayBuilt=false;
@@ -2109,6 +2242,7 @@ function renderTrainingObjectExplorer(){
 }
 function setTrainingObjectStrategy(id){
   trainingObjectState.strategy=id||'all';
+  interactionStore.setFilter({strategy:trainingObjectState.strategy},{source:'training-filter'});
   renderTrainingObjectExplorer();
   renderTrainingObjectOverlay();
   renderTrainingObjectFlow();
@@ -2144,6 +2278,7 @@ function selectTrainingObject(id,{focus=true,openInspector=true}={}){
   selectedDetailKind='training';
   if(typeof setSelectedArch==='function'&&selectedArch)setSelectedArch(null,{openInspector:false});
   trainingObjectState.selectedId=id;
+  interactionStore.setSelection({type:'training-object',id},{source:'training-object'});
   if(focus||openInspector)trainingObjectState.revealed=true;
   const obj=selectedTrainingObject();
   if(focus){
@@ -2170,13 +2305,14 @@ function initTrainingObjectUi(){
   const search=document.getElementById('trainingObjectSearch');
   search?.addEventListener('input',event=>{
     trainingObjectState.query=event.currentTarget.value||'';
+    interactionStore.setFilter({query:trainingObjectState.query},{source:'training-search'});
     renderTrainingObjectExplorer();
     renderTrainingObjectOverlay();
     renderTrainingObjectFlow();
   });
   document.getElementById('trainingObjectLabelsToggle')?.addEventListener('change',event=>{
     trainingObjectState.labelsVisible=!!event.currentTarget.checked;
-    localStorage.setItem('op-rank-time-training-object-labels',trainingObjectState.labelsVisible?'true':'false');
+    pageStorage.setBoolean('op-rank-time-training-object-labels',trainingObjectState.labelsVisible);
     renderTrainingObjectOverlay();
   });
   document.getElementById('trainingObjectTypeFilters')?.addEventListener('click',event=>{
@@ -2185,6 +2321,7 @@ function initTrainingObjectUi(){
     const type=btn.dataset.trainType;
     if(trainingObjectState.activeTypes.has(type)&&trainingObjectState.activeTypes.size>1)trainingObjectState.activeTypes.delete(type);
     else trainingObjectState.activeTypes.add(type);
+    interactionStore.setFilter({trainingTypes:[...trainingObjectState.activeTypes]},{source:'training-filter'});
     renderTrainingObjectFilters();
     renderTrainingObjectExplorer();
     renderTrainingObjectOverlay();
@@ -2257,7 +2394,7 @@ function normalizeOperatorColorAdjust(value={}){
 }
 function readOperatorColorAdjust(){
   try{
-    const raw=localStorage.getItem(OPERATOR_COLOR_ADJUST_KEY);
+    const raw=pageStorage.get(OPERATOR_COLOR_ADJUST_KEY,null);
     if(!raw)return {...OPERATOR_COLOR_ADJUST_DEFAULT};
     const saved=normalizeOperatorColorAdjust(JSON.parse(raw));
     const wasOldDefault=saved.h===OPERATOR_COLOR_ADJUST_OLD_DEFAULT.h&&saved.s===OPERATOR_COLOR_ADJUST_OLD_DEFAULT.s&&saved.l===OPERATOR_COLOR_ADJUST_OLD_DEFAULT.l;
@@ -2369,7 +2506,8 @@ let cssDeckMode=false;
 let cssDeckView='iso';
 let cssDeckRendered=false;
 const LENS_IDS=['structure','numerics','communication','execution'];
-let activeLens=LENS_IDS.includes(localStorage.getItem('openpangu-events-lens'))?localStorage.getItem('openpangu-events-lens'):'numerics';
+const savedLens=pageStorage.get('openpangu-events-lens','numerics');
+let activeLens=LENS_IDS.includes(savedLens)?savedLens:'numerics';
 const numericsMode='all';
 const numericsScope='tp';
 let selectedNumericsRole='forward';
@@ -2380,8 +2518,11 @@ let selectedMhcBoundaryIndex=null;
 let hoveredMhcBoundaryIndex=null;
 let cssDeckSideFitZoom=1;
 let cssDeckBeginPan=null;
+let cssDeckSuppressClickUntil=0;
 const cssDeckOrbit={rx:-18,ry:-34,z:CSS_DECK_DEFAULT_VIEW_SCALE};
 const cssDeckScreenOffset={x:0,y:0};
+const cssDeckUsesDirectPan=()=>cssDeckView==='front'||cssDeckView==='right';
+const cssDeckPanClickSuppressed=()=>performance.now()<cssDeckSuppressClickUntil;
 const cssDeckZoomMin=()=>cssDeckView==='right'
   ? Math.max(0.12,(cssDeckSideFitZoom||1)*CSS_DECK_SIDE_ZOOM_MIN)
   : CSS_DECK_ZOOM_MIN;
@@ -2435,8 +2576,11 @@ function syncCssDeckViewClasses(){
     const isPrimary=Number(card.dataset.layer)===primary;
     card.classList.toggle('is-front-layer',isPrimary);
   });
+  syncCssDeckExpertExpansion?.();
   applyCssDeckSideTransform();
+  syncCssDeckPpPartitions();
   if(frontLike||cssDeckMode)updateCssDeckStatus();
+  if(typeof syncProfilingSpanSelection==='function')syncProfilingSpanSelection();
 }
 function setCssDeckZoom(z){
   cssDeckOrbit.z=clampCssDeckZoom(z);
@@ -2467,6 +2611,7 @@ function applyCssDeckScreenOffset(){
   if(!cssDeckScene)return;
   cssDeckScene.style.left=`calc(50% + ${cssDeckScreenOffset.x.toFixed(1)}px)`;
   cssDeckScene.style.top=`calc(50% + ${cssDeckScreenOffset.y.toFixed(1)}px)`;
+  scheduleCssDeckPpWireframe();
 }
 function applyCssDeckSideTransform(){
   const sideEls=[
@@ -2667,8 +2812,18 @@ function parallelEventInstanceForSpec(spec){
   return currentParallelEventInstances()
     .find(instance=>instance.definitionId===spec.id&&instance.stage===primaryStage)||null;
 }
+function bindStageUiSurfaces(root=document){
+  root.querySelectorAll('[data-stage-ui]').forEach(surface=>{
+    if(surface.dataset.stageUiBound==='true')return;
+    surface.dataset.stageUiBound='true';
+    const stop=event=>event.stopPropagation();
+    ['pointerdown','pointermove','pointerup','click','dblclick','contextmenu'].forEach(type=>surface.addEventListener(type,stop));
+    surface.addEventListener('wheel',stop,{passive:true});
+  });
+}
 function ensureParallelEventUi(){
   if(!parallelEventOverlay||!parallelEventLegend)return;
+  bindStageUiSurfaces();
   if(!parallelEventLegend.childElementCount){
     parallelEventLegend.innerHTML=`<span class="opv-parallel-event-legend__label" title="Parallel events · simulated data">EVENTS · SIM</span>`+
       `<span class="opv-parallel-event-legend__group" aria-label="并行域筛选">`+
@@ -2687,7 +2842,8 @@ function ensureParallelEventUi(){
         event.stopPropagation();
         parallelEventFilter=tag;
         clearParallelEventSelection();
-        setCssGraphView(tag==='PP'?'right':'front');
+        if(tag!=='PP')setCssGraphView('front');
+        syncCssDeckPpPartitions();
         syncParallelEventOverlay();
       });
     });
@@ -2786,6 +2942,7 @@ function syncParallelEventSelection(){
     node?.classList.add('is-event-related');
     node?.style.setProperty('--event-link-color',parallelEventColor(selected));
   }
+  if(typeof syncProfilingSpanSelection==='function')syncProfilingSpanSelection();
 }
 function selectParallelEvent(spec,{instance=null,openTimeline=false}={}){
   if(!spec)return;
@@ -2808,6 +2965,7 @@ function selectParallelEvent(spec,{instance=null,openTimeline=false}={}){
   if(openTimeline)analysisDockController?.setActiveView?.('timeline');
   const phase=selectedParallelEventInstance?`MB${selectedParallelEventInstance.microbatch} ${selectedParallelEventInstance.phase}`:spec.phase;
   if(statusRight)statusRight.textContent=`Parallel event · ${spec.parallelTags.map(tag=>`[${tag}]`).join('')} ${spec.name} · L${layer} · ${phase}`;
+  syncCssDeckExpertExpansion();
   syncParallelEventSelection();
 }
 function setParallelEventHover(eventId){
@@ -2824,6 +2982,7 @@ function clearParallelEventSelection({renderInspector=true}={}){
     if(renderInspector&&activeInspectorTab==='object')renderSelectedDetailInspector();
   }
   if(statusRight&&/^Parallel event/.test(statusRight.textContent||''))statusRight.textContent='—';
+  syncCssDeckExpertExpansion();
   syncParallelEventSelection();
 }
 function positionStageTopControl(control){
@@ -2839,13 +2998,22 @@ function positionStageTopControl(control){
   const centeredRight=centerAbs+desiredWidth/2;
   const overlapsCentered=rect=>Boolean(rect&&centeredRight>rect.left-safeInset&&centeredLeft<rect.right+safeInset);
   const blockers=[titleRect,toolbarRect].filter(overlapsCentered);
+  const configuredTop=Number.parseFloat(control.dataset.stageTop);
+  const toolbarTop=toolbarRect?toolbarRect.top-parentRect.top:safeInset;
+  const baseTop=Number.isFinite(configuredTop)?Math.max(safeInset,configuredTop):Math.max(safeInset,toolbarTop);
   const top=blockers.length
-    ?Math.max(...blockers.map(rect=>rect.bottom-parentRect.top))+10
-    :(toolbarRect?toolbarRect.top-parentRect.top:12);
-  const center=centerAbs-parentRect.left;
-  control.style.left=`${center}px`;
-  control.style.top=`${Math.max(12,top)}px`;
-  control.style.maxWidth=`${Math.max(220,stageRect.width-safeInset*2)}px`;
+    ?Math.max(baseTop,Math.max(...blockers.map(rect=>rect.bottom-parentRect.top))+10)
+    :baseTop;
+  const center=Math.round((centerAbs-parentRect.left)*2)/2;
+  const stableTop=Math.round(top*2)/2;
+  const maxWidth=Math.round(Math.max(220,stageRect.width-safeInset*2));
+  const positionSignature=`${center}|${stableTop}|${maxWidth}`;
+  if(control.dataset.stagePosition!==positionSignature){
+    control.dataset.stagePosition=positionSignature;
+    control.style.left=`${center}px`;
+    control.style.top=`${stableTop}px`;
+    control.style.maxWidth=`${maxWidth}px`;
+  }
   return {titleRect,toolbarRect,controlRect:control.getBoundingClientRect()};
 }
 function syncExecutionPlaybackPosition(){
@@ -2858,6 +3026,7 @@ function syncExecutionPlaybackPosition(){
 function syncParallelEventOverlay(){
   if(!parallelEventOverlay||!parallelEventLegend)return;
   ensureParallelEventUi();
+  syncCssDeckExpertExpansion();
   const communicationVisible=activeLens==='communication';
   const overlayVisible=communicationVisible&&cssDeckMode&&cssDeckRendered&&cssDeckView==='front';
   parallelEventLegend.hidden=!communicationVisible;
@@ -2926,9 +3095,12 @@ function cssGraphNode(nodes,id,label,op,x,y,w,h,extra=''){
   nodes[id]={x,y,w,h};
   return cssDeckNode(id,label,op,extra,{x,y,w,h});
 }
+const CSS_DECK_EXPERT_COUNT=72;
+const CSS_DECK_EXPERT_COLLAPSED_BOX=Object.freeze({x:300,y:700,w:140,h:52});
 function cssGraphExperts(nodes,x,y,w,h){
-  nodes.expert_pool={x,y,w,h};
-  return `<div class="opv-cssdeck-experts" data-node="expert_pool" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px">${Array.from({length:72},()=>'<span></span>').join('')}</div>`;
+  const collapsed=CSS_DECK_EXPERT_COLLAPSED_BOX;
+  nodes.expert_pool={...collapsed};
+  return `<div class="opv-cssdeck-experts is-collapsed" data-node="expert_pool" data-op="moe" role="button" tabindex="0" aria-expanded="false" aria-label="Expert Pool · ${CSS_DECK_EXPERT_COUNT} experts" data-collapsed-x="${collapsed.x}" data-collapsed-y="${collapsed.y}" data-collapsed-w="${collapsed.w}" data-collapsed-h="${collapsed.h}" data-expanded-x="${x}" data-expanded-y="${y}" data-expanded-w="${w}" data-expanded-h="${h}" style="left:${collapsed.x}px;top:${collapsed.y}px;width:${collapsed.w}px;height:${collapsed.h}px"></div>`;
 }
 function cssGraphCenter(n,side='mid'){
   if(side==='top')return {x:n.x+n.w/2,y:n.y};
@@ -2979,12 +3151,70 @@ function cssGraphEdges(nodes,edges,{width=720,height=1180}={}){
 function cssCluster(label,x,y,w,h,colorVar){
   return `<div class="opv-cssgraph__cluster" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;--cluster-color:${colorVar}"><span>${esc(label)}</span></div>`;
 }
+function cssDeckExpertExpansionSelected(){
+  const selected=PARALLEL_EVENT_BY_ID.get(selectedParallelEventId);
+  return activeLens==='communication'&&cssDeckView==='front'&&(
+    parallelEventFilter==='EP'||objectFocus==='comm:ep'||selected?.parallelTags?.includes('EP')
+  );
+}
+function cssDeckElementBox(element){
+  return {
+    x:Number.parseFloat(element?.style.left)||0,
+    y:Number.parseFloat(element?.style.top)||0,
+    w:Number.parseFloat(element?.style.width)||0,
+    h:Number.parseFloat(element?.style.height)||0
+  };
+}
+function syncCssDeckExpertEdges(card){
+  card?.querySelectorAll('.opv-cssgraph__edges path[data-source="expert_pool"],.opv-cssgraph__edges path[data-target="expert_pool"]').forEach(path=>{
+    const source=card.querySelector(`[data-node="${CSS.escape(path.dataset.source)}"]`);
+    const target=card.querySelector(`[data-node="${CSS.escape(path.dataset.target)}"]`);
+    if(!source||!target)return;
+    const a=cssDeckElementBox(source),b=cssDeckElementBox(target);
+    const pa=cssGraphCenter(a,'bottom'),pb=cssGraphCenter(b,'top');
+    const midY=(pa.y+pb.y)/2;
+    const d=Math.abs(pa.x-pb.x)<10
+      ?`M ${pa.x} ${pa.y} L ${pb.x} ${pb.y}`
+      :`M ${pa.x} ${pa.y} C ${pa.x} ${midY}, ${pb.x} ${midY}, ${pb.x} ${pb.y}`;
+    path.setAttribute('d',d);
+  });
+}
+function syncCssDeckExpertExpansion(){
+  if(!cssDeck||!cssDeckScene||!cssDeckRendered)return;
+  const expansionSelected=cssDeckExpertExpansionSelected();
+  cssDeck.dataset.epExperts=expansionSelected?'expanded':'collapsed';
+  cssDeckScene.querySelectorAll('.opv-cssdeck-card').forEach(card=>{
+    const expertPool=card.querySelector('.opv-cssdeck-experts');
+    if(!expertPool)return;
+    const expanded=expansionSelected&&card.classList.contains('is-front-layer');
+    const state=expanded?'expanded':'collapsed';
+    expertPool.setAttribute('aria-expanded',String(expanded));
+    expertPool.classList.toggle('is-expanded',expanded);
+    expertPool.classList.toggle('is-collapsed',!expanded);
+    expertPool.style.left=`${expertPool.dataset[`${state}X`]}px`;
+    expertPool.style.top=`${expertPool.dataset[`${state}Y`]}px`;
+    expertPool.style.width=`${expertPool.dataset[`${state}W`]}px`;
+    expertPool.style.height=`${expertPool.dataset[`${state}H`]}px`;
+    if(expanded&&expertPool.childElementCount!==CSS_DECK_EXPERT_COUNT){
+      expertPool.innerHTML=Array.from({length:CSS_DECK_EXPERT_COUNT},()=>'<span aria-hidden="true"></span>').join('');
+    }else if(!expanded&&expertPool.childElementCount){
+      expertPool.replaceChildren();
+    }
+    syncCssDeckExpertEdges(card);
+  });
+}
+function cssDeckPpLayerIsSample(layer,range=DEMO_STAGE_RANGES[cssStageForLayer(layer)]||[layer,layer]){
+  const [lo,hi]=range;
+  return layer===lo||layer===hi||layer===Math.round((lo+hi)/2);
+}
 function cssDeckLayerCard(layer){
   const dense=layer<FIRST_MOE_LAYER;
   const stage=cssStageForLayer(layer);
   const attn=cssAttentionKind(layer);
   const layerKind=dense?'Dense':'MoE';
   const stageRange=DEMO_STAGE_RANGES[stage]||[0,0];
+  const stageRole=layer===stageRange[0]?'first':'repeat';
+  const stageSample=cssDeckPpLayerIsSample(layer,stageRange);
   const blockPost=Array.isArray(MODEL_CONFIG.blockPostLayers)&&MODEL_CONFIG.blockPostLayers.includes(layer);
   const nodes={};
   const parts=[];
@@ -3080,7 +3310,7 @@ function cssDeckLayerCard(layer){
   }]);
   if(blockPost)edges.push(['ffn_residual_add','block_post_norm'],['block_post_norm','mhc_state_out','state-spine']);
   else edges.push(['ffn_residual_add','mhc_state_out','state-spine']);
-  return `<section class="opv-cssdeck-card" data-layer="${layer}" style="--deck-fade:${(1-0.38*(layer/Math.max(1,LAST_MOE_LAYER))).toFixed(3)};--deck-tf:translate3d(0,0,${(-layer*CSS_DECK_GAP).toFixed(1)}px);transform:var(--deck-tf) translateY(var(--deck-lift,0px))">
+  return `<section class="opv-cssdeck-card" data-layer="${layer}" data-stage="${stage}" data-stage-role="${stageRole}" data-stage-sample="${stageSample}" style="--deck-fade:${(1-0.38*(layer/Math.max(1,LAST_MOE_LAYER))).toFixed(3)};--deck-tf:translate3d(0,0,${(-layer*CSS_DECK_GAP).toFixed(1)}px);transform:var(--deck-tf) translateY(var(--deck-lift,0px))">
     <div class="opv-cssgraph">${cssGraphEdges(nodes,edges)}${parts.join('')}</div>
   </section>`;
 }
@@ -3140,6 +3370,166 @@ function cssDeckOutputStaticHtml(){
     ${cssGraphEdges(nodes,edges,{width:720,height:526})}${parts.join('')}
   </section>`;
 }
+const CSS_DECK_PP_FACE_EDGES=[[0,1],[1,2],[2,3],[3,0]];
+const CSS_DECK_PP_DEPTH_EDGES=[[0,4],[1,5],[2,6],[3,7]];
+function cssDeckPpStageGeometry(){
+  const x=376;
+  const y=606;
+  return DEMO_STAGE_RANGES.map(([lo,hi],stage)=>{
+    const depth=Math.max(CSS_DECK_GAP,(hi-lo+1)*CSS_DECK_GAP-28);
+    const center=-((lo+hi)/2)*CSS_DECK_GAP;
+    const zMin=center-depth/2;
+    const zMax=center+depth/2;
+    return {
+      stage,lo,hi,depth,center,zMin,zMax,
+      corners:[
+        {x:-x,y:-y,z:zMin},{x:x,y:-y,z:zMin},{x:x,y:y,z:zMin},{x:-x,y:y,z:zMin},
+        {x:-x,y:-y,z:zMax},{x:x,y:-y,z:zMax},{x:x,y:y,z:zMax},{x:-x,y:y,z:zMax}
+      ]
+    };
+  });
+}
+function cssDeckPpWireframeHtml(){
+  const layerSlices=cssDeckPpStageGeometry().map(({stage})=>`<path data-layer-slices="${stage}"></path>`).join('');
+  return `<g data-model-layer-slices>${layerSlices}</g>`+cssDeckPpStageGeometry().map(({stage,lo,hi})=>
+    `<g data-pp-stage="${stage}" data-layer-range="${lo}-${hi}">`+
+      `<path data-part="far"></path><path data-part="depth"></path><path data-part="near"></path>`+
+    `</g>`
+  ).join('');
+}
+function cssDeckPpLabelsHtml(){
+  return cssDeckPpStageGeometry().map(({stage,lo,hi})=>
+    `<span class="opv-cssdeck-pp-label" data-pp-stage="${stage}">PP${stage} · L${lo}–L${hi}</span>`
+  ).join('');
+}
+function cssDeckPpEdgePath(points,edges){
+  return edges.map(([a,b])=>`M${points[a].x.toFixed(1)},${points[a].y.toFixed(1)}L${points[b].x.toFixed(1)},${points[b].y.toFixed(1)}`).join(' ');
+}
+function cssDeckPpProjectPoint(point,matrix,metrics){
+  const transformed=new DOMPoint(point.x,point.y,point.z,1).matrixTransform(matrix);
+  const denominator=Math.max(1,metrics.perspective-transformed.z);
+  const perspectiveScale=metrics.perspective/denominator;
+  return {
+    x:metrics.originX+(metrics.sceneLeft+transformed.x-metrics.originX)*perspectiveScale,
+    y:metrics.originY+(metrics.sceneTop+transformed.y-metrics.originY)*perspectiveScale,
+    z:transformed.z
+  };
+}
+function cssDeckSceneTransformValue({zoom=cssDeckOrbit.z,rx=cssDeckOrbit.rx,ry=cssDeckOrbit.ry,pivot=cssDeckPivot()}={}){
+  return [
+    `scale(${zoom})`,
+    `rotateX(${rx}deg)`,
+    `rotateY(${ry}deg)`,
+    `translate3d(${(-pivot.x).toFixed(1)}px,${(-pivot.y).toFixed(1)}px,${(-pivot.z).toFixed(1)}px)`
+  ].join(' ');
+}
+function cssDeckPpLabelSafeTop(height){
+  const deckRect=cssDeck?.getBoundingClientRect();
+  if(!deckRect)return 62;
+  const playback=document.getElementById('executionPlayback');
+  const blockers=[
+    document.querySelector('.opv-viewport-title'),
+    document.querySelector('.opv-stage-toolbar'),
+    !parallelEventLegend?.hidden?parallelEventLegend:null,
+    !playback?.hidden?playback:null
+  ].filter(Boolean);
+  const blockerBottom=blockers.reduce((bottom,element)=>{
+    const rect=element.getBoundingClientRect();
+    return rect.width>0&&rect.height>0?Math.max(bottom,rect.bottom-deckRect.top):bottom;
+  },52);
+  return Math.max(62,Math.min(height-40,blockerBottom+10));
+}
+let cssDeckPpWireframeRaf=0;
+function renderCssDeckPpWireframe(){
+  cssDeckPpWireframeRaf=0;
+  if(!cssDeck||!cssDeckScene||!cssDeckPpWireframe||!cssDeckPpLabels)return;
+  if(cssDeck.dataset.ppPartitions!=='on'||cssDeckView!=='iso')return;
+  const width=cssDeck.clientWidth;
+  const height=cssDeck.clientHeight;
+  if(width<=0||height<=0)return;
+  const MatrixCtor=window.DOMMatrixReadOnly||window.DOMMatrix;
+  if(!MatrixCtor||!window.DOMPoint)return;
+  if(!cssDeckPpWireframe.childElementCount)cssDeckPpWireframe.innerHTML=cssDeckPpWireframeHtml();
+  if(!cssDeckPpLabels.childElementCount)cssDeckPpLabels.innerHTML=cssDeckPpLabelsHtml();
+  cssDeckPpWireframe.setAttribute('viewBox',`0 0 ${width} ${height}`);
+  const matrix=new MatrixCtor(cssDeckSceneTransformValue());
+  const perspective=Number.parseFloat(getComputedStyle(cssDeck).perspective)||9000;
+  const metrics={
+    perspective,
+    originX:width/2,
+    originY:height/2,
+    sceneLeft:width/2+cssDeckScreenOffset.x,
+    sceneTop:height/2+cssDeckScreenOffset.y
+  };
+  const labelSafeTop=cssDeckPpLabelSafeTop(height);
+  DEMO_STAGE_RANGES.forEach((range,stage)=>{
+    const [lo,hi]=range;
+    const slicePath=Array.from({length:hi-lo+1},(_,index)=>lo+index)
+      .filter(layer=>!cssDeckPpLayerIsSample(layer,range))
+      .map(layer=>{
+        const z=-layer*CSS_DECK_GAP;
+        const corners=[
+          {x:CSS_DECK_LAYER_BOUNDS.xMin,y:CSS_DECK_LAYER_BOUNDS.yMin,z},
+          {x:CSS_DECK_LAYER_BOUNDS.xMax,y:CSS_DECK_LAYER_BOUNDS.yMin,z},
+          {x:CSS_DECK_LAYER_BOUNDS.xMax,y:CSS_DECK_LAYER_BOUNDS.yMax,z},
+          {x:CSS_DECK_LAYER_BOUNDS.xMin,y:CSS_DECK_LAYER_BOUNDS.yMax,z}
+        ];
+        const points=corners.map(point=>cssDeckPpProjectPoint(point,matrix,metrics));
+        return cssDeckPpEdgePath(points,CSS_DECK_PP_FACE_EDGES);
+      }).join(' ');
+    cssDeckPpWireframe.querySelector(`[data-layer-slices="${stage}"]`)?.setAttribute('d',slicePath);
+  });
+  cssDeckPpStageGeometry().forEach(geometry=>{
+    const points=geometry.corners.map(point=>cssDeckPpProjectPoint(point,matrix,metrics));
+    const faceA=points.slice(0,4);
+    const faceB=points.slice(4,8);
+    const faceAZ=faceA.reduce((sum,point)=>sum+point.z,0)/faceA.length;
+    const faceBZ=faceB.reduce((sum,point)=>sum+point.z,0)/faceB.length;
+    const nearOffset=faceAZ>=faceBZ?0:4;
+    const farOffset=nearOffset===0?4:0;
+    const nearEdges=CSS_DECK_PP_FACE_EDGES.map(([a,b])=>[a+nearOffset,b+nearOffset]);
+    const farEdges=CSS_DECK_PP_FACE_EDGES.map(([a,b])=>[a+farOffset,b+farOffset]);
+    const group=cssDeckPpWireframe.querySelector(`[data-pp-stage="${geometry.stage}"]`);
+    group?.querySelector('[data-part="far"]')?.setAttribute('d',cssDeckPpEdgePath(points,farEdges));
+    group?.querySelector('[data-part="depth"]')?.setAttribute('d',cssDeckPpEdgePath(points,CSS_DECK_PP_DEPTH_EDGES));
+    group?.querySelector('[data-part="near"]')?.setAttribute('d',cssDeckPpEdgePath(points,nearEdges));
+    const nearPoints=nearOffset===0?faceA:faceB;
+    const topPoints=nearPoints.slice().sort((a,b)=>a.y-b.y).slice(0,2);
+    const anchorX=topPoints.reduce((sum,point)=>sum+point.x,0)/Math.max(1,topPoints.length);
+    const anchorY=Math.min(...nearPoints.map(point=>point.y))+10;
+    const label=cssDeckPpLabels.querySelector(`[data-pp-stage="${geometry.stage}"]`);
+    if(label){
+      const labelWidth=label.offsetWidth||112;
+      const labelHeight=label.offsetHeight||28;
+      const x=Math.max(12,Math.min(width-labelWidth-12,anchorX-labelWidth/2));
+      const y=Math.max(labelSafeTop,Math.min(height-labelHeight-12,anchorY));
+      label.style.transform=`translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+    }
+  });
+}
+function scheduleCssDeckPpWireframe(){
+  if(cssDeckPpWireframeRaf)return;
+  cssDeckPpWireframeRaf=requestAnimationFrame(renderCssDeckPpWireframe);
+}
+function cssDeckPpPartitionsSelected(){
+  return activeLens==='communication'&&(
+    parallelEventFilter==='PP'||(parallelEventFilter==='all'&&objectFocus==='comm:pp')
+  );
+}
+function syncCssDeckPpPartitions(){
+  if(!cssDeck)return;
+  const wasVisible=cssDeck.dataset.ppPartitions==='on';
+  const visible=cssDeckMode&&cssDeckRendered&&cssDeckView==='iso'&&cssDeckPpPartitionsSelected();
+  cssDeck.dataset.ppPartitions=visible?'on':'off';
+  cssDeckPpWireframe?.setAttribute('aria-hidden',String(!visible));
+  cssDeckPpLabels?.setAttribute('aria-hidden',String(!visible));
+  if(visible){
+    scheduleCssDeckPpWireframe();
+    if(!wasVisible)requestAnimationFrame(()=>{
+      if(cssDeck.dataset.ppPartitions==='on')fitCssDeck();
+    });
+  }
+}
 function renderCssDeck(){
   if(!cssDeckScene)return;
   updateCssDeckPalette();
@@ -3147,6 +3537,8 @@ function renderCssDeck(){
   const input=cssDeckInputStaticHtml();
   const output=cssDeckOutputStaticHtml();
   cssDeckScene.innerHTML=input+Array.from({length:LAST_MOE_LAYER+1},(_,layer)=>cssDeckLayerCard(layer)).join('')+output;
+  if(cssDeckPpWireframe)cssDeckPpWireframe.innerHTML=cssDeckPpWireframeHtml();
+  if(cssDeckPpLabels)cssDeckPpLabels.innerHTML=cssDeckPpLabelsHtml();
   cssDeckRendered=true;
   cssDeckScene.querySelectorAll('[data-node]').forEach(node=>{
     node.addEventListener('pointerenter',()=>selectCssDeckNode(node,{hoverOnly:true}));
@@ -3156,6 +3548,11 @@ function renderCssDeck(){
       cssDeckSelectedSideRow=null;
       syncCssDeckSideOperatorSelection();
       selectCssDeckNode(node,{openInspector:true});
+    });
+    if(node.classList.contains('opv-cssdeck-experts'))node.addEventListener('keydown',event=>{
+      if(event.key!=='Enter'&&event.key!==' ')return;
+      event.preventDefault();
+      node.click();
     });
   });
   cssDeckScene.querySelectorAll('.opv-cssgraph__edges path[data-edge="residual"]').forEach(path=>{
@@ -3173,14 +3570,9 @@ function renderCssDeck(){
 }
 function applyCssDeckOrbit(){
   if(!cssDeckScene)return;
-  const pivot=cssDeckPivot();
   applyCssDeckScreenOffset();
-  cssDeckScene.style.transform=[
-    `scale(${cssDeckOrbit.z})`,
-    `rotateX(${cssDeckOrbit.rx}deg)`,
-    `rotateY(${cssDeckOrbit.ry}deg)`,
-    `translate3d(${(-pivot.x).toFixed(1)}px,${(-pivot.y).toFixed(1)}px,${(-pivot.z).toFixed(1)}px)`
-  ].join(' ');
+  cssDeckScene.style.transform=cssDeckSceneTransformValue();
+  scheduleCssDeckPpWireframe();
   applyCssDeckSideTransform();
   scheduleParallelEventOverlay();
   requestAnimationFrame(syncNumericsFrontOverlay);
@@ -3189,11 +3581,14 @@ function fitCssDeck(){
   if(!cssDeck)return;
   const rect=cssDeck.getBoundingClientRect();
   if(rect.width<=0||rect.height<=0)return;
+  const fitPpWireframe=cssDeckView==='iso'&&cssDeckPpPartitionsSelected();
   const fit=cssDeckView==='front'
     ? Math.min(rect.width/850,rect.height/1810)
     : cssDeckView==='right'
       ? Math.min(rect.width/3000,rect.height/1900)
-      : Math.min(rect.width/1500,rect.height/1280);
+      : fitPpWireframe
+        ? Math.min(rect.width/1850,rect.height/2050)
+        : Math.min(rect.width/1500,rect.height/1280);
   const max=cssDeckView==='front'?1.05:0.86;
   const fittedZoom=Math.max(0.12,Math.min(max,fit));
   if(cssDeckView==='right'){
@@ -3347,9 +3742,8 @@ function bindCssDeck(){
   let down=null;
   let suppressBlankClick=false;
   const begin=(event,{forcePan=false,captureEl=cssDeck}={})=>{
-    if(event.target.closest('[data-node]')||event.target.closest('.opv-stage-tools')||event.target.closest('.opv-object-panel'))return false;
-    const pan=forcePan||event.metaKey||event.ctrlKey;
-    if(!pan&&(cssDeckView==='front'||cssDeckView==='right'))return false;
+    if(event.target.closest('[data-node],[data-stage-ui]'))return false;
+    const pan=forcePan||cssDeckUsesDirectPan()||event.metaKey||event.ctrlKey;
     if(pan)event.preventDefault();
     down={
       x:event.clientX,y:event.clientY,
@@ -3362,8 +3756,7 @@ function bindCssDeck(){
   cssDeckBeginPan=(event,captureEl=cssDeck)=>begin(event,{forcePan:true,captureEl});
   stagePane?.addEventListener('wheel',event=>{
     if(!cssDeckMode)return;
-    if(event.target.closest('.opv-stage-tools')||event.target.closest('.opv-object-panel'))return;
-    if(!(event.metaKey||event.ctrlKey))return;
+    if(event.target.closest('[data-stage-ui]'))return;
     event.preventDefault();
     event.stopPropagation();
     setCssDeckZoom(cssDeckOrbit.z*Math.exp(-event.deltaY*0.0012));
@@ -3371,7 +3764,7 @@ function bindCssDeck(){
   cssDeck.addEventListener('pointerdown',event=>{
     begin(event);
   });
-  addEventListener('pointermove',event=>{
+  stagePane?.addEventListener('pointermove',event=>{
     if(!down)return;
     const dx=event.clientX-down.x, dy=event.clientY-down.y;
     if(!down.moved&&Math.abs(dx)+Math.abs(dy)>4){
@@ -3402,6 +3795,7 @@ function bindCssDeck(){
     cssDeck.classList.remove('is-grabbing');
     if(moved){
       suppressBlankClick=true;
+      cssDeckSuppressClickUntil=performance.now()+160;
       setTimeout(()=>{suppressBlankClick=false;},0);
     }
     if(!moved&&!wasPan){
@@ -3413,14 +3807,13 @@ function bindCssDeck(){
   addEventListener('pointercancel',()=>{down=null;cssDeck.classList.remove('is-grabbing');});
   cssDeck.addEventListener('click',event=>{
     if(suppressBlankClick){suppressBlankClick=false;return;}
-    if(event.target.closest('[data-node],.opv-cssdeck-experts,.opv-stage-tools,.opv-object-panel'))return;
+    if(event.target.closest('[data-node],.opv-cssdeck-experts,[data-stage-ui]'))return;
     if(selectedParallelEventId)clearParallelEventSelection();
     if(selectedArch)clearArchSelection();
   });
   cssDeck.addEventListener('mouseleave',()=>{setHoverArch(null);if(tip)tip.style.display='none';});
   cssDeck.addEventListener('wheel',event=>{
     if(!cssDeckMode)return;
-    if(!(event.metaKey||event.ctrlKey))return;
     event.preventDefault();
     setCssDeckZoom(cssDeckOrbit.z*Math.exp(-event.deltaY*0.0012));
   },{passive:false});
@@ -3494,7 +3887,7 @@ const SIDE_VIEW_LAYOUT_KEY='pangu-moe-trainviz-side-layout';
 const DEFAULT_LAYER_SPACING_SCALE=1.6;
 function readSideLayerSpacingScale(){
   try{
-    const saved=JSON.parse(localStorage.getItem(SIDE_VIEW_LAYOUT_KEY)||'{}');
+    const saved=pageStorage.getJSON(SIDE_VIEW_LAYOUT_KEY,{});
     const value=Number(saved.layerSpacingScale);
     return Number.isFinite(value)?Math.max(1,Math.min(2.6,value)):DEFAULT_LAYER_SPACING_SCALE;
   }catch(_){
@@ -3511,16 +3904,36 @@ const app=document.getElementById('app');
 const stagePane=document.querySelector('.opv-stage');
 const cssDeck=document.getElementById('cssDeck');
 const cssDeckScene=document.getElementById('cssDeckScene');
+const cssDeckPpWireframe=document.getElementById('cssDeckPpWireframe');
+const cssDeckPpLabels=document.getElementById('cssDeckPpLabels');
 const cssDeckOperatorLabels=document.getElementById('cssDeckOperatorLabels');
 const parallelEventLegend=document.getElementById('parallelEventLegend');
 const parallelEventOverlay=document.getElementById('parallelEventOverlay');
+bindStageUiSurfaces();
 const scene=new THREE.Scene(); scene.background=new THREE.Color(initialSceneTheme.bg);
 scene.fog=new THREE.FogExp2(initialSceneTheme.fog,initialSceneTheme.fogDensity);
 const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(Math.max(1,app.clientWidth),Math.max(1,app.clientHeight),false);
 renderer.setClearColor(initialSceneTheme.bg,1);
 app.appendChild(renderer.domElement);
-const perspCamera=new THREE.PerspectiveCamera(12,innerWidth/innerHeight,0.02,900);  // 更长焦：FOV 20→12，相机拉远补偿透视压缩
+let sceneOverlayProjectionDirty=true;
+let axisProjectionDirty=true;
+let sceneFrameId=0;
+let sceneLoopReady=false;
+function requestSceneRender({overlays=false,axis=false}={}){
+  if(overlays)sceneOverlayProjectionDirty=true;
+  if(axis)axisProjectionDirty=true;
+  if(!sceneLoopReady||sceneFrameId||document.hidden)return sceneFrameId;
+  sceneFrameId=requestAnimationFrame(loop);
+  return sceneFrameId;
+}
+function invalidateSceneProjection({axis=true}={}){
+  sceneOverlayProjectionDirty=true;
+  if(axis)axisProjectionDirty=true;
+  requestSceneRender();
+}
+const perspCamera=new THREE.PerspectiveCamera(12,Math.max(1,app.clientWidth)/Math.max(1,app.clientHeight),0.02,900);  // 更长焦：FOV 20→12，相机拉远补偿透视压缩
 const orthoCamera=new THREE.OrthographicCamera(-1,1,1,-1,0.02,900);
 let camera=perspCamera;
 const defaultIsoDepthCenter=()=>{
@@ -3583,15 +3996,18 @@ function updateCam(){
     c.lookAt(target);
   });
   updateCameraProjection();
+  invalidateSceneProjection();
 }
 updateCam();
 function setCameraMode(mode){
   cameraMode=mode;
   camera=mode==='ortho'?orthoCamera:perspCamera;
   updateCameraProjection();
+  invalidateSceneProjection();
 }
 function setActiveView(view){
   activeView=view;
+  interactionStore.setView({camera:view},{source:'camera'});
   document.querySelectorAll('.opv-view-btn').forEach(btn=>btn.classList.toggle('is-active',btn.dataset.view===view));
   if(typeof applyViewPresentation==='function')applyViewPresentation();
   if(typeof renderLayerTransferTable==='function')renderLayerTransferTable();
@@ -3623,9 +4039,11 @@ function syncViewForLens(){
 }
 function setActiveLens(lens,{persist=true}={}){
   activeLens=LENS_IDS.includes(lens)?lens:'structure';
-  if(persist)localStorage.setItem('openpangu-events-lens',activeLens);
+  interactionStore.setLens(activeLens,{source:'lens'});
+  if(persist)pageStorage.set('openpangu-events-lens',activeLens);
   stagePane?.setAttribute('data-lens',activeLens);
   document.querySelectorAll('.opv-lens-btn[data-lens]').forEach(button=>button.classList.toggle('is-active',button.dataset.lens===activeLens));
+  syncCssDeckPpPartitions?.();
   syncTransferKindsForLens();
   syncViewForLens();
   const table=document.getElementById('layerTransferTable');
@@ -3652,6 +4070,47 @@ function initLensUi(){
 }
 const objectPanel=document.getElementById('objectPanel');
 const filterToggle=document.getElementById('filterToggle');
+const OBJECT_FOCUS_COPY={
+  'layer:dense':['Dense layers','Dense decoder layers and their local operators.'],
+  'layer:moe':['MoE layers','Router, token dispatch/combine, expert pools and shared experts.'],
+  'op:mla':['MLA','Sparse MLA attention operators across decoder layers.'],
+  'op:router':['Router','MoE routing and gate decisions.'],
+  'op:experts':['Experts','Routed expert pools and shared-expert compute.'],
+  'op:norm':['Norm','RMSNorm and post-MLP normalization operators.'],
+  'data:hidden':['Hidden states','Activation and residual-state paths.'],
+  'data:dispatch':['Token dispatch','MoE token dispatch/combine dataflow.'],
+  'data:logits':['Logits','LM Head and logits aggregation path.'],
+  'comm:tp':['TP / SP','Tensor-parallel AllGather and Reduce-Scatter groups.'],
+  'comm:ep':['EP','Expert-parallel token All-to-All groups.'],
+  'comm:pp':['PP','Pipeline activation and dHidden Send/Recv boundaries.'],
+  'comm:dp':['DP','Data-parallel gradient synchronization groups.'],
+  'comm:logits':['Logits gather','Conditional logits aggregation communication.'],
+  'hw:cards':['Ranks / Cards','Hardware rank and card placement.']
+};
+function renderObjectFocusInspector(){
+  const who=document.getElementById('fWho');
+  const meta=document.getElementById('fMeta');
+  const op=document.getElementById('fOp');
+  const desc=document.getElementById('fDesc');
+  const tag=document.getElementById('fTag');
+  if(!objectFocus||objectFocus==='all'){
+    if(who)who.textContent='Filter · All objects';
+    if(meta)meta.textContent='Main view synchronized · no active object filter';
+    if(op)op.textContent='All objects';
+    if(desc)desc.textContent='Choose a filter or a diagnostic finding to focus related objects.';
+    if(tag){tag.textContent='all';tag.style.color='';tag.style.borderColor='';}
+    return;
+  }
+  const [label,description]=OBJECT_FOCUS_COPY[objectFocus]||[objectFocus,'Filtered objects in the main visualization.'];
+  const matchedArch=archRecords.filter(record=>(record.tags||[]).includes(objectFocus)).length;
+  const matchedGuides=staticFocusObjects.filter(object=>(object.userData?.tags||[]).includes(objectFocus)).length;
+  const count=matchedArch+matchedGuides;
+  if(who)who.textContent=`Filter · ${label}`;
+  if(meta)meta.textContent=`Main view synchronized · ${count} matching visual objects`;
+  if(op)op.textContent=label;
+  if(desc)desc.textContent=description;
+  if(tag){tag.textContent=objectFocus;tag.style.color='';tag.style.borderColor='';}
+}
 function syncObjectFocusControls(){
   objectPanel?.querySelectorAll('[data-focus-object]').forEach(btn=>{
     if(btn.dataset.focusObject==='hw:cards')btn.hidden=!RANK_RENDER_VISIBLE;
@@ -3666,8 +4125,10 @@ function setObjectPanelOpen(open){
   objectPanel.hidden=!open;
   filterToggle?.setAttribute('aria-expanded',String(open));
 }
-function setObjectFocus(id){
+function setObjectFocus(id,{source='object-focus'}={}){
   objectFocus=id||'all';
+  interactionStore.setObjectFocus(objectFocus,{source});
+  invalidateSceneProjection({axis:false});
   syncObjectFocusControls();
   const activeTip=document.getElementById('tip');
   if(activeTip){
@@ -3678,6 +4139,8 @@ function setObjectFocus(id){
   if(typeof setHoverStaticObject==='function')setHoverStaticObject(null);
   if(typeof setHoverArch==='function')setHoverArch(null);
   if(typeof applyViewPresentation==='function')applyViewPresentation();
+  if(typeof syncCssDeckExpertExpansion==='function')syncCssDeckExpertExpansion();
+  if(typeof syncCssDeckPpPartitions==='function')syncCssDeckPpPartitions();
   if(typeof redraw==='function')redraw();
 }
 objectPanel?.addEventListener('click',event=>{
@@ -3685,7 +4148,20 @@ objectPanel?.addEventListener('click',event=>{
   if(!btn)return;
   clearThreeDrillTarget({restoreObjectFocus:false});
   clearSwimHighlight();
-  setObjectFocus(btn.dataset.focusObject);
+  if(typeof setSelectedStaticObject==='function')setSelectedStaticObject(null);
+  if(typeof setSelectedArch==='function'&&selectedArch)setSelectedArch(null,{openInspector:false});
+  const nextFocus=btn.dataset.focusObject||'all';
+  interactionStore.batch(()=>{
+    setObjectFocus(nextFocus,{source:'filter'});
+    if(nextFocus==='all')interactionStore.clearSelection({source:'filter'});
+    else interactionStore.setSelection({type:'filter',id:nextFocus,objectFocus:nextFocus},{source:'filter'});
+  },{source:'filter'});
+  if(nextFocus!=='all'&&typeof setInspectorTab==='function'){
+    setInspectorOpen(true);
+    setInspectorTab('focus');
+    renderObjectFocusInspector();
+  }
+  setObjectPanelOpen(false);
 });
 filterToggle?.addEventListener('click',event=>{
   event.stopPropagation();
@@ -3727,7 +4203,7 @@ const operatorColorReset=document.getElementById('operatorColorReset');
 function persistSideLayerSpacing(value){
   const next=Math.max(1,Math.min(2.6,Number(value)||DEFAULT_LAYER_SPACING_SCALE));
   sideLayerSpacingScale=next;
-  localStorage.setItem(SIDE_VIEW_LAYOUT_KEY,JSON.stringify({layerSpacingScale:next}));
+  pageStorage.setJSON(SIDE_VIEW_LAYOUT_KEY,{layerSpacingScale:next});
   return next;
 }
 function syncSideConfigControls(){
@@ -3749,7 +4225,7 @@ function setSideConfigOpen(open){
 syncSideConfigControls();
 function setOperatorColorAdjust(next){
   operatorColorAdjust=normalizeOperatorColorAdjust(next);
-  localStorage.setItem(OPERATOR_COLOR_ADJUST_KEY,JSON.stringify(operatorColorAdjust));
+  pageStorage.setJSON(OPERATOR_COLOR_ADJUST_KEY,operatorColorAdjust);
   syncSideConfigControls();
   refreshVizTheme();
   if(typeof applyViewPresentation==='function')applyViewPresentation();
@@ -3776,7 +4252,7 @@ layerSpacingRange?.addEventListener('change',()=>{
   location.reload();
 });
 layerSpacingReset?.addEventListener('click',()=>{
-  localStorage.removeItem(SIDE_VIEW_LAYOUT_KEY);
+  pageStorage.remove(SIDE_VIEW_LAYOUT_KEY);
   location.reload();
 });
 operatorHueRange?.addEventListener('input',()=>setOperatorColorAdjust(readOperatorColorControls()));
@@ -4137,6 +4613,8 @@ let hoverArch=null, hoverNeighbors=[], hoverStage=null;
 let selectedArch=null, selectedArchNeighbors=[];
 let selectedDetailKind='training';
 let selectedCardActivity=null;
+let selectedProfilingTask=null;
+let selectedProfilingSpan=null;
 let cardView=null;
 // 架构连线：所有线统一的默认透明度（flat，不跟各自 base 走，避免有的实有的隐），只有 hover 节点接到的那几条变 solid。
 const archLineRecords=[], ARCH_LINE_DIM=0.20, ARCH_LINE_SOLID=0.92;
@@ -4618,9 +5096,65 @@ function renderParallelEventInspector(){
     </dl>
   </div>`;
 }
+function renderProfilingSpanInspector(){
+  const root=document.getElementById('inspectorObject');
+  const task=selectedProfilingTask;
+  const span=selectedProfilingSpan;
+  if(!root||!task||!span)return;
+  const selector=task.selector||{};
+  const kindLabel=profilingSpanKindLabel(span.kind);
+  const phase=selector.phase==='B'?'Backward':'Forward';
+  const layer=span.layer!=null&&Number.isFinite(Number(span.layer))?Number(span.layer):null;
+  const localStart=Math.max(0,(Number(span.startUs)||0)-(Number(task.startUs)||0));
+  const localEnd=localStart+(Number(span.durUs)||0);
+  const color=toHex(profilingSpanColor(span));
+  const parentOperator=span.parentOperatorId?task.operators.find(operator=>operator.id===span.parentOperatorId):null;
+  const coordinate=`D0 / PP${selector.stage} / TP0 / CP0 / EP0`;
+  const modelPath=layer==null?`PP${selector.stage} · L${task.runtimeTask?.range?.[0]??'—'}–${task.runtimeTask?.range?.[1]??'—'}`:`PP${selector.stage} / L${layer} / ${span.nodeId||parentOperator?.nodeId||'未映射'}`;
+  const childCounts=span.kind==='schedule'
+    ?`${task.operators.length} 个模型算子 · ${task.kernels.length} 个设备 Kernel · ${task.collectives.length} 个集合通信`
+    :span.kind==='operator'
+      ?`${span.kernels?.length||0} 个设备 Kernel · ${span.collectives?.length||0} 个集合通信`
+      :parentOperator?`所属算子 · ${parentOperator.name}`:'叶级事件';
+  const contextNote=span.kind==='schedule'
+    ?`该区间表示 MB${selector.microbatch} 在 PP${selector.stage} 的 ${phase} 阶段。`
+    :`该${kindLabel}位于 MB${selector.microbatch} 的 ${phase} 阶段，并已关联到 ${modelPath}。`;
+  root.innerHTML=`<div class="opv-object-inspector">
+    <div class="opv-object-inspector__head">
+      <span class="opv-registry-row__glyph" style="--object-color:${esc(color)}">${span.kind==='kernel'?'K':span.kind==='collective'?'C':span.kind==='operator'?'OP':'MB'}</span>
+      <div>
+        <div class="opv-object-inspector__title">${esc(span.name||task.name)}</div>
+        <div class="opv-object-inspector__path">MB${esc(selector.microbatch)} · PP${esc(selector.stage)} · ${esc(phase)}${layer==null?'':` · L${esc(layer)}`}</div>
+      </div>
+    </div>
+    <div class="opv-train-tag-row">
+      <span class="opv-train-tag">内置示例 Trace</span>
+      <span class="opv-train-tag">${esc(kindLabel)}</span>
+      ${span.kind==='collective'&&span.eventKind?`<span class="opv-train-tag">${esc(span.eventKind)}</span>`:''}
+    </div>
+    <p class="opv-object-inspector__note">${esc(contextNote)}</p>
+    <div class="opv-object-guide">
+      <div class="opv-object-guide__row"><span>所属阶段</span><b>MB${esc(selector.microbatch)} · PP${esc(selector.stage)} · ${esc(phase)}</b></div>
+      <div class="opv-object-guide__row"><span>阶段内时间</span><b>+${esc(fmtUs(localStart))} → +${esc(fmtUs(localEnd))} · ${esc(fmtUs(span.durUs))}</b></div>
+      <div class="opv-object-guide__row"><span>模型路径</span><b>${esc(modelPath)}</b></div>
+      <div class="opv-object-guide__row"><span>事件层级</span><b>${esc(childCounts)}</b></div>
+    </div>
+    <dl class="opv-object-detail-grid">
+      <dt>事件类型</dt><dd>${esc(kindLabel)}</dd>
+      <dt>绝对时间</dt><dd>${esc(fmtUs(span.startUs))} → ${esc(fmtUs(Number(span.startUs)+Number(span.durUs)))}</dd>
+      <dt>关联 ID</dt><dd>${esc(span.correlationId||parentOperator?.correlationId||'—')}</dd>
+      <dt>Device Task</dt><dd>${span.taskId==null?'—':`Task ${esc(span.taskId)} · Stream ${esc(span.streamId??'—')}`}</dd>
+      <dt>执行单元</dt><dd>${esc(span.primitive||span.core||'—')}</dd>
+      <dt>Tensor / 通信组</dt><dd>${esc(span.tensor||span.group||'—')}</dd>
+      <dt>并行坐标</dt><dd>${esc(coordinate)}</dd>
+      <dt>数据集</dt><dd>内置示例 Trace · 局部事件覆盖</dd>
+    </dl>
+  </div>`;
+}
 function renderSelectedDetailInspector(){
   if(selectedDetailKind==='parallel-event'&&selectedParallelEventId)renderParallelEventInspector();
   else if(selectedDetailKind==='activity'&&selectedCardActivity)renderCardActivityInspector();
+  else if(selectedDetailKind==='profiling-span'&&selectedProfilingTask&&selectedProfilingSpan)renderProfilingSpanInspector();
   else if(selectedDetailKind==='model'&&selectedArch)renderModelObjectInspector();
   else renderTrainingObjectInspector();
 }
@@ -4833,18 +5367,20 @@ function applyStaticFocusObject(obj){
   const match=tagMatchesFocus(tags);
   const base=obj.userData?.baseOpacity??0.8;
   const hover=!!obj.userData?.hoverHighlight;
+  const selected=!!obj.userData?.selectedHighlight;
+  const emphasized=hover||selected;
   const focusLit=focusActive()&&match;
-  const opacity=hover
+  const opacity=emphasized
     ? Math.max(obj.userData?.hoverOpacity??0.9,base)
     : (focusActive()?(match?(obj.userData?.focusOpacity??Math.max(base,0.92)):(obj.userData?.dimOpacity??0.045)):base);
   if(obj.userData?.baseColor!=null&&obj.material.color){
-    const tint=(hover||focusLit)&&obj.userData?.focusColor!=null;
+    const tint=(emphasized||focusLit)&&obj.userData?.focusColor!=null;
     obj.material.color.setHex(tint?obj.userData.focusColor:obj.userData.baseColor);
   }
   if(obj.material.uniforms?.opacity)obj.material.uniforms.opacity.value=opacity;
   else {obj.material.transparent=true; obj.material.opacity=opacity; obj.material.needsUpdate=true;}
   if(obj.material.uniforms?.linewidth&&obj.userData?.baseLinewidth){
-    obj.material.uniforms.linewidth.value=hover
+    obj.material.uniforms.linewidth.value=emphasized
       ? (obj.userData.hoverLinewidth??obj.userData.baseLinewidth*1.65)
       : obj.userData.baseLinewidth;
   }
@@ -5016,6 +5552,24 @@ function addStaticFocusHitBox(center,size,tags,{viewOnly=null,title='',body='',s
   return mesh;
 }
 let hoverStaticObject=null;
+let selectedStaticObject=null;
+function setSelectedStaticObject(obj){
+  if(selectedStaticObject===obj)return;
+  const clearTargets=selectedStaticObject?.userData?.hoverTargets||[];
+  clearTargets.forEach(target=>{
+    if(!target?.userData)return;
+    target.userData.selectedHighlight=false;
+    applyStaticFocusObject(target);
+  });
+  selectedStaticObject=obj||null;
+  const nextTargets=selectedStaticObject?.userData?.hoverTargets||[];
+  nextTargets.forEach(target=>{
+    if(!target?.userData)return;
+    target.userData.selectedHighlight=true;
+    applyStaticFocusObject(target);
+  });
+  requestSceneRender({overlays:true});
+}
 function setHoverStaticObject(obj){
   if(hoverStaticObject===obj)return;
   const clearTargets=hoverStaticObject?.userData?.hoverTargets||[];
@@ -5041,6 +5595,7 @@ function setHoverStaticObject(obj){
       el.classList.toggle('is-hovered',nextStage!=null&&anchor.stage===nextStage&&objectFocus==='comm:pp');
     });
   }
+  requestSceneRender({overlays:true});
 }
 function addNodeNote(id,layer,text,colorHex,dx=0,dy=0,scale=1.0){
   const p=nodePos(id,layer); if(!p)return null;
@@ -6991,6 +7546,8 @@ function redraw(){
   }
   renderLayerTransferTable();
   renderSwimlane();
+  renderObjectFocusInspector();
+  invalidateSceneProjection({axis:false});
 }
 
 /* ===== Swimlane：32 rank 行 · 真实感 1F1B（wall-clock µs，复用 swimlane-task pattern 单段模式） ===== */
@@ -7434,6 +7991,205 @@ function buildMicrobatchLifecycleViewModel(rt){
   return {rows,repByStage,timeRangeUs:rt.timeRangeUs,config:rt.config};
 }
 const MB_LIFECYCLE=buildMicrobatchLifecycleViewModel(RT);
+function profilingTaskSelectorKey(selector={}){
+  return `${Number(selector.stage)||0}:${Number(selector.microbatch)||0}:${String(selector.phase||'F')}`;
+}
+function normalizeProfilingTaskDefinition(definition){
+  const selector={...(definition?.selector||{})};
+  const row=MB_LIFECYCLE.rows.find(item=>item.stage===Number(selector.stage)&&item.mb===Number(selector.microbatch));
+  const runtimeTask=row?.tasks.find(task=>task.kind===selector.phase&&Number(task.microbatch)===Number(selector.microbatch));
+  if(!row||!runtimeTask)return null;
+  const importedStart=Number(definition.startUs)||0;
+  const importedDur=Math.max(1,Number(definition.durUs)||1);
+  const runtimeStart=Number(runtimeTask.startUs)||0;
+  const runtimeDur=Math.max(1,Number(runtimeTask.durUs)||1);
+  const scale=runtimeDur/importedDur;
+  const mapStart=value=>runtimeStart+(Number(value)-importedStart)*scale;
+  const mapDur=value=>Math.max(0.1,Number(value)*scale);
+  const operators=(definition.operators||[]).map(operator=>{
+    const normalizedOperator={
+      ...operator,
+      startUs:mapStart(operator.startUs),
+      durUs:mapDur(operator.durUs),
+      parentTaskId:definition.id
+    };
+    normalizedOperator.kernels=(operator.kernels||[]).map(kernel=>({
+      ...kernel,
+      startUs:mapStart(kernel.startUs),
+      durUs:mapDur(kernel.durUs),
+      layer:operator.layer,
+      nodeId:operator.nodeId,
+      correlationId:operator.correlationId,
+      parentTaskId:definition.id,
+      parentOperatorId:operator.id
+    }));
+    normalizedOperator.collectives=(operator.collectives||[]).map(collective=>({
+      ...collective,
+      startUs:mapStart(collective.startUs),
+      durUs:mapDur(collective.durUs),
+      layer:operator.layer,
+      nodeId:operator.nodeId,
+      correlationId:operator.correlationId,
+      parentTaskId:definition.id,
+      parentOperatorId:operator.id
+    }));
+    return normalizedOperator;
+  });
+  return {
+    ...definition,
+    selector,
+    rowId:row.id,
+    runtimeTask,
+    startUs:runtimeStart,
+    durUs:runtimeDur,
+    operators,
+    kernels:operators.flatMap(operator=>operator.kernels),
+    collectives:operators.flatMap(operator=>operator.collectives),
+    source:PROFILE_DRILLDOWN_DATA.source||'mock-profile-json',
+    fidelity:PROFILE_DRILLDOWN_DATA.fidelity||'limited-sampled-task-drilldown'
+  };
+}
+const PROFILING_TASK_DRILLDOWNS=(PROFILE_DRILLDOWN_DATA.tasks||[]).map(normalizeProfilingTaskDefinition).filter(Boolean);
+const PROFILING_TASK_BY_SELECTOR=new Map(PROFILING_TASK_DRILLDOWNS.map(task=>[profilingTaskSelectorKey(task.selector),task]));
+const PROFILING_TASK_BY_ID=new Map(PROFILING_TASK_DRILLDOWNS.map(task=>[task.id,task]));
+window.OPENPANGU_PROFILE_DRILLDOWN={
+  schema:PROFILE_DRILLDOWN_DATA.schema,
+  source:PROFILE_DRILLDOWN_DATA.source,
+  tasks:PROFILING_TASK_DRILLDOWNS
+};
+function profilingTaskFor(task,row){
+  if(!task||!row||(task.kind!=='F'&&task.kind!=='B'))return null;
+  return PROFILING_TASK_BY_SELECTOR.get(profilingTaskSelectorKey({stage:row.stage,microbatch:task.microbatch,phase:task.kind}))||null;
+}
+function profilingTaskScheduleSpan(task){
+  const selector=task.selector||{};
+  return {
+    id:`${task.id}:schedule`,kind:'schedule',name:task.name,
+    startUs:task.startUs,durUs:task.durUs,
+    stage:selector.stage,microbatch:selector.microbatch,phase:selector.phase
+  };
+}
+function profilingSpanColor(span){
+  if(span?.kind==='collective'){
+    const spec=PARALLEL_EVENT_BY_ID.get(span.eventKind);
+    const key=String(spec?.parallelTags?.[0]||'TP').toLowerCase();
+    return LINE[key]??LINE.tp;
+  }
+  if(span?.kind==='kernel')return lightT()?0x64748b:0x94a3b8;
+  if(span?.kind==='schedule')return LINE.pp;
+  const nodeId=String(span?.nodeId||'');
+  if(/norm/.test(nodeId))return SEM_COLOR['sem:norm']??0x06b6d4;
+  if(/attention|flash/.test(nodeId))return SEM_COLOR['sem:attention']??0x3b82f6;
+  if(/gate/.test(nodeId))return SEM_COLOR['sem:gate']??0xf59e0b;
+  if(/expert/.test(nodeId))return SEM_COLOR['sem:moe']??0xf97316;
+  if(/dispatch|combine/.test(nodeId))return SEM_COLOR['sem:comm']??0x22c55e;
+  if(/proj|linear|dense/.test(nodeId))return SEM_COLOR['sem:linear']??0x4f6df6;
+  return SEM_COLOR['sem:act']??0x64748b;
+}
+const profilingSpanFocus=()=>selectedDetailKind==='profiling-span'&&!!selectedProfilingTask&&!!selectedProfilingSpan&&selectedProfilingSpan.kind!=='schedule';
+function profilingSpanRelated(span){
+  if(!profilingSpanFocus())return true;
+  if(span?.id===selectedProfilingSpan.id)return true;
+  return span?.kind==='operator'&&span.id===selectedProfilingSpan.parentOperatorId;
+}
+function profilingTaskMatchesFocus(task,row){
+  if(!profilingSpanFocus())return true;
+  const profileTask=profilingTaskFor(task,row);
+  if(profileTask?.id===selectedProfilingTask.id)return true;
+  if(selectedProfilingSpan.kind!=='collective')return false;
+  const eventId=task?.eventKind||catalogEventForTask(task)?.id;
+  return !!eventId&&eventId===selectedProfilingSpan.eventKind;
+}
+function syncProfilingSpanSelection(){
+  cssDeckScene?.classList.remove('is-profiling-span-focused');
+  cssDeckScene?.querySelectorAll('.is-profile-linked,.is-profile-related,.is-profiling-span-context').forEach(element=>{
+    element.classList.remove('is-profile-linked','is-profile-related','is-profiling-span-context');
+    element.style.removeProperty('--profile-link-color');
+  });
+  parallelEventOverlay?.classList.remove('is-profiling-span-focused');
+  parallelEventOverlay?.querySelectorAll('.is-profile-related').forEach(element=>element.classList.remove('is-profile-related'));
+  const active=profilingSpanFocus();
+  if(bodyCanvas)bodyCanvas.dataset.profileFocus=active?`${selectedProfilingSpan.kind}:${selectedProfilingSpan.id}`:'none';
+  if(!active||!cssDeckScene)return;
+  const span=selectedProfilingSpan;
+  const layer=Number(span.layer);
+  const root=Number.isFinite(layer)?cssActivityRoot({layer}):null;
+  if(!root)return;
+  const color=toHex(profilingSpanColor(span));
+  const selectedId=String(span.nodeId||'');
+  const relatedIds=new Set(selectedId?[selectedId]:[]);
+  root.classList.add('is-profiling-span-context');
+  root.querySelector('.opv-cssgraph__layer-label')?.classList.add('is-profile-related');
+  root.querySelectorAll('.opv-cssgraph__edges path').forEach(path=>{
+    if(path.dataset.source===selectedId||path.dataset.target===selectedId){
+      path.classList.add('is-profile-related');
+      if(path.dataset.source)relatedIds.add(path.dataset.source);
+      if(path.dataset.target)relatedIds.add(path.dataset.target);
+    }
+  });
+  relatedIds.forEach(nodeId=>root.querySelectorAll(`[data-node="${CSS.escape(nodeId)}"]`).forEach(node=>node.classList.add('is-profile-related')));
+  const selectedNode=root.querySelector(`[data-node="${CSS.escape(selectedId)}"]`)||root.querySelector('.is-selected');
+  selectedNode?.classList.add('is-profile-linked','is-profile-related');
+  selectedNode?.style.setProperty('--profile-link-color',color);
+  cssDeckScene.classList.add('is-profiling-span-focused');
+  parallelEventOverlay?.classList.add('is-profiling-span-focused');
+  if(span.kind==='collective'&&span.eventKind){
+    parallelEventOverlay?.querySelector(`[data-parallel-event="${CSS.escape(span.eventKind)}"]`)?.classList.add('is-profile-related');
+  }
+}
+function selectProfilingSpan(task,span){
+  if(!task||!span)return;
+  if(selectedParallelEventId)clearParallelEventSelection({renderInspector:false});
+  selectedProfilingTask=task;
+  selectedProfilingSpan=span;
+  const layer=span.layer==null?null:Number(span.layer);
+  const nodeId=span.nodeId||null;
+  if(Number.isFinite(layer)&&nodeId){
+    const mesh=cssDeckMeshFor(layer,nodeId);
+    if(mesh){
+      setSelectedArch(mesh,{openInspector:false});
+      cssDeckSelectedKey=`${layer}:${nodeId}`;
+      syncCssDeckSelection();
+    }
+  }
+  selectedDetailKind='profiling-span';
+  interactionStore.setSelection({type:'profiling-span',id:span.id,taskId:task.id,kind:span.kind,layer,nodeId},{source:'analysis'});
+  setInspectorOpen(true);
+  setInspectorTab('object');
+  renderProfilingSpanInspector();
+  if(statusRight)statusRight.textContent=`Trace event · ${span.name} · ${task.name}`;
+  syncProfilingSpanSelection();
+  paintSwimlane();
+}
+function clearSwimlaneEventSelection({renderInspector=true,repaint=true}={}){
+  const hadProfiling=!!selectedProfilingSpan;
+  const hadParallel=!!selectedParallelEventId;
+  if(!hadProfiling&&!hadParallel)return false;
+  if(hadParallel)clearParallelEventSelection({renderInspector:false});
+  if(hadProfiling){
+    selectedProfilingSpan=null;
+    if(interactionStore.getState().selection?.type==='profiling-span')interactionStore.clearSelection({source:'analysis'});
+    if(statusRight&&/^Trace event/.test(statusRight.textContent||''))statusRight.textContent='—';
+  }
+  if(['profiling-span','parallel-event','model'].includes(selectedDetailKind))selectedDetailKind='training';
+  if(selectedArch)setSelectedArch(null,{openInspector:false});
+  else syncProfilingSpanSelection();
+  if(renderInspector&&activeInspectorTab==='object')renderSelectedDetailInspector();
+  if(repaint)paintSwimlane();
+  return true;
+}
+function toggleProfilingTaskDrilldown(task){
+  if(!task)return;
+  if(selectedProfilingTask?.id===task.id){
+    selectedProfilingTask=null;
+    if(!clearSwimlaneEventSelection()){
+      syncProfilingSpanSelection();
+      paintSwimlane();
+    }
+    return;
+  }
+  selectProfilingSpan(task,profilingTaskScheduleSpan(task));
+}
 function currentScheduleTimeUs(){
   return (traceIndex/Math.max(1,lastTick))*RT.timeRangeUs[1];
 }
@@ -7601,6 +8357,7 @@ function darken(colorHex,f){
   return ((Math.round(((v>>16)&255)*f)<<16)|(Math.round(((v>>8)&255)*f)<<8)|Math.round((v&255)*f))>>>0;
 }
 const ROW_H=24, MB_ROW_H=28, GUT=154, AXIS_H=44;
+const PROFILE_DRILLDOWN_H=96, PROFILE_DRILLDOWN_LANE_H=21;
 const lightT=()=>curTheme()==='light';
 const txtMuted=()=>lightT()?'#111111':'#94a3b8';
 const txtMain=()=>lightT()?'#0f0f10':'#e5e7eb';
@@ -7612,9 +8369,12 @@ const accent=()=>toHex(LINE.tp);
 const fmtUs=u=>u>=1000?(u/1000).toFixed(2)+'ms':Math.round(u)+'µs';
 const pctText=v=>`${Math.round((Number(v)||0)*100)}%`;
 const parallelEventSwimFocus=()=>swimHighlightTarget?.type==='parallel-event';
+const swimSelectionFocus=()=>parallelEventSwimFocus()||profilingSpanFocus();
 const mutedSwimTaskColor=()=>lightT()?0xb8bec7:0x535b66;
 function swimTaskVisualColor(task,row,baseColor=taskColor(task)){
-  return parallelEventSwimFocus()&&!swimTaskHighlighted(task,row)?mutedSwimTaskColor():baseColor;
+  if(parallelEventSwimFocus()&&!swimTaskHighlighted(task,row))return mutedSwimTaskColor();
+  if(profilingSpanFocus()&&!profilingTaskMatchesFocus(task,row))return mutedSwimTaskColor();
+  return baseColor;
 }
 let commSplit=false;  // 通信展示模式：false=细条子轨；true=与计算同款双轨（行高×2，上计算/下通信）
 const SWIM_ZOOM_MIN=1,SWIM_ZOOM_MAX=4,SWIM_ZOOM_STEP=0.5;
@@ -7732,7 +8492,7 @@ function swimRowHighlighted(row){
   return false;
 }
 function drawSwimHighlight(ctx,x,y,w,h,{thin=false}={}){
-  if(parallelEventSwimFocus())return;
+  if(swimSelectionFocus())return;
   const rx=Math.max(2,x-2), ry=Math.max(1,y-2), rw=Math.max(4,w+4), rh=Math.max(6,h+4);
   ctx.save();
   ctx.shadowColor=swimHiliteStroke();
@@ -7763,7 +8523,111 @@ function swimCommAttribution(task,row){
   }[task.kind];
   return {activeUs,waitUs,overlapUs,exposedUs,operator};
 }
+function profilingSpanCanvasLabel(span){
+  if(span.kind==='operator')return `L${span.layer} · ${span.name}`;
+  if(span.kind==='kernel')return `K · ${span.name}`;
+  if(span.kind==='collective')return span.name;
+  return span.name||span.kind;
+}
+function profilingSpanKindLabel(kind){
+  return {schedule:'阶段区间',operator:'模型算子',kernel:'设备 Kernel',collective:'集合通信'}[kind]||'Profiling 事件';
+}
+function drawProfilingTaskCue(ctx,x,y,w,h,expanded,dimmed=false){
+  if(w<22)return;
+  const size=11,cx=x+w-size-2,cy=y+1;
+  ctx.save();
+  ctx.globalAlpha=dimmed?0.24:1;
+  ctx.fillStyle=lightT()?'rgba(255,255,255,.88)':'rgba(15,23,42,.82)';
+  ctx.strokeStyle=expanded?accent():(lightT()?'rgba(15,23,42,.32)':'rgba(255,255,255,.42)');
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(cx,cy,size,size,3);else ctx.rect(cx,cy,size,size);
+  ctx.fill();ctx.stroke();
+  ctx.fillStyle=expanded?accent():txtMain();
+  ctx.font='800 9px JetBrains Mono, monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(expanded?'−':'+',cx+size/2,cy+size/2+.2);
+  ctx.restore();
+}
+function drawProfilingTaskDrilldown(ctx,{task,row,top,W}){
+  const left=GUT,right=W-8,plotW=Math.max(80,right-left),boxBottom=top+PROFILE_DRILLDOWN_H-3;
+  const localX=value=>left+clampValue(((Number(value)||0)-task.startUs)/Math.max(1,task.durUs),0,1)*plotW;
+  const selector=task.selector||{};
+  const phase=selector.phase==='B'?'Backward':'Forward';
+  ctx.save();
+  ctx.fillStyle=lightT()?'rgba(238,244,255,.94)':'rgba(15,23,42,.92)';
+  ctx.strokeStyle=lightT()?'rgba(67,105,239,.28)':'rgba(96,165,250,.38)';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(4,top+2,W-12,PROFILE_DRILLDOWN_H-5,6);else ctx.rect(4,top+2,W-12,PROFILE_DRILLDOWN_H-5);
+  ctx.fill();ctx.stroke();
+  ctx.font='800 9px JetBrains Mono, monospace';ctx.textBaseline='middle';ctx.textAlign='left';ctx.fillStyle=accent();
+  ctx.fillText('↳ TRACE',9,top+13);
+  ctx.fillStyle=txtMain();ctx.font='700 9px JetBrains Mono, monospace';
+  ctx.fillText(`MB${selector.microbatch} · PP${selector.stage} · ${phase} · ${task.operators.length} 算子 / ${task.kernels.length} Kernel / ${task.collectives.length} 通信`,left,top+13,Math.max(36,plotW-112));
+  ctx.textAlign='right';ctx.fillStyle=txtMuted();ctx.font='600 8px JetBrains Mono, monospace';
+  ctx.fillText(`+0 → ${fmtUs(task.durUs)}`,right,top+13);
+  const lanes=[
+    {label:'模型算子',spans:task.operators},
+    {label:'设备 Kernel',spans:task.kernels},
+    {label:'集合通信',spans:task.collectives}
+  ];
+  lanes.forEach((lane,index)=>{
+    const y=top+21+index*PROFILE_DRILLDOWN_LANE_H,h=14;
+    ctx.fillStyle=txtMuted();ctx.font='700 8px JetBrains Mono, monospace';ctx.textAlign='right';ctx.textBaseline='middle';
+    ctx.fillText(lane.label,GUT-8,y+h/2);
+    ctx.strokeStyle=sepLine();ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left,y+h+3.5);ctx.lineTo(right,y+h+3.5);ctx.stroke();
+    if(!lane.spans.length){
+      ctx.textAlign='left';ctx.fillStyle=txtMuted();ctx.fillText('— 无事件',left+4,y+h/2);
+      return;
+    }
+    lane.spans.forEach(span=>{
+      const x=localX(span.startUs),w=Math.max(4,localX(span.startUs+span.durUs)-x);
+      const selected=selectedProfilingSpan?.id===span.id;
+      const related=profilingSpanRelated(span);
+      const dimmed=profilingSpanFocus()&&!related;
+      const color=dimmed?mutedSwimTaskColor():profilingSpanColor(span);
+      ctx.save();
+      ctx.fillStyle=rgbaHex(color,dimmed?(lightT()?0.16:0.2):(lightT()?0.78:0.84));
+      ctx.strokeStyle=selected?accent():rgbaHex(color,dimmed?(lightT()?0.28:0.34):(lightT()?0.96:0.92));
+      ctx.lineWidth=selected?2:1;
+      if(selected){ctx.shadowColor=rgbaHex(profilingSpanColor(span),.72);ctx.shadowBlur=7;}
+      ctx.beginPath();
+      if(ctx.roundRect)ctx.roundRect(x,y,w,h,3);else ctx.rect(x,y,w,h);
+      ctx.fill();ctx.stroke();
+      if(w>=34){
+        ctx.save();ctx.beginPath();ctx.rect(x+2,y,w-4,h);ctx.clip();
+        ctx.fillStyle=dimmed?txtMuted():(lightT()?'#0f172a':'#f8fafc');ctx.font='700 8px JetBrains Mono, monospace';ctx.textAlign='left';ctx.textBaseline='middle';
+        ctx.fillText(profilingSpanCanvasLabel(span),x+4,y+h/2,w-7);ctx.restore();
+      }
+      ctx.restore();
+      hitRects.push({x,y,w:Math.max(w,4),h,task:task.runtimeTask,r:row,profileTask:task,profileSpan:span,isLanding:false});
+    });
+  });
+  ctx.strokeStyle=accent();ctx.globalAlpha=.7;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(left,top+18);ctx.lineTo(left,boxBottom);ctx.stroke();
+  ctx.restore();
+}
+function profilingSpanTooltip(hit){
+  const task=hit.profileTask,span=hit.profileSpan;
+  const row=(key,value,cls='')=>`<div class="pto-swimlane-task-tooltip__row"><span class="pto-swimlane-task-tooltip__key">${esc(key)}</span><span class="pto-swimlane-task-tooltip__value${cls?' '+cls:''}">${esc(value)}</span></div>`;
+  const parent=span.parentOperatorId?task.operators.find(operator=>operator.id===span.parentOperatorId):null;
+  const localStart=Math.max(0,span.startUs-task.startUs);
+  const selector=task.selector||{};
+  const phase=selector.phase==='B'?'Backward':'Forward';
+  const modelPath=span.layer==null?'—':`PP${selector.stage} / L${span.layer} / ${span.nodeId||parent?.nodeId||'未映射'}`;
+  return `<div class="pto-swimlane-task-tooltip__title">${esc(span.name)}</div>`+
+    row('所属阶段',`MB${selector.microbatch} · PP${selector.stage} · ${phase}`)+
+    row('事件类型',profilingSpanKindLabel(span.kind))+
+    row('阶段内时间',`+${fmtUs(localStart)} → +${fmtUs(localStart+span.durUs)} · ${fmtUs(span.durUs)}`)+
+    row('绝对时间',`${fmtUs(span.startUs)} → ${fmtUs(span.startUs+span.durUs)}`)+
+    row('模型路径',modelPath)+
+    (span.taskId==null?'':row('Device Task',`${span.taskId} / Stream ${span.streamId??'—'} · ${span.core||'Device'}`))+
+    (span.primitive?row('通信原语',`${span.primitive} · ${span.group||'Rank Group'}`)+row('Tensor',span.tensor||'Tensor Shard'):'')+
+    row('关联 ID',span.correlationId||parent?.correlationId||'—')+
+    row('数据集','内置示例 Trace · 局部事件覆盖');
+}
 function swimRowTooltip(hit){
+  if(hit?.profileSpan)return profilingSpanTooltip(hit);
   const t=hit.task,r=hit.r;
   const row=(k,v,cls='')=>`<div class="pto-swimlane-task-tooltip__row"><span class="pto-swimlane-task-tooltip__key">${esc(k)}</span><span class="pto-swimlane-task-tooltip__value${cls?' '+cls:''}">${esc(v)}</span></div>`;
   if(r?.mb!=null){
@@ -7773,18 +8637,37 @@ function swimRowTooltip(hit){
     const comm=swimCommAttribution(t,r);
     const phaseName=t.kind==='F'?'Forward 前向':t.kind==='B'?'Backward 反向':t.kind==='retention'?'Activation 保留':({tp:'TP collective',cp:'CP KV exchange',ep:'EP All-to-All',pp:'PP send/recv',dp:'DP gradient sync'}[t.kind]||t.kind);
     const statusCls=t.status==='warn'||grad.overflow?'is-warn':t.status==='wait'?'is-bad':'is-ok';
-    const lifecycleNote=t.kind==='retention'
-      ?`MB${r.mb} 的 activation 从 Forward 结束保留到 Backward 开始，当前显存 ${act.memoryGb?.toFixed?.(2)??act.memoryGb??'—'} GB。`
-      :`该片段绑定 MB${r.mb}、${r.stageLabel}，用于把调度、数值状态和通信依赖放在同一时间线上。`;
-    return `<div class="pto-swimlane-task-tooltip__title">MB${r.mb} · ${esc(r.stageLabel)}</div>`+
-      row('phase',phaseName,statusCls)+
-      row('time',`${fmtUs(t.startUs)} + ${fmtUs(t.durUs)}`)+
-      row('layer',`L${r.range[0]}-${r.range[1]}`)+
-      row('activation',`p99 ${act.p99??'—'} · RMS/norm ${act.norm??'—'} · retention ${act.memoryGb??'—'}GB`)+
-      row('dHidden / dWeight',`RMS ${grad.dHiddenRms??'—'} / ${grad.dWeightRms??'—'} · max ${grad.max??'—'}${grad.overflow?' · overflow risk':''}`,grad.overflow?'is-warn':'')+
-      (comm?row('event',`${(t.parallelTags||PARALLEL_TASK_TAGS[t.kind]||[]).map(tag=>`[${tag}]`).join('')} ${t.eventName||phaseName}`)+row('tensor',t.tensor||'tensor shard')+row('comm attribution',`Active ${fmtUs(comm.activeUs)} · Wait ${fmtUs(comm.waitUs)} · Exposed ${fmtUs(comm.exposedUs)} · ${comm.operator}`):'')+
-      row('evidence',`${metrics.source||'inferred'} · logical MB/PP aggregate · D0/PP${r.stage}/TP0/EP0 representative`)+
-      `<div class="pto-swimlane-task-tooltip__row" style="margin-top:6px;display:block"><span class="pto-swimlane-task-tooltip__value" style="display:block;white-space:normal;line-height:1.5">${esc(lifecycleNote)}</span></div>`;
+    const profileTask=profilingTaskFor(t,r);
+    const timeRange=`${fmtUs(t.startUs)} → ${fmtUs(t.startUs+t.durUs)} · ${fmtUs(t.durUs)}`;
+    const stageRange=`PP${r.stage} · L${r.range[0]}–${r.range[1]}`;
+    const statusLabel={ok:'正常',overlap:'重叠执行',wait:'等待',warn:'需关注'}[t.status]||t.status||'正常';
+    if(comm){
+      const eventTags=(t.parallelTags||PARALLEL_TASK_TAGS[t.kind]||[]).map(tag=>`[${tag}]`).join(' ');
+      return `<div class="pto-swimlane-task-tooltip__title">${esc(t.eventName||phaseName)} · MB${r.mb}</div>`+
+        row('事件',`${eventTags} ${t.eventName||phaseName}`,statusCls)+
+        row('所属阶段',stageRange)+
+        row('时间',timeRange)+
+        row('Tensor',t.tensor||'Tensor Shard')+
+        row('通信算子',comm.operator)+
+        row('时间归因',`Active ${fmtUs(comm.activeUs)} · Wait ${fmtUs(comm.waitUs)} · Exposed ${fmtUs(comm.exposedUs)}`)+
+        row('并行坐标',`D0 / PP${r.stage} / TP0 / CP0 / EP0`);
+    }
+    if(t.kind==='retention'){
+      return `<div class="pto-swimlane-task-tooltip__title">Activation 保留 · MB${r.mb}</div>`+
+        row('所属阶段',stageRange)+
+        row('保留时间',timeRange,statusCls)+
+        row('Activation',`p99 ${act.p99??'—'} · RMS/norm ${act.norm??'—'}`)+
+        row('显存占用',`${act.memoryGb?.toFixed?.(2)??act.memoryGb??'—'} GB`,t.status==='warn'?'is-warn':'');
+    }
+    const numericRow=t.kind==='B'
+      ?row('梯度',`dHidden RMS ${grad.dHiddenRms??'—'} · dWeight RMS ${grad.dWeightRms??'—'} · max ${grad.max??'—'}`,grad.overflow?'is-warn':'')
+      :row('Activation',`p99 ${act.p99??'—'} · RMS/norm ${act.norm??'—'} · ${act.memoryGb??'—'} GB`);
+    return `<div class="pto-swimlane-task-tooltip__title">${esc(phaseName)} · MB${r.mb} · PP${r.stage}</div>`+
+      row('所属层',`L${r.range[0]}–${r.range[1]}`)+
+      row('时间',timeRange)+
+      numericRow+
+      (profileTask?row('事件明细',`${profileTask.operators.length} 算子 · ${profileTask.kernels.length} Kernel · ${profileTask.collectives.length} 通信 · ${selectedProfilingTask?.id===profileTask.id?'已展开':'可展开'}`,'is-ok'):'')+
+      row('状态',statusLabel,statusCls);
   }
   const kindName={F:'Forward 前向',B:'Backward 反向',tp:'TP collective',cp:'CP KV exchange',ep:'EP All-to-All',pp:'PP send/recv',dp:'DP gradient sync',bubble:'Pipeline bubble'}[t.kind]||t.kind;
   const isComm=t.kind==='tp'||t.kind==='cp'||t.kind==='ep'||t.kind==='pp'||t.kind==='dp';
@@ -7842,6 +8725,21 @@ function buildSwimlane(){
     const rect=bodyCanvas.getBoundingClientRect(),x=event.clientX-rect.left,y=event.clientY-rect.top;
     const inside=hit=>x>=hit.x&&x<=hit.x+hit.w&&y>=hit.y&&y<=hit.y+hit.h;
     const hit=hitRects.findLast?hitRects.findLast(inside):[...hitRects].reverse().find(inside);
+    if(!hit){
+      clearSwimlaneEventSelection();
+      seek(event);
+      return;
+    }
+    if(hit?.profileSpan){
+      selectProfilingSpan(hit.profileTask,hit.profileSpan);
+      return;
+    }
+    const profilingTask=profilingTaskFor(hit?.task,hit?.r);
+    if(profilingTask){
+      seek(event);
+      toggleProfilingTaskDrilldown(profilingTask);
+      return;
+    }
     const spec=catalogEventForTask(hit?.task);
     if(spec)selectParallelEvent(spec,{instance:parallelEventInstanceFromTask(hit.task,hit.r,spec),openTimeline:false});
     seek(event);
@@ -7898,7 +8796,7 @@ function paintBody(){
   hitRects.length=0;
   const T=RT.timeRangeUs[1], plotW=W-GUT-8, xOf=us=>GUT+plotW*(us/T), tCur=(traceIndex/lastTick)*T;
   const focus=NODE_DEFS[focusNode];
-  const parallelFocus=parallelEventSwimFocus();
+  const parallelFocus=swimSelectionFocus();
   RT.ranks.forEach((r,ri)=>{
     const top=ri*rowH, related=focus&&focus.dp===r.dp&&focus.stage===r.stage, band=(r.dp*RT.config.pp+r.stage);
     const rowLanding=swimRowHighlighted(r);
@@ -7959,7 +8857,14 @@ function paintBody(){
 function paintMicrobatchBody(){
   const rowH=commSplit?44:MB_ROW_H;
   const rows=MB_LIFECYCLE.rows;
-  const W=swimCanvasWidth(), dpr=Math.min(devicePixelRatio||1,2), bodyH=rows.length*rowH;
+  let layoutTop=0;
+  const rowLayouts=rows.map(row=>{
+    const expanded=selectedProfilingTask?.rowId===row.id;
+    const layout={top:layoutTop,height:rowH+(expanded?PROFILE_DRILLDOWN_H:0),expanded};
+    layoutTop+=layout.height;
+    return layout;
+  });
+  const W=swimCanvasWidth(), dpr=Math.min(devicePixelRatio||1,2), bodyH=layoutTop;
   bodyCanvas.style.width=W+'px'; bodyCanvas.style.height=bodyH+'px';
   bodyCanvas.width=Math.round(W*dpr); bodyCanvas.height=Math.round(bodyH*dpr);
   const ctx=bodyCanvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,bodyH);
@@ -7971,12 +8876,13 @@ function paintMicrobatchBody(){
   const T=RT.timeRangeUs[1], plotW=W-GUT-8, xOf=us=>GUT+plotW*(us/T), tCur=(traceIndex/lastTick)*T;
   const scheduleEvents=new Map(currentCardActivityStageEvents().map(event=>[event.stage,event]));
   const visibleEvents=Array.from(scheduleEvents.values()).filter(event=>event.phase!=='bubble');
-  const parallelFocus=parallelEventSwimFocus();
+  const parallelFocus=swimSelectionFocus();
   bodyCanvas.dataset.traceIndex=String(traceIndex);
   bodyCanvas.dataset.scheduleTimeUs=tCur.toFixed(1);
   bodyCanvas.dataset.activeEvents=visibleEvents.map(event=>`PP${event.stage}:MB${event.micro}:${event.phase}:L${event.layer}:${event.operator}`).join('|');
+  bodyCanvas.dataset.profileDrilldown=selectedProfilingTask?.id||'collapsed';
   bodyCanvas.setAttribute('aria-label',visibleEvents.length
-    ?`1F1B playhead ${Math.round(tCur)} microseconds; ${visibleEvents.map(event=>`PP${event.stage} MB${event.micro} ${event.phase} L${event.layer} ${event.operator}`).join('; ')}`
+    ?`1F1B playhead ${Math.round(tCur)} microseconds; ${visibleEvents.map(event=>`PP${event.stage} MB${event.micro} ${event.phase} L${event.layer} ${event.operator}`).join('; ')}${selectedProfilingTask?`; profiling drilldown ${selectedProfilingTask.name}`:''}`
     :`1F1B playhead ${Math.round(tCur)} microseconds; pipeline bubble`);
   const mbColor=mb=>SEM_COLOR[`rank:r${mb%32}:v0`]??(SEM_COLOR['sem:attention']??GRAY);
   const taskBarColor=(t,row)=>{
@@ -7984,7 +8890,7 @@ function paintMicrobatchBody(){
     return swimTaskVisualColor(t,row,base);
   };
   rows.forEach((row,ri)=>{
-    const top=ri*rowH;
+    const layout=rowLayouts[ri],top=layout.top;
     const groupStart=row.stage===0;
     const groupEnd=row.stage===RT.config.pp-1;
     const rowFocus=trainingObjectState?.microbatch===row.mb;
@@ -7998,8 +8904,9 @@ function paintMicrobatchBody(){
       ctx.beginPath();ctx.moveTo(GUT,top+rowH/2+0.5);ctx.lineTo(W,top+rowH/2+0.5);ctx.stroke();ctx.restore();
     }
     if(groupStart){
+      const groupHeight=rowLayouts.slice(ri,ri+RT.config.pp).reduce((sum,item)=>sum+item.height,0);
       ctx.fillStyle=toHex(mbColor(row.mb));
-      ctx.fillRect(0,top,3,rowH*RT.config.pp);
+      ctx.fillRect(0,top,3,groupHeight);
     }
     ctx.font='700 10px JetBrains Mono, monospace';ctx.textBaseline='middle';ctx.textAlign='left';
     ctx.fillStyle=groupStart?txtMain():txtMuted();
@@ -8029,6 +8936,7 @@ function paintMicrobatchBody(){
       if(compute){
         const y=top+4,h=13,sel=tCur>=t.startUs&&tCur<=t.startUs+t.durUs;
         const label=t.kind==='F'?`F${row.mb}`:`B${row.mb}`;
+        const profileTask=profilingTaskFor(t,row);
         SW.drawTaskBar(ctx,{x,y,width:w,height:h,baseColor:toHex(taskBarColor(t,row)),
           task:{label,opName:t.opName},isSelected:parallelFocus?false:sel,isRelated:parallelFocus?false:(rowFocus||landing),fontFamily:'JetBrains Mono, monospace'});
         if(t.kind==='B'){
@@ -8056,7 +8964,8 @@ function paintMicrobatchBody(){
           ctx.fillText(label,labelX+6,top+10.5,labelW-12);
           ctx.restore();
         }
-        hitRects.push({x,y,w:Math.max(w,3),h,task:t,r:row,isLanding:landing});
+        if(profileTask)drawProfilingTaskCue(ctx,x,y,w,h,selectedProfilingTask?.id===profileTask.id,profilingSpanFocus()&&selectedProfilingTask?.id!==profileTask.id);
+        hitRects.push({x,y,w:Math.max(w,3),h,task:t,r:row,profileTask,isLanding:landing});
       }else if(comm){
         if(commSplit){
           const y=top+rowH/2+5,h=13,sel=tCur>=t.startUs&&tCur<=t.startUs+t.durUs,cw=Math.max(w,3);
@@ -8073,13 +8982,16 @@ function paintMicrobatchBody(){
         }
       }
     });
+    if(layout.expanded&&selectedProfilingTask){
+      drawProfilingTaskDrilldown(ctx,{task:selectedProfilingTask,row,top:top+rowH,W});
+    }
     if(groupEnd){
-      ctx.strokeStyle=sepLine();ctx.beginPath();ctx.moveTo(0,top+rowH+0.5);ctx.lineTo(W,top+rowH+0.5);ctx.stroke();
+      ctx.strokeStyle=sepLine();ctx.beginPath();ctx.moveTo(0,top+layout.height+0.5);ctx.lineTo(W,top+layout.height+0.5);ctx.stroke();
     }
   });
   const px=xOf(tCur);
   ctx.strokeStyle=accent();ctx.globalAlpha=0.85;ctx.lineWidth=1.2;
-  ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,bodyH);ctx.stroke();ctx.globalAlpha=1;
+  ctx.beginPath();rowLayouts.forEach(layout=>{ctx.moveTo(px,layout.top);ctx.lineTo(px,layout.top+rowH);});ctx.stroke();ctx.globalAlpha=1;
 }
 function paintSwimlane(){ if(!swimHost)return; if(!swimBuilt)buildSwimlane(); paintAxis(); paintMicrobatchBody(); }
 const commToggleBtn=document.getElementById('commModeToggle');
@@ -8169,6 +9081,17 @@ function dispatch(intent={}){
   if('metric' in intent)focusContext.metric=intent.metric;
   if('severity' in intent)focusContext.severity=intent.severity;
   focusContext.regime=regimeOfStep(focusContext.step);
+  interactionStore.setTimeContext({
+    step:focusContext.step,
+    tick:typeof traceIndex==='number'?traceIndex:null,
+    window:focusContext.window,
+    layer:focusContext.layer,
+    op:focusContext.op,
+    rank:focusContext.rank,
+    stage:focusContext.stage,
+    metric:focusContext.metric,
+    regime:focusContext.regime
+  },{source:intent.source||'context'});
   ctxSubscribers.forEach(fn=>{try{fn(focusContext);}catch(e){console.error('ctx subscriber',e);}});
 }
 
@@ -8544,6 +9467,7 @@ function handleCardActivityHover(selection){
 }
 function pinCardActivitySelection(selection){
   selectedCardActivity=selection;
+  interactionStore.setSelection({type:'card-activity',id:selection?.rank??selection?.microbatchKey??null,...selection},{source:'analysis'});
   const {mesh,nodeId}=cardActivityTarget(selection);
   if(mesh){
     setSelectedArch(mesh,{openInspector:false});
@@ -8560,6 +9484,7 @@ function pinCardActivitySelection(selection){
 }
 
 function handleAnalysisSelection(selection){
+  if(selection)interactionStore.setSelection({type:selection.type||'analysis',id:selection.id??selection.rank??selection.expertId??null,...selection},{source:'analysis'});
   if(['card-activity','card-group','microbatch'].includes(selection?.type)){
     dispatch({
       source:selection.type,
@@ -8628,7 +9553,7 @@ function applyMoeStep(){
   if(activeAnalysisView==='moe-load')moeView.setViewModel(moeLoadViewModel);
   else moeViewDirty=true;
 }
-onContext(()=>{moeStepPending=focusContext.step;});
+onContext(()=>{moeStepPending=focusContext.step;requestSceneRender();});
 function refreshCardActivity(){
   cardActivityViewModel=buildCurrentCardActivityViewModel(cardLoadViewModel);
   if(selectedCardActivity){
@@ -8656,7 +9581,7 @@ function refreshCardLoad(){
 onContext(refreshCardLoad);
 refreshCardLoad();
 const requestedAnalysisView=new URLSearchParams(location.search).get('analysis');
-const initialAnalysisView=requestedAnalysisView||'card-load';
+const initialAnalysisView=requestedAnalysisView||pageStorage.get('op-rank-time-analysis-view','card-load');
 analysisDockController=createAnalysisDock({
   tabsRoot:document.getElementById('analysisTabs'),
   titleEl:document.getElementById('analysisTitle'),
@@ -8764,7 +9689,6 @@ function initIdeCursorTracking(frame){
   frame.addEventListener('pointerleave',resetCursor);
   resetCursor();
 }
-window.PtoIdeFrame?.init?.(frameEl);
 if(frameEl?.dataset.cursorDots==='true')initIdeCursorTracking(frameEl);
 
 const FPC=window.PtoFloatingPlaybackControl;
@@ -8819,10 +9743,20 @@ function sizeRenderer(){
   renderer.domElement.style.height='100%';
   updateCameraProjection();
   updateLineResolution();
+  invalidateSceneProjection();
 }
-if(window.ResizeObserver){
+const unregisterFrameLayout=frameBootstrap?.registerLayoutCallbacks({
+  rendererResize(){
+    sizeRenderer();
+    if(cssDeckMode)fitCssDeck();
+    scheduleParallelEventOverlay();
+  },
+  axisResize:resizeAxisRenderer,
+  dockResize(){analysisDockController?.resize?.();},
+  redraw(){if(threeSceneReady)redraw();}
+},{reason:'three-scene-ready'});
+if(!frameBootstrap&&window.ResizeObserver){
   new ResizeObserver(()=>{sizeRenderer();if(cssDeckMode)fitCssDeck();scheduleParallelEventOverlay();analysisDockController?.resize?.();}).observe(stagePane||app);
-  new ResizeObserver(()=>analysisDockController?.resize?.()).observe(document.getElementById('analysisDock'));
 }
 sizeRenderer();
 threeSceneReady=true;
@@ -8830,6 +9764,19 @@ refreshAfterInspectorToggle();
 
 /* ===== 交互 ===== */
 let dragging=false,lx=0,ly=0,moved=false,dragCaptureEl=null;
+let sceneHoverRaf=0,sceneHoverEvent=null;
+function scheduleSceneHover(event){
+  sceneHoverEvent=event;
+  if(sceneHoverRaf)return;
+  sceneHoverRaf=requestAnimationFrame(()=>{
+    sceneHoverRaf=0;
+    const next=sceneHoverEvent;
+    sceneHoverEvent=null;
+    if(!next||dragging)return;
+    if(handleTransferHoverFromPointer(next))return;
+    onHover(next);
+  });
+}
 function beginSceneDrag(e,captureEl=renderer.domElement){
   dragging=true;moved=false;lx=e.clientX;ly=e.clientY;
   dragCaptureEl=captureEl;
@@ -8844,11 +9791,12 @@ addEventListener('pointerup',e=>{
   dragCaptureEl=null;
   dragging=false;
 });
-addEventListener('pointermove',e=>{
+stagePane?.addEventListener('pointermove',e=>{
+  if(e.target.closest?.('[data-stage-ui]'))return;
   if(dragging){if(Math.abs(e.clientX-lx)+Math.abs(e.clientY-ly)>3)moved=true;
     const rawDx=e.clientX-lx, rawDy=e.clientY-ly;
     const dx=clampValue(rawDx,-46,46), dy=clampValue(rawDy,-46,46);
-    if(e.metaKey||e.ctrlKey){
+    if(e.metaKey||e.ctrlKey||activeView==='front'||activeView==='right'){
       e.preventDefault();
       camera.getWorldDirection(camUp);
       camRight.setFromMatrixColumn(camera.matrixWorld,0);
@@ -8865,11 +9813,9 @@ addEventListener('pointermove',e=>{
       cam.phi=Math.max(0.18,Math.min(1.5,cam.phi-dy*0.006));
     }
     lx=e.clientX;ly=e.clientY;updateCam();}
-  if(!dragging&&handleTransferHoverFromPointer(e))return;
-  onHover(e);
+  if(!dragging)scheduleSceneHover(e);
 });
 renderer.domElement.addEventListener('wheel',e=>{
-  if(!(e.metaKey||e.ctrlKey))return;
   e.preventDefault();
   setCameraDistance(cam.r+e.deltaY*0.018);
 },{passive:false});
@@ -9011,6 +9957,7 @@ function setHoverArch(mesh){
     const d=hoverArch?.userData;
     cardView?.setExternalHover(d?{type:'model',stage:newStage,layer:d.layer,op:d.id}:null);
   }
+  requestSceneRender({overlays:true});
 }
 function setSelectedArch(mesh,{openInspector=!!mesh}={}){
   if(selectedArch===mesh){
@@ -9018,6 +9965,7 @@ function setSelectedArch(mesh,{openInspector=!!mesh}={}){
       selectedDetailKind='model';
       setInspectorTab('object');
     }
+    if(typeof syncProfilingSpanSelection==='function')syncProfilingSpanSelection();
     return;
   }
   if(selectedArch)setArchState(selectedArch,'selectedHighlight',false);
@@ -9029,6 +9977,7 @@ function setSelectedArch(mesh,{openInspector=!!mesh}={}){
     selectedDetailKind='model';
     setArchState(selectedArch,'selectedHighlight',true);
     const d=selectedArch.userData;
+    interactionStore.setSelection({type:'model',id:d.id,layer:d.layer,mesh:selectedArch},{source:'scene'});
     selectedArchNeighbors=neighborMeshesOf(d.id,d.layer).filter(m=>m!==selectedArch);
     selectedArchNeighbors.forEach(m=>setArchState(m,'selectedNeighborHighlight',true));
     const stage=stageForArchLayer(d.layer);
@@ -9042,6 +9991,7 @@ function setSelectedArch(mesh,{openInspector=!!mesh}={}){
     statusRight.textContent='—';
     if(activeInspectorTab==='object')renderSelectedDetailInspector();
   }
+  if(!selectedArch&&interactionStore.getState().selection?.type==='model')interactionStore.clearSelection({source:'scene'});
   if(!selectedArch)cardView?.setExternalSelection(null);
   if(!mesh&&cssDeckSelectedKey){
     cssDeckSelectedKey=null;
@@ -9052,8 +10002,10 @@ function setSelectedArch(mesh,{openInspector=!!mesh}={}){
     syncCssDeckMhcBundleSelection();
   }
   if(typeof syncCssDeckLayerKindSelection==='function')syncCssDeckLayerKindSelection();
+  if(typeof syncProfilingSpanSelection==='function')syncProfilingSpanSelection();
   applyViewPresentation();
   updateArchLineHover();
+  requestSceneRender({overlays:true});
 }
 function clearArchSelection(){
   setSelectedArch(null);
@@ -9179,6 +10131,7 @@ function refreshTransferGapHighlights(){
     });
   }
   refreshTransferFocusOverlay(table);
+  requestSceneRender({overlays:true});
 }
 function transferTipHtml(info,{forceCommunication=false}={}){
   const m=info.metric, rows=transferMetricRows(m);
@@ -10004,15 +10957,26 @@ function syncCssDeckLayerKindBands(root,svg,g,height){
 function syncCssDeckMhcStateBundle(root,svg,layerRect,g){
   const group=svg?.querySelector('[data-mhc-state-bundle]');
   if(!group)return;
-  const residualVisible=activeLens==='numerics'&&(numericsMode==='all'||numericsMode==='residual');
-  if(!(cssDeckMode&&cssDeckView==='right'&&residualVisible)){
+  // This is the model's persistent layer-boundary state lane, not a lens-only
+  // numeric overlay. Keep it visible in every right-side projection so changing
+  // Structure / Numerics / Communication / Execution cannot erase the topology.
+  const stateLaneVisible=cssDeckMode&&cssDeckView==='right';
+  if(!stateLaneVisible){
+    group.setAttribute('display','none');
     group.style.display='none';
     return;
   }
   const chartBottom=g.chartTop+g.totalLaneHeight;
+  const inputStateNode=cssDeckScene?.querySelector('.opv-cssdeck-static--input [data-node="embedding"]');
+  const inputStateRect=inputStateNode?.getBoundingClientRect();
+  const inputOutputY=inputStateRect?inputStateRect.bottom-layerRect.top:NaN;
   const gap=Math.max(20,g.modelTop-chartBottom);
-  const preferredY=chartBottom+Math.min(25,Math.max(13,gap*0.5));
-  const y=clampValue(preferredY,chartBottom+10,Math.max(chartBottom+10,g.modelTop-9));
+  const fallbackY=chartBottom+Math.min(25,Math.max(13,gap*0.5));
+  const laneMinY=chartBottom+10;
+  const laneMaxY=Math.max(laneMinY,g.modelTop-9);
+  // X_0 is produced by Parallel Embedding. Align the persistent state lane to
+  // that real output port instead of letting the input connector climb upward.
+  const y=clampValue(Number.isFinite(inputOutputY)?inputOutputY:fallbackY,laneMinY,laneMaxY);
   const x0=g.xForBoundary(0);
   const x1=g.xForBoundary(LAST_MOE_LAYER+1);
   const lane=group.querySelector('[data-mhc-state-lane]');
@@ -10027,7 +10991,7 @@ function syncCssDeckMhcStateBundle(root,svg,layerRect,g){
     path?.setAttribute('d',`M ${x0.toFixed(2)} ${(y+offset).toFixed(2)} L ${x1.toFixed(2)} ${(y+offset).toFixed(2)}`);
   });
   const terminalSpecs=[
-    {role:'input',x:x0,node:cssDeckScene?.querySelector('.opv-cssdeck-static--input [data-node="embedding"]')},
+    {role:'input',x:x0,node:inputStateNode},
     {role:'output',x:x1,node:cssDeckScene?.querySelector('.opv-cssdeck-static--output [data-node="final_norm"]')}
   ];
   terminalSpecs.forEach(({role,x,node})=>{
@@ -10043,9 +11007,12 @@ function syncCssDeckMhcStateBundle(root,svg,layerRect,g){
     const top=rect.top-layerRect.top;
     const bottom=rect.bottom-layerRect.top;
     const anchorX=clampValue(x,left,right);
-    const anchorY=Math.abs(y-top)<=Math.abs(y-bottom)?top:bottom;
+    const anchorY=role==='input'?bottom:(Math.abs(y-top)<=Math.abs(y-bottom)?top:bottom);
+    const aligned=Math.abs(anchorY-y)<0.75;
     const bendY=y+(anchorY-y)*0.54;
-    link.setAttribute('d',`M ${x.toFixed(2)} ${y.toFixed(2)} C ${x.toFixed(2)} ${bendY.toFixed(2)}, ${anchorX.toFixed(2)} ${bendY.toFixed(2)}, ${anchorX.toFixed(2)} ${anchorY.toFixed(2)}`);
+    link.setAttribute('d',aligned
+      ?`M ${anchorX.toFixed(2)} ${y.toFixed(2)} L ${x.toFixed(2)} ${y.toFixed(2)}`
+      :`M ${x.toFixed(2)} ${y.toFixed(2)} C ${x.toFixed(2)} ${bendY.toFixed(2)}, ${anchorX.toFixed(2)} ${bendY.toFixed(2)}, ${anchorX.toFixed(2)} ${anchorY.toFixed(2)}`);
     link.removeAttribute('display');
   });
   const hit=group.querySelector('[data-mhc-state-hit]');
@@ -10086,6 +11053,7 @@ function syncCssDeckMhcStateBundle(root,svg,layerRect,g){
     laneLabel.setAttribute('text-anchor','end');
   }
   group.dataset.anchorY=String(y);
+  group.removeAttribute('display');
   group.style.display='block';
   syncCssDeckMhcBundleSelection(root);
 }
@@ -10660,7 +11628,8 @@ function bindLayerTransferTable(table){
   table.dataset.bound='true';
   const transferTarget=event=>event.target.closest('.opv-transfer-hit[data-transfer-key], .opv-transfer-point[data-transfer-key], .opv-pp-comm-bridge[data-transfer-key], .opv-pp-comm-bridge__hit[data-transfer-key]');
   table.addEventListener('pointerdown',event=>{
-    if(!(event.metaKey||event.ctrlKey))return;
+    const directPan=cssDeckMode&&cssDeckUsesDirectPan();
+    if(!directPan&&!(event.metaKey||event.ctrlKey))return;
     event.preventDefault();
     event.stopPropagation();
     if(cssDeckMode&&typeof cssDeckBeginPan==='function'){
@@ -10695,7 +11664,7 @@ function bindLayerTransferTable(table){
     if(!selectedTransferKey)tip.style.display='none';
   });
   table.addEventListener('click',event=>{
-    if(moved||event.metaKey||event.ctrlKey)return;
+    if(moved||cssDeckPanClickSuppressed()||event.metaKey||event.ctrlKey)return;
     const target=transferTarget(event);
     if(!target||!table.contains(target))return;
     const isBridge=!!target.closest('.opv-pp-comm-bridge[data-transfer-key], .opv-pp-comm-bridge__hit[data-transfer-key]');
@@ -11094,6 +12063,10 @@ function setInspectorTab(id){
     btn.classList.toggle('is-active',btn.dataset.inspectorTab===activeInspectorTab);
   });
   if(activeInspectorTab==='object')renderSelectedDetailInspector();
+  if(activeInspectorTab==='focus')renderObjectFocusInspector();
+  const inspectorBody=inspectorTabs?.closest('.pto-ide-frame__pane-body');
+  if(inspectorBody)inspectorBody.scrollTop=0;
+  frameBootstrap?.scheduleLayout?.(`inspector-tab:${activeInspectorTab}`);
 }
 inspectorTabs?.addEventListener('click',event=>{
   const btn=event.target.closest('[data-inspector-tab]');
@@ -11273,25 +12246,35 @@ function activateFindingLink(finding,{preview=false}={}){
   }
   if(link.view&&activeView!==link.view)setLinkedCameraView(link.view);
   if(link.objectFocus&&objectFocus!==link.objectFocus){
-    setObjectFocus(link.objectFocus);
+    setObjectFocus(link.objectFocus,{source:preview?'inspector-preview':'inspector'});
     needsRedraw=false;
   }else if(needsRedraw){
     redraw();
   }
   const hit=hitBoxForFindingLink(link);
-  if(hit)setHoverStaticObject(hit);
-  else if(link.stage!=null&&link.stage!==hoverStage){
-    hoverStage=link.stage;
-    redraw();
+  if(hit){
+    setHoverStaticObject(hit);
+    if(!preview)setSelectedStaticObject(hit);
+  }else{
+    if(!preview)setSelectedStaticObject(null);
+    if(link.stage!=null&&link.stage!==hoverStage){
+      hoverStage=link.stage;
+      redraw();
+    }
   }
   if(typeof syncEpOverlayPositions==='function')requestAnimationFrame(syncEpOverlayPositions);
   if(statusRight&&link.status)statusRight.textContent=link.status;
   return true;
 }
-let diagPreviewState=null, diagPreviewBtn=null;
+let diagPreviewState=null, diagPreviewBtn=null, diagPreviewToken=null;
 function beginInspectorFindingPreview(finding,btn){
   if(!finding?.link)return;
-  if(!diagPreviewState)diagPreviewState={objectFocus,view:cameraViewSnapshot(),focusNode,status:statusRight?.textContent||''};
+  if(!diagPreviewState){
+    diagPreviewState={objectFocus,view:cameraViewSnapshot(),focusNode,status:statusRight?.textContent||''};
+    diagPreviewToken=interactionStore.beginPreview({type:'finding',id:finding.id,finding},{source:'inspector-preview'});
+  }else{
+    interactionStore.setHoverPreview({type:'finding',id:finding.id,finding},{source:'inspector-preview'});
+  }
   diagPreviewBtn?.classList.remove('is-previewing');
   diagPreviewBtn=btn||null;
   diagPreviewBtn?.classList.add('is-previewing');
@@ -11304,6 +12287,10 @@ function endInspectorFindingPreview({restore=true}={}){
   diagPreviewBtn=null;
   const prev=diagPreviewState;
   diagPreviewState=null;
+  if(diagPreviewToken){
+    interactionStore.endPreview(diagPreviewToken,{restore,source:restore?'inspector-preview-restore':'inspector-preview-commit'});
+    diagPreviewToken=null;
+  }else interactionStore.clearPreview({source:'inspector-preview'});
   anomalyPreviewId=null;
   refreshAnomalySelection();
   setHoverStaticObject(null);
@@ -11377,6 +12364,7 @@ function hideDiagnosis(){if(diagCard)diagCard.hidden=true;}
 function selectInspectorFinding(finding){
   anomalyPreviewId=null;
   selectedFindingId=finding.id;
+  interactionStore.setSelection({type:'finding',id:finding.id,finding},{source:'inspector'});
   if(finding.sourceAnomalyId){
     const anomaly=ALL_ANOMALIES.find(a=>a.id===finding.sourceAnomalyId);
     if(anomaly)selectAnomaly(anomaly);
@@ -11397,6 +12385,7 @@ function selectAnomaly(a){
     clearSwimHighlight();
   }
   selectedAnomalyId=a.id;
+  interactionStore.setSelection({type:'anomaly',id:a.id,anomaly:a},{source:'anomaly'});
   dispatch({...a.focus});
   if(a.anchor.kind==='card'){
     const idx=NODE_DEFS.findIndex(n=>n.id===a.anchor.nodeId);
@@ -11411,7 +12400,13 @@ function selectAnomaly(a){
   renderInspectorDiagnostics();
 }
 function selectAnomalyById(id){const a=ALL_ANOMALIES.find(x=>x.id===id);if(a)selectAnomaly(a);}
-function clearAnomalySelection(){selectedAnomalyId=null;anomalyPreviewId=null;hideDiagnosis();refreshAnomalySelection();selectedFindingId=null;renderInspectorDiagnostics();}
+function clearAnomalySelection(){
+  selectedAnomalyId=null;anomalyPreviewId=null;hideDiagnosis();refreshAnomalySelection();selectedFindingId=null;
+  setSelectedStaticObject(null);
+  const selectionType=interactionStore.getState().selection?.type;
+  if(selectionType==='anomaly'||selectionType==='finding')interactionStore.clearSelection({source:'diagnostics'});
+  renderInspectorDiagnostics();
+}
 function buildAnomalyBadges(){
   ALL_ANOMALIES=computeAnomalies();
   anomalyLayer.innerHTML=''; anomalyEls.clear();
@@ -11427,6 +12422,7 @@ function buildAnomalyBadges(){
     anomalyEls.set(a.id,{el,anomaly:a});
   });
   refreshAnomalySelection(); syncAnomalyPositions(); renderInspectorDiagnostics();
+  invalidateSceneProjection({axis:false});
 }
 /* ===== 异常区立体虚线盒（框住坍缩的 MoE 层带；线宽1/虚线.04/无填充/四角包角） ===== */
 const ANOM_BOX_COLOR=0xef4444;
@@ -11505,6 +12501,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape'){clearAnomalySelection();clea
 /* ===== 循环 ===== */
 let ambientTickAt=0;
 function loop(now){
+  sceneFrameId=0;
   const pulse=0.6+Math.sin(now*0.004)*0.28;
   boardMeshes.forEach(b=>{if(b.userData.focus)b.material.emissiveIntensity=pulse;});
   // hover 架构层 → 点亮负责它的 PP stage 的 16 张卡（pulse + 抬高）；移开后 setHoverArch 里 redraw 复位
@@ -11515,18 +12512,25 @@ function loop(now){
   applyMoeStep();
   if(innerPlaying&&now-ambientTickAt>INNER_PLAY_INTERVAL){ambientTickAt=now;advanceInnerTick(1);}
   if(!cssDeckMode){
-    syncAnomalyPositions();
-    syncTransferGapCells();
-    syncEpOverlayPositions();
-    syncTrainingObjectOverlayPositions();
+    if(sceneOverlayProjectionDirty){
+      syncAnomalyPositions();
+      syncTransferGapCells();
+      syncEpOverlayPositions();
+      syncTrainingObjectOverlayPositions();
+      sceneOverlayProjectionDirty=false;
+    }
     animateAnomalyBox(now);
     renderer.render(scene,camera);
-    syncAxisCamera();
-    axisRenderer.render(axisScene,axisCamera);
+    if(axisProjectionDirty){
+      syncAxisCamera();
+      axisRenderer.render(axisScene,axisCamera);
+      axisProjectionDirty=false;
+    }
   }
-  requestAnimationFrame(loop);
+  const needsContinuousFrame=innerPlaying||anomalyBox.visible||(RANK_RENDER_VISIBLE&&hoverStage!=null);
+  if(needsContinuousFrame)requestSceneRender();
 }
-addEventListener('resize',()=>{
+if(!frameBootstrap)addEventListener('resize',()=>{
   sizeRenderer();
   resizeAxisRenderer();
   analysisDockController?.resize?.();
@@ -11538,7 +12542,10 @@ setPlay(false);
 buildAnomalyBadges();
 initLensUi();
 setCssGraphView('iso');
-redraw(); requestAnimationFrame(loop);
+redraw();
+sceneLoopReady=true;
+requestSceneRender({overlays:true,axis:true});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)requestSceneRender({overlays:true,axis:true});});
 </script>
 </body>
 </html>

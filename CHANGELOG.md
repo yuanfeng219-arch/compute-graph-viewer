@@ -5,6 +5,12 @@
 
 ---
 
+## 2026-07-16 — openPangu Swimlane 事件详情信息收口
+- **按事件类型呈现悬浮详情**(`pangu-moe-trainviz/op-rank-time-openpangu-flash-events.html`):计算区间只显示层范围、时间与对应 activation/gradient 摘要；通信事件只显示 Tensor、通信算子和 Active/Wait/Exposed；Activation 保留区间只显示保留时长与显存，不再把无关指标堆进同一张悬浮卡。
+- **Profiling 下钻产品化**:展开区改为“模型算子 / 设备 Kernel / 集合通信”三层，头部只保留 MB、PP、阶段、事件计数与局部时间；Inspector 和 hover 统一使用所属阶段、阶段内时间、模型路径、关联 ID 等用户语义。可见界面不再暴露 `mock profile JSON`、fidelity 枚举、测试目的或点击操作说明，仅以“内置示例 Trace · 局部事件覆盖”标明数据属性。
+- **浅色悬浮面板背景**:页面已跟踪的 Swimlane tooltip pattern 增加背景变量，本页浅色主题设为 `#F8F8F8`，深色与 glass 主题保持原 surface。
+- **空白点击取消选择**:Swimlane 空白区域现在统一清除 profiling span、通信事件、关联模型节点、Inspector 详情与联动去色；时间游标仍移动到点击位置，已展开的 task 明细保持展开，用户可继续选择同一 task 内的其他子事件。
+
 ## 2026-07-15 — openPangu PP 边界增加双向通信桥
 - **侧视 PP Send/Recv 语义**(`pangu-moe-trainviz/op-rank-time-openpangu-flash-events.html`):三个 PP stage 分割点常驻紧凑黄色 `===` 桥，并稳定排在 PP 标签下方；hover、键盘聚焦或选中后展开为 `F ACT ===▶` 与 `◀=== dH B`，明确区分前向 activation handoff 和反向 dHidden return。通信桥复用原 Layer-gap 数据键、Tooltip、去色聚焦与 Swimlane 下钻，PP 竖线仍只表示模型切分位置；侧视投影使用独立的 80% 默认 Fit 比例，不再继承正视/轴测的 50%。
 - **补充通信数值与命中优先级**:桥默认直接显示最大 `Exposed µs`，展开后分别显示 Forward activation / Backward dHidden 的 Payload 与 Exposed，Tooltip 展示两相独立的 Active、Wait、Exposed，并注明 Send/Recv 两端观测不可相加；删除侧视旧 EP token-flow 紫线及 hitbox，桥 hover 会优先截断底层 3D raycast，避免不可见 EP 对象覆盖 PP Tooltip。
