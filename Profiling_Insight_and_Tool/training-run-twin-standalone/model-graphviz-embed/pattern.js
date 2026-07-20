@@ -1395,7 +1395,9 @@
       const readableFloor = Number.isFinite(Number(opts.minReadableZoom)) ? Number(opts.minReadableZoom) : 0.62;
       const fitZoom = opts.fitMode === 'full'
         ? Math.min(1.08, Math.max(MIN_ZOOM, Math.min(widthFit, heightFit)))
-        : Math.min(1.08, Math.max(MIN_ZOOM, Math.min(widthFit, Math.max(heightFit, readableFloor))));
+        : opts.fitMode === 'height'
+          ? Math.min(1.08, Math.max(0.02, heightFit))
+          : Math.min(1.08, Math.max(MIN_ZOOM, Math.min(widthFit, Math.max(heightFit, readableFloor))));
       transform.zoom = fitZoom;
       transform.tx = Math.max(pad / 2, (rect.width - width * fitZoom) / 2);
       transform.ty = height * fitZoom > rect.height

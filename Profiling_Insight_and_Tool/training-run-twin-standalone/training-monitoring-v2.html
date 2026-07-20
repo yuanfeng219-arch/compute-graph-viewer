@@ -1,0 +1,2749 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Training Run Explainable Twin</title>
+  <script>
+    (() => {
+      const params = new URLSearchParams(window.location.search);
+      const theme = params.get("theme");
+      if (theme === "dark" || theme === "light") {
+        document.documentElement.dataset.theme = theme;
+      }
+      // 内嵌模式(?embed=hardware):外部页面只取「算力占用 · 基础设施层」卡片,见 training-run-twin.css 对应规则
+      if (params.get("embed") === "hardware") {
+        document.documentElement.dataset.embed = "hardware";
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="./css/foundation.css">
+  <link rel="stylesheet" href="./css/semantic.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/style.css">
+  <!-- IDE frame shell (patterns/ide-frame + patterns/workbench-shell, vendored locally per repo convention so this folder can move on its own) -->
+  <link rel="stylesheet" href="./css/workbench-shell-pattern.css">
+  <link rel="stylesheet" href="./css/ide-frame-pattern.css">
+  <link rel="stylesheet" href="./css/model-graphviz-pattern.css">
+  <link rel="stylesheet" href="./css/model-training-graphviz-pattern.css">
+  <link rel="stylesheet" href="./css/training-run-twin.css">
+  <link rel="stylesheet" href="./css/timeline-swimlane.css">
+  <!-- 整网图组件(openPangu-2.0-Flash model-graphviz)：新版渲染引擎样式 + 组件样式,置于旧 pattern css 之后以覆盖 -->
+  <link rel="stylesheet" href="./model-graphviz-embed/pattern.css">
+  <link rel="stylesheet" href="./css/opv-modelviz.css">
+  <style>
+    /* 「问题诊断」卡片复用 .twin-option 的选中/悬停视觉,点击后联动左侧架构图节点高亮 */
+    .diagnosis-card {
+      align-items: flex-start;
+      min-height: auto;
+      gap: 6px;
+    }
+    .diagnosis-card-head {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+    .diagnosis-card strong {
+      font-weight: var(--font-weight-semibold);
+      color: var(--foreground);
+    }
+    /* PTO 规范：问题序号和问题名用 body-sm(12px)，压过 .twin-option span/small 的 14px */
+    .diagnosis-card span {
+      font-size: 12px;
+    }
+    .diagnosis-card small {
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    /* 加 .diagnosis-card 前缀提高 specificity(0,2,0),压过 .twin-option small 的 (0,1,1),
+       否则会被后者的 font-size:14px 覆盖,导致描述文字和标题一样大 */
+    .diagnosis-card .diagnosis-desc {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--foreground-secondary);
+      position: relative;
+      cursor: default;
+    }
+    /* 悬浮气泡 — 由 JS 驱动挂到 body,避免被 overflow 祖先截断 */
+    .diagnosis-bubble {
+      position: fixed;
+      max-width: 260px;
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      background: var(--foreground);
+      color: var(--surface-1);
+      font-size: 11px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: 0 4px 16px rgba(0,0,0,.28);
+      z-index: 1000;
+      pointer-events: none;
+    }
+    .diagnosis-bubble[hidden] {
+      display: none;
+    }
+    /* 设计系统尚未收录 .badge,此处按 quick-reference.md 的 retrofit 约定使用 token 内联实现;
+       加 .diagnosis-card 前缀提高 specificity(0,2,0),压过 .twin-option span 的 (0,1,1) */
+    .diagnosis-card .diagnosis-severity {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 8px;
+      border-radius: var(--radius-pill);
+      color: var(--surface-1);
+      font-size: 11px;
+      font-weight: var(--font-weight-semibold);
+      line-height: 1.6;
+      letter-spacing: 0.02em;
+    }
+    .diagnosis-severity.is-p0 { background: #dc2626; }
+    .diagnosis-severity.is-p1 { background: #ea580c; }
+    .diagnosis-severity.is-p2 { background: #ca8a04; }
+    .diagnosis-card .diagnosis-category {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: color-mix(in srgb, var(--foreground-secondary) 18%, transparent);
+      color: var(--foreground-secondary);
+      font-size: 11px;
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+      letter-spacing: 0.04em;
+    }
+    /* 点击右侧诊断卡片后,在架构图上方提示概念对应的层/分支;图为通用层模板,不代表真实的第 N 层实例 */
+    .twin-diagnosis-locator {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2);
+      margin-bottom: var(--space-2);
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border-subtle));
+      background: color-mix(in srgb, var(--danger) 10%, transparent);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .twin-diagnosis-locator[hidden] {
+      display: none;
+    }
+    .twin-diagnosis-locator strong {
+      flex: none;
+      color: var(--danger);
+      font-weight: var(--font-weight-semibold);
+    }
+    .twin-diagnosis-locator span {
+      color: var(--foreground-secondary);
+    }
+    /* 进度条问题点标注(带白边纵向线)+ 顶栏进度条默认极简/悬浮撑大样式,统一在
+       css/training-run-twin.css 的 .twin-progress-status 一节维护 */
+
+    /* 诊断案例命中的节点/连线默认(无需点击)就用 danger 描边标出,和训练阶段联动的默认蓝色高亮区分开 */
+    .pto-model-graphviz-node.pto-diagnosis-active rect:not(.pto-diagnosis-pulse-ring) {
+      stroke: var(--danger);
+      stroke-width: 3px;
+    }
+    .pto-model-graphviz-edge.pto-diagnosis-active {
+      stroke: var(--danger);
+      stroke-width: 3px;
+    }
+    /* Cluster（分组）诊断命中：红色描边 */
+    .pto-model-graphviz-cluster.pto-diagnosis-active > rect:first-child {
+      stroke: var(--danger);
+      stroke-width: 2.5px;
+    }
+    /* 聚焦模式：非当前问题徽标淡出 */
+    .pto-problem-badge.is-dimmed { opacity: 0.18; }
+    .pto-problem-badge.is-active { opacity: 1; }
+    /* 命中节点的红色呼吸涟漪已按需求移除(不再克隆脉冲环,markNodeActive 不再生成) */
+    /* 点击诊断卡片→聚焦：命中保持不透明，其余淡出到 30% */
+    .pto-model-graphviz-node,
+    .pto-model-graphviz-edge,
+    .pto-model-graphviz-cluster {
+      transition: opacity 160ms ease;
+    }
+    #graphStage.is-diagnosis-focus .pto-model-graphviz-node:not(.pto-diagnosis-focus-active),
+    #graphStage.is-diagnosis-focus .pto-model-graphviz-edge:not(.pto-diagnosis-focus-active),
+    #graphStage.is-diagnosis-focus .pto-model-graphviz-cluster:not(.pto-diagnosis-focus-active) {
+      opacity: 0.3;
+    }
+
+    /* 点击「问题诊断」卡片后,Run Twin 面板切换为「定位链面板」:顶部定位链栏 sticky 吸顶,兼作锚点导航;
+
+    /* 监控区卡片去掉 padding */
+    .twin-monitor-scroll .twin-monitor-card,
+    .twin-monitor-scroll .twin-accuracy-card { padding: 0; }
+
+    /* 定位链返回按钮：默认显示 hover 态灰底；.btn-icon 的 width 取自 --button-height-md(36px),
+       与 .btn-sm 的 min-height(--button-height-sm, 30px) 不一致会拉成偏宽的圆角矩形,这里统一按 sm 高度收窄宽度做成正方形 */
+    #locateChainBack { background: var(--surface-2); width: var(--button-height-sm); min-width: var(--button-height-sm); }
+
+    /* 图表中 NaN / inf 红字 */
+    .pto-tmchart__val--danger { fill: var(--danger, #dc2626); font-weight: 700; }
+    .twin-accuracy-metric-card__val.is-danger { color: var(--danger, #dc2626); font-weight: 700; }
+
+    /* 点击「问题诊断」卡片后,Run Twin 面板切换为「定位链面板」:顶部定位链栏 sticky 吸顶,兼作锚点导航;
+       下方按层渲染内容区,滚动时通过 IntersectionObserver 联动定位链栏高亮当前所在层 */
+    .twin-locate-chain-view {
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .twin-locate-chain-view[hidden] {
+      display: none;
+    }
+    /* ══ 顶部定位链 · 速度刃进度轨（异形 / 速度感 / 力量感）══════════════════
+       每一层 = 一片前倾的「刀锋」分段（skewX 斜切 + 圆角），段间为斜向缝隙；
+       三态：已通过=定向渐变蓝刃 / 当前=最亮+外发光+略放大展开露出子标题 / 未到达=暗刃。 */
+    .twin-locate-chain {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      margin: 0;
+      padding: 11px var(--space-3) 12px;
+      border: 0;
+      border-bottom: 1px solid var(--border-subtle);
+      background:
+        linear-gradient(to bottom,
+          var(--surface-1),
+          color-mix(in srgb, var(--surface-2) 42%, var(--surface-1)));
+      box-shadow: 0 6px 16px -12px color-mix(in srgb, var(--foreground) 55%, transparent);
+    }
+    .twin-locate-track {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      height: 38px;
+      margin: 0 3px;
+      padding: 0;
+    }
+    /* 单片刀锋：前倾（skewX）+ 圆角，锋利但不割手 */
+    .twin-locate-seg {
+      --skew: -14deg;
+      position: relative;
+      z-index: 1;
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0 12px;
+      text-align: center;
+      cursor: pointer;
+      overflow: hidden;
+      border-radius: 7px;
+      transform: skewX(var(--skew));
+      color: var(--foreground-secondary);
+      background: color-mix(in srgb, var(--foreground) 7%, var(--surface-1));
+      transition: background 200ms ease, color 200ms ease,
+                  flex-grow 300ms cubic-bezier(.2,.7,.2,1);
+    }
+    /* 内容回正（抵消父级 skew），文字保持直立 */
+    .twin-locate-seg > * { transform: skewX(calc(-1 * var(--skew))); }
+
+    /* 已通过：点亮蓝刃 + 沿切削方向的定向渐变（后暗前亮 = 冲刺方向） */
+    .twin-locate-seg.is-done {
+      color: #fff;
+      background: linear-gradient(105deg,
+        color-mix(in srgb, var(--highlight-copy-blue-500, #3b6fe0) 62%, black 14%),
+        var(--highlight-copy-blue-500, #3b6fe0));
+    }
+    /* 当前：最亮 + 外发光 + 略微放大占位（展开露出子标题） */
+    .twin-locate-seg.is-active {
+      flex-grow: 1.5;
+      z-index: 3;
+      color: #fff;
+      overflow: visible;
+      flex-direction: column;
+      gap: 0;
+      background: linear-gradient(105deg,
+        var(--highlight-copy-blue-500, #3b6fe0),
+        color-mix(in srgb, var(--highlight-copy-blue-500, #3b6fe0) 55%, white));
+      filter: drop-shadow(0 0 7px color-mix(in srgb, var(--highlight-copy-blue-500, #3b6fe0) 32%, transparent));
+    }
+    /* 当前刀锋叠一层斜向速度条纹（motion streaks） */
+    .twin-locate-seg.is-active::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: repeating-linear-gradient(105deg,
+        transparent 0 7px,
+        rgba(255, 255, 255, 0.10) 7px 9px);
+      pointer-events: none;
+    }
+    .twin-locate-seg:not(.is-done):not(.is-active):hover {
+      background: color-mix(in srgb, var(--highlight-copy-blue-500, #3b6fe0) 16%, var(--surface-1));
+      color: var(--foreground);
+    }
+
+    /* 层号已去除；当前刀锋内「层名 + 子标题」同行展开 */
+    .twin-locate-seg-label {
+      position: relative;
+      z-index: 1;
+      max-width: 100%;
+      font: var(--font-weight-bold, 700) 11px/1.1 var(--font-sans);
+      letter-spacing: 0.01em;
+      color: inherit;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .twin-locate-seg:not(.is-done):not(.is-active) .twin-locate-seg-label {
+      font-weight: var(--font-weight-semibold, 600);
+      color: var(--foreground-secondary);
+    }
+    .twin-locate-seg-sub {
+      position: relative;
+      z-index: 1;
+      max-width: 100%;
+      font: 400 9.5px/1.1 var(--font-mono, ui-monospace, monospace);
+      letter-spacing: 0.03em;
+      opacity: 0.9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* 子标题只在当前刀锋展开显示（其余保持紧凑，只留层名） */
+    .twin-locate-seg:not(.is-active) .twin-locate-seg-sub { display: none; }
+    #locateChainContent {
+      padding: var(--space-2) var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .twin-locate-section {
+      scroll-margin-top: 70px;
+    }
+    .twin-locate-section-title {
+      margin: 0 0 8px;
+      font-size: 14px;
+      font-weight: var(--font-weight-semibold);
+      color: var(--foreground);
+      transition: color 120ms ease;
+    }
+    /* 迭代层等标题右侧需要挂 smoothing 滑条时,用行容器把标题挤到左侧 */
+    .twin-locate-section-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin: 0 0 8px;
+    }
+    .twin-locate-section-title-row .twin-locate-section-title {
+      margin: 0;
+    }
+    .twin-locate-section-content {
+      width: 100%;
+      color: var(--foreground-secondary);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .twin-locate-section.is-active .twin-locate-section-title {
+      color: var(--highlight-copy-blue-500, #3b6fe0);
+    }
+    /* 「迭代层」内容区复用「关键指标」的 loss / grad_norm 图表(同一份事故重演数据),
+       见 js/training-run-twin.js 的 mountLocateMetricCharts() */
+    .twin-locate-metric-block {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .twin-locate-metric-charts {
+      width: 100%;
+      display: flex;
+      gap: var(--space-3);
+    }
+    .twin-locate-metric-note {
+      margin: 0;
+      color: var(--foreground-secondary);
+    }
+    .twin-locate-metric-card {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: var(--space-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--foreground) 3%, transparent);
+    }
+    .twin-locate-metric-card__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+      font-size: 11px;
+      color: var(--foreground-muted);
+    }
+    /* 图表容器高度固定,不随内容自适应——engine 内置图例已关闭(见 renderMetricChart),
+       图例改用 buildAccLegend 挂在 head 里,避免"测量高度→追加图例→高度变大→再测量"的循环增长 */
+    .twin-locate-metric-card__chart {
+      height: 170px;
+      width: 100%;
+    }
+
+    /* ── 问题三 Canvas 图表卡片（复用定位链视觉体系）── */
+    .locate-canvas-card {
+      padding: var(--space-2);
+      margin: 8px 0;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--foreground) 3%, transparent);
+    }
+    .locate-canvas-card__head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px; font-size: 11px; color: var(--foreground-muted);
+    }
+    .locate-canvas-card__body { width: 100%; }
+    .locate-canvas-card__body canvas { width: 100%; display: block; border-radius: 4px; }
+
+    .locate-canvas-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .locate-canvas-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--foreground-secondary); }
+    .locate-canvas-swatch { width: 10px; height: 10px; border-radius: 2px; }
+
+    .locate-dist-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 8px 0; }
+    .locate-dist-cell { padding: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-2); }
+    .locate-dist-cell h4 { margin: 0 0 4px; font-size: 11px; font-weight: var(--font-weight-semibold); }
+    .locate-dist-cell canvas { width: 100%; height: 100px; margin: 4px 0; border-radius: 4px; display: block; }
+    .locate-dist-cell .note { font-size: 10px; line-height: 1.45; color: var(--foreground-secondary); }
+
+    .locate-code-block { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; margin: 6px 0; }
+    .locate-code-block__head { padding: 7px 12px; background: var(--surface-2); font-size: 11px; font-weight: var(--font-weight-semibold); }
+    .locate-code-block__body { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 10px; line-height: 1.7; padding: 7px 12px; background: var(--surface-1); overflow-x: auto; white-space: pre; }
+
+    .locate-causal { margin: 8px 0; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-2); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 10px; line-height: 1.55; white-space: pre; overflow-x: auto; color: var(--foreground-secondary); }
+
+    /* 「Pangu 2.0 flash 整网图」标题：font 简写自带的 line-height 偏小(~15px)导致文字被 overflow:hidden 截断，
+       放大 line-height 让字完整显示 */
+    #architectureTitle {
+      line-height: 1.5;
+    }
+
+    /* 整网图 iframe：完全铺满 .twin-architecture-stage，边框/圆角对齐原 graphviz 容器视觉 */
+    .twin-model-graphviz-embed {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: var(--background);
+    }
+
+    /* 页面级渐变背景/pane 半透明模糊改由 patterns/ide-frame 统一提供(见 css/ide-frame-pattern.css 的
+       --ide-gradient-bg / --ide-frame-pane-fill),这里不再本地复刻,避免和共享 IDE skin 打架 */
+    html, body {
+      height: 100%;
+      background: var(--ide-frame-page-bg);
+    }
+    .pto-ide-frame {
+      width: 100vw;
+      height: 100vh;
+      aspect-ratio: auto;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    /* ── 问题七 · HiF8 精度诊断工作台（定位链嵌入，统一到设计系统 token，浅/深色主题自适应） ──
+       复用问题二/case6 的视觉语言：卡片=foreground 3% 微底+border-subtle，插槽=surface-2，
+       语义色用 danger/警示橙/成功绿，图表主色用 --twin-chart-* 蓝/紫。--h8-* 变量保留但重映射到 token。 */
+    .hif8c7 {
+      --h8-panel: color-mix(in srgb, var(--foreground) 3%, transparent);
+      --h8-elev: color-mix(in srgb, var(--foreground) 6%, transparent);
+      --h8-inset: var(--surface-2);
+      --h8-stroke: var(--border-subtle);
+      --h8-stroke-soft: var(--border-subtle);
+      --h8-ink: var(--foreground);
+      --h8-mute: var(--foreground-secondary);
+      --h8-dim: var(--foreground-muted);
+      --h8-signal: var(--twin-chart-mfu, #0ea5e9);   /* reference / BF16 clean */
+      --h8-signal2: var(--twin-chart-loss, #3b6fe0); /* candidate / HiF8 quantized */
+      --h8-grad: #8b5cf6;                            /* backward pass */
+      --h8-ok: #16a34a; --h8-warn: #ea580c; --h8-crit: var(--danger, #dc2626);
+      --h8-sel: var(--highlight-copy-blue-100, #dde8fd);
+      --h8-mono: ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+      color: var(--foreground); font-size: 13px; margin: 2px 0 4px;
+    }
+    .hif8c7 .mono { font-family:var(--h8-mono); }
+    .hif8c7 canvas { display:block; width:100%; }
+    /* 训练步回放 scrubber（概览节顶部，token 化后与页面同风） */
+    .hif8c7 .h8-scrub { display:flex; align-items:center; gap:14px; padding:10px 12px; margin-bottom:14px;
+      border:1px solid var(--h8-stroke); border-radius:var(--radius-md,10px); background:var(--h8-inset); }
+    .hif8c7 .h8-play { width:32px; height:32px; flex:0 0 32px; border-radius:8px; background:var(--surface-1);
+      border:1px solid var(--h8-stroke); display:grid; place-items:center; color:var(--h8-signal2); cursor:pointer; }
+    .hif8c7 .h8-play:hover { border-color:var(--h8-signal2); }
+    .hif8c7 .h8-scrub-wrap { flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+    .hif8c7 .h8-scrub-top { display:flex; justify-content:space-between; gap:12px; font-family:var(--h8-mono); font-size:11px; color:var(--h8-dim); }
+    .hif8c7 .h8-scrub-top b { color:var(--h8-signal2); font-weight:500; }
+    .hif8c7 .h8-track { position:relative; height:16px; display:flex; align-items:center; }
+    .hif8c7 .h8-track input[type=range] { width:100%; -webkit-appearance:none; appearance:none; background:transparent; position:relative; z-index:3; margin:0; }
+    .hif8c7 .h8-track input[type=range]::-webkit-slider-runnable-track { height:4px; background:transparent; border-radius:3px; }
+    .hif8c7 .h8-track input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:14px; height:14px; border-radius:50%;
+      background:var(--h8-signal2); margin-top:-5px; cursor:pointer; box-shadow:0 0 0 3px color-mix(in srgb, var(--h8-signal2) 25%, transparent); }
+    .hif8c7 .h8-track input[type=range]::-moz-range-thumb { width:14px; height:14px; border:none; border-radius:50%; background:var(--h8-signal2); cursor:pointer; }
+    .hif8c7 .h8-track-bg { position:absolute; left:0; right:0; top:6px; height:4px; background:var(--surface-2); border-radius:3px; z-index:1; overflow:hidden; }
+    .hif8c7 .h8-track-fill { position:absolute; left:0; top:0; bottom:0; background:var(--h8-signal2); z-index:2; }
+    .hif8c7 .h8-track-marker { position:absolute; top:1px; width:2px; height:14px; background:var(--h8-crit); z-index:2; }
+    .hif8c7 .h8-scrub-read { display:flex; gap:18px; font-family:var(--h8-mono); font-size:11px; text-align:right; }
+    .hif8c7 .h8-scrub-read div span { display:block; color:var(--h8-dim); font-size:9.5px; letter-spacing:.4px; }
+    .hif8c7 .h8-scrub-read div b { font-weight:500; font-size:13px; color:var(--h8-ink); }
+    /* 表格滚动容器：默认只横向滚；搬到左列后由 flex 约束高度，纵向也可滚 */
+    .hif8c7 .h8-table-scroll { overflow-x:auto; }
+    /* 问题二(HiF8)专属：把 scrubber + 「整网图 | 表格」切换栏 + 量化误差表搬到整网图位置（右列）。
+       整网图本体(.twin-graph-card)被搬进侧栏的整网图槽复用，故只隐藏仍留在网格里的原位整网图卡。 */
+    .twin-center-pane.is-hif8-side-table .twin-center-scroll > .twin-graph-card { display:none; }
+    .twin-hif8-side-stage { min-height:0; overflow:hidden; display:flex; flex-direction:column;
+      padding:0 var(--space-4) var(--space-4); }
+    .twin-hif8-side-stage[hidden] { display:none; }
+    .twin-hif8-side-stage > .hif8c7 { flex:1; min-height:0; display:flex; flex-direction:column; margin:0; gap:12px; }
+    .twin-hif8-side-stage .h8-scrub { flex:0 0 auto; margin:var(--space-4) 0 0; }
+    .twin-hif8-side-stage .h8-card { flex:1; min-height:0; display:flex; flex-direction:column; }
+    .twin-hif8-side-stage .h8-card > h3 { flex:0 0 auto; }
+    .twin-hif8-side-stage .h8-table-scroll { flex:1; min-height:0; overflow:auto; }
+    /* 纵向滚动时表头吸顶，不随行滚走 */
+    .twin-hif8-side-stage .h8-etable thead th { position:sticky; top:0; z-index:1; background:var(--surface-1); }
+    .hif8c7 .h8-grid { display:grid; gap:14px; }
+    /* ── 问题二 定位链嵌入专属：hif8c7 工作台原为整宽双列布局，嵌进 ~450px 的定位链中栏后，
+       内联的 grid-template-columns:1.55fr/1.6fr 1fr 会挤爆并溢出容器（图表互相压叠、文字截断）。
+       这里把所有图表 grid 换行成单列（每张图铺满整栏宽度、数据清晰不截断），
+       KPI 行也从固定 5 列改为按宽度自适应换行。仅作用于本页嵌入态，
+       不影响独立整宽工作台 hif8-precision-workbench-V3.html。── */
+    #locateChainContent .hif8c7 .h8-grid { grid-template-columns: 1fr !important; }
+    #locateChainContent .hif8c7 .h8-kpis { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important; }
+    .hif8c7 .h8-card { background:var(--h8-panel); border:1px solid var(--h8-stroke); border-radius:var(--radius-md,10px); padding:14px; }
+    .hif8c7 .h8-card h3 { font-size:11px; letter-spacing:.4px; text-transform:uppercase; color:var(--h8-dim);
+      font-weight:var(--font-weight-semibold,600); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+    .hif8c7 .h8-card h3 .hint { margin-left:auto; font-size:10.5px; color:var(--h8-dim); text-transform:none; letter-spacing:0; font-family:var(--h8-mono); }
+    .h8-help {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:18px; height:18px; border-radius:50%;
+      background:var(--surface-2); color:var(--foreground-muted);
+      font-size:11px; font-weight:700; font-family:var(--font-sans);
+      cursor:help; flex-shrink:0; user-select:none;
+      border:1px solid var(--border-subtle);
+    }
+    .h8-help:hover { background:var(--h8-signal2); color:#fff; border-color:var(--h8-signal2); }
+    .hif8c7 .h8-kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+    .hif8c7 .h8-kpi { background:var(--h8-panel); border:1px solid var(--h8-stroke); border-radius:var(--radius-md,10px); padding:13px 14px; position:relative; overflow:hidden; }
+    .hif8c7 .h8-kpi .h8-lab { font-size:11px; color:var(--h8-mute); letter-spacing:.3px; }
+    .hif8c7 .h8-kpi .h8-val { font-family:var(--h8-mono); font-size:24px; font-weight:500; margin-top:6px; line-height:1; color:var(--h8-ink); }
+    .hif8c7 .h8-kpi .h8-val small { font-size:12px; color:var(--h8-dim); font-weight:400; }
+    .hif8c7 .h8-kpi .h8-delta { font-family:var(--h8-mono); font-size:11px; margin-top:6px; }
+    .hif8c7 .h8-kpi::after { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; }
+    .hif8c7 .h8-kpi.h8-k-ok::after { background:var(--h8-ok); }
+    .hif8c7 .h8-kpi.h8-k-warn::after { background:var(--h8-warn); }
+    .hif8c7 .h8-kpi.h8-k-crit::after { background:var(--h8-crit); }
+    .hif8c7 .h8-up { color:var(--h8-crit); } .hif8c7 .h8-down { color:var(--h8-ok); }
+    .hif8c7 .h8-readgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }
+    .hif8c7 .h8-read { background:var(--h8-inset); border:1px solid var(--h8-stroke-soft); border-radius:7px; padding:9px 11px; }
+    .hif8c7 .h8-read .l { font-size:10.5px; color:var(--h8-dim); letter-spacing:.3px; }
+    .hif8c7 .h8-read .v { font-family:var(--h8-mono); font-size:16px; margin-top:3px; color:var(--h8-ink); }
+    .hif8c7 .h8-seg { display:inline-flex; background:var(--h8-inset); border:1px solid var(--h8-stroke); border-radius:7px; overflow:hidden; }
+    .hif8c7 .h8-seg button { padding:5px 12px; font-size:11.5px; color:var(--h8-mute); font-family:var(--h8-mono); background:none; border:none; cursor:pointer; }
+    .hif8c7 .h8-seg button.on { background:var(--h8-sel); color:var(--h8-signal2); }
+    .hif8c7 .h8-legend { display:flex; gap:16px; font-size:11px; color:var(--h8-mute); flex-wrap:wrap; }
+    .hif8c7 .h8-legend i { display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+    .hif8c7 .h8-taper-key { display:flex; gap:0; margin-top:12px; border-radius:6px; overflow:hidden; border:1px solid var(--h8-stroke-soft); font-family:var(--h8-mono); font-size:10px; }
+    .hif8c7 .h8-taper-key div { flex:1; padding:6px 8px; text-align:center; color:#0f172a; font-weight:600; }
+    .hif8c7 .h8-etable { width:100%; border-collapse:collapse; font-family:var(--h8-mono); font-size:11.5px; }
+    .hif8c7 .h8-etable th { text-align:right; padding:7px 10px; color:var(--h8-dim); font-weight:500; font-size:10.5px;
+      letter-spacing:.4px; border-bottom:1px solid var(--h8-stroke); cursor:pointer; user-select:none; white-space:nowrap; }
+    .hif8c7 .h8-etable th:first-child { text-align:left; }
+    .hif8c7 .h8-etable th.sorted { color:var(--h8-signal2); }
+    .hif8c7 .h8-etable td { padding:6px 10px; text-align:right; border-bottom:1px solid var(--h8-stroke-soft); white-space:nowrap; color:var(--h8-mute); }
+    .hif8c7 .h8-etable td:first-child { text-align:left; color:var(--h8-ink); }
+    .hif8c7 .h8-etable tr:hover td { background:var(--h8-elev); }
+    .hif8c7 .h8-etable tr.sel td { background:var(--h8-sel); }
+    .hif8c7 .h8-cell { display:inline-block; padding:2px 7px; border-radius:5px; min-width:52px; text-align:center; }
+    .hif8c7 .h8-tag { font-size:9.5px; padding:1px 6px; border-radius:4px; margin-right:7px; font-family:var(--h8-mono); }
+    .hif8c7 .h8-tag.attn { background:color-mix(in srgb,#3b6fe0 16%,transparent); color:#3b6fe0; }
+    .hif8c7 .h8-tag.mlp  { background:color-mix(in srgb,#ea580c 16%,transparent); color:#ea580c; }
+    .hif8c7 .h8-tag.norm { background:color-mix(in srgb,#16a34a 16%,transparent); color:#16a34a; }
+    .hif8c7 .h8-tag.io   { background:color-mix(in srgb,#8b5cf6 16%,transparent); color:#8b5cf6; }
+    .hif8c7 .h8-prop-flow { display:flex; gap:6px; align-items:flex-end; height:150px; padding:8px 0; overflow-x:auto; }
+    .hif8c7 .h8-pcol { flex:1; min-width:52px; display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; }
+    .hif8c7 .h8-pcol .h8-bars { width:100%; height:110px; display:flex; flex-direction:column; justify-content:flex-end; gap:2px; }
+    .hif8c7 .h8-pcol .h8-b { border-radius:2px 2px 0 0; transition:height .25s; }
+    .hif8c7 .h8-pcol .h8-lbl { font-family:var(--h8-mono); font-size:9.5px; color:var(--h8-dim); }
+    .hif8c7 .h8-pcol:hover .h8-lbl { color:var(--h8-ink); }
+    /* 可疑算子清单：窄栏里原本 rank+信息+120px 进度条+nowrap 处置药丸 四段挤在一行,
+       信息被压到 ~90px、处置文字截断,非常粗糙。改为「rank 在左 + 主栏竖排」卡片:
+       算子名行(标签 + loss 贡献右对齐) → 满宽进度条 → 指标行 → 处置建议 chip(按内容宽、可换行)。 */
+    .hif8c7 .h8-suspect { display:flex; align-items:flex-start; gap:12px; padding:11px 13px; border:1px solid var(--h8-stroke);
+      border-radius:9px; background:var(--h8-inset); margin-bottom:9px; }
+    .hif8c7 .h8-suspect .rank { font-family:var(--h8-mono); font-size:16px; color:var(--h8-dim); flex:0 0 26px; text-align:center; line-height:1.4; }
+    .hif8c7 .h8-suspect .s-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
+    .hif8c7 .h8-suspect .s-name { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+      font-family:var(--h8-mono); font-size:13px; color:var(--h8-ink); }
+    .hif8c7 .h8-suspect .s-name .h8-tag { margin:0; }
+    .hif8c7 .h8-suspect .s-contrib { margin-left:auto; font-family:var(--h8-mono); font-size:11.5px; font-weight:600; color:var(--h8-crit); white-space:nowrap; }
+    .hif8c7 .h8-suspect .s-bar { height:6px; background:var(--surface-2); border:1px solid var(--h8-stroke); border-radius:4px; overflow:hidden; }
+    .hif8c7 .h8-suspect .s-bar i { display:block; height:100%; background:linear-gradient(90deg,var(--h8-warn),var(--h8-crit)); }
+    .hif8c7 .h8-suspect .s-meta { font-size:11px; color:var(--h8-mute); font-family:var(--h8-mono); }
+    .hif8c7 .h8-suspect .s-act { align-self:flex-start; font-size:11px; color:var(--h8-signal2); font-family:var(--h8-mono); line-height:1.5;
+      border:1px solid color-mix(in srgb,var(--h8-signal2) 40%,var(--border-subtle)); padding:5px 10px; border-radius:6px;
+      background:color-mix(in srgb,var(--h8-signal2) 8%,transparent); }
+
+    /* ── 问题二「整网图 | 表格」视图切换栏（白底、位于量化误差表/整网图容器上方） ── */
+    .hif8-view-bar {
+      flex: 0 0 auto;
+      display: flex; align-items: center; gap: 10px;
+      margin: var(--space-4) 0 0;
+      padding: 8px 0;
+    }
+    .hif8-view-bar .seg { margin: 0; }
+    /* 「溢出率」标题:仅问题二整网图工具栏(Fit/算子染色 那一行)左侧显示 */
+    .opv-topbar-title { display: none; }
+    .twin-hif8-side-stage .opv-topbar-title {
+      display: inline-flex; align-items: center;
+      margin-right: auto;
+      font: 600 12px/1 var(--font-sans);
+      color: var(--foreground);
+    }
+    /* 视图槽：整网图槽 / 表格槽，激活者撑满剩余高度 */
+    .twin-hif8-side-stage .hif8-slot { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .twin-hif8-side-stage .hif8-slot[hidden] { display: none; }
+    /* 整网图槽内搬进来的 .twin-graph-card 撑满 */
+    .twin-hif8-side-stage #hif8GraphSlot > .twin-graph-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+    /* ── 整网图节点右上角「溢出率」徽标（参考 precision-debugger 的 .prec-cosbadge：药丸底 + 等宽粗体着色数值） ──
+       红/绿 2 档：溢出率 >1% 红(截断风险) · ≤1% 绿。注入到 #graphStage 命中算子节点的 <g> 上。 */
+    .c7over-badge text {
+      font-family: var(--font-mono, ui-monospace, monospace);
+      font-size: 14px; font-weight: 700;
+    }
+    /* 徽标药丸底/描边:必须用 #graphStage + !important 压过 pattern.css 的
+       `:root[data-theme='light'] .pto-model-architecture-stage .pto-model-graphviz-node rect`(灰色软描边+阴影),
+       否则角标描边被引擎的灰色软线覆盖 */
+    #graphStage .c7over-badge > rect { fill: rgba(255,255,255,.94) !important; filter: none !important; }
+    :root[data-theme='dark'] #graphStage .c7over-badge > rect { fill: rgba(12,12,16,.82) !important; }
+    #graphStage .c7over-badge.c7over-crit > rect { stroke: #dc2626 !important; stroke-width: 1.6px !important; }
+    #graphStage .c7over-badge.c7over-ok > rect { stroke: #16a34a !important; stroke-width: 1.4px !important; }
+    :root[data-theme='dark'] #graphStage .c7over-badge.c7over-crit > rect { stroke: #ff4b7b !important; }
+    :root[data-theme='dark'] #graphStage .c7over-badge.c7over-ok > rect { stroke: #4ade80 !important; }
+    .c7over-crit text { fill: #dc2626; }
+    :root[data-theme='dark'] .c7over-crit text { fill: #ff85a6; }
+    .c7over-ok text { fill: #16a34a; }
+    :root[data-theme='dark'] .c7over-ok text { fill: #4ade80; }
+    /* 命中算子节点本体也加对应颜色描边(与右上角徽标同色),红档更醒目 */
+    #graphStage .c7over-node-crit > rect { stroke: #dc2626 !important; stroke-width: 2.4px !important; }
+    #graphStage .c7over-node-ok > rect { stroke: #16a34a !important; stroke-width: 1.8px !important; }
+    :root[data-theme='dark'] #graphStage .c7over-node-crit > rect { stroke: #ff4b7b !important; }
+    :root[data-theme='dark'] #graphStage .c7over-node-ok > rect { stroke: #4ade80 !important; }
+
+    /* ── 去掉整网图区所有灰色背景 ── */
+    .twin-center-scroll,
+    .twin-graph-card,
+    .twin-architecture-stage,
+    #opvHost.pto-model-graphviz-pattern-page,
+    #opvHost .opv-app,
+    #opvHost .opv-stage {
+      background: transparent !important;
+    }
+
+    /* 嵌入模式下仍显示 topbar（算子染色 + 层级选择需要可见） */
+    #opvHost[data-embed='1'] {
+      grid-template-rows: 48px minmax(0, 1fr);
+    }
+    #opvHost[data-embed='1'] .opv-topbar {
+      display: flex;
+    }
+
+    /* ══ 容器2 布局 · 三列(训练监控 | 时光机+整网图 | infra)，底部 Timeline 由外层竖直分栏提供 ══
+       twin-center-scroll = CSS grid；子项用 grid-column/grid-row 显式定位，与 DOM 顺序无关。 */
+    .twin-center-scroll {
+      display: grid;
+      grid-template-columns: minmax(280px, 27%) minmax(0, 1fr) minmax(280px, 27%);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: var(--space-3);
+      overflow: hidden;
+      padding: 0 8px 0 0;   /* 上0 右8 下0 左0 */
+    }
+    /* 顶栏左/右窗口按钮收起侧列：把对应轨道压到 0，中列整网图自动吃掉腾出的宽度 */
+    .twin-center-scroll.is-left-collapsed > .twin-monitor-sidebar,
+    .twin-center-scroll.is-right-collapsed > .wzh-col-infra {
+      display: none;
+    }
+    .twin-center-scroll.is-left-collapsed {
+      grid-template-columns: 0 minmax(0, 1fr) minmax(280px, 27%);
+      margin-left: calc(var(--space-3) * -1);   /* 抵消塌陷轨道残留的 column-gap */
+    }
+    .twin-center-scroll.is-right-collapsed {
+      grid-template-columns: minmax(280px, 27%) minmax(0, 1fr) 0;
+      margin-right: calc(var(--space-3) * -1);
+    }
+    .twin-center-scroll.is-left-collapsed.is-right-collapsed {
+      grid-template-columns: 0 minmax(0, 1fr) 0;
+    }
+    /* 左列：训练监控(跨两行) */
+    .twin-center-scroll > .twin-monitor-sidebar {
+      grid-column: 1;
+      grid-row: 1 / span 2;
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg, 12px);
+    }
+    /* 中列上：时光机(自动高) */
+    .twin-center-scroll > .wzh-timemachine-card {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    /* 中列下：整网图(填充剩余高度) */
+    .twin-center-scroll > .twin-graph-card {
+      grid-column: 2;
+      grid-row: 2;
+      min-width: 0;
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg, 12px);
+      overflow: hidden;
+      background: var(--surface-1) !important;   /* 压过上方「整网图区透明」规则，恢复卡片底 */
+    }
+    .twin-center-scroll > .twin-graph-card > .twin-architecture-stage {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    /* 右列：infra(跨两行) */
+    .twin-center-scroll > .wzh-col-infra {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+    }
+
+    /* twin-center-pane: 覆盖 .pto-ide-frame__pane 的 flex:0 0 auto，撑满父面板 */
+    .twin-center-pane {
+      flex: 1 1 0%;
+      min-height: 0;
+    }
+    /* 原整网图 pane-header(含返回/标题)在新布局隐藏，标题改由各卡内 .wzh-card-title 提供 */
+    .twin-pane-header { display: none; }
+
+    /* 上半区不要「背板」：main-row / main-content / twin-center-pane 这些 IDE pane 去掉
+       填充/描边/阴影/模糊，让 4 张子卡片直接浮在页面渐变背景上(容器2 外观)。
+       底部 Timeline(bottom-dock)仍保留其卡片外观。 */
+    [data-ide-pane="main-row"],
+    .wzh-main-row,
+    [data-ide-pane="main-content"],
+    .twin-center-pane {
+      background: transparent !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+
+    /* 训练监控列 / infra 列内的 .twin-monitor-card 去掉自身包边(边框/圆角/底色/内边距)，
+       避免「卡片套卡片」；分段间距由列的 flex gap 提供，列本身仍是唯一那层卡片。 */
+    .twin-monitor-sidebar .twin-monitor-card,
+    .twin-monitor-sidebar .twin-accuracy-card,
+    .wzh-col-infra .twin-monitor-card {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      padding: 0;
+    }
+
+    /* 精度卡恢复 training-monitoring.html 的默认 7 张(loss/acc/precision/recall/grad_norm/
+       weight_diff/corr)2×4 布局，故高度也恢复默认 640px，不再压缩到 384px。 */
+
+    /* infra 集群图：左侧 DP 标签(绝对定位在分组左外侧)在窄列里被容器裁掉，
+       给热力图留左内边距，让 DP0~DP3 标签落回可见区域。 */
+    .wzh-col-infra .twin-heat {
+      padding-left: 32px;
+    }
+
+    /* 整网图标题嵌入 Fit 工具栏同一行(容器2)：靠左，margin-right:auto 把 Fit/染色/层级 推到右侧 */
+    .wzh-graph-inline-title {
+      margin-right: auto;
+      display: inline-flex;
+      align-items: center;
+      font: var(--font-weight-semibold, 600) 13px/1.4 var(--font-sans);
+      color: var(--foreground);
+      white-space: nowrap;
+    }
+
+    /* infra：去掉「2048 × Ascend 910B…」硬件说明行(元素保留供 JS 写值，仅隐藏其文字) */
+    #hardwareSummary { display: none; }
+    /* infra 两图(MFU / 显存利用率)去掉 note 说明行 */
+    #infraCharts .twin-accuracy-metric-card__note { display: none; }
+    /* 精度 8 图去掉 note 说明行(如 precision 卡下的「预测正例中的准确率」)：
+       内容已被标题旁「?」气泡覆盖(且气泡里判断标准更完整)，卡面上再重复一遍是冗余，保留图例即可。 */
+    #accuracyCharts .twin-accuracy-metric-card__note { display: none; }
+
+    /* ── 标题旁「?」说明气泡：复用页面已有的 #diagnosisTooltip 浮层 + show/position/hide 绑定逻辑
+       （见文末 <script>），只是把绑定选择器从 .diagnosis-desc 扩展到 .wzh-help，避免依赖
+       .h8-help 在 .hif8c7 作用域外失效的 --h8-signal2 变量。 */
+    .wzh-card-title-row { display: flex; align-items: center; gap: 6px; }
+    .wzh-help {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 15px; height: 15px; border-radius: 50%;
+      background: var(--surface-2); color: var(--foreground-muted);
+      font-size: 10px; font-weight: 700; font-family: var(--font-sans);
+      cursor: help; flex-shrink: 0; user-select: none;
+      border: 1px solid var(--border-subtle);
+    }
+    .wzh-help:hover { background: var(--highlight-copy-blue-500, #3b6fe0); color: #fff; border-color: var(--highlight-copy-blue-500, #3b6fe0); }
+    /* 页签名后的「?」：嵌入 .segbtn 内，与文字留一点间距 */
+    .segbtn .wzh-help { margin-left: 6px; }
+
+    /* 精度/infra 图表卡标题旁补的「?」：标题+气泡打包进 .wzh-card-title-row 后，
+       .twin-accuracy-metric-card__head 仍只有两个直接子元素(title-row、数值)，
+       space-between 两端对齐不受影响；title-row 需 min-width:0 才能让内部标题继续省略号截断。 */
+    #accuracyCharts .wzh-card-title-row,
+    #infraCharts .wzh-card-title-row {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    #accuracyCharts .wzh-card-title-row .twin-accuracy-metric-card__name,
+    #infraCharts .wzh-card-title-row .twin-accuracy-metric-card__name {
+      min-width: 0;
+    }
+
+    /* ── W_gate (Router) · 专家负载分布卡（训练监控栏）：按 openPangu-2.0-Flash 真实 MoE 配置
+       （256 路由专家 + 1 共享，top-8，EP=64，无 TP，见 infra 栏标题旁「?」 与 定位链.md 案例一）构造 ——
+       对比健康基线（token 近似均匀分布，每专家 ≈1/256=0.39%）与本页「问题一」事故 step（layer 38
+       router 把 98% token 集中路由到 expert193，其余 255 个专家合计仅 2%）。sqrt 刻度分组柱状图，
+       让 98% 与 0.39%/0.0078% 同框可辨。 */
+    .wzh-router-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin-bottom: var(--space-2); }
+    .wzh-router-kpi { padding: 6px 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: color-mix(in srgb, var(--foreground) 3%, transparent); }
+    .wzh-router-kpi-lab { font-size: 11px; color: var(--foreground-muted); }
+    .wzh-router-kpi-val { margin-top: 2px; font-family: var(--font-mono); font-size: var(--font-size-body-md); color: var(--foreground); }
+    .wzh-router-kpi-val.is-bad { color: var(--danger); }
+    /* KPI 标题前的蓝紫图例点：区分「当前」bar(蓝) 与「基线」bar(紫) 两个颜色语义 */
+    .wzh-router-kpi-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .wzh-router-kpi-dot.current { background: var(--highlight-copy-blue-500, #3b6fe0); }
+    .wzh-router-kpi-dot.baseline { background: var(--highlight-l0a-violet-source); }
+    .wzh-router-bar-svg { width: 100%; height: auto; display: block; }
+    .wzh-router-bar-cat { font-family: var(--font-mono); font-size: 9px; fill: var(--foreground-secondary); }
+    .wzh-router-bar-val { font-family: var(--font-mono); font-size: 9px; font-weight: 700; }
+    .wzh-router-legend { margin-top: var(--space-2); }
+    .wzh-router-sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+    .wzh-router-sw.normal { background: var(--highlight-l0a-violet-source); }
+    .wzh-router-sw.hot { background: var(--danger); }
+    .wzh-router-sw.starved { background: var(--foreground-muted); opacity: 0.5; }
+    .wzh-router-caption { margin-top: var(--space-2); color: var(--foreground-muted); font-size: 12px; line-height: 1.45; }
+
+    /* ── 分布式通信 · EP All-to-All 卡（infra栏）：按 openPangu-2.0-Flash 真实并行策略
+       （DP4×PP8×EP64，无 TP/CP，见 infra 栏标题旁「?」）重构 —— 原型移植版画的是「TP mesh」，
+       与本模型「无 TP」矛盾，现改画 EP 域的 all-to-all 拓扑：64 个 EP rank 中取 32 个
+       （4 节点×8 GPU）代表性切片，对齐本页「问题一」定位链事故（layer 38 router 倾斜，
+       EP rank 23 = node2 GPU7 收发不对称 send=0MB/recv≈151MB，其余 31 rank send≈recv≈19MB）。 */
+    .wzh-mesh-legend { margin-top: 0; }
+    .wzh-mesh-sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+    .wzh-mesh-sw.normal { background: color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent); border: 1px solid var(--border-strong); }
+    .wzh-mesh-sw.hot { background: color-mix(in srgb, var(--danger) 26%, transparent); border: 1px solid var(--danger); }
+    .wzh-mesh-sw.flow { background: var(--highlight-copy-blue-source); border-radius: 2px; width: 12px; height: 3px; }
+    .wzh-mesh-stage { margin-top: var(--space-2); display: flex; align-items: center; justify-content: center; }
+    .wzh-mesh-svg { width: 100%; height: auto; display: block; }
+    .wzh-mesh-axis { font-family: var(--font-mono); font-size: 9px; fill: var(--foreground-secondary); }
+    .wzh-mesh-hot-label { font-family: var(--font-mono); font-size: 10px; font-weight: 700; fill: var(--danger); }
+    .wzh-mesh-caption { margin-top: var(--space-2); color: var(--foreground-muted); font-size: 12px; line-height: 1.45; }
+
+    /* ── #wzhRouterMeshCard：W_gate(Router)/EP All-to-All 并列页签(复用整网图工具栏的 .seg/.segbtn)── */
+    .wzh-tab-bar { margin-bottom: var(--space-2); }
+    .wzh-tab-panel[hidden] { display: none !important; }
+
+    /* 「实时监控」抽牌到 MoE 层时 EP All-to-All 卡的流动示意；虚线位移动画营造"正在收发"的观感，
+       与事故态的静态汇聚线(wzhMeshFlowLines)区分开，两者互斥显示见 wzhSyncProblemOneMonitorCards。
+       显隐由 JS 直接写 style.display 控制(见 syncMeshLiveFlow)，不用 [hidden]——设计系统里
+       [hidden]{display:none!important} 对 SVG <g> 的 hidden 反射不可靠，会导致这层永远显示不出来。 */
+    .wzh-mesh-live-flow line {
+      stroke: var(--highlight-copy-blue-source);
+      stroke-width: 1.8;
+      stroke-dasharray: 6 6;
+      opacity: 0.8;
+      animation: wzhMeshFlowDash 0.9s linear infinite;
+    }
+    @keyframes wzhMeshFlowDash {
+      to { stroke-dashoffset: -12; }
+    }
+    /* 沿竖线跑的流动点：比虚线本身更醒目，是"正在收发"的主要视觉信号 */
+    .wzh-mesh-live-flow .wzh-mesh-flow-dot {
+      fill: var(--highlight-copy-blue-source);
+      filter: drop-shadow(0 0 3px var(--highlight-copy-blue-source));
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: wzhMeshFlowDot 1.6s ease-in-out infinite;
+    }
+    @keyframes wzhMeshFlowDot {
+      0% { transform: translateY(0); opacity: 0; }
+      8% { opacity: 1; }
+      92% { opacity: 1; }
+      100% { transform: translateY(124px); opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wzh-mesh-live-flow line,
+      .wzh-mesh-live-flow .wzh-mesh-flow-dot { animation: none; }
+      .wzh-mesh-live-flow .wzh-mesh-flow-dot { opacity: 0.9; }
+    }
+
+    /* 竖直分栏 gutter(上半区与 Timeline 之间)高度 7 → 8。
+       变量由 ide-frame(7px)+workbench JS 内联设置，用 !important 直接改 gutter 尺寸最稳。 */
+    .pto-workbench-shell__split-gutter[data-split-direction="vertical"] {
+      flex-basis: 8px !important;
+      min-height: 8px !important;
+    }
+
+    /* 底部 Timeline(bottom-dock)增加右侧、底部 8px 内边距 */
+    .pto-ide-frame__pane.pto-ide-frame__bottom-dock {
+      padding-right: 8px;
+      padding-bottom: 8px;
+    }
+
+    /* ── 底部 dock 三页签(Timeline / 制品 / 事件流)────────────────────────────
+       复用 ide-frame pattern 的 __terminal-tablist / __terminal-tab 视觉，
+       这里只做 <button> 的元素重置，不新增按钮样式。 */
+    .twin-dock-tablist { flex: 0 0 auto; gap: var(--space-2); }
+    .twin-dock-tab {
+      padding: 0 9px;                    /* 与 .is-selected 同宽，避免切换时抖动 */
+      border: 0;
+      border-radius: var(--radius-md);
+      background: transparent;
+      font: inherit;
+      cursor: pointer;
+    }
+    .twin-dock-tab:not(.is-selected):hover { color: var(--foreground); }
+    /* 非激活页签隐藏(pane-body 默认 flex:1，必须 display:none 才不占位) */
+    .twin-dock-panel[hidden],
+    .twin-timeline-body[hidden] { display: none !important; }
+    /* 制品/事件流为纵向列表：dock 很宽，限宽后左对齐，避免整行拉伸 */
+    .twin-dock-panel {
+      overflow: auto;
+      padding: var(--space-2) var(--space-4) var(--space-3);
+    }
+    .twin-dock-panel > * { max-width: 760px; }
+
+    /* wzh-main-row: 替换原水平分栏，main-content 独占全宽 */
+    .wzh-main-row {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+    .wzh-main-row > [data-ide-pane="main-content"] {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+    }
+
+    /* 卡片统一标题(时光机 / 整网图 / infra) */
+    .wzh-card-title {
+      flex: 0 0 auto;
+      padding: var(--space-3) var(--space-3) var(--space-2);
+      font: var(--font-weight-semibold, 600) 13px/1.4 var(--font-sans);
+      color: var(--foreground);
+    }
+    .wzh-graph-title { position: relative; z-index: 2; }
+
+    /* 时光机卡 */
+    .wzh-timemachine-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-bottom: var(--space-3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg, 12px);
+      background: var(--surface-1);
+    }
+    /* 标题行：左「时光机 / xxStep」、右「返回」按钮(仅回放态显示) */
+    .wzh-tm-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+      padding-right: var(--space-3);
+    }
+    .wzh-tm-back { flex: 0 0 auto; }
+    .wzh-timemachine-card.is-replay { border-color: var(--border-strong, var(--border-subtle)); }
+
+    .wzh-tm-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: 0 var(--space-3);
+    }
+    .wzh-tm-track {
+      position: relative;
+      flex: 1 1 auto;
+      height: 8px;
+      min-width: 0;
+      border-radius: var(--radius-pill, 999px);
+      background: color-mix(in srgb, var(--foreground) 10%, transparent);
+      overflow: visible;
+    }
+    .wzh-tm-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0;
+      border-radius: inherit;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--highlight-copy-blue-500, #3b6fe0) 55%, transparent);
+      transition: width 240ms ease;
+    }
+    /* 流动光效：表示训练仍在推进，仅在实时态(非回放)显示，回放历史 step 时是静态的 */
+    .wzh-tm-fill::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 44%;
+      background: linear-gradient(90deg,
+        transparent,
+        color-mix(in srgb, #fff 65%, transparent),
+        transparent);
+      opacity: 0;
+      transform: translateX(-100%);
+      animation: wzh-tm-flow 1.8s linear infinite;
+    }
+    .wzh-timemachine-card:not(.is-replay) .wzh-tm-fill::after { opacity: 0.9; }
+    @keyframes wzh-tm-flow {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(325%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .wzh-tm-fill::after { animation: none; opacity: 0 !important; }
+    }
+    /* 回放拖块：默认停在最新 step，向左拖回放历史 */
+    .wzh-tm-thumb {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      z-index: 3;
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: var(--highlight-copy-blue-500, #3b6fe0);
+      box-shadow: 0 0 0 2px var(--surface-1), 0 1px 3px rgb(0 0 0 / 0.28);
+      cursor: grab;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+    .wzh-tm-thumb:hover { transform: translate(-50%, -50%) scale(1.12); }
+    .wzh-tm-thumb:focus-visible { outline: 2px solid var(--highlight-copy-blue-500, #3b6fe0); outline-offset: 3px; }
+    .wzh-tm-track.is-dragging { cursor: grabbing; }
+    .wzh-tm-track.is-dragging .wzh-tm-thumb { cursor: grabbing; transform: translate(-50%, -50%) scale(1.12); }
+    /* 拖动中关掉宽度过渡，跟手 */
+    .wzh-tm-track.is-dragging .wzh-tm-fill { transition: none; }
+    /* 已执行但被拖回的区间：浅色残影，标出"还能往前拖到哪" */
+    .wzh-tm-live {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0;
+      border-radius: inherit;
+      background: color-mix(in srgb, var(--highlight-copy-blue-500, #3b6fe0) 22%, transparent);
+      pointer-events: none;
+    }
+    .wzh-timemachine-card .twin-progress-marker {
+      position: absolute;
+      top: -3px;
+      bottom: -3px;
+      width: 3px;
+      transform: translateX(-50%);
+      border-radius: 2px;
+      box-shadow: 0 0 0 1.5px var(--surface-1);
+    }
+    .wzh-tm-readout {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font: 500 12px/1 var(--font-mono, ui-monospace, monospace);
+      color: var(--foreground-secondary);
+      white-space: nowrap;
+    }
+    .wzh-tm-step { color: var(--foreground); font-weight: 600; }
+    .wzh-tm-total { color: var(--foreground-muted); font-weight: 400; }
+    .wzh-tm-sep { color: var(--foreground-muted); }
+    .wzh-tm-unit { color: var(--foreground-muted); margin-left: -4px; }
+    .wzh-tm-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--foreground-muted); }
+    .wzh-tm-elapsed strong { color: var(--foreground); font-weight: var(--font-weight-semibold, 600); }
+
+    /* infra 右列独立卡 */
+    .wzh-col-infra {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg, 12px);
+      background: var(--surface-1);
+    }
+    .wzh-col-infra-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;   /* infra 不出横向滚动条 */
+      /* 顶部内边距原由栏标题「infra」提供，标题去掉后由 body 自己补上 */
+      padding: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+    .wzh-col-infra .twin-monitor-card { padding: 0; }
+    .wzh-col-infra .twin-card-heading { margin-bottom: var(--space-2); }
+    .wzh-col-infra .twin-card-heading h2 {
+      font-size: 12px;
+    }
+    /* 「MoE监控」独立于卡片外，用不到标题与卡内内容间的下边距，改用上边距把它和上方
+       「集群监控」卡片拉开距离 */
+    .wzh-col-infra .wzh-moe-heading {
+      margin-top: var(--space-2);
+      margin-bottom: 0;
+    }
+    /* twin-legend 复用共享样式(14px)比栏标题(12px)还大，这里按栏级字号体系收窄 */
+    .wzh-col-infra .twin-legend {
+      margin-top: var(--space-2);
+      gap: var(--space-2);
+      font-size: 11px;
+    }
+    .wzh-col-infra .twin-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    /* ── 监控侧栏：body 独立滚动（栏标题「训练监控」已去掉）── */
+    .twin-monitor-sidebar {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--surface-1);
+    }
+    /* 可滚动内容区：flex:1 占满剩余空间，overflow-y:auto 独立滚动 */
+    .twin-sidebar-body {
+      flex: 1;
+      min-height: 0;
+      min-width: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      /* 顶部内边距原由栏标题「训练监控」提供，标题去掉后由 body 自己补上 */
+      padding: var(--space-3);
+    }
+    /* body 内所有卡片不压缩，超出时触发滚动 */
+    .twin-sidebar-body > * {
+      flex-shrink: 0;
+    }
+    .twin-monitor-sidebar .twin-monitor-card {
+      padding: 0;   /* 训练监控内子卡片不留内边距(容器2)，间距由列的 flex gap 提供 */
+    }
+    .twin-monitor-sidebar .twin-card-heading h2 {
+      font-size: 12px;
+    }
+    .twin-monitor-sidebar .twin-card-heading p {
+      font-size: 11px;
+    }
+    .twin-monitor-sidebar .twin-subhead {
+      font-size: 11px;
+    }
+    .twin-monitor-sidebar .twin-monitor-grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
+    }
+    /* 监控侧栏中的 locate-chain-view */
+    .twin-sidebar-body > .twin-locate-chain-view {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 「分析记录」侧栏面板:内容先留空,占位文案沿用次要文本色 */
+    .twin-pane-empty {
+      padding: var(--space-4, 16px);
+      color: var(--foreground-secondary);
+      font-size: 13px;
+    }
+
+    /* 问题诊断 / 训练监控 / 问题详情 / 底部 Timeline：滚动条默认隐藏，悬浮容器时才浮现（不占布局、无跳动） */
+    .twin-pane-scroll,
+    .twin-sidebar-body,
+    .twin-locate-chain-view,
+    .wzh-col-infra-body,
+    .twin-timeline-body,
+    .twin-dock-panel {
+      scrollbar-width: thin;              /* Firefox */
+      scrollbar-color: transparent transparent;
+    }
+    .twin-pane-scroll:hover,
+    .twin-sidebar-body:hover,
+    .twin-locate-chain-view:hover,
+    .wzh-col-infra-body:hover,
+    .twin-timeline-body:hover,
+    .twin-dock-panel:hover {
+      scrollbar-color: var(--border-default) transparent;
+    }
+    .twin-pane-scroll::-webkit-scrollbar,
+    .twin-sidebar-body::-webkit-scrollbar,
+    .twin-locate-chain-view::-webkit-scrollbar,
+    .wzh-col-infra-body::-webkit-scrollbar,
+    .twin-timeline-body::-webkit-scrollbar,
+    .twin-dock-panel::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .twin-pane-scroll::-webkit-scrollbar-track,
+    .twin-sidebar-body::-webkit-scrollbar-track,
+    .twin-locate-chain-view::-webkit-scrollbar-track,
+    .wzh-col-infra-body::-webkit-scrollbar-track,
+    .twin-timeline-body::-webkit-scrollbar-track,
+    .twin-dock-panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .twin-pane-scroll::-webkit-scrollbar-thumb,
+    .twin-sidebar-body::-webkit-scrollbar-thumb,
+    .twin-locate-chain-view::-webkit-scrollbar-thumb,
+    .wzh-col-infra-body::-webkit-scrollbar-thumb,
+    .twin-timeline-body::-webkit-scrollbar-thumb,
+    .twin-dock-panel::-webkit-scrollbar-thumb {
+      background: transparent;            /* 默认隐藏 */
+      border-radius: 4px;
+      transition: background var(--duration-fast, 120ms) var(--easing-default, ease);
+    }
+    .twin-pane-scroll:hover::-webkit-scrollbar-thumb,
+    .twin-sidebar-body:hover::-webkit-scrollbar-thumb,
+    .twin-locate-chain-view:hover::-webkit-scrollbar-thumb,
+    .wzh-col-infra-body:hover::-webkit-scrollbar-thumb,
+    .twin-timeline-body:hover::-webkit-scrollbar-thumb,
+    .twin-dock-panel:hover::-webkit-scrollbar-thumb {
+      background: var(--border-default);  /* 悬浮浮现 */
+    }
+    .twin-pane-scroll::-webkit-scrollbar-thumb:hover,
+    .twin-sidebar-body::-webkit-scrollbar-thumb:hover,
+    .twin-locate-chain-view::-webkit-scrollbar-thumb:hover,
+    .wzh-col-infra-body::-webkit-scrollbar-thumb:hover,
+    .twin-timeline-body::-webkit-scrollbar-thumb:hover,
+    .twin-dock-panel::-webkit-scrollbar-thumb:hover {
+      background: var(--foreground-muted);
+    }
+
+    /* ── 整网图工具栏：算子染色 + 层级选择（参考 precision-debugger）── */
+    /* 缩放按钮（−/Fit/+）默认颜色、字号与选中的「类别」「L5」一致 */
+    .opv-actions #zoomOut,
+    .opv-actions #zoomReset,
+    .opv-actions #zoomIn {
+      color: var(--foreground);
+      font: 600 11px/1 var(--font-sans);
+    }
+    .seg {
+      display: inline-flex;
+      background: color-mix(in srgb, var(--foreground) 6%, transparent);
+      border: 1px solid var(--border-subtle);
+      border-radius: 7px;
+      overflow: hidden;
+    }
+    .segbtn {
+      height: 24px;
+      padding: 0 10px;
+      border: none;
+      background: transparent;
+      color: var(--foreground-secondary);
+      font: 600 11px/1 var(--font-sans);
+      border-radius: 0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+    .segbtn:hover { color: var(--foreground); }
+    .segbtn.on {
+      background: var(--surface-1);
+      color: var(--foreground);
+      box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.28));
+    }
+    .seg-lbl {
+      font: 600 11px/1.2 var(--font-sans);
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      color: var(--foreground-muted);
+    }
+    .tsep {
+      display: inline-block;
+      width: 1px;
+      height: 18px;
+      background: var(--border-subtle);
+      flex: 0 0 auto;
+    }
+    .hsel {
+      height: 24px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-default);
+      background: var(--surface-1);
+      color: var(--foreground);
+      font: 500 11px/1 var(--font-mono, monospace);
+      padding: 0 4px;
+      cursor: pointer;
+    }
+    .hsel:focus { outline: none; border-color: var(--primary); }
+    .hsel-dd { position: relative; display: inline-flex; }
+    .hsel-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 24px;
+      padding: 0 6px 0 8px;
+      white-space: nowrap;
+      line-height: 1;
+    }
+    .hsel-chev {
+      width: 13px;
+      height: 13px;
+      flex: 0 0 auto;
+      opacity: 0.7;
+      transition: transform var(--duration-fast, 100ms) var(--easing-default, ease);
+    }
+    .hsel-dd.open .hsel-chev { transform: rotate(180deg); }
+    .hsel-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      z-index: 80;
+      min-width: 186px;
+      padding: 6px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-strong);
+      background: var(--surface-1);
+      box-shadow: 0 8px 24px rgba(0,0,0,.36);
+    }
+    .hsel-menu[hidden] { display: none; }
+    .hsel-item {
+      display: flex;
+      align-items: center;
+      height: 30px;
+      padding: 0 12px 0 26px;
+      position: relative;
+      border: 0;
+      background: transparent;
+      color: var(--foreground-secondary);
+      font: 500 12px/1 var(--font-sans);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      width: 100%;
+      text-align: left;
+    }
+    .hsel-item:hover { background: var(--state-hover, rgba(255,255,255,.06)); color: var(--foreground); }
+    .hsel-item.is-sel { color: var(--foreground); }
+    .hsel-item.is-sel::before {
+      content: "✓";
+      position: absolute;
+      left: 8px;
+      font-size: 12px;
+      color: var(--primary);
+    }
+
+    /* ══ 实时监控视图：整网图底部信息栏 + 46 层 3D 侧视卡 ══════════════════
+       层类型 = FFN(Dense/MoE) × 注意力(DSA/SWA) 组合出 4 类；卡片按类型着色，
+       当前进行的层做「抽牌」抬升；每 STEP_MS 高亮下一层，见页面底部实时监控脚本。 */
+    .twin-live-deck {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px var(--space-3) 12px;
+      border-top: 1px solid var(--border-subtle);
+      background: color-mix(in srgb, var(--foreground) 2%, transparent);
+    }
+    .twin-live-deck[hidden] { display: none; }
+
+    /* 信息栏（一行字：epoch / step / layer + 类型，右侧图例） */
+    .twin-live-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font: 600 12px/1.4 var(--font-mono, ui-monospace, monospace);
+      color: var(--foreground);
+    }
+    .twin-live-info-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      flex: 0 0 auto;
+      background: var(--highlight-copy-blue-500, #3b6fe0);
+      transition: background 240ms ease;
+    }
+    .twin-live-info-text { letter-spacing: 0.2px; }
+    .twin-live-legend { display: inline-flex; gap: 12px; margin-left: auto; flex-wrap: wrap; }
+    .twin-live-legend-item {
+      display: inline-flex; align-items: center; gap: 5px;
+      font: 500 10.5px/1 var(--font-sans);
+      color: var(--foreground-secondary);
+    }
+    .twin-live-legend-item i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+    /* 3D 舞台：横向卡组（借鉴 precision-debugger「整网逐层 · 3D」的卡卡效果，
+       但改为横向排布、不做 45° 斜向）——46 片卡统一右倾拼成一条横向卡带，
+       每张卡右侧按层类型着色（叠压后连成 46 层类型色带），当前层只上移露出卡顶两行信息。
+       卡片用绝对定位 + translateX(--x) 排布，--x 由 positionDeck() 按容器宽度自适应算出。 */
+    .twin-live-deck-3d {
+      position: relative;
+      /* 高度 = 卡高(72) + 卡底距(10) + 上移抽出量(34) + 余量 —— 保证抬起的卡顶不被容器裁掉 */
+      height: 126px;
+      perspective: 1300px;
+      perspective-origin: 50% 38%;
+      overflow: hidden;
+    }
+    .twin-live-rail {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      transform: rotateX(9deg);        /* 只做极轻俯视，横向不做 45° 斜向 */
+      transform-origin: 50% 78%;
+    }
+    /* 图例行末尾「?」：说明 4 类层类型与间隔分布规则，紧跟在最后一项图例(MoE · SWA)右侧、同一行。
+       .twin-live-info 已有 gap:10px，这里再加 6px margin-left 凑够与上一项(legend)的 16px 间距。 */
+    .twin-live-legend-help { margin-left: 6px; }
+    /* 单片层卡：接光渐变卡面 + 右侧类型色条（借 precision-debugger .layer3d 视觉语言） */
+    .twin-live-card {
+      position: absolute;
+      bottom: 10px;
+      left: 0;
+      width: 68px;
+      height: 72px;
+      /* 上内边距压到 2px：「Layer N / 类型」两行紧贴卡顶，抬起 34px 时整体露在邻卡上沿之上 */
+      padding: 2px 5px 5px;
+      box-sizing: border-box;
+      /* 卡片是 <button>，浏览器默认把内容水平+垂直居中；这里显式改为「顶部左对齐」，
+         否则两行字会落在卡片中部，抬起时露不出来 */
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      text-align: left;
+      border-radius: 7px 7px 5px 5px;
+      transform-origin: left center;
+      transform: translateX(var(--x, 0px)) rotateY(-25deg);
+      background: linear-gradient(158deg,
+        color-mix(in srgb, var(--surface-1) 92%, var(--foreground) 8%) 0%,
+        color-mix(in srgb, var(--surface-1) 88%, transparent) 48%,
+        color-mix(in srgb, var(--surface-2) 84%, #000 8%) 100%);
+      border: 1px solid var(--border-default);
+      /* 类型高光色条：卡片右侧。preserve-3d 下由真实 Z 决定遮挡，rotateY(-25deg) 使每张卡右侧
+         朝向观察者 → 左侧卡压在右侧卡之上，因此每张卡露出来的是「右边一条」，色条放右侧才可见。 */
+      border-right: 3px solid var(--card-color);
+      box-shadow: 0 12px 26px rgba(0,0,0,.4),
+                  inset 0 1px 0 color-mix(in srgb, var(--foreground) 10%, transparent);
+      color: var(--foreground);
+      cursor: pointer;
+      overflow: hidden;
+      /* 「落下」用的过渡（离开 is-active 时取的是本条规则）：故意比升起快得多，
+         否则卸任卡会在 340ms 里慢慢下落，与新卡同时离开基线 —— 看上去就是
+         「有张不是当前层的卡自己抬高了一点点」。升起的过渡见 .is-active。 */
+      transition: transform .12s cubic-bezier(.4,0,1,1), box-shadow .2s, border-color .2s;
+      will-change: transform;
+    }
+    /* 卡顶按类型色柔和色晕（贴内圆角、无硬边） */
+    .twin-live-card::before {
+      content: "";
+      position: absolute; left: 0; right: 0; top: 0; height: 42%;
+      background: linear-gradient(180deg, var(--card-color), transparent);
+      opacity: .16; pointer-events: none;
+    }
+    /* hover：轻微上移预览（同样不改变叠压层级，只是抬起来一点） */
+    .twin-live-card:hover:not(.is-active) {
+      transform: translateX(var(--x, 0px)) translateY(-9px) rotateY(-25deg);
+    }
+    /* 当前进行的层：只做「上移」——不前突、不放大、不摆正、不改 z-index，
+       保持与相邻卡的叠压关系不变，仅把卡顶(层号 + 类型)顶出卡带上沿露出来。
+       （对齐 precision-debugger .layer3d 的 --l3-lift 行为） */
+    .twin-live-card.is-active {
+      /* 「升起」用的过渡（进入 is-active 时取本条规则）：保留舒展的抽出手感 */
+      transition: transform .34s cubic-bezier(.2,.7,.2,1), box-shadow .34s, border-color .2s;
+      transform: translateX(var(--x, 0px)) translateY(-34px) rotateY(-25deg);
+      border-color: var(--card-color);
+      box-shadow: 0 16px 30px -6px color-mix(in srgb, var(--card-color) 50%, rgba(0,0,0,.5)),
+                  inset 0 1px 0 color-mix(in srgb, var(--foreground) 14%, transparent);
+    }
+    /* 卡内容：只保留卡顶的「Layer N」+ 类型两行（抬起时正是这两行露出卡带上沿）。
+       类型色已由卡顶 border-top 承担，故不再放色点，把宽度让给 "Layer 45" 全称。 */
+    .twin-live-card .tlc-h {
+      font: 700 10.5px/1.15 var(--font-sans);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .twin-live-card .tlc-type {
+      margin-top: 2px; font: 600 8px/1.2 var(--font-sans);
+      color: var(--foreground-secondary); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    /* 当前卡的顶部信息提亮，露出时更醒目 */
+    .twin-live-card.is-active .tlc-type { color: var(--foreground); }
+
+    /* ── 实时监控下隐藏问题诊断标注（问题徽标 + 常态红描边），保持画面干净 ── */
+    .twin-graph-card { --live-accent: var(--highlight-copy-blue-500, #3b6fe0); }
+    .twin-graph-card.twin-live-on .pto-problem-badge { display: none !important; }
+    .twin-graph-card.twin-live-on .pto-model-graphviz-node.pto-diagnosis-active rect:not(.pto-diagnosis-pulse-ring) {
+      stroke: var(--border-subtle);
+      stroke-width: 1px;
+    }
+    .twin-graph-card.twin-live-on .pto-model-graphviz-edge.pto-diagnosis-active {
+      stroke: var(--border-subtle);
+      stroke-width: 1.5px;
+    }
+    .twin-graph-card.twin-live-on .pto-model-graphviz-cluster.pto-diagnosis-active > rect:first-child {
+      stroke: var(--border-subtle);
+      stroke-width: 1.5px;
+    }
+    /* ── 实时监控：整网图按当前层类型色描边高亮（放在抑制规则之后，优先级取胜） ── */
+    .twin-graph-card.twin-live-on .pto-model-graphviz-node.pto-live-active rect:not(.pto-diagnosis-pulse-ring) {
+      stroke: var(--live-accent);
+      stroke-width: 3px;
+    }
+    .twin-graph-card.twin-live-on .pto-model-graphviz-cluster.pto-live-active > rect:first-child {
+      stroke: var(--live-accent);
+      stroke-width: 2.5px;
+    }
+    /* ── 实时监控：非当前层(即底部卡组中未抬起的其余卡)所涉及的节点去色 ──
+       参考顶栏「算子染色」关闭态的处理思路(类别色统一压成中性灰,只留高亮信号),
+       这里让当前层(is-active 卡对应的 pto-live-active 节点)保留原类别色，
+       其余节点统一压成中性灰，突出当前层在整网图上的位置。 */
+    .twin-graph-card.twin-live-on .pto-model-graphviz-node:not(.pto-live-active) rect:not(.pto-diagnosis-pulse-ring) {
+      fill: var(--foreground-muted);
+      fill-opacity: 1;
+      transition: fill 200ms ease;
+    }
+  </style>
+</head>
+<body class="train-twin-page" data-theme="dark" data-model="deepseek" data-task="pretrain" data-hardware="cluster2048">
+  <section class="pto-ide-frame" data-ide-frame data-host="standalone" aria-label="Training Run Explainable Twin">
+    <header class="pto-ide-frame__topbar pto-ide-frame__standalone-chrome">
+      <div class="pto-ide-frame__topbar-left">
+        <div class="pto-ide-frame__host-chip" data-ide-slot="host-chip">
+          <svg class="pto-ide-frame__host-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+            <path d="m7 9 3 3-3 3"></path>
+            <path d="M12 15h5"></path>
+          </svg>
+        </div>
+        <div class="pto-ide-frame__workspace" data-ide-slot="workspace-switcher">
+          <span>模型训练监控大盘</span>
+        </div>
+      </div>
+      <div class="pto-ide-frame__topbar-center"></div>
+      <div class="pto-ide-frame__topbar-right">
+        <!-- 训练进度条(progressTrack/Fill/Step/Pct/Epoch 等 ID)已迁移到中央列的「时光机」卡，
+             renderProgress()/renderDiagnosisMarkers() 引用不变；顶栏仅保留主题切换 + Timeline 开关。 -->
+        <div class="pto-ide-frame__window-actions" data-ide-slot="window-controls" aria-label="Window controls">
+          <!-- 主题切换:单一图标按钮(月亮/太阳互换),参照 pangu-moe-trainviz/op-rank-time.html 的 .opv-theme-toggle,
+               避免和整网图组件内部的 opvTopThemeToggle/floatingThemeToggle 文字按钮重复出现两套主题开关 -->
+          <button class="pto-ide-frame__window-action" id="themeToggle" type="button" aria-pressed="false" title="切换主题" aria-label="切换主题">
+            <svg class="pto-ide-frame__window-icon" id="themeToggleIcon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3a6.5 6.5 0 0 0 7.8 8.8A8 8 0 1 1 12 3z"></path>
+            </svg>
+          </button>
+          <button class="pto-ide-frame__window-action is-selected" id="twinTimelineToggle" type="button" data-ide-toggle="visualization" aria-controls="bottomDock" aria-expanded="true" aria-pressed="true" title="隐藏 Timeline 面板" aria-label="隐藏 Timeline 面板">
+            <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <path d="M3 15h18"></path>
+            </svg>
+          </button>
+          <!-- 左/右侧列开关:分别收起中央区的「训练监控」左列与「infra」右列,整网图吃掉腾出的宽度 -->
+          <button class="pto-ide-frame__window-action is-selected" id="twinLeftColToggle" type="button" aria-controls="twinMonitorCol" aria-expanded="true" aria-pressed="true" title="隐藏 训练监控 栏" aria-label="隐藏 训练监控 栏">
+            <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <path d="M9 3v18"></path>
+            </svg>
+          </button>
+          <button class="pto-ide-frame__window-action is-selected" id="twinRightColToggle" type="button" aria-controls="twinInfraCol" aria-expanded="true" aria-pressed="true" title="隐藏 infra 栏" aria-label="隐藏 infra 栏">
+            <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+              <path d="M15 3v18"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="pto-ide-frame__body">
+      <nav class="pto-ide-frame__activity-rail pto-ide-frame__standalone-chrome" data-ide-slot="activity-rail" aria-label="Activity rail">
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Explorer" title="Explorer">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9l-.81-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Search" title="Search">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Source control" title="Source control">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="18" cy="18" r="3"></circle>
+            <circle cx="6" cy="6" r="3"></circle>
+            <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
+            <path d="M6 9v12"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Terminal" title="Terminal">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+            <path d="m7 9 3 3-3 3"></path>
+            <path d="M12 15h5"></path>
+          </svg>
+        </button>
+      </nav>
+
+      <div class="pto-ide-frame__workarea">
+        <div class="pto-ide-frame__split" data-ide-split="standalone-vertical" data-split-direction="vertical" data-sizes="72,28" data-min-size="360,140">
+          <section class="pto-ide-frame__pane pto-ide-frame__pane--stack" data-ide-pane="main-row">
+            <!-- 分析记录 / 问题诊断 侧栏 + 水平分栏按新布局(容器2)去除；main-content 独占全宽 -->
+            <div class="wzh-main-row">
+              <section class="pto-ide-frame__pane" data-ide-pane="main-content">
+                  <section class="pto-ide-frame__pane twin-center-pane" data-ide-pane="editor-preview" aria-label="架构与脚本解释">
+                    <header class="pto-ide-frame__pane-header twin-pane-header">
+                      <div class="twin-pane-header-title-row">
+                        <button class="btn btn-ghost btn-icon btn-sm" id="locateChainBack" type="button" hidden aria-label="返回 训练监控" title="返回 训练监控">←</button>
+                        <div>
+                          <div class="pto-ide-frame__pane-meta" id="architectureKicker" hidden></div>
+                          <div class="pto-ide-frame__pane-title" id="architectureTitle">openPangu-2.0-Flash 整网图</div>
+                          <div class="pto-ide-frame__pane-meta" id="architectureMeta"></div>
+                        </div>
+                      </div>
+                    </header>
+
+                    <div class="pto-ide-frame__pane-body twin-center-scroll">
+                      <!-- 中央列 · 时光机卡(容器2 布局)：原顶栏进度条迁移至此，progressTrack/Fill/Step ID 不变；
+                           Pct/Epoch 展示已去掉(旧版 training-monitoring.html 仍保留对应节点，training-run-twin.js 里用 setText 兼容两边)，
+                           新增 progressElapsed(已训练时长，按 state.step × 目标步耗时估算，见 TIME_MACHINE_STEP_SECONDS) -->
+                      <section class="wzh-timemachine-card" aria-label="训练进度">
+                        <div class="wzh-tm-head">
+                          <div class="wzh-card-title" id="timeMachineTitle">训练进度</div>
+                          <button class="btn btn-ghost btn-sm wzh-tm-back" type="button" id="timeMachineBack" hidden title="回到最新 step">返回</button>
+                        </div>
+                        <div class="wzh-tm-row">
+                          <div class="wzh-tm-track" id="progressTrack">
+                            <!-- 已执行区间残影：回放时露出「拖块 ~ 最新 step」的可回拖范围 -->
+                            <div class="wzh-tm-live" id="progressLive"></div>
+                            <div class="wzh-tm-fill" id="progressFill"></div>
+                            <!-- 问题点标注由 renderDiagnosisMarkers() 注入到本轨 -->
+                            <!-- 回放拖块：只能在已执行(≤ 最新 step)区间内往回拖，见 training-run-twin.js 时光机回放 -->
+                            <div class="wzh-tm-thumb" id="progressThumb" role="slider" tabindex="0"
+                                 aria-label="时光机回放进度" aria-valuemin="0" aria-valuenow="0" aria-valuemax="0"></div>
+                          </div>
+                          <div class="wzh-tm-readout">
+                            <span class="wzh-tm-step" id="progressStepCurrent">--</span>
+                            <span class="wzh-tm-sep" aria-hidden="true">/</span>
+                            <span class="wzh-tm-step wzh-tm-total" id="progressStepTotal">--</span>
+                            <span class="wzh-tm-unit">step</span>
+                            <span class="wzh-tm-dot" aria-hidden="true"></span>
+                            <span class="wzh-tm-elapsed"><strong id="progressElapsed">--</strong></span>
+                          </div>
+                        </div>
+                      </section>
+                      <section class="twin-graph-card" aria-label="模型架构图">
+          <div class="twin-diagnosis-locator" id="diagnosisLocator" hidden>
+            <strong id="diagnosisLocatorLayer">--</strong>
+            <span id="diagnosisLocatorNote">--</span>
+          </div>
+          <div class="twin-architecture-stage">
+            <!-- 整网图「直接集成」pto-design-system 的 openPangu-2.0-Flash model-graphviz 组件(非 iframe):
+                 样式 css/opv-modelviz.css、逻辑 js/opv-modelviz.js、默认 schema js/opv-modelviz-schema.js、
+                 渲染引擎 model-graphviz-embed/pattern.(js|css);展开/下钻/配色/light mode/通信算子/标签避让原样保留。
+                 组件 IDs 均为其私有命名,随文件夹整体移动无影响;组件自带的主题按钮(原 opvTopThemeToggle/
+                 floatingThemeToggle)已删除,统一由页面顶栏唯一的月亮/太阳图标按钮驱动,组件通过
+                 MutationObserver 监听 documentElement[data-theme] 联动重新着色。 -->
+            <section id="opvHost" class="opv-app pto-model-graphviz-pattern-page" data-embed="1">
+              <header class="opv-topbar" style="justify-content:flex-end; border-bottom:0;">
+                <!-- 整网图标题与 Fit 工具栏同处一行(容器2)：标题左、工具栏右 -->
+                <span class="wzh-graph-inline-title">整网图</span>
+                <!-- 「溢出率」标题:仅在问题二(整网图卡搬进 .twin-hif8-side-stage)时显示于工具栏左侧 -->
+                <span class="opv-topbar-title" id="hif8OverflowTitle">溢出率</span>
+                <div class="opv-actions">
+                  <!-- 视图页签：全局(问题诊断标注) / 实时监控(按层高亮 + 46 层进度) -->
+                  <span class="seg" id="viewModeSeg" title="整网图视图模式">
+                    <button class="segbtn" data-v="global" onclick="setGraphViewMode('global')" title="全局：标注全部问题诊断">全局</button>
+                    <button class="segbtn on" data-v="live" onclick="setGraphViewMode('live')" title="实时监控：按层高亮 + 逐层推进">实时</button>
+                  </span>
+                  <span class="tsep"></span>
+                  <button class="btn btn-ghost" type="button" id="zoomOut">-</button>
+                  <button class="btn btn-ghost" type="button" id="zoomReset">Fit</button>
+                  <button class="btn btn-ghost" type="button" id="zoomIn">+</button>
+                  <span class="tsep"></span>
+                  <span class="seg-lbl">算子染色</span>
+                  <span class="seg" id="opColorSeg" title="整网算子染色方式">
+                    <button class="segbtn" data-c="off" onclick="setOpColorMode('off')" title="不染色（中性）">关</button>
+                    <button class="segbtn on" data-c="cat" onclick="setOpColorMode('cat')" title="按算子类别：归一化/线性/注意力/MoE">类别</button>
+                  </span>
+                  <span class="tsep lv-topbar-level"></span>
+                  <span class="seg-lbl lv-topbar-level">层级</span>
+                  <span class="hsel-dd lv-topbar-level" id="flatLevelDD">
+                    <button type="button" class="hsel hsel-btn" id="flatLevelBtn" onclick="toggleFlatLevelMenu(event)" title="展开层级">
+                      <span id="flatLevelLabel">L5 · Operator</span>
+                      <svg class="hsel-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="hsel-menu" id="flatLevelMenu" hidden role="listbox">
+                      <button type="button" class="hsel-item" data-v="1" onclick="pickFlatLevel('1')">L1 · Model</button>
+                      <button type="button" class="hsel-item" data-v="2" onclick="pickFlatLevel('2')">L2 · DecoderLayer</button>
+                      <button type="button" class="hsel-item" data-v="3" onclick="pickFlatLevel('3')">L3 · Attention / MoE</button>
+                      <button type="button" class="hsel-item" data-v="4" onclick="pickFlatLevel('4')">L4 · Q·K·V / Expert</button>
+                      <button type="button" class="hsel-item is-sel" data-v="5" onclick="pickFlatLevel('5')">L5 · Operator</button>
+                    </div>
+                  </span>
+                  <!-- 以下元素被 opv-modelviz.js 的初始化代码引用，不能删除，否则 JS 报错导致整网图无法加载 -->
+                  <input id="schemaFileInput" type="file" accept=".json,application/json" hidden>
+                </div>
+              </header>
+              <!-- 独立的主题切换按钮已删除,组件内部通过 MutationObserver 监听 documentElement[data-theme]
+                   跟随页面顶栏唯一的主题开关(#themeToggle,月亮/太阳图标)联动重新着色,见 opv-modelviz.js -->
+              <section class="opv-color-panel" id="colorPanel" aria-label="Light mode HSL controls" hidden>
+                <div class="opv-color-head">
+                  <div class="opv-color-title">Light HSL</div>
+                  <button class="btn btn-ghost" type="button" id="colorReset">Reset</button>
+                </div>
+                <label class="opv-color-row" for="colorHue">
+                  <span>Hue</span>
+                  <input id="colorHue" type="range" min="-180" max="180" step="1">
+                  <output id="colorHueValue" for="colorHue">2</output>
+                </label>
+                <label class="opv-color-row" for="colorSaturation">
+                  <span>Saturation</span>
+                  <input id="colorSaturation" type="range" min="30" max="88" step="1">
+                  <output id="colorSaturationValue" for="colorSaturation">79%</output>
+                </label>
+                <label class="opv-color-row" for="colorLightness">
+                  <span>Lightness</span>
+                  <input id="colorLightness" type="range" min="58" max="86" step="1">
+                  <output id="colorLightnessValue" for="colorLightness">76%</output>
+                </label>
+                <div class="opv-color-swatches" id="colorPreview" aria-hidden="true"></div>
+              </section>
+              <section class="opv-stage pto-model-architecture-stage" id="graphStage" aria-label="openPangu model architecture graph">
+                <div class="opv-node-popover" id="nodePopover" hidden></div>
+              </section>
+              <div class="opv-status" id="statusText">Loading schema.</div>
+            </section>
+            <!-- 模型层「查看」按钮打开后,整网图区域覆盖展示 MoE 层展开图(见 openModelLayerView) -->
+            <div id="modelLayerStage" class="twin-layer-stage" hidden></div>
+          </div>
+          <!-- 实时监控视图：整网图底部信息栏 + 46 层 3D 侧视卡（默认隐藏，切到「实时监控」页签时显示） -->
+          <div class="twin-live-deck" id="twinLiveDeck" hidden>
+            <div class="twin-live-info" id="twinLiveInfo">
+              <span class="twin-live-info-dot" id="twinLiveDot"></span>
+              <span class="twin-live-info-text" id="twinLiveText">Epoch -- · Step -- · Layer -- / 46</span>
+              <span class="twin-live-legend" id="twinLiveLegend"></span>
+              <span class="wzh-help twin-live-legend-help" tabindex="0" data-tooltip="4 类层类型 = FFN 维度(Dense/MoE) × 注意力维度(DSA/SWA)：
+Dense·DSA / Dense·SWA：前 2 层(L0-1)为 Dense FFN，训练早期先稳住再切 MoE
+MoE·DSA / MoE·SWA：其余 44 层(L2-45)为 MoE FFN，稀疏专家换取大容量而不显著加算力
+
+DSA = Dynamic/Sparse Attention Indexer(稀疏注意力索引器)：
+先从 2048 个候选 key 中挑 24 个再做注意力，压缩长上下文算力，服务 512K 超长上下文；
+每 3 层出现一次(L0,3,6,…,45，共 16 层)，周期性兜住全局/长程依赖
+
+SWA = Sliding Window Attention(滑动窗口注意力)：
+只关注局部窗口内的 token，算力/显存开销更低；其余 30 层用它撑起大部分层数
+
+间隔分布：多数层用低成本的 MoE+SWA，少数层周期性插入 DSA 补全全局视野，在算力开销和长程建模能力间取平衡">?</span>
+            </div>
+            <div class="twin-live-deck-3d">
+              <div class="twin-live-rail" id="twinLiveRail"></div>
+            </div>
+          </div>
+        </section>
+                      <!-- 右侧：训练监控侧栏 -->
+                      <div class="twin-monitor-sidebar" id="twinMonitorCol">
+                        <!-- 栏标题「训练监控」已去掉：各卡自带标题，栏级标题属冗余层级 -->
+                        <div class="twin-sidebar-body">
+                        <div class="twin-locate-chain-view" id="runTwinLocateView" hidden>
+                          <div class="twin-locate-chain" id="locateChainTop"></div>
+                          <div id="locateChainContent"></div>
+                        </div>
+                        <div id="runTwinDefaultView" style="display:flex; flex-direction:column; gap:var(--space-3);">
+        <section class="twin-monitor-card twin-accuracy-card" aria-label="训练动态曲线">
+          <div class="twin-card-heading">
+            <div>
+              <h2>精度</h2>
+            </div>
+            <div id="accuracySmoothSlot"></div>
+          </div>
+          <div class="twin-accuracy-charts" id="accuracyCharts"></div>
+        </section>
+
+        <!-- W_gate (Router)·专家负载分布已移到 infra 栏，与「EP All-to-All」并列页签(见 .wzh-col-infra
+             #wzhRouterMeshCard)；精度栏这里改由 ACC_CARD_DEFS 的 weightdiff 卡承接(权重差分 + grad_norm)。 -->
+
+        <!-- 「制品」「事件流」已移至底部 Timeline dock，与 Timeline 并列为三个页签（见 #bottomDock） -->
+
+                        </div>
+                        </div>
+                      </div>
+                      <!-- 右列 · infra 独立卡(容器2 布局)：从训练监控列抽出 -->
+                      <aside class="wzh-col-infra" id="twinInfraCol" aria-label="infra">
+                        <!-- 栏标题「infra」已去掉；原栏级「?」(集群规模/并行策略)移到「集群监控」标题后 -->
+                        <div class="wzh-col-infra-body">
+                          <section class="twin-monitor-card" aria-label="硬件多卡热力图">
+                            <div class="twin-card-heading">
+                              <div>
+                                <div class="wzh-card-title-row">
+                                  <h2>集群监控</h2>
+                                  <span class="wzh-help" tabindex="0" data-tooltip="NPU 总数：2048（910B · 256 节点×8）
+并行策略：DP4×PP8×EP64（ZeRO-1 · 无 TP/CP）
+层数：46（2 Dense L0-1 + 44 MoE L2-45）
+MoE：256+1（top-8 路由 · EP 切分）">?</span>
+                                </div>
+                                <p id="hardwareSummary">2048 × Ascend 910B · 256 节点，每格为 910B NPU 卡槽。</p>
+                              </div>
+                              <div id="infraSmoothSlot"></div>
+                            </div>
+                            <div class="twin-infra-charts" id="infraCharts"></div>
+                            <div class="twin-heat" id="heat"></div>
+                            <div class="twin-legend">
+                              <span><i class="twin-swatch twin-swatch-util-low"></i>&lt;70% util</span>
+                              <span><i class="twin-swatch twin-swatch-util-mid"></i>70-92% util</span>
+                              <span><i class="twin-swatch twin-swatch-util-high"></i>&gt;92% util</span>
+                            </div>
+                          </section>
+
+                          <!-- W_gate (Router)·专家负载分布 + 分布式通信·EP All-to-All：从训练监控列移入，
+                               与本卡合并为并列页签(问题一根因链路：router 倾斜 → EP rank 23 all-to-all 死锁)。
+                               64 个 EP rank 取 32 个代表性切片（4 节点×8 GPU），按 openPangu-2.0-Flash 真实
+                               并行策略（DP4×PP8×EP64，无 TP/CP，见 infra 栏标题旁「?」）重构。 -->
+                          <div class="twin-card-heading wzh-moe-heading">
+                            <div class="wzh-card-title-row">
+                              <h2>MoE监控</h2>
+                            </div>
+                          </div>
+                          <section class="twin-monitor-card" aria-label="专家负载与通信" id="wzhRouterMeshCard">
+                            <div class="wzh-tab-bar">
+                              <span class="seg" id="wzhRouterMeshSeg" role="tablist" aria-label="专家负载 / 通信切换">
+                                <button class="segbtn on" type="button" role="tab" aria-selected="true" aria-controls="wzhMeshPanel" data-wzh-tab="mesh">EP All-to-All（取32 EP切片）<span class="wzh-help" tabindex="0" data-tooltip="衡量什么：MoE 专家并行(EP)域内，各 EP rank 的 all-to-all dispatch/combine 收发是否对称（健康时 send≈recv）。异常信号：某个 rank 的 send/recv 严重不对称（如 send=0 但 recv 远高于基线），或大量流量汇聚到单一 rank，形成通信热点/黑洞。能做什么判断：收发不对称通常意味着该 rank 命中的专家吸收了过量 token（切换到「W_gate (Router)」页签确认是否同一专家），其余 rank 会在 all-to-all 同步点空等、MFU 骤降，不处理会演变成超时死锁；可临时延长超时兜底，长期需调整 router 负载均衡（n_group/z-loss）。">?</span></button>
+                                <button class="segbtn" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="wzhRouterPanel" data-wzh-tab="router">W_gate (Router)<span class="wzh-help" tabindex="0" data-tooltip="衡量什么：256 个路由专家各自拿到的 token 占比，理想应接近均匀（1/256≈0.39%）。异常信号：单个专家占比远超基线、其余专家趋近于 0，说明 router 打分坍缩到少数专家（专家坍缩/路由倾斜）。能做什么判断：看到「一家独大」的分布应立即预警——该专家所在 EP rank 的 all-to-all 通信会随之暴涨，若不及时干预（增大 n_group、加 z-loss 正则）会演变成「EP All-to-All」页签里的通信死锁，即本页问题一的事故链路。">?</span></button>
+                              </span>
+                            </div>
+
+                            <div class="wzh-tab-panel" id="wzhRouterPanel" data-wzh-panel="router" hidden>
+                              <p id="wzhRouterSubtitle" hidden>Step 41230：layer 38 router 倾斜到单一专家，其余 255 个专家几乎无 token。</p>
+                              <div class="wzh-router-kpis">
+                                <div class="wzh-router-kpi">
+                                  <div class="wzh-router-kpi-lab"><i class="wzh-router-kpi-dot current"></i>Top1 专家占比（当前）</div>
+                                  <div class="wzh-router-kpi-val is-bad" id="wzhRouterKpiCurrentVal">98% · E193</div>
+                                </div>
+                                <div class="wzh-router-kpi">
+                                  <div class="wzh-router-kpi-lab"><i class="wzh-router-kpi-dot baseline"></i>Top1 专家占比（基线）</div>
+                                  <div class="wzh-router-kpi-val">0.39% · 均匀路由</div>
+                                </div>
+                              </div>
+                              <svg viewBox="0 0 240 148" class="wzh-router-bar-svg" preserveAspectRatio="xMidYMid meet">
+                                <title id="wzhRouterSvgTitle">W_gate 专家负载：基线（健康 step）vs 当前（step 41230 事故）</title>
+                                <rect x="20" y="115.6" width="26" height="6.4" rx="2" fill="var(--highlight-l0a-violet-source)" opacity="0.75"/>
+                                <text x="33" y="111.6" text-anchor="middle" class="wzh-router-bar-val" fill="var(--foreground-secondary)">0.39%</text>
+                                <rect id="wzhRouterBarHotRect" x="50" y="20" width="26" height="102" rx="2" fill="var(--danger)" opacity="0.95"/>
+                                <text id="wzhRouterBarHotText" x="63" y="16" text-anchor="middle" class="wzh-router-bar-val" fill="var(--danger)">98%</text>
+                                <rect x="106" y="115.6" width="26" height="6.4" rx="2" fill="var(--highlight-l0a-violet-source)" opacity="0.75"/>
+                                <text x="119" y="111.6" text-anchor="middle" class="wzh-router-bar-val" fill="var(--foreground-secondary)">0.39%</text>
+                                <rect id="wzhRouterBarRestRect" x="136" y="119.2" width="26" height="2.8" rx="2" fill="var(--foreground-muted)" opacity="0.5"/>
+                                <text id="wzhRouterBarRestText" x="149" y="115.2" text-anchor="middle" class="wzh-router-bar-val" fill="var(--foreground-secondary)">0.008%</text>
+                                <line x1="12" y1="122" x2="232" y2="122" stroke="var(--border-subtle)" stroke-width="1"/>
+                                <text x="48" y="134" text-anchor="middle" class="wzh-router-bar-cat">E193</text>
+                                <text x="134" y="134" text-anchor="middle" class="wzh-router-bar-cat">其余255专家(均值)</text>
+                                <line x1="12" y1="115.6" x2="232" y2="115.6" stroke="var(--foreground-secondary)" stroke-width="1" stroke-dasharray="3 3" opacity="0.75"/>
+                                <text x="230" y="112.2" text-anchor="end" class="wzh-router-bar-cat" fill="var(--foreground-secondary)">基线</text>
+                              </svg>
+                              <div class="wzh-router-legend twin-legend">
+                                <span id="wzhRouterLegendHot"><i class="wzh-router-sw hot"></i>当前 · 命中专家</span>
+                                <span id="wzhRouterLegendRest"><i class="wzh-router-sw starved"></i>当前 · 陪跑专家</span>
+                              </div>
+                              <div class="wzh-router-caption" id="wzhRouterScaleCaption">高度取 sqrt 刻度以便同框显示 98% 与 0.39%/0.008%；实际差距达 4 个数量级。</div>
+                            </div>
+
+                            <div class="wzh-tab-panel" id="wzhMeshPanel" data-wzh-panel="mesh">
+                            <p id="wzhMeshSubtitle" hidden>EP64 取 32 rank 代表性切片 · layer 38 · Step 41230</p>
+                            <div class="twin-legend wzh-mesh-legend">
+                              <span id="wzhMeshLegendHot"><i class="wzh-mesh-sw hot"></i>EP rank 23（异常）</span>
+                              <span id="wzhMeshLegendFlow"><i class="wzh-mesh-sw flow"></i>dispatch 流向</span>
+                            </div>
+                            <div class="wzh-mesh-stage">
+                              <svg viewBox="0 0 520 176" class="wzh-mesh-svg" preserveAspectRatio="xMidYMid meet">
+                                <title id="wzhMeshSvgTitle">EP All-to-All：31 个正常 rank 收发对称 ≈19MB，EP rank 23（node2 GPU7）send=0 / recv≈151MB，其余 rank 空等超时</title>
+                                <g id="wzhMeshFlowLines">
+                                  <line x1="42" y1="26" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="104.29" y1="26" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="166.57" y1="26" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="228.86" y1="26" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="291.14" y1="26" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="353.43" y1="26" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="415.71" y1="26" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="478" y1="26" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="42" y1="67.33" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="104.29" y1="67.33" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="166.57" y1="67.33" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="228.86" y1="67.33" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="291.14" y1="67.33" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="353.43" y1="67.33" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="415.71" y1="67.33" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="478" y1="67.33" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="42" y1="108.67" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="104.29" y1="108.67" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="166.57" y1="108.67" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="228.86" y1="108.67" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="291.14" y1="108.67" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="353.43" y1="108.67" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="415.71" y1="108.67" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="42" y1="150" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="104.29" y1="150" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="166.57" y1="150" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="228.86" y1="150" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="291.14" y1="150" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="353.43" y1="150" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                  <line x1="415.71" y1="150" x2="478" y2="108.67" stroke="var(--highlight-copy-blue-source)" stroke-width="0.7" opacity="0.16"/>
+                                </g>
+                                <g>
+                                  <g><circle cx="42" cy="26" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 0 · node0 GPU0 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="104.29" cy="26" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 1 · node0 GPU1 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="166.57" cy="26" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 2 · node0 GPU2 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="228.86" cy="26" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 3 · node0 GPU3 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="291.14" cy="26" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 4 · node0 GPU4 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="353.43" cy="26" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 5 · node0 GPU5 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="415.71" cy="26" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 6 · node0 GPU6 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="478" cy="26" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 7 · node0 GPU7 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="42" cy="67.33" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 8 · node1 GPU0 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="104.29" cy="67.33" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 9 · node1 GPU1 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="166.57" cy="67.33" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 10 · node1 GPU2 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="228.86" cy="67.33" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 11 · node1 GPU3 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="291.14" cy="67.33" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 12 · node1 GPU4 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="353.43" cy="67.33" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 13 · node1 GPU5 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="415.71" cy="67.33" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 14 · node1 GPU6 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="478" cy="67.33" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 15 · node1 GPU7 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="42" cy="108.67" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 16 · node2 GPU0 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="104.29" cy="108.67" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 17 · node2 GPU1 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="166.57" cy="108.67" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 18 · node2 GPU2 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="228.86" cy="108.67" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 19 · node2 GPU3 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="291.14" cy="108.67" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 20 · node2 GPU4 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="353.43" cy="108.67" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 21 · node2 GPU5 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="415.71" cy="108.67" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 22 · node2 GPU6 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g id="wzhMeshHotRankGroup"><circle cx="478" cy="108.67" r="13" fill="none" stroke="var(--danger)" stroke-width="1.2" opacity="0.55"/><circle cx="478" cy="108.67" r="8" fill="color-mix(in srgb, var(--danger) 26%, transparent)" stroke="var(--danger)" stroke-width="1.6"><title>EP rank 23 · node2 GPU7 · send 0MB / recv 151MB · all-to-all 死锁</title></circle></g>
+                                  <g><circle cx="42" cy="150" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 24 · node3 GPU0 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="104.29" cy="150" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 25 · node3 GPU1 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="166.57" cy="150" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 26 · node3 GPU2 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="228.86" cy="150" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 27 · node3 GPU3 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="291.14" cy="150" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 28 · node3 GPU4 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="353.43" cy="150" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 29 · node3 GPU5 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="415.71" cy="150" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 30 · node3 GPU6 · send≈recv≈19MB · 正常</title></circle></g>
+                                  <g><circle cx="478" cy="150" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 31 · node3 GPU7 · send≈recv≈19MB · 正常</title></circle></g>
+                                </g>
+                                <!-- 最新健康态 · 「实时监控」抽牌到 MoE 层时的流动示意(与事故态的 wzhMeshFlowLines
+                                     汇聚线区分：这里是 8 条跨节点竖线，不指向任何单一 rank，避免暗示虚假热点)。
+                                     必须画在 32 个 rank 圆点分组之后：早先放在圆点组前面时，流动点每次
+                                     经过 4 个节点行(与圆点同一 y 坐标)都会被后画的圆点整个盖住，几乎看不见。 -->
+                                <g id="wzhMeshLiveFlow" class="wzh-mesh-live-flow" style="display:none">
+                                  <line x1="42" y1="26" x2="42" y2="150"/>
+                                  <line x1="104.29" y1="26" x2="104.29" y2="150"/>
+                                  <line x1="166.57" y1="26" x2="166.57" y2="150"/>
+                                  <line x1="228.86" y1="26" x2="228.86" y2="150"/>
+                                  <line x1="291.14" y1="26" x2="291.14" y2="150"/>
+                                  <line x1="353.43" y1="26" x2="353.43" y2="150"/>
+                                  <line x1="415.71" y1="26" x2="415.71" y2="150"/>
+                                  <line x1="478" y1="26" x2="478" y2="150"/>
+                                  <!-- 沿竖线跑的流动点(比虚线本身醒目得多),8 列错开动画起点避免同步齐跳 -->
+                                  <circle class="wzh-mesh-flow-dot" cx="42" cy="26" r="4.4" style="animation-delay:0s"/>
+                                  <circle class="wzh-mesh-flow-dot" cx="104.29" cy="26" r="4.4" style="animation-delay:.2s"/>
+                                  <circle class="wzh-mesh-flow-dot" cx="166.57" cy="26" r="4.4" style="animation-delay:.4s"/>
+                                  <circle class="wzh-mesh-flow-dot" cx="228.86" cy="26" r="4.4" style="animation-delay:.6s"/>
+                                  <circle class="wzh-mesh-flow-dot" cx="291.14" cy="26" r="4.4" style="animation-delay:.8s"/>
+                                  <circle class="wzh-mesh-flow-dot" cx="353.43" cy="26" r="4.4" style="animation-delay:1s"/>
+                                  <circle class="wzh-mesh-flow-dot" cx="415.71" cy="26" r="4.4" style="animation-delay:1.2s"/>
+                                  <circle class="wzh-mesh-flow-dot" cx="478" cy="26" r="4.4" style="animation-delay:1.4s"/>
+                                </g>
+                                <g>
+                                  <text x="32" y="29" text-anchor="end" class="wzh-mesh-axis">node0</text>
+                                  <text x="32" y="70.33" text-anchor="end" class="wzh-mesh-axis">node1</text>
+                                  <text x="32" y="111.67" text-anchor="end" class="wzh-mesh-axis">node2</text>
+                                  <text x="32" y="153" text-anchor="end" class="wzh-mesh-axis">node3</text>
+                                  <text x="42" y="170" text-anchor="middle" class="wzh-mesh-axis">GPU0</text>
+                                  <text x="104.29" y="170" text-anchor="middle" class="wzh-mesh-axis">GPU1</text>
+                                  <text x="166.57" y="170" text-anchor="middle" class="wzh-mesh-axis">GPU2</text>
+                                  <text x="228.86" y="170" text-anchor="middle" class="wzh-mesh-axis">GPU3</text>
+                                  <text x="291.14" y="170" text-anchor="middle" class="wzh-mesh-axis">GPU4</text>
+                                  <text x="353.43" y="170" text-anchor="middle" class="wzh-mesh-axis">GPU5</text>
+                                  <text x="415.71" y="170" text-anchor="middle" class="wzh-mesh-axis">GPU6</text>
+                                  <text x="478" y="170" text-anchor="middle" class="wzh-mesh-axis">GPU7</text>
+                                  <text id="wzhMeshHotLabel" x="478" y="94" text-anchor="middle" class="wzh-mesh-hot-label">EP23 死锁</text>
+                                </g>
+                              </svg>
+                            </div>
+                            <div class="wzh-mesh-caption" id="wzhMeshCaptionText">31 个正常 rank all-to-all 收发对称（≈19MB）；EP rank 23（node2 GPU7）send=0 / recv≈151MB，其余 rank 在同步点空等超时。</div>
+                            </div>
+                          </section>
+                        </div>
+                      </aside>
+                    </div>
+                  </section>
+              </section>
+            </div>
+          </section>
+
+          <section class="pto-ide-frame__pane pto-ide-frame__bottom-dock" data-ide-pane="bottom-panel" data-ide-bottom-dock id="bottomDock">
+            <!-- 底部 dock 三页签：Timeline / 制品 / 事件流（后两者原为训练监控列的卡片，移入此处） -->
+            <div class="pto-ide-frame__bottom-view" data-ide-bottom-panel="visualization" id="twinTimeline">
+              <header class="pto-ide-frame__pane-header">
+                <div class="pto-ide-frame__terminal-tablist twin-dock-tablist" role="tablist" aria-label="底部面板">
+                  <button class="pto-ide-frame__terminal-tab twin-dock-tab is-selected" type="button" role="tab"
+                          id="dockTabTimeline" data-dock-tab="timeline"
+                          aria-selected="true" aria-controls="twinTimelineBody">Timeline</button>
+                  <button class="pto-ide-frame__terminal-tab twin-dock-tab" type="button" role="tab"
+                          id="dockTabArtifacts" data-dock-tab="artifacts"
+                          aria-selected="false" aria-controls="dockPanelArtifacts" tabindex="-1">制品</button>
+                  <button class="pto-ide-frame__terminal-tab twin-dock-tab" type="button" role="tab"
+                          id="dockTabFeed" data-dock-tab="feed"
+                          aria-selected="false" aria-controls="dockPanelFeed" tabindex="-1">事件流</button>
+                </div>
+                <p class="twin-timeline-subtitle" id="twinDockSubtitle">NCCL trace: node2 ranks 16–23 · EP rank 23（GPU 7）all-to-all 超时 30s → layer 38 MoE expert dispatch 死锁</p>
+              </header>
+              <div class="pto-ide-frame__pane-body twin-timeline-body" id="twinTimelineBody"
+                   role="tabpanel" aria-labelledby="dockTabTimeline" data-dock-panel="timeline"></div>
+              <div class="pto-ide-frame__pane-body twin-dock-panel" id="dockPanelArtifacts"
+                   role="tabpanel" aria-labelledby="dockTabArtifacts" data-dock-panel="artifacts" hidden>
+                <div class="twin-artifacts" id="artifacts"></div>
+              </div>
+              <div class="pto-ide-frame__pane-body twin-dock-panel" id="dockPanelFeed"
+                   role="tabpanel" aria-labelledby="dockTabFeed" data-dock-panel="feed" hidden>
+                <div class="twin-feed" id="feed"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="diagnosisTooltip" class="diagnosis-bubble" hidden></div>
+  <script>
+    // ── 算子染色切换 ──
+    window._opColorMode = 'cat';
+    function setOpColorMode(mode) {
+      window._opColorMode = mode;
+      document.querySelectorAll('#opColorSeg .segbtn').forEach(function(b) {
+        b.classList.toggle('on', b.dataset.c === mode);
+      });
+      document.dispatchEvent(new CustomEvent('opv-recolor'));
+    }
+
+    // ── 层级下拉 ──
+    function toggleFlatLevelMenu(e) {
+      e.stopPropagation();
+      var dd = document.getElementById('flatLevelDD');
+      var menu = document.getElementById('flatLevelMenu');
+      var open = !menu.hidden;
+      menu.hidden = open;
+      dd.classList.toggle('open', !open);
+      if (!open) {
+        var close = function(ev) {
+          if (!dd.contains(ev.target)) { menu.hidden = true; dd.classList.remove('open'); document.removeEventListener('click', close); }
+        };
+        setTimeout(function() { document.addEventListener('click', close); }, 0);
+      }
+    }
+
+    function pickFlatLevel(level) {
+      var menu = document.getElementById('flatLevelMenu');
+      var label = document.getElementById('flatLevelLabel');
+      menu.querySelectorAll('.hsel-item').forEach(function(item) {
+        item.classList.toggle('is-sel', item.dataset.v === level);
+      });
+      var names = { '1': 'L1 · Model', '2': 'L2 · DecoderLayer', '3': 'L3 · Attention / MoE', '4': 'L4 · Q·K·V / Expert', '5': 'L5 · Operator' };
+      label.textContent = names[level] || ('L' + level);
+      menu.hidden = true;
+      document.getElementById('flatLevelDD').classList.remove('open');
+      document.dispatchEvent(new CustomEvent('opv-set-level', { detail: { level: parseInt(level) } }));
+    }
+  </script>
+  <script>
+    // ══ 「W_gate 专家负载分布」「分布式通信 EP All-to-All」联动时光机 ══════════
+    // 这两张卡默认展示训练「最新」健康态，只有时光机回放钉在事故 step（或落在其附近
+    // 容差内 —— 手动拖动很难像点击标记那样精确停在单点）才切回事故态；由
+    // training-run-twin.js 在 applyViewStep 里通过 window.wzhSyncProblemOneMonitorCards
+    // 回调驱动（见该文件 isWzhTwinPage 分支），此处只负责按布尔值切换 DOM。
+    (function () {
+      var routerEls = {
+        subtitle: document.getElementById('wzhRouterSubtitle'),
+        kpiVal: document.getElementById('wzhRouterKpiCurrentVal'),
+        svgTitle: document.getElementById('wzhRouterSvgTitle'),
+        hotRect: document.getElementById('wzhRouterBarHotRect'),
+        hotText: document.getElementById('wzhRouterBarHotText'),
+        restRect: document.getElementById('wzhRouterBarRestRect'),
+        restText: document.getElementById('wzhRouterBarRestText'),
+        legendHot: document.getElementById('wzhRouterLegendHot'),
+        legendRest: document.getElementById('wzhRouterLegendRest'),
+        scaleCaption: document.getElementById('wzhRouterScaleCaption'),
+      };
+      var meshEls = {
+        subtitle: document.getElementById('wzhMeshSubtitle'),
+        svgTitle: document.getElementById('wzhMeshSvgTitle'),
+        legendHot: document.getElementById('wzhMeshLegendHot'),
+        legendFlow: document.getElementById('wzhMeshLegendFlow'),
+        flowLines: document.getElementById('wzhMeshFlowLines'),
+        hotRankGroup: document.getElementById('wzhMeshHotRankGroup'),
+        hotLabel: document.getElementById('wzhMeshHotLabel'),
+        caption: document.getElementById('wzhMeshCaptionText'),
+        liveFlow: document.getElementById('wzhMeshLiveFlow'),
+      };
+      if (!routerEls.subtitle || !meshEls.subtitle) return;
+
+      // 事故态原样保留自页面初始 markup(即"问题一"定位链引用的固定数值),不重复硬编码。
+      var incident = {
+        routerSubtitle: routerEls.subtitle.textContent,
+        kpiVal: routerEls.kpiVal.textContent,
+        routerSvgTitle: routerEls.svgTitle.textContent,
+        hotRect: { y: routerEls.hotRect.getAttribute('y'), height: routerEls.hotRect.getAttribute('height'), fill: routerEls.hotRect.getAttribute('fill'), opacity: routerEls.hotRect.getAttribute('opacity') },
+        hotText: { y: routerEls.hotText.getAttribute('y'), fill: routerEls.hotText.getAttribute('fill'), text: routerEls.hotText.textContent },
+        restRect: { y: routerEls.restRect.getAttribute('y'), height: routerEls.restRect.getAttribute('height'), fill: routerEls.restRect.getAttribute('fill'), opacity: routerEls.restRect.getAttribute('opacity') },
+        restText: { y: routerEls.restText.getAttribute('y'), fill: routerEls.restText.getAttribute('fill'), text: routerEls.restText.textContent },
+        scaleCaption: routerEls.scaleCaption.textContent,
+        meshSubtitle: meshEls.subtitle.textContent,
+        meshSvgTitle: meshEls.svgTitle.textContent,
+        hotRankGroupHTML: meshEls.hotRankGroup.innerHTML,
+        caption: meshEls.caption.textContent,
+      };
+
+      var live = {
+        routerSubtitle: '256 个路由专家负载均衡，暂无热点。',
+        kpiVal: '0.41% · E193',
+        routerSvgTitle: 'W_gate 专家负载：基线 vs 当前（训练中，负载均衡）',
+        hotRect: { y: '114.3', height: '7.7', fill: 'var(--highlight-copy-blue-source)', opacity: '0.85' },
+        hotText: { y: '110.3', fill: 'var(--foreground-secondary)', text: '0.41%' },
+        restRect: { y: '115.6', height: '6.4', fill: 'var(--highlight-copy-blue-source)', opacity: '0.85' },
+        restText: { y: '111.6', fill: 'var(--foreground-secondary)', text: '0.39%' },
+        scaleCaption: '',
+        meshSubtitle: 'EP64 取 32 rank 代表性切片 · layer 38 · 训练中',
+        meshSvgTitle: 'EP All-to-All：32 个代表性 rank 收发对称 ≈19MB，通信正常（训练中）',
+        hotRankGroupHTML: '<circle cx="478" cy="108.67" r="6" fill="color-mix(in srgb, var(--highlight-ub-green-source) 68%, transparent)" stroke="var(--border-strong)" stroke-width="1"><title>EP rank 23 · node2 GPU7 · send≈recv≈19MB · 正常</title></circle>',
+        caption: '',
+      };
+
+      function applyRect(rect, cfg) {
+        rect.setAttribute('y', cfg.y);
+        rect.setAttribute('height', cfg.height);
+        rect.setAttribute('fill', cfg.fill);
+        rect.setAttribute('opacity', cfg.opacity);
+      }
+      function applyText(text, cfg) {
+        text.setAttribute('y', cfg.y);
+        text.setAttribute('fill', cfg.fill);
+        text.textContent = cfg.text;
+      }
+
+      // EP All-to-All 的"实时流动"连线只在【最新健康态 且 当前抽牌层是 MoE 层】时显示：
+      // isIncident 由时光机驱动(见下方 window.wzhSyncProblemOneMonitorCards)，
+      // moeActive 由「实时监控」层级抽牌驱动(见 window.wzhSetMeshLiveActive，layerType(L) 判定)。
+      var meshIsIncident = true;
+      var meshMoeActive = false;
+      function syncMeshLiveFlow() {
+        if (!meshEls.liveFlow) return;
+        // 实测 Chromium 对 SVG <g> 的 hidden IDL 反射不可靠(el.hidden=false 后 hidden="" 内容属性仍留着，
+        // 而设计系统里 [hidden]{display:none!important} 会一直赢，导致流动线永远显示不出来)，
+        // 改成显式挪掉属性 + 用 style.display 控制，和本文件其它 mesh 元素的显隐方式保持一致。
+        meshEls.liveFlow.removeAttribute('hidden');
+        meshEls.liveFlow.style.display = (meshIsIncident || !meshMoeActive) ? 'none' : '';
+      }
+      window.wzhSetMeshLiveActive = function (isMoe) {
+        meshMoeActive = !!isMoe;
+        syncMeshLiveFlow();
+      };
+
+      var lastIsIncident = null;
+      window.wzhSyncProblemOneMonitorCards = function (isIncident) {
+        if (isIncident === lastIsIncident) return; // 布尔值未变化时不重复重写 DOM
+        lastIsIncident = isIncident;
+        meshIsIncident = isIncident;
+        syncMeshLiveFlow();
+        var d = isIncident ? incident : live;
+        routerEls.subtitle.textContent = d.routerSubtitle;
+        routerEls.kpiVal.textContent = d.kpiVal;
+        routerEls.kpiVal.classList.toggle('is-bad', isIncident);
+        routerEls.svgTitle.textContent = d.routerSvgTitle;
+        applyRect(routerEls.hotRect, d.hotRect);
+        applyText(routerEls.hotText, d.hotText);
+        applyRect(routerEls.restRect, d.restRect);
+        applyText(routerEls.restText, d.restText);
+        routerEls.legendHot.style.display = isIncident ? '' : 'none';
+        routerEls.legendRest.style.display = isIncident ? '' : 'none';
+        routerEls.scaleCaption.textContent = d.scaleCaption;
+        routerEls.scaleCaption.hidden = !d.scaleCaption;
+
+        meshEls.subtitle.textContent = d.meshSubtitle;
+        meshEls.svgTitle.textContent = d.meshSvgTitle;
+        meshEls.legendHot.style.display = isIncident ? '' : 'none';
+        meshEls.legendFlow.style.display = isIncident ? '' : 'none';
+        meshEls.flowLines.style.display = isIncident ? '' : 'none';
+        meshEls.hotRankGroup.innerHTML = d.hotRankGroupHTML;
+        meshEls.hotLabel.style.display = isIncident ? '' : 'none';
+        meshEls.caption.textContent = d.caption;
+        meshEls.caption.hidden = !d.caption;
+      };
+
+      // 默认态:页面初始 markup 就是事故态,首次调用前先强制置为最新健康态
+      lastIsIncident = true;
+      window.wzhSyncProblemOneMonitorCards(false);
+    })();
+  </script>
+  <script>
+    // ── #wzhRouterMeshCard 页签切换：W_gate(Router) / EP All-to-All 并列，复用 .seg/.segbtn 分段控件 ──
+    (function () {
+      var seg = document.getElementById('wzhRouterMeshSeg');
+      if (!seg) return;
+      var buttons = Array.from(seg.querySelectorAll('.segbtn'));
+      var panels = Array.from(document.querySelectorAll('#wzhRouterMeshCard [data-wzh-panel]'));
+      function select(name) {
+        buttons.forEach(function (b) {
+          var on = b.dataset.wzhTab === name;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-selected', String(on));
+          b.tabIndex = on ? 0 : -1;
+        });
+        panels.forEach(function (p) { p.hidden = p.dataset.wzhPanel !== name; });
+      }
+      buttons.forEach(function (b) { b.addEventListener('click', function () { select(b.dataset.wzhTab); }); });
+    })();
+  </script>
+  <script>
+    // ══ 实时监控视图（整网图页签「实时监控」）════════════════════════════════
+    // 全局视图 = 现有问题诊断标注；实时监控 = 隐藏问题标注，按当前层高亮整网图对应局部，
+    // 底部 46 层 3D 侧视卡逐层「抽牌」推进，信息栏显示 epoch/step/layer(类型)。
+    // 层号→类型规则来自 openPangu-2.0-Flash 架构：FFN(Dense L0~1 / MoE L2~45) × 注意力(DSA 每3层 / SWA 其余)。
+    (function () {
+      var LAYER_COUNT = 46;
+      var STEP_MS = 1600;               // 每层高亮停留时长（若干秒后推进到下一层）
+      var liveLayer = 0, liveTimer = null;
+      var LIVE_CYCLE_MS = LAYER_COUNT * STEP_MS;   // 46 层跑完一圈的真实耗时
+      // 训练节奏锚点：脚本执行时只设一次，之后切页签(global/live)或点 3D 卡片都不会重置它——
+      // 当前该高亮哪一层，永远是「真实流逝时间 mod 一圈时长」算出来的，不依赖 setInterval 累计的计数器，
+      // 这样切走再切回来 / 点卡片查看后，播放头会自动落回「此刻真实应该在的层」，而不是从 0 或被点的层重新起播。
+      var liveAnchorTime = Date.now();
+      var liveLapsDone = 0;             // 锚点以来已经跑满的整圈数，用于按圈驱动 twinAdvanceStep 且不重复计数
+
+      function computeLivePosition() {
+        var elapsed = Date.now() - liveAnchorTime;
+        return {
+          layer: Math.floor((elapsed % LIVE_CYCLE_MS) / STEP_MS),
+          laps: Math.floor(elapsed / LIVE_CYCLE_MS),
+        };
+      }
+
+      var TYPES = {
+        'dense-dsa': { label: 'Dense · DSA', color: '#0ea5e9' },
+        'dense-swa': { label: 'Dense · SWA', color: '#22c55e' },
+        'moe-dsa':   { label: 'MoE · DSA',   color: '#8b5cf6' },
+        'moe-swa':   { label: 'MoE · SWA',   color: '#f59e0b' }
+      };
+      function layerType(L) {
+        var dense = L < 2;               // first_k_dense_replace = 2
+        var dsa = (L % 3) === 0;          // dsa_layers = 0,3,6,…,45
+        return (dense ? 'dense-' : 'moe-') + (dsa ? 'dsa' : 'swa');
+      }
+
+      // 各类型在整网图上要点亮的节点 / cluster（node-id / cluster-id 与 opv-modelviz-schema.js 一致）。
+      // 注意：下面几组只覆盖「随层类型变化」的节点；解码层模板里每层都会跑一遍的公共节点
+      // （norm/投影/因果卷积/通信集合等，见 opv-modelviz.js 的 COLLAPSIBLE.sparse_mla_attention /
+      // ffn_choice 全量列表）以及只跑一次、不属于任何具体层的全局节点（embedding/final_norm/
+      // lm_head/logits/mtp…）都归进 ALWAYS_ON —— 否则这些节点会因为从未被打上 pto-live-active，
+      // 在「非当前层去色」规则下被误判成"从没用上"，永远显示成灰色。
+      var ATTN_CORE = [
+        'input_layernorm', 'mhc_attention', 'sparse_mla_attention',
+        'q_a_proj', 'q_causal_conv', 'q_residual_add', 'q_a_norm', 'q_b_proj',
+        'kv_a_proj', 'kv_causal_conv', 'kv_residual_add', 'kv_a_norm', 'kv_b_proj',
+        'rope_apply', 'rope_cache', 'kv_cache', 'query_tensor', 'key_tensor', 'value_tensor',
+        'attention_core', 'o_causal_conv', 'o_residual_add', 'o_proj', 'attention_projection_weights',
+        'attention_all_gather', 'attention_reduce_scatter', 'post_attention_norm', 'mhc_attention_post'
+      ];
+      var DSA_NODES = ['dsa_indexer', 'param_sink_state', 'mome_state'];
+      var FFN_COMMON = ['pre_mlp_norm', 'ffn_choice', 'post_mlp_norm', 'block_post_norm', 'ffn_all_gather', 'ffn_reduce_scatter'];
+      var DENSE_NODES = ['dense_mlp', 'dense_mlp_weights', 'dense_gate_up', 'dense_silu', 'dense_down'];
+      var MOE_NODES = [
+        'moe_ffn', 'router_weight', 'router_gate', 'route_topk',
+        'moe_all_to_all_dispatch', 'expert_bank_weights', 'routed_expert_bank',
+        'shared_expert_weights', 'shared_expert_mlp', 'moe_all_to_all_combine',
+        'moe_combine', 'expert_parallel_state'
+      ];
+      // 不属于「解码层模板」、每 step 只走一次的全局节点：无论当前高亮哪一层都应保持常亮
+      var ALWAYS_ON = [
+        'input_tokens', 'token_embedding', 'embedding_weight', 'positions',
+        'final_norm', 'lm_head', 'lm_head_weight', 'logits',
+        'mtp_module', 'mtp_input_norms', 'mtp_eh_proj', 'mtp_decoder_layer', 'mtp_head_weight', 'mtp_shared_head', 'mtp_logits'
+      ];
+      function layerNodes(L) {
+        var t = layerType(L), ids = ATTN_CORE.concat(FFN_COMMON, ALWAYS_ON);
+        if (t.indexOf('dsa') >= 0) ids = ids.concat(DSA_NODES);
+        ids = ids.concat(t.indexOf('dense') === 0 ? DENSE_NODES : MOE_NODES);
+        return ids;
+      }
+      function layerClusters(L) {
+        return ['attention-block', 'ffn-block'].concat(layerType(L).indexOf('dense') === 0 ? [] : ['moe-block']);
+      }
+
+      function graphCard() { return document.querySelector('.twin-graph-card'); }
+      function graphStage() { return document.getElementById('graphStage'); }
+
+      function clearGraphHighlight() {
+        var stage = graphStage();
+        if (!stage) return;
+        stage.querySelectorAll('.pto-live-active').forEach(function (el) { el.classList.remove('pto-live-active'); });
+      }
+      function applyGraphHighlight(L) {
+        var stage = graphStage();
+        if (!stage) return;
+        clearGraphHighlight();
+        var card = graphCard();
+        if (card) card.style.setProperty('--live-accent', TYPES[layerType(L)].color);
+        layerNodes(L).forEach(function (id) {
+          var g = stage.querySelector('[data-node-id="' + id + '"]');
+          if (g) g.classList.add('pto-live-active');
+        });
+        layerClusters(L).forEach(function (id) {
+          var c = stage.querySelector('[data-cluster-id="' + id + '"]');
+          if (c) c.classList.add('pto-live-active');
+        });
+      }
+
+      // 按容器宽度自适应铺开 46 张卡（横向卡带，整体居中；窄容器则密叠只露色脊）
+      function positionDeck() {
+        var rail = document.getElementById('twinLiveRail');
+        if (!rail) return;
+        var cards = rail.querySelectorAll('.twin-live-card');
+        if (!cards.length) return;
+        // 步距按容器宽度反推，保证 46 张卡 + 两侧留白始终落在容器内（小分辨率下自动密叠）
+        var w = rail.clientWidth || 600, CARD = 68, PAD = 4;
+        var step = Math.min(15, (w - CARD - PAD * 2) / (LAYER_COUNT - 1));
+        if (step < 3) step = 3;                       // 极窄时的下限，避免卡片完全重合
+        var total = (LAYER_COUNT - 1) * step + CARD;
+        var pad = Math.max(PAD, (w - total) / 2);
+        cards.forEach(function (c, L) {
+          c.style.setProperty('--x', (pad + L * step).toFixed(1) + 'px');
+          c.style.zIndex = String(L + 1);   // 右侧卡叠在上（扇形卡组），当前卡由 CSS 提到 60
+        });
+      }
+
+      // 构建 46 层 3D 侧视卡 + 图例（只建一次）
+      function buildDeck() {
+        var rail = document.getElementById('twinLiveRail');
+        if (rail && !rail.childElementCount) {
+          for (var L = 0; L < LAYER_COUNT; L++) {
+            var t = layerType(L);
+            var card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'twin-live-card';
+            card.dataset.layer = String(L);
+            card.dataset.type = t;
+            card.style.setProperty('--card-color', TYPES[t].color);
+            card.title = 'Layer ' + L + ' · ' + TYPES[t].label;
+            // 卡内容只放卡顶信息：Layer 全称 + 类型 —— 当前层上移时正是这两行露出卡带上沿
+            card.innerHTML =
+              '<div class="tlc-h">Layer ' + L + '</div>' +
+              '<div class="tlc-type">' + TYPES[t].label + '</div>';
+            // 点卡片只是临时预览该层(立即高亮 + 更新整网图/信息条)，不改真实节奏的锚点/圈数，
+            // 下一次 tickLive(≤STEP_MS 后)会把播放头自动带回「真实此刻应该在的层」
+            card.addEventListener('click', function () { setLiveLayer(parseInt(this.dataset.layer, 10)); });
+            rail.appendChild(card);
+          }
+          positionDeck();
+        }
+        var legend = document.getElementById('twinLiveLegend');
+        if (legend && !legend.childElementCount) {
+          Object.keys(TYPES).forEach(function (k) {
+            var item = document.createElement('span');
+            item.className = 'twin-live-legend-item';
+            var sw = document.createElement('i'); sw.style.background = TYPES[k].color;
+            item.appendChild(sw);
+            item.appendChild(document.createTextNode(TYPES[k].label));
+            legend.appendChild(item);
+          });
+        }
+      }
+
+      // step 与「时光机」同源：优先读 training-run-twin.js 暴露的 state.step，退化时读进度条文本
+      function currentStep() {
+        if (typeof window.twinGetStep === 'function') return window.twinGetStep();
+        var el = document.getElementById('progressStepCurrent');
+        return el ? (parseInt((el.textContent || '0').replace(/[^\d]/g, ''), 10) || 0) : 0;
+      }
+
+      function updateInfo(L) {
+        var t = TYPES[layerType(L)];
+        var text = document.getElementById('twinLiveText');
+        var dot = document.getElementById('twinLiveDot');
+        if (dot) dot.style.background = t.color;
+        if (text) {
+          text.textContent = 'Step ' + currentStep().toLocaleString() +
+            ' · Layer ' + L + ' / ' + LAYER_COUNT + ' · ' + t.label;
+        }
+      }
+
+      function setLiveLayer(L) {
+        liveLayer = ((L % LAYER_COUNT) + LAYER_COUNT) % LAYER_COUNT;
+        var rail = document.getElementById('twinLiveRail');
+        if (rail) {
+          rail.querySelectorAll('.twin-live-card').forEach(function (c) {
+            c.classList.toggle('is-active', parseInt(c.dataset.layer, 10) === liveLayer);
+          });
+        }
+        applyGraphHighlight(liveLayer);
+        updateInfo(liveLayer);
+        // EP All-to-All 只在 MoE 层(L2-45)才会发生专家分发；Dense 层(L0-1)同步隐去流动示意
+        if (typeof window.wzhSetMeshLiveActive === 'function') {
+          window.wzhSetMeshLiveActive(layerType(liveLayer).indexOf('moe') === 0);
+        }
+      }
+
+      function tickLive() {
+        var pos = computeLivePosition();
+        if (pos.laps > liveLapsDone) {
+          // 期间(哪怕切去了 global 视图或页签不可见)跑满的整圈数一次性补上，
+          // 保证「训练进度」的 step 计数不会因为没在看实时监控而漏跳
+          var lapsAdvanced = pos.laps - liveLapsDone;
+          liveLapsDone = pos.laps;
+          if (typeof window.twinAdvanceStep === 'function') window.twinAdvanceStep(lapsAdvanced);
+        }
+        setLiveLayer(pos.layer);
+      }
+      function startLive() {
+        stopLive();
+        tickLive();   // 立刻对齐到「此刻真实节奏下应该在哪一层」，而不是从 0 起播
+        liveTimer = setInterval(tickLive, STEP_MS);
+      }
+      function stopLive() {
+        if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+      }
+
+      window.setGraphViewMode = function (mode) {
+        var live = mode === 'live';
+        document.querySelectorAll('#viewModeSeg .segbtn').forEach(function (b) {
+          b.classList.toggle('on', b.dataset.v === mode);
+        });
+        var deck = document.getElementById('twinLiveDeck');
+        var card = graphCard();
+        if (card) card.classList.toggle('twin-live-on', live);
+        if (live) {
+          buildDeck();
+          if (deck) deck.hidden = false;
+          requestAnimationFrame(positionDeck);   // deck 显示后按实际宽度铺开
+          startLive();
+        } else {
+          stopLive();
+          clearGraphHighlight();
+          if (deck) deck.hidden = true;
+          if (typeof window.wzhSetMeshLiveActive === 'function') window.wzhSetMeshLiveActive(false);
+        }
+        // 底部卡出现/收起改变了整网图可用高度，让 opv 组件重新 Fit
+        window.dispatchEvent(new Event('resize'));
+      };
+
+      // 预建卡片，避免首屏闪动
+      document.addEventListener('DOMContentLoaded', function () { buildDeck(); }, { once: true });
+      // 默认进入「实时监控」视图。用 load 而非 DOMContentLoaded：本脚本先于 opv-modelviz.js 执行，
+      // 需等整网图把节点渲染进 #graphStage 后再首次高亮（即使早了，逐层推进也会自动补上）。
+      window.addEventListener('load', function () { setGraphViewMode('live'); }, { once: true });
+      // 容器宽度变化（窗口/分栏）时重新铺开卡带，仅在实时监控可见时
+      window.addEventListener('resize', function () {
+        var deck = document.getElementById('twinLiveDeck');
+        if (deck && !deck.hidden) positionDeck();
+      });
+    })();
+  </script>
+  <script>
+    // 底部 Timeline dock 开关:问题诊断(explorer)的展开/收起交给 ide-frame-pattern.js 内建的
+    // data-ide-toggle="explorer" 逻辑处理;这里只补 ide-frame 没有内建的「无 terminal 时的
+    // 纯 visualization dock 开关」——ide-frame 的 initBottomTerminalToggle 只在存在
+    // data-ide-toggle="terminal" 时才接管 visualization 按钮,本页没有 terminal 面板。
+    (() => {
+      const dock = document.getElementById('bottomDock');
+      const btn = document.getElementById('twinTimelineToggle');
+      if (!dock || !btn) return;
+
+      function gutterFor(pane) {
+        const prev = pane.previousElementSibling;
+        return prev && prev.matches('.pto-workbench-shell__split-gutter') ? prev : null;
+      }
+
+      function setVisible(show) {
+        dock.hidden = !show;
+        dock.setAttribute('aria-hidden', String(!show));
+        const gutter = gutterFor(dock);
+        if (gutter) gutter.hidden = !show;
+        btn.classList.toggle('is-selected', show);
+        btn.setAttribute('aria-pressed', String(show));
+        btn.setAttribute('aria-expanded', String(show));
+        btn.title = show ? '隐藏 Timeline 面板' : '显示 Timeline 面板';
+      }
+
+      btn.addEventListener('click', () => setVisible(dock.hidden));
+      window.PtoTrainingTwinTimelineDock = { setVisible };
+
+      // 默认收起底栏 Timeline，用户需要时手动展开
+      setVisible(false);
+    })();
+  </script>
+  <script>
+    // 底部 dock 三页签：Timeline / 制品 / 事件流。
+    // 「制品」「事件流」原为训练监控列的卡片，移到这里与 Timeline 并列。
+    (() => {
+      const tablist = document.querySelector('.twin-dock-tablist');
+      const subtitle = document.getElementById('twinDockSubtitle');
+      if (!tablist) return;
+
+      const tabs = Array.from(tablist.querySelectorAll('.twin-dock-tab'));
+      const SUBTITLE = {
+        timeline: 'NCCL trace: node2 ranks 16–23 · EP rank 23（GPU 7）all-to-all 超时 30s → layer 38 MoE expert dispatch 死锁',
+        artifacts: '训练 checkpoint 产出，标记验证集最佳权重。',
+        feed: 'checkpoint、HCCL、straggler 和 dataloader 事件。'
+      };
+
+      function select(name) {
+        tabs.forEach(tab => {
+          const on = tab.dataset.dockTab === name;
+          tab.classList.toggle('is-selected', on);
+          tab.setAttribute('aria-selected', String(on));
+          tab.tabIndex = on ? 0 : -1;
+        });
+        document.querySelectorAll('[data-dock-panel]').forEach(panel => {
+          panel.hidden = panel.dataset.dockPanel !== name;
+        });
+        if (subtitle) subtitle.textContent = SUBTITLE[name] || '';
+        // 泳道图在隐藏期间量不到尺寸，切回 Timeline 后补一次重排
+        if (name === 'timeline') window.dispatchEvent(new Event('resize'));
+      }
+
+      tabs.forEach(tab => tab.addEventListener('click', () => select(tab.dataset.dockTab)));
+
+      // ← / → 在页签间移动焦点（WAI-ARIA tablist 键盘约定）
+      tablist.addEventListener('keydown', ev => {
+        const step = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0;
+        if (!step) return;
+        ev.preventDefault();
+        const i = tabs.indexOf(document.activeElement);
+        const next = tabs[(( i < 0 ? 0 : i) + step + tabs.length) % tabs.length];
+        next.focus();
+        select(next.dataset.dockTab);
+      });
+
+      window.PtoTrainingTwinDockTabs = { select };
+    })();
+  </script>
+  <script>
+    // 顶栏左/右侧列开关:收起中央区的「训练监控」左列 / 「infra」右列。
+    // 列本身由 .twin-center-scroll 上的 is-left-collapsed / is-right-collapsed 控制(见样式表),
+    // 收起后整网图宽度变化,需要主动触发一次 resize 让 opv 画布重排。
+    (() => {
+      const grid = document.querySelector('.twin-center-scroll');
+      if (!grid) return;
+
+      const cols = [
+        { btn: document.getElementById('twinLeftColToggle'), cls: 'is-left-collapsed', label: '训练监控' },
+        { btn: document.getElementById('twinRightColToggle'), cls: 'is-right-collapsed', label: 'infra' },
+      ];
+
+      function setVisible(col, show) {
+        grid.classList.toggle(col.cls, !show);
+        col.btn.classList.toggle('is-selected', show);
+        col.btn.setAttribute('aria-pressed', String(show));
+        col.btn.setAttribute('aria-expanded', String(show));
+        const text = (show ? '隐藏 ' : '显示 ') + col.label + ' 栏';
+        col.btn.title = text;
+        col.btn.setAttribute('aria-label', text);
+        window.dispatchEvent(new Event('resize'));
+      }
+
+      cols.forEach((col) => {
+        if (!col.btn) return;
+        col.btn.addEventListener('click', () => setVisible(col, grid.classList.contains(col.cls)));
+      });
+
+      window.PtoTrainingTwinSideCols = {
+        setLeftVisible: (show) => cols[0].btn && setVisible(cols[0], show),
+        setRightVisible: (show) => cols[1].btn && setVisible(cols[1], show),
+      };
+    })();
+  </script>
+  <script>
+    (() => {
+      const bubble = document.getElementById('diagnosisTooltip');
+      if (!bubble) return;
+      let activeDesc = null;
+
+      function show(e) {
+        const desc = e.currentTarget;
+        const tip = desc.dataset.tooltip;
+        if (!tip) return;
+        activeDesc = desc;
+        bubble.textContent = tip;
+        bubble.hidden = false;
+        position(e);
+      }
+
+      function position(e) {
+        const rect = activeDesc.getBoundingClientRect();
+        bubble.style.left = Math.max(6, rect.left - 6) + 'px';
+        bubble.style.top = (rect.bottom + 4) + 'px';
+      }
+
+      function hide() {
+        activeDesc = null;
+        bubble.hidden = true;
+      }
+
+      // .wzh-help：训练监控栏/infra栏图表标题旁的「?」说明气泡，复用同一套浮层与定位逻辑；
+      // 额外绑定 focus/blur 使键盘可达（tabindex="0"）时也能看到说明。
+      // 暴露为 window.wzhBindHelpTooltips，供精度/infra 图表卡（training-run-twin.js 异步建卡，
+      // 晚于本脚本执行）建完 DOM 后按需重新扫描绑定，而不必重复实现 show/position/hide。
+      function bindHelpTooltips(root) {
+        (root || document).querySelectorAll('.diagnosis-desc, .wzh-help').forEach((desc) => {
+          if (desc.dataset.wzhHelpBound) return;
+          desc.dataset.wzhHelpBound = '1';
+          desc.addEventListener('mouseenter', show);
+          desc.addEventListener('mouseleave', hide);
+          desc.addEventListener('mousemove', position);
+          desc.addEventListener('focus', (e) => show(e));
+          desc.addEventListener('blur', hide);
+        });
+      }
+      window.wzhBindHelpTooltips = bindHelpTooltips;
+      bindHelpTooltips();
+    })();
+  </script>
+  <!-- 整网图组件:新版 model-graphviz 渲染引擎 + openPangu 默认 schema + 组件逻辑(集成,非 iframe)。
+       引擎须先于组件逻辑加载;组件逻辑在 DOM 就绪后立即渲染到 #graphStage。
+       原 model-graphviz-pattern.js / model-training-graphviz-pattern.js(旧训练图引擎)已移除:
+       左侧不再渲染旧训练整网图,training-run-twin.js 的 renderArchitecture 因 PtoModelTrainingGraphvizPattern 缺失而安全空转。 -->
+  <!-- IDE frame shell init: workbench-shell (resize kernel) must load before ide-frame (split/explorer/dock wiring) -->
+  <script src="./js/workbench-shell-pattern.js"></script>
+  <script src="./js/ide-frame-pattern.js"></script>
+  <script>
+    // 「问题诊断」「分析记录」为 standalone-main split 里两个可独立展开/收起的侧栏面板;
+    // ide-frame-pattern.js 内建的 explorer 折叠逻辑只支持单一 toggle/pane 配对,这里改为本地维护
+    // 两组开关状态。必须等 ide-frame-pattern.js 的 DOMContentLoaded 初始化(创建 split gutter)
+    // 跑完再做首次同步,否则收起的「分析记录」旁会残留一条可拖拽的空 gutter。
+    (function initTwinSidebarToggles() {
+      function run() {
+        const explorerPane = document.getElementById('explorerPane');
+        const analysisPane = document.getElementById('analysisLogPane');
+        const explorerBtn = document.getElementById('explorerPanelToggle');
+        const analysisBtn = document.getElementById('analysisLogToggle');
+        if (!explorerPane || !analysisPane || !explorerBtn || !analysisBtn) return;
+
+        const gutterAfter = (pane) => (
+          pane.nextElementSibling && pane.nextElementSibling.matches('.pto-workbench-shell__split-gutter')
+            ? pane.nextElementSibling
+            : null
+        );
+
+        function applyPane(pane, btn, visible, showLabel, hideLabel) {
+          pane.hidden = !visible;
+          pane.setAttribute('aria-hidden', String(!visible));
+          btn.classList.toggle('is-selected', visible);
+          btn.setAttribute('aria-expanded', String(visible));
+          btn.setAttribute('aria-pressed', String(visible));
+          const label = visible ? hideLabel : showLabel;
+          btn.title = label;
+          btn.setAttribute('aria-label', label);
+        }
+
+        function syncGutters() {
+          // DOM 顺序为 analysisPane, explorerPane, main-content:
+          // 中间 gutter 夹在「分析记录」和「问题诊断」之间,右侧 gutter 夹在「问题诊断」和主内容之间
+          const middleGutter = gutterAfter(analysisPane);
+          const rightGutter = gutterAfter(explorerPane);
+          if (middleGutter) middleGutter.hidden = analysisPane.hidden || explorerPane.hidden;
+          if (rightGutter) rightGutter.hidden = explorerPane.hidden;
+        }
+
+        explorerBtn.addEventListener('click', () => {
+          applyPane(explorerPane, explorerBtn, explorerPane.hidden, '展开 问题诊断', '收起 问题诊断');
+          syncGutters();
+        });
+
+        analysisBtn.addEventListener('click', () => {
+          applyPane(analysisPane, analysisBtn, analysisPane.hidden, '展开 分析记录', '收起 分析记录');
+          syncGutters();
+        });
+
+        syncGutters();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run, { once: true });
+      } else {
+        run();
+      }
+    })();
+  </script>
+  <script src="./model-graphviz-embed/pattern.js"></script>
+  <script src="./js/opv-modelviz-schema.js"></script>
+  <script src="./js/opv-modelviz.js"></script>
+  <script src="./js/training-metrics-chart.js"></script>
+  <script src="./js/swimlane-task.js"></script>
+  <script src="./js/timeline-swimlane.js"></script>
+  <script src="./js/hif8-case7.js"></script>
+  <script src="./js/training-run-twin.js"></script>
+  <script>
+    // 「精度」8 图 + 「集群监控」infra 2 图标题旁补「?」说明气泡：解释指标含义 + 好坏判定标准。
+    // training-run-twin.js 的 initAccuracyCharts()/initInfraCharts() 在 boot() 内同步建卡，
+    // boot() 又在本脚本之前那个 <script src> 求值时就跑完了，故此处 DOM 已就绪，可直接按标题文案匹配注入。
+    (() => {
+      // 每条 = 指标解释段 + 1~N 条判断标准，用 \n\n 分指标解释与判断标准段落、\n 分多条判断标准，
+      // 靠 .diagnosis-bubble 的 white-space:pre-wrap 原样换行；术语(如 L2 范数)在首次出现处随文解释，不假设读者已看过别的气泡。
+      const METRIC_HELP = {
+        loss: "训练 / 验证损失(loss)：模型预测与真实标签之间的差距，数值越低代表拟合得越好。\n\n· train loss 与 val loss 应同步下降\n· val loss 止跌回升 → 过拟合\n· 骤增或变为 NaN → 训练发散/中断",
+        acc: "训练 / 验证准确率(acc)：预测正确的样本占比，数值越高越好，应稳步逼近 100%。\n\n· train acc 远高于 val acc → 过拟合\n· 两者同步骤降 → 训练异常",
+        precision: "精确率(precision)：模型判定为正例的样本中，真正例的占比，数值越高越好。\n\n· 走低 → 误报变多(把错的判成对的)",
+        recall: "召回率(recall)：所有真实正例中，被模型正确识别出的占比，数值越高越好。\n\n· 走低 → 漏报变多(该抓的没抓到)",
+        f1: "F1：precision 与 recall 的调和平均，是兼顾两者的综合分，数值越高越好。\n\n· precision、recall 任一崩塌都会拉低 F1，适合一眼判断整体质量有无退化",
+        grad_norm: "梯度范数(grad_norm)：本 step 所有参数梯度的 L2 范数——把每个梯度分量平方后求和再开方，可理解为梯度这个高维向量的整体『长度』，反映参数更新的力度。正常应在小范围内平稳波动。\n\n· 持续增大或跳变为 inf/NaN → 梯度爆炸，训练不稳定甚至中断\n· 长期趋近 0 → 梯度消失，参数几乎不再更新",
+        weight_diff: "‖ΔW‖(weight_diff)：本 step 参数更新量的 L2 范数(同 grad_norm 的算法，只是对象换成参数变化量)，可理解为这次更新在高维参数空间里挪动的整体幅度；与 grad_norm 同根同源，梯度决定了更新的方向和力度。\n\n· 正常训练早期较大、随收敛趋于平稳\n· 健康信号是两条曲线同步小幅波动\n· 若与 grad_norm 同步跳变为 inf → 优化器同步发散(本页事故的根因)；若只有一条异常、另一条正常，更可能是单条指标的计算/上报问题，而非训练本身崩溃",
+        rollout_actor_probs_pearson_corr: "rollout·actor 概率相关系数：rollout(推理生成)阶段的输出概率，与训练阶段 actor 网络算出的概率之间的皮尔逊相关系数，衡量『推理时的分布』与『训练时的分布』是否一致，取值 -1~1，越接近 1 越好。\n\n· 明显走低 → rollout 与训练分布不一致(off-policy 偏差)，可能导致策略更新方向有偏",
+        MFU: "MFU(Model FLOPS Utilization)：实际算力 ÷ 理论峰值算力，衡量训练对硬件算力的利用效率，数值越高越好。\n\n· 本页场景健康区间约 45%~60%\n· 骤降至接近 0 → 通常是通信阻塞或集群故障导致训练停滞",
+        显存利用率: "HBM 显存利用率：跨卡平均显存占用率。\n\n· 需落在健康区间内，本页场景约 72%~85%\n· 太低 → 资源浪费；太高 → 有 OOM(显存溢出)风险\n· 骤降至 0 → 通常代表训练中断/进程重启",
+      };
+
+      function injectHelp(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.querySelectorAll(".twin-accuracy-metric-card__name").forEach((nameEl) => {
+          if (nameEl.closest(".wzh-card-title-row")) return; // 已处理过
+          const tip = METRIC_HELP[nameEl.textContent.trim()];
+          if (!tip) return;
+          const row = document.createElement("span");
+          row.className = "wzh-card-title-row";
+          nameEl.replaceWith(row);
+          row.appendChild(nameEl);
+          const help = document.createElement("span");
+          help.className = "wzh-help";
+          help.tabIndex = 0;
+          help.dataset.tooltip = tip;
+          help.textContent = "?";
+          row.appendChild(help);
+        });
+        window.wzhBindHelpTooltips?.(container);
+      }
+      injectHelp("accuracyCharts");
+      injectHelp("infraCharts");
+    })();
+  </script>
+</body>
+</html>

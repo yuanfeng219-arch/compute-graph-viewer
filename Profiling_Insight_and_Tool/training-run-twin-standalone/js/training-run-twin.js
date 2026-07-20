@@ -644,6 +644,10 @@
     devices: [],
   };
 
+  // 时光机「已训练时长」换算用：目标步耗时取自本页定位链案例(openPangu-2.0-Flash 稳态 T_iter 基线 ≤8.5s),
+  // 比用 seen/tokps 反推(会被 target=3e12 tokens 的语料规模拉到几百天)更贴近一次训练的合理周期。
+  const TIME_MACHINE_STEP_SECONDS = 8.5;
+
   const TP_VALUES = [1, 2, 4, 8];
   const PP_VALUES = [1, 2, 4, 8, 16];
   const MB_VALUES = [1, 2, 4, 8];
@@ -666,6 +670,16 @@
     if (days > 0) return `${days}d ${hours}h`;
     if (hours > 0) return `${hours}h ${mins}m`;
     return `${mins}m`;
+  }
+
+  function fmtDurationCN(seconds) {
+    const safeSeconds = Math.max(0, Math.round(seconds));
+    const days = Math.floor(safeSeconds / 86400);
+    const hours = Math.floor((safeSeconds % 86400) / 3600);
+    const mins = Math.floor((safeSeconds % 3600) / 60);
+    if (days > 0) return `${days}天${hours}小时${mins}分`;
+    if (hours > 0) return `${hours}小时${mins}分`;
+    return `${mins}分`;
   }
 
   function seedHistory() {
@@ -806,11 +820,16 @@
     let lowUtil = 0;
     let total = 0;
     let totalUtil = 0;
+    // 回放态的 util/temp 已由 applyReplayDevices() 按绝对 step 确定性算好,
+    // 这里不能再叠随机游走,否则同一 step 每次重绘都不一样,失去"回放"的可复现性
+    const replayFrozen = isTimeMachineReplaying();
     state.devices.forEach((device, index) => {
       var col = index % cols;
-      const targetTemp = 54 + device.util * 23 + (device.bad ? 8 : 0);
-      device.temp = clamp(device.temp * 0.86 + (targetTemp + rand(-2.2, 2.2)) * 0.14, 50, 92);
-      device.util = clamp(device.util + (Math.random() - 0.5) * 0.025, 0.45, 1);
+      if (!replayFrozen) {
+        const targetTemp = 54 + device.util * 23 + (device.bad ? 8 : 0);
+        device.temp = clamp(device.temp * 0.86 + (targetTemp + rand(-2.2, 2.2)) * 0.14, 50, 92);
+        device.util = clamp(device.util + (Math.random() - 0.5) * 0.025, 0.45, 1);
+      }
       peak = Math.max(peak, device.temp);
       total += device.temp;
       totalUtil += device.util;
@@ -846,15 +865,17 @@
       cell.dataset.tip = tip;
     });
     const avgUtil = totalUtil / state.devices.length;
-    $("hwUtil").textContent = `${(avgUtil * 100).toFixed(0)}%`;
-    $("hwLow").textContent = `${lowUtil}`;
-    $("hwThermal").textContent = `${thermalRisk}`;
-    $("hwThermal").style.color = thermalRisk > 0 ? "var(--danger, #dc2626)" : "";
-    $("hwAction").textContent = lowUtil > state.devices.length * 0.05
-      ? "查低利用 rank"
-      : thermalRisk > 0
-        ? "查降频/散热"
-        : "继续观察";
+    if ($("hwUtil")) {
+      $("hwUtil").textContent = `${(avgUtil * 100).toFixed(0)}%`;
+      $("hwLow").textContent = `${lowUtil}`;
+      $("hwThermal").textContent = `${thermalRisk}`;
+      $("hwThermal").style.color = thermalRisk > 0 ? "var(--danger, #dc2626)" : "";
+      $("hwAction").textContent = lowUtil > state.devices.length * 0.05
+        ? "查低利用 rank"
+        : thermalRisk > 0
+          ? "查降频/散热"
+          : "继续观察";
+    }
   }
 
   function renderArchitecture() {
@@ -946,8 +967,15 @@
   const ACC_STRIDE = Math.max(1, Math.round(state.stepsPerEpoch / 20));
   const ACC_EPOCH_STRIDE = Math.max(1, Math.round(ACC_WINDOW / 8)); // val 仅在若干采样点上有值,其余为 null
 
+  /* 窗口右边界永远是 state.step(实时态 = 最新 step,回放态 = 拖块所在 step)。
+     回放到训练早期时 step 可能不够铺满 200×ACC_STRIDE 的窗口,此时按比例收窄步距,
+     保证窗口左边界不越过 step 0(否则会算出负数 step 的"未来之前"数据)。 */
   function computeAccSteps() {
-    return Array.from({ length: ACC_WINDOW }, (_, i) => state.step - (ACC_WINDOW - 1 - i) * ACC_STRIDE);
+    const right = Math.max(0, state.step);
+    const stride = right >= (ACC_WINDOW - 1) * ACC_STRIDE
+      ? ACC_STRIDE
+      : Math.max(1, Math.floor(right / (ACC_WINDOW - 1)));
+    return Array.from({ length: ACC_WINDOW }, (_, i) => Math.max(0, right - (ACC_WINDOW - 1 - i) * stride));
   }
   let accSteps = computeAccSteps();
 
@@ -956,6 +984,9 @@
      事故步本身显示 NaN/inf；恢复期内指标从异常值平滑过渡回正常趋势；
      恢复完成后继续朝好的方向发展（loss 降低、acc 升高等）。 */
   const INCIDENT_STEP = 41230;
+  // 时光机手动拖动很难像点击「问题一」标记那样精确落在单个 step 上,
+  // 故给 W_gate/EP All-to-All 两张卡的事故态判定留一点容差(见 applyViewStep 里的回调)。
+  const INCIDENT_STEP_TOLERANCE = 300;
   const RECOVERY_STEPS = 15;
   const RECOVERY_END = INCIDENT_STEP + RECOVERY_STEPS;
 
@@ -991,6 +1022,12 @@
     const shockGn = atIncident ? Infinity : inRecovery ? (50.0 * (1 - ease) + baseGn * ease) : baseGn;
     const grad_norm = atIncident ? Infinity : +(shockGn).toFixed(2);
 
+    // 权重差分 ‖ΔW‖(逐 step 参数更新幅度的 L2 范数):早期训练步长大、收敛后趋于平稳(convDown 项),
+    // 与 grad_norm 同一根因(事故步梯度发散→ 优化器更新量同步炸至 inf),故事故/恢复处理与 grad_norm 一致。
+    const baseWd = 0.42 + 0.25 * convDown + stepNoise(12, step, 0.03);
+    const shockWd = atIncident ? Infinity : inRecovery ? (3.2 * (1 - ease) + baseWd * ease) : baseWd;
+    const weight_diff = atIncident ? Infinity : +(shockWd).toFixed(4);
+
     const tlBase = Math.max(0.15, targetLoss * (1.0 + 0.7 * convDown) + stepNoise(1, step, 0.11));
     const tl = atIncident ? NaN : inRecovery ? (tlBase + 0.8 * (1 - ease)) : tlBase;
     const vlBase = tlBase + 0.05 + stepNoise(2, step, 0.06);
@@ -1012,6 +1049,9 @@
     const crBase = clamp(0.7 + 0.28 * convUp + stepNoise(6, step, 0.045), -0.3, 0.999);
     const cr = atIncident ? NaN : inRecovery ? (crBase - 0.15 * (1 - ease)) : crBase;
 
+    // F1 = precision、recall 的调和平均，随两者同步计算，事故/恢复处理与 precision、recall 一致
+    const f1 = atIncident ? NaN : (pc + rc > 0 ? (2 * pc * rc) / (pc + rc) : 0);
+
     // HBM 显存利用率：事故步跌至 0（训练中断），恢复期从低位回升，恢复后继续正常波动
     const memBase = clamp(0.72 + 0.12 * convUp + stepNoise(11, step, 0.03), 0.45, 0.95);
     const avg_mem = atIncident ? 0 : inRecovery ? (memBase * ease) : memBase;
@@ -1023,16 +1063,16 @@
     return {
       train_loss: +tl.toFixed(4), val_loss: +vl.toFixed(4),
       train_acc: +ta.toFixed(4), val_acc: +va.toFixed(4),
-      mfu: +mf.toFixed(4), precision: +pc.toFixed(4), recall: +rc.toFixed(4),
+      mfu: +mf.toFixed(4), precision: +pc.toFixed(4), recall: +rc.toFixed(4), f1: +f1.toFixed(4),
       rollout_actor_probs_pearson_corr: +cr.toFixed(4),
       avg_mem: +avg_mem.toFixed(4),
-      loss, grad_norm, loss_single, grad_norm_single,
+      loss, grad_norm, loss_single, grad_norm_single, weight_diff,
     };
   }
 
   function buildAccuracyData(steps) {
     const n = steps.length;
-    const cols = { train_loss: [], val_loss: [], train_acc: [], val_acc: [], mfu: [], precision: [], recall: [], rollout_actor_probs_pearson_corr: [], avg_mem: [], loss: [], grad_norm: [], loss_single: [], grad_norm_single: [] };
+    const cols = { train_loss: [], val_loss: [], train_acc: [], val_acc: [], mfu: [], precision: [], recall: [], f1: [], rollout_actor_probs_pearson_corr: [], avg_mem: [], loss: [], grad_norm: [], loss_single: [], grad_norm_single: [], weight_diff: [] };
     steps.forEach((s, i) => {
       const m = metricsAtStep(s, n > 1 ? i / (n - 1) : 1);
       const isEpoch = i % ACC_EPOCH_STRIDE === 0 || i === n - 1;
@@ -1043,12 +1083,14 @@
       cols.mfu.push(m.mfu);
       cols.precision.push(m.precision);
       cols.recall.push(m.recall);
+      cols.f1.push(m.f1);
       cols.rollout_actor_probs_pearson_corr.push(m.rollout_actor_probs_pearson_corr);
       cols.avg_mem.push(m.avg_mem);
       cols.loss.push(m.loss);
       cols.grad_norm.push(m.grad_norm);
       cols.loss_single.push(m.loss_single);
       cols.grad_norm_single.push(m.grad_norm_single);
+      cols.weight_diff.push(m.weight_diff);
     });
     return cols;
   }
@@ -1070,15 +1112,26 @@
         { id: "train_loss", label: "train loss", key: "train_loss", colorVar: "--twin-chart-loss" },
         { id: "val_loss", label: "val loss", key: "val_loss", colorVar: "--twin-chart-gradnorm", emphasis: true },
       ] },
-    { id: "acc", name: "acc", legend: true, formatValue: fmtAccPct, series: [
+    { id: "acc", name: "acc", legend: true, formatValue: fmtAccPct,
+      tipCarryForward: false, markerStep: INCIDENT_STEP,
+      series: [
       { id: "train_acc", label: "train acc", key: "train_acc", colorVar: "--twin-chart-acc" },
       { id: "val_acc", label: "val acc", key: "val_acc", colorVar: "--twin-chart-loss", emphasis: true },
     ] },
-    { id: "precision", name: "precision", legend: false, note: "预测正例中的准确率", formatValue: fmtAccPct, series: [
+    { id: "precision", name: "precision", legend: false, note: "预测正例中的准确率", formatValue: fmtAccPct,
+      tipCarryForward: false, markerStep: INCIDENT_STEP,
+      series: [
       { id: "precision", label: "precision", key: "precision", colorVar: "--twin-chart-precision", emphasis: true },
     ] },
-    { id: "recall", name: "recall", legend: false, note: "真实正例的召回率", formatValue: fmtAccPct, series: [
+    { id: "recall", name: "recall", legend: false, note: "真实正例的召回率", formatValue: fmtAccPct,
+      tipCarryForward: false, markerStep: INCIDENT_STEP,
+      series: [
       { id: "recall", label: "recall", key: "recall", colorVar: "--twin-chart-recall", emphasis: true },
+    ] },
+    { id: "f1", name: "f1", legend: false, note: "precision 与 recall 的调和平均", formatValue: fmtAccPct,
+      tipCarryForward: false, markerStep: INCIDENT_STEP,
+      series: [
+      { id: "f1", label: "f1", key: "f1", colorVar: "--twin-chart-f1", emphasis: true },
     ] },
     { id: "gradnorm", name: "grad_norm", legend: false,
       note: `step ${INCIDENT_STEP} MoE all-to-all 超时 → grad_norm 跳至 inf，AI 定位修复后 ${RECOVERY_STEPS} 步内恢复`,
@@ -1087,21 +1140,57 @@
       series: [
         { id: "gradnorm", label: "grad_norm", key: "grad_norm", colorVar: "--twin-chart-gradnorm", emphasis: true },
       ] },
-    { id: "corr", name: "rollout_actor_probs_pearson_corr", legend: false, note: "rollout 与训练 actor 概率相关系数", formatValue: (v) => (v == null ? "—" : v.toFixed(3)), series: [
+    { id: "weightdiff", name: "weight_diff", legend: true,
+      note: `参数更新幅度 ‖ΔW‖，与 grad_norm 同一根因同步观察；step ${INCIDENT_STEP} 梯度发散时同步跳至 inf`,
+      formatValue: (v) => (v == null ? "—" : !isFinite(v) ? "inf" : v.toFixed(4)),
+      tipCarryForward: false, markerStep: INCIDENT_STEP,
+      series: [
+        { id: "weight_diff", label: "‖ΔW‖", key: "weight_diff", colorVar: "--twin-chart-weightdiff" },
+        // grad_norm 量级(约 12~50)远大于 ‖ΔW‖(约 0.4~3.2),放右轴独立定域,避免被压成贴底的平线
+        { id: "gradnorm_ref", label: "grad_norm (右轴)", key: "grad_norm", colorVar: "--twin-chart-gradnorm", emphasis: true, axis: "right" },
+      ] },
+    { id: "corr", name: "rollout_actor_probs_pearson_corr", legend: false, note: "rollout 与训练 actor 概率相关系数", formatValue: (v) => (v == null ? "—" : v.toFixed(3)),
+      tipCarryForward: false, markerStep: INCIDENT_STEP,
+      series: [
       { id: "corr", label: "pearson corr", key: "rollout_actor_probs_pearson_corr", colorVar: "--twin-chart-corr", emphasis: true },
     ] },
   ];
+
+  /* infra 两图(MFU / 显存利用率)的 y 轴域：只按「健康段」取值域。
+     这两个指标在事故步与恢复期会跌到 0，若把 0 纳入值域，正常波动（MFU 约 0.45~0.60、
+     HBM 约 0.72~0.85）会被压成图表顶部一条窄带，下方大片留白 —— 图表空间大但看不出波动。
+     这里排除事故窗口 [INCIDENT_STEP, RECOVERY_END] 内的点后再取 min/max 并留 8% 余量；
+     骤降段被图表 clip 裁到画面外，事故本身仍由下方 regions 区带 + 悬浮气泡的真实数值体现。 */
+  function healthyDomain(values, steps) {
+    if (!values) return null;
+    let min = Infinity, max = -Infinity;
+    steps.forEach((st, i) => {
+      const v = values[i];
+      if (v == null || !isFinite(v)) return;
+      if (st >= INCIDENT_STEP && st <= RECOVERY_END) return;
+      if (v < min) min = v;
+      if (v > max) max = v;
+    });
+    if (!isFinite(min) || !isFinite(max)) return null;   // 窗口整段落在事故区 → 退回引擎自适应
+    if (min === max) { min -= 0.01; max += 0.01; }
+    const pad = (max - min) * 0.08;
+    return [min - pad, max + pad];
+  }
 
   const INFRA_CARD_DEFS = [
     { id: "mfu", name: "MFU", legend: false,
       note: "Model FLOPS Utilization · 训练算力利用效率",
       formatValue: (v) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`),
+      markerStep: INCIDENT_STEP,
+      yDomain: (steps, data) => ({ left: healthyDomain(data.mfu, steps) }),
       series: [
         { id: "mfu", label: "MFU", key: "mfu", colorVar: "--twin-chart-mfu", emphasis: true },
       ] },
     { id: "avg_mem", name: "显存利用率", legend: false,
       note: "HBM 平均占用率 · 跨卡均值",
       formatValue: (v) => (v == null ? "—" : `${(v * 100).toFixed(1)}%`),
+      markerStep: INCIDENT_STEP,
+      yDomain: (steps, data) => ({ left: healthyDomain(data.avg_mem, steps) }),
       series: [
         { id: "avg_mem", label: "HBM", key: "avg_mem", colorVar: "--twin-chart-mem", emphasis: true },
       ] },
@@ -1163,17 +1252,28 @@
     const regions = cfg.markerStep != null
       ? [{ start: cfg.markerStep, end: Math.min(RECOVERY_END, steps[steps.length - 1]), label: "事故 · 恢复" }]
       : (cfg.regions || null);
+    const data = cfg.data || ACC_DATA;
+    // x 轴刻度档数按实际绘图宽度动态收缩：窄卡(训练监控侧栏 2 列)硬塞 4 档会首尾数字交错重叠，
+    // 宽一点的场景(如「问题一·迭代层」大图)才有空间摆下 3~4 档。阈值按 pad.l(40)+pad.r(10) 扣完后的
+    // plotW 估算：每档数字(如"41230")在 10px 等宽字体下约占 30~35px，需要档间留白避免贴边。
+    const plotW = w - 50;
+    const xTicks = plotW < 150 ? 2 : plotW < 260 ? 3 : 4;
     const renderOpts = {
       steps,
       series: cfg.series.map((s) => ({ axis: "left", ...s })),
-      data: cfg.data || ACC_DATA,
+      data,
       regions,
-      cursor: cfg.markerStep != null ? cfg.markerStep : null,
+      // cfg.yDomain 可为函数(按当前窗口数据算)或常量对象;不给则由引擎自适应
+      yDomain: typeof cfg.yDomain === "function" ? cfg.yDomain(steps, data) : (cfg.yDomain || null),
+      // markerStep：常驻红色虚线(事故点)，与 cursor(仅 hover 时临时出现的中性色游标)彻底分开，
+      // 故这里 cursor 恒为 null，不再借用 markerStep 当初始值
+      markerStep: cfg.markerStep,
+      cursor: null,
       smoothing: accSmoothing,
       cursorTooltip: true,
       tipCarryForward: cfg.tipCarryForward !== false,
       formatValue: cfg.formatValue,
-      options: { width: w, height: h, pad: { t: 14, r: 10, b: 20, l: 40 }, xTicks: 4 },
+      options: { width: w, height: h, pad: { t: 14, r: 10, b: 20, l: 40 }, xTicks },
       onBrush: false,
       // 图例固定不走引擎内置(会作为额外 DOM 追加进被测量高度的容器,配合 auto-height 造成"越拉越高"的循环增长);
       // 需要图例时改由调用方在容器外自行渲染(见 mountLocateMetricCharts 的 buildAccLegend)
@@ -1183,10 +1283,9 @@
     renderOpts.onCursorHover = (step) => {
       accCards.forEach((c) => { if (c.ctrl) { c.ctrl.setCursor(step); c.ctrl.setTooltip(true); } });
     };
-    // 鼠标离开后收起所有图表的气泡；对于有 markerStep 的图表（loss / grad_norm）收回问题点
+    // 鼠标离开后收起所有图表的气泡(事故点红线是常驻标注，不随 hover 变化，不需要在这里复位)
     renderOpts.onCursorLeave = () => {
       accCards.forEach((c) => { if (c.ctrl) c.ctrl.setTooltip(false); });
-      if (cfg.markerStep != null && ctrl) ctrl.setCursor(cfg.markerStep);
     };
     ctrl = window.PtoTrainingMetricsChart.render(el, renderOpts);
     return ctrl;
@@ -1216,6 +1315,25 @@
     });
   }
 
+  // 页面上可能同时挂多个 smoothing 滑条(精度卡 / infra 集群监控 / 迭代层),
+  // 它们共享同一个 accSmoothing —— 拖动任一个都要把其余滑条的位置与读数镜像过去。
+  let smoothControls = []; // [{range, out}]
+
+  function applySmoothing(value, source) {
+    accSmoothing = value;
+    const pct = String(Math.round(value * 100));
+    const txt = value.toFixed(2);
+    smoothControls = smoothControls.filter((c) => c.range.isConnected);
+    smoothControls.forEach((c) => {
+      if (c.range !== source) c.range.value = pct;
+      c.out.textContent = txt;
+    });
+    syncAccCards(true);
+    syncInfraCards(true);
+    syncLocateMetricCharts(true);
+    renderCase6MetricCharts(); // 问题二迭代层的 loss/grad_norm 也随滑条重画(无对应容器时内部自动跳过)
+  }
+
   function buildAccuracySmoothControl() {
     const wrap = document.createElement("div");
     wrap.className = "twin-accuracy-smooth";
@@ -1230,12 +1348,9 @@
     range.setAttribute("aria-label", "曲线平滑度");
     const out = document.createElement("output");
     out.textContent = accSmoothing.toFixed(2);
+    smoothControls.push({ range, out });
     range.addEventListener("input", () => {
-      accSmoothing = (+range.value) / 100;
-      out.textContent = accSmoothing.toFixed(2);
-      syncAccCards(true);
-      syncLocateMetricCharts(true);
-      renderCase6MetricCharts(); // 问题二迭代层的 loss/grad_norm 也随滑条重画(无对应容器时内部自动跳过)
+      applySmoothing((+range.value) / 100, range);
     });
     wrap.appendChild(lab);
     wrap.appendChild(range);
@@ -1294,6 +1409,12 @@
   function initInfraCharts() {
     const host = $("infraCharts");
     if (!host || !window.PtoTrainingMetricsChart) return;
+    // 「集群监控」标题右侧的 smoothing 滑条：与「精度」卡那个互为镜像(共享 accSmoothing)
+    const smoothSlot = $("infraSmoothSlot");
+    if (smoothSlot) {
+      smoothSlot.innerHTML = "";
+      smoothSlot.appendChild(buildAccuracySmoothControl());
+    }
     host.innerHTML = "";
     const cardsWrap = document.createElement("div");
     cardsWrap.className = "twin-accuracy-cards";
@@ -1310,30 +1431,222 @@
   }
 
   function renderVitals() {
-    const acc = clamp(1 - state.loss / 6, 0, 1);
-    const accEMA = clamp(1 - state.lossEMA / 6, 0, 1);
-    const avgMem = state.devices.length
+    // 回放态：关键指标改读 ACC_DATA 窗口右端(= 拖块所在 step)的值,和精度/infra 图表同源;
+    // 实时态仍用 state 上的随机游走值,行为不变。
+    const replay = isTimeMachineReplaying() && ACC_DATA ? ACC_DATA : null;
+    const last = (key) => {
+      const col = replay && replay[key];
+      if (!col) return null;
+      for (let i = col.length - 1; i >= 0; i -= 1) if (col[i] != null) return col[i];
+      return null;
+    };
+    const rTrainLoss = last("train_loss");
+    const rValLoss = last("val_loss");
+    const rMfu = last("mfu");
+    const rMem = last("avg_mem");
+    const rAcc = last("train_acc");
+
+    const shownLoss = rTrainLoss != null ? rTrainLoss : state.loss;
+    const acc = rAcc != null ? rAcc : clamp(1 - state.loss / 6, 0, 1);
+    const accEMA = clamp(1 - (rTrainLoss != null ? rTrainLoss : state.lossEMA) / 6, 0, 1);
+    const avgMem = rMem != null ? rMem : (state.devices.length
       ? state.devices.reduce((sum, device) => sum + device.mem, 0) / state.devices.length
-      : 0;
+      : 0);
+    const shownVal = rValLoss != null ? rValLoss : state.val;
+    const shownMfu = rMfu != null ? rMfu : state.mfu;
     setText("vAcc", `${(acc * 100).toFixed(1)}%`);
     setText("vAccSub", `ema ${(accEMA * 100).toFixed(1)}%`);
-    setText("vLoss", state.loss.toFixed(3));
-    setText("vLossSub", `val ${state.val.toFixed(3)} · ema ${state.lossEMA.toFixed(3)}`);
-    setText("vMfu", `${(state.mfu * 100).toFixed(1)}%`);
+    setText("vLoss", Number.isFinite(shownLoss) ? shownLoss.toFixed(3) : "NaN");
+    setText("vLossSub", `val ${Number.isFinite(shownVal) ? shownVal.toFixed(3) : "NaN"} · ema ${(rTrainLoss != null ? rTrainLoss : state.lossEMA).toFixed(3)}`);
+    setText("vMfu", `${(shownMfu * 100).toFixed(1)}%`);
     setText("vMem", `${(avgMem * 100).toFixed(1)}%`);
     setText("vMemSub", `HBM avg / ${state.devices.length} 卡`);
   }
 
+  /* ===== 时光机回放 =====
+     liveStep 是训练真正推进到的最新 step(由 tick() 独占推进);state.step 是"当前展示的 step"。
+     实时态两者相等;回放态 state.step 被拖块钉在历史某步,tick() 只更新 liveStep 不重绘图表,
+     所有以 state.step 为时钟的视图(精度/infra 图表窗口、进度读数、集群热力图、关键指标)
+     因此整体回到那一步的状态。拖块只能在 [0, liveStep] 内移动 —— 未执行的 step 无从回放。 */
+  let liveStep = state.step;
+  let isReplaying = false;
+  let liveDeviceSnapshot = null;
+
+  /* 可回放的最早 step。图表窗口是「以展示 step 为右边界的 ACC_WINDOW 个采样点」,
+     step 小于窗口点数时步距会被压到 0,200 个采样点全落在同一 step 上,
+     x 轴跨度归零 → 坐标算成 NaN,图表卡死。因此下限取一个窗口的点数,保证跨度恒 > 0。 */
+  const MIN_VIEW_STEP = ACC_WINDOW;
+
+  function isTimeMachineReplaying() { return isReplaying; }
+
+  // 回放态的集群热力图必须可复现：同一 step 拖过去几次都是同一张图，
+  // 因此用 stepNoise(绝对 step 播种)代替 renderHeat() 里的随机游走。
+  function applyReplayDevices(step) {
+    state.devices.forEach((device, index) => {
+      const base = liveDeviceSnapshot ? liveDeviceSnapshot[index] : device;
+      device.util = clamp(base.util + stepNoise(20 + (index % 16), step, 0.06), 0.45, 1);
+      device.mem = clamp(base.mem + stepNoise(40 + (index % 16), step, 0.05), 0.3, 0.98);
+      device.temp = clamp(54 + device.util * 23 + (device.bad ? 8 : 0) + stepNoise(60 + (index % 16), step, 2.2), 50, 92);
+    });
+  }
+
+  /* 回放/返回统一走这里：换掉展示时钟 → 重算数据 → 重绘所有以 step 为时钟的视图。
+     opts.dragging = 拖动中的中间帧,跳过集群热力图。热力图要逐卡重写 2048 个格子的
+     class/style/tip(实测每帧数百毫秒,是拖动卡顿的唯一大头),而图表整套重绘只要 ~7ms;
+     所以拖动中图表逐帧跟手回放,热力图留到松手那一帧补齐。 */
+  function applyViewStep(step, opts) {
+    const dragging = !!(opts && opts.dragging);
+    const target = clamp(Math.round(step), Math.min(MIN_VIEW_STEP, liveStep), liveStep);
+    const wasReplaying = isReplaying;
+    isReplaying = target < liveStep;
+    if (isReplaying && !wasReplaying) {
+      // 首次进入回放：留存实时态的设备基线，返回时原样恢复
+      liveDeviceSnapshot = state.devices.map((d) => ({ util: d.util, temp: d.temp, mem: d.mem }));
+    }
+    state.step = target;
+    if (isWzhTwinPage() && typeof window.wzhSyncProblemOneMonitorCards === "function") {
+      window.wzhSyncProblemOneMonitorCards(Math.abs(target - INCIDENT_STEP) <= INCIDENT_STEP_TOLERANCE);
+    }
+    if (!dragging) {
+      if (isReplaying) {
+        applyReplayDevices(target);
+      } else if (liveDeviceSnapshot) {
+        state.devices.forEach((d, i) => Object.assign(d, liveDeviceSnapshot[i]));
+        liveDeviceSnapshot = null;
+      }
+    }
+    refreshAccuracyData();
+    renderVitals();
+    renderProgress();
+    if (!dragging) {
+      renderHeat();
+      if (activeLocateCase) syncLocateInfraHeat(activeLocateCase);
+      renderWhatIf();
+    }
+    syncAccCards(true);
+    syncInfraCards(true);
+    if (!dragging) syncLocateMetricCharts(true);
+    renderAccReadouts();
+    renderInfraReadouts();
+  }
+
+  function exitTimeMachine() {
+    applyViewStep(liveStep);
+    // 只有 wzh 单屏页面的时光机才会触发问题一透镜(见 activateProblemOneLens),
+    // 返回最新 step 时一并收起,避免整网图/infra 热力图残留上一次的问题聚焦。
+    if (isWzhTwinPage()) {
+      clearDiagnosisFocus();
+      hideDiagnosisLocator();
+    }
+  }
+
   function renderProgress() {
     const pct = clamp(state.step / state.totalSteps, 0, 1);
-    const epoch = Math.floor(state.step / state.stepsPerEpoch) + 1;
-    const totalEpochs = Math.ceil(state.totalSteps / state.stepsPerEpoch);
-    $("progressPct").textContent = `${(pct * 100).toFixed(1)}%`;
+    const livePct = clamp(liveStep / state.totalSteps, 0, 1);
+    // progressPct/progressEpoch 只在旧版 training-monitoring.html 的进度条里还有对应节点，
+    // wzh 单屏时光机卡已去掉这两项展示（40.2% 冗余；预训练语料通常只过 1 遍，Epoch 计数没有意义）。
+    setText("progressPct", `${(pct * 100).toFixed(1)}%`);
     $("progressFill").style.width = `${(pct * 100).toFixed(2)}%`;
     $("progressStepCurrent").textContent = state.step.toLocaleString();
     $("progressStepTotal").textContent = state.totalSteps.toLocaleString();
-    $("progressEpoch").textContent = `${epoch} / ${totalEpochs}`;
+    const epoch = Math.floor(state.step / state.stepsPerEpoch) + 1;
+    const totalEpochs = Math.ceil(state.totalSteps / state.stepsPerEpoch);
+    setText("progressEpoch", `${epoch} / ${totalEpochs}`);
+    setText("progressElapsed", fmtDurationCN(state.step * TIME_MACHINE_STEP_SECONDS));
+
+    const live = document.getElementById("progressLive");
+    if (live) live.style.width = `${(livePct * 100).toFixed(2)}%`;
+    const thumb = document.getElementById("progressThumb");
+    if (thumb) {
+      thumb.style.left = `${(pct * 100).toFixed(2)}%`;
+      thumb.setAttribute("aria-valuenow", String(state.step));
+      thumb.setAttribute("aria-valuemin", String(Math.min(MIN_VIEW_STEP, liveStep)));
+      thumb.setAttribute("aria-valuemax", String(liveStep));
+      thumb.setAttribute("aria-valuetext", `Step ${state.step.toLocaleString()}`);
+    }
+    const title = document.getElementById("timeMachineTitle");
+    if (title) title.textContent = isReplaying ? `${state.step.toLocaleString()} Step` : "训练进度";
+    const back = document.getElementById("timeMachineBack");
+    if (back) back.hidden = !isReplaying;
+    document.querySelector(".wzh-timemachine-card")?.classList.toggle("is-replay", isReplaying);
+
     renderDiagnosisMarkers();
+  }
+
+  function bindTimeMachine() {
+    const track = document.getElementById("progressTrack");
+    const thumb = document.getElementById("progressThumb");
+    if (!track || !thumb) return;
+
+    const stepFromClientX = (clientX) => {
+      const rect = track.getBoundingClientRect();
+      if (!rect.width) return state.step;
+      const ratio = clamp((clientX - rect.left) / rect.width, 0, 1);
+      // 越过 liveStep 的部分是"还没跑到的 step",不可拖
+      return clamp(Math.round(ratio * state.totalSteps), Math.min(MIN_VIEW_STEP, liveStep), liveStep);
+    };
+
+    let dragging = false;
+    // 拖动中图表按 rAF 节流重画：ACC_DATA 每次要算 200 点 ×13 条序列，逐 pointermove 重算会掉帧
+    let pendingStep = null;
+    let raf = 0;
+    const flush = () => {
+      raf = 0;
+      if (pendingStep == null) return;
+      applyViewStep(pendingStep, { dragging });
+      pendingStep = null;
+    };
+    const scheduleStep = (step) => {
+      pendingStep = step;
+      if (!raf) raf = requestAnimationFrame(flush);
+    };
+
+    const onMove = (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      scheduleStep(stepFromClientX(e.clientX));
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      const landedAt = pendingStep != null ? pendingStep : state.step;
+      dragging = false;  // 先落回非拖动态,下面这次重绘才会把热力图等"重活"补齐
+      track.classList.remove("is-dragging");
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      pendingStep = null;
+      applyViewStep(landedAt); // 松手必定整套重绘一次,不依赖是否还有未 flush 的帧
+    };
+
+    const onDown = (e) => {
+      if (e.button != null && e.button !== 0) return;
+      dragging = true;
+      track.classList.add("is-dragging");
+      thumb.focus({ preventScroll: true });
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+      scheduleStep(stepFromClientX(e.clientX));
+    };
+
+    thumb.addEventListener("pointerdown", onDown);
+    // 轨道上点击即跳转到该 step；问题点标注保留原有的 hover 气泡 + 点击展开诊断卡,不当作拖拽起点
+    track.addEventListener("pointerdown", (e) => {
+      if (e.target === thumb || e.target.closest?.(".twin-progress-marker")) return;
+      onDown(e);
+    });
+
+    // 键盘：←/→ 单步、PageUp/PageDown 粗调、Home/End 到两端
+    thumb.addEventListener("keydown", (e) => {
+      const coarse = Math.max(1, Math.round(state.stepsPerEpoch));
+      const delta = { ArrowLeft: -2, ArrowRight: 2, PageDown: -coarse, PageUp: coarse }[e.key];
+      if (delta != null) { e.preventDefault(); applyViewStep(state.step + delta); return; }
+      if (e.key === "Home") { e.preventDefault(); applyViewStep(MIN_VIEW_STEP); }
+      if (e.key === "End") { e.preventDefault(); exitTimeMachine(); }
+    });
+
+    document.getElementById("timeMachineBack")?.addEventListener("click", exitTimeMachine);
   }
 
   const artifacts = [
@@ -1428,7 +1741,8 @@
   }
 
   function tick() {
-    state.step += 2;
+    liveStep += 2;
+    if (!isReplaying) state.step = liveStep;
     if (Math.random() < 0.025 && state.spike < 0.2) {
       state.spike = rand(0.45, 0.95);
       pushEvent("crit", `loss spike 检测 · ${(state.loss + rand(0.1, 0.28)).toFixed(3)} · 建议检查数据和梯度`);
@@ -1442,8 +1756,11 @@
     state.seen += currentTokps();
     if (Math.random() < 0.45) {
       const event = eventPool[Math.floor(rand(0, eventPool.length))];
-      pushEvent(event[0], event[1].replace("{s}", state.step).replace("{r}", Math.floor(rand(0, 64))).replace("{g}", Math.floor(rand(0, 8))));
+      pushEvent(event[0], event[1].replace("{s}", liveStep).replace("{r}", Math.floor(rand(0, 64))).replace("{g}", Math.floor(rand(0, 8))));
     }
+    // 回放中：只把进度条右端的"已执行范围"往前推,视图保持钉在拖块所在的历史 step,
+    // 否则用户正在看的那一步会被实时时钟顶走
+    if (isReplaying) { renderProgress(); return; }
     renderAll();
     // 精度图表窗口跟着 state.step 一起往前滑,和右上角进度条同一个时钟
     refreshAccuracyData();
@@ -1453,6 +1770,19 @@
     renderAccReadouts();
     renderInfraReadouts();
   }
+
+  // ── 供「实时监控」视图（training-monitoring-v2.html 内联脚本）驱动步数的最小接口 ──
+  // 实时监控每跑完一遍 46 层前向 = 推进一个 step，需与「时光机」共用同一个 state.step，
+  // 因此这里只推进步数并重绘进度条，不触发 tick() 那套 2 分钟一次的指标重算。
+  // 回放(时光机拖动)期间不改视图 step，只把已执行范围往前推，与 tick() 的处理保持一致。
+  window.twinAdvanceStep = function (n) {
+    const delta = Number(n) || 1;
+    liveStep = Math.min(state.totalSteps, liveStep + delta);
+    if (!isReplaying) state.step = liveStep;
+    renderProgress();
+    return state.step;
+  };
+  window.twinGetStep = function () { return state.step; };
 
   function renderAll() {
     renderVitals();
@@ -1558,13 +1888,24 @@
     { key: "nvlink", step: 20000, severity: "p1", category: "Infra", num: "五", label: "HCCS 链路掉线 → MFU 骤降", sub: "node2 NPU3 lane5 inactive, HCCL 回退 RoCE 慢路径" },
   ];
 
+  // wzh 单屏页面识别:该页面把「时光机」进度条搬进独立卡片(.wzh-timemachine-card),
+  // training-monitoring.html 没有这个类名,用它做两个页面共用同一份 JS 时的行为分支。
+  function isWzhTwinPage() {
+    return !!document.querySelector('.wzh-timemachine-card');
+  }
+
   function renderDiagnosisMarkers() {
     const track = document.getElementById('progressTrack');
     if (!track) return;
+    // wzh 单屏时光机只保留「问题一」标记,其余 4 个不再画;training-monitoring.html 仍是全量 5 个
+    const markers = isWzhTwinPage() ? diagnosisMarkers.filter((m) => m.key === 'moe-a2a') : diagnosisMarkers;
+    // 标记位置只取决于绝对 step / totalSteps,与当前展示的 step 无关;
+    // 已经画好就直接复用,避免时光机拖动时每帧重建 DOM(还会打断 hover 气泡)
+    if (track.querySelectorAll('.twin-progress-marker').length === markers.length) return;
     // 问题点标注改为进度条内的「带白边纵向线」,直接用百分比定位,无需测量几何
     track.querySelectorAll('.twin-progress-marker').forEach((el) => el.remove());
     const total = state.totalSteps || 120000;
-    diagnosisMarkers.forEach((m) => {
+    markers.forEach((m) => {
       const firstStep = m.stepFrom != null ? m.stepFrom : m.step;
       const pct = clamp(firstStep / total, 0, 1);
       const mk = document.createElement('div');
@@ -1855,7 +2196,9 @@
           e.stopPropagation();
           if (tip) tip.hidden = true;
           var card = document.querySelector('.diagnosis-card[data-diagnosis="' + m.diagnosisKey + '"]');
-          if (card) toggleDiagnosisCard(card);
+          if (card) { toggleDiagnosisCard(card); return; }
+          // wzh 单屏页面没有「问题诊断」卡片列表,改走单屏问题一透镜联动
+          if (isWzhTwinPage()) activateProblemOneLens(m.diagnosisKey);
         });
       }
     });
@@ -1868,6 +2211,7 @@
       stage.querySelectorAll(".pto-diagnosis-focus-active").forEach(function(el) { el.classList.remove("pto-diagnosis-focus-active"); });
     }
     highlightProblemBadge(null);
+    hideRoutedExpertBankExpand();
   }
 
   function highlightProblemBadge(caseKey) {
@@ -1879,6 +2223,201 @@
       b.classList.toggle("is-active", !!caseKey && match);
     });
   }
+
+  // ── wzh 单屏页面专属:「routed_expert_bank」单节点原地撑开卡片 ──────────────────
+  // training-monitoring.html 点问题一是下钻到整块「L38 · MoE TransformerLayer」展开图页面
+  // (openModelLayerView,见下文);wzh 单屏不下钻整页,只让整网图里 routed_expert_bank 这一个
+  // 节点原地"撑开"成同样内容的卡片(routed experts·256→EP64(64 卡×4) 网格 + EP rank 23 死锁
+  // buffer 失配),复用 lvSelectedExperts()/LV_BASE 的数据与配色,和「模型层展开图」保持信息一致。
+  // 卡片挂在节点同一个父级(与节点共享 pan/zoom 坐标系,视图跟着整网图一起缩放平移),
+  // 不受 .twin-live-on(实时监控)隐藏问题徽标的 CSS 规则影响,因此全局/实时监控视图下都可见。
+  var routedExpertExpandActive = false;
+  var ROUTED_EXPERT_HOT_ID = 193; // 与 diagnosisMarkers/locateChains 的「问题一」口径一致(expert 193)
+  var EXPAND_W = 560, EXPAND_H = 210; // 卡片尺寸,同时供下面「挤开邻居节点」的避让计算复用
+
+  function buildExpertBankExpandMarkup() {
+    var LV = LV_BASE;
+    var W = EXPAND_W, H = EXPAND_H;
+    var ox = -W / 2, oy = -H / 2;
+    var padX = 14;
+    var gX = ox + padX, gW = W - padX * 2;
+    var gY = oy + 46, gH = 96;
+    var cardCols = 16, cardRows = 4, gapX = 3, gapY = 5;
+    var cardW = (gW - (cardCols - 1) * gapX) / cardCols;
+    var cardH = (gH - (cardRows - 1) * gapY) / cardRows;
+    var cellW = (cardW - 3) / 2, cellH = (cardH - 3) / 2;
+    var cardPos = function (card) { return { x: gX + (card % cardCols) * (cardW + gapX), y: gY + Math.floor(card / cardCols) * (cardH + gapY) }; };
+    var cellCenter = function (card, cell) {
+      var p = cardPos(card);
+      return { x: p.x + 1.5 + (cell % 2) * cellW + cellW / 2, y: p.y + 1.5 + Math.floor(cell / 2) * cellH + cellH / 2 };
+    };
+    var selected = lvSelectedExperts(ROUTED_EXPERT_HOT_ID);
+    var hotCards = {};
+    selected.forEach(function (s) { if (s.hot) hotCards[s.card] = true; });
+
+    var cardsSvg = "";
+    for (var card = 0; card < 64; card += 1) {
+      var p = cardPos(card);
+      var overloaded = !!hotCards[card];
+      cardsSvg += '<rect x="' + p.x.toFixed(1) + '" y="' + p.y.toFixed(1) + '" width="' + cardW.toFixed(1) + '" height="' + cardH.toFixed(1) + '" rx="2"' +
+        ' fill="color-mix(in srgb, ' + LV.cFlow + ' 6%, var(--surface-1))"' +
+        ' stroke="' + (overloaded ? LV.cHot : LV.cFlow) + '" stroke-opacity="' + (overloaded ? "1" : ".28") + '" stroke-width="' + (overloaded ? "1.6" : "0.7") + '"></rect>';
+      for (var cell = 0; cell < 4; cell += 1) {
+        var c = cellCenter(card, cell);
+        var hot = selected.some(function (s) { return s.card === card && s.cell === cell && s.hot; });
+        var fill = hot ? LV.cHot : LV.cExpert;
+        var op = hot ? 1 : 0.32;
+        cardsSvg += '<rect x="' + (c.x - cellW / 2).toFixed(1) + '" y="' + (c.y - cellH / 2).toFixed(1) + '" width="' + Math.max(0, cellW - 1).toFixed(1) + '" height="' + Math.max(0, cellH - 1).toFixed(1) + '" rx="1" fill="' + fill + '" opacity="' + op + '"></rect>';
+      }
+    }
+    var rHot = cardPos(23);
+    var hotLabel = '<text x="' + (rHot.x + cardW / 2).toFixed(1) + '" y="' + (rHot.y - 4).toFixed(1) + '" text-anchor="middle" fill="' + LV.cHot + '" style="font-size:8px;font-weight:800;font-family:ui-monospace,monospace">EP rank 23</text>';
+
+    var gaugeY = gY + gH + 16;
+    var barX = gX + 40, barMaxW = gW - 100;
+    var gauge =
+      '<text x="' + gX + '" y="' + (gaugeY - 2).toFixed(1) + '" fill="' + LV.cHot + '" style="font-size:9.5px;font-weight:800;font-family:system-ui,sans-serif">EP rank 23 all-to-all buffer 失配 → 死锁</text>' +
+      '<text x="' + gX + '" y="' + (gaugeY + 12).toFixed(1) + '" style="font-size:8.5px;font-family:system-ui,sans-serif" fill="var(--foreground-secondary)">send</text>' +
+      '<rect x="' + barX + '" y="' + (gaugeY + 6).toFixed(1) + '" width="3" height="8" rx="1" fill="none" stroke="' + LV.cHot + '" stroke-width="1"></rect>' +
+      '<text x="' + (barX + 10) + '" y="' + (gaugeY + 12).toFixed(1) + '" fill="' + LV.cHot + '" style="font-size:8.5px;font-weight:700;font-family:ui-monospace,monospace">0(无 token 外发)</text>' +
+      '<text x="' + gX + '" y="' + (gaugeY + 26).toFixed(1) + '" style="font-size:8.5px;font-family:system-ui,sans-serif" fill="var(--foreground-secondary)">recv</text>' +
+      '<rect x="' + barX + '" y="' + (gaugeY + 20).toFixed(1) + '" width="' + Math.max(3, barMaxW).toFixed(1) + '" height="8" rx="1" fill="' + LV.cHot + '"></rect>' +
+      '<text x="' + (barX + barMaxW + 6).toFixed(1) + '" y="' + (gaugeY + 26).toFixed(1) + '" fill="' + LV.cHot + '" style="font-size:8.5px;font-weight:700;font-family:ui-monospace,monospace">2048×4608×8 ≈ 151MB</text>';
+
+    return (
+      '<rect x="' + ox + '" y="' + oy + '" width="' + W + '" height="' + H + '" rx="10"' +
+      ' fill="color-mix(in srgb, ' + LV.cExpert + ' 12%, var(--surface-1))" stroke="' + LV.cHot + '" stroke-width="1.6"' +
+      ' style="filter:drop-shadow(0 8px 20px rgba(0,0,0,.38))"></rect>' +
+      '<text x="' + (ox + padX) + '" y="' + (oy + 20) + '" style="font-size:12.5px;font-weight:800;font-family:system-ui,sans-serif" fill="var(--foreground)">routed experts · ' + LV.routedExperts + ' → EP64(64 卡 × 4)</text>' +
+      '<text x="' + (ox + padX) + '" y="' + (oy + 36) + '" style="font-size:9.5px;font-weight:700;font-family:system-ui,sans-serif" fill="' + LV.cHot + '">router 输出: 98% token → expert ' + ROUTED_EXPERT_HOT_ID + ' · 其余 255 expert ≈ 0</text>' +
+      cardsSvg + hotLabel + gauge
+    );
+  }
+
+  // 整网图节点的坐标/连线路径是渲染引擎算好后画死的 SVG,节点之间没有"弹性避让"能力。
+  // 这里做轻量的近似位移:卡片撑开后,几何上会被卡片包围盒盖住的邻居节点顺着"卡片中心→
+  // 节点中心"的方向被推到卡片外(只挪必要的那一侧,不做真正的重新布局);连到这些被挤开的
+  // 节点、或连到 routed_expert_bank 自身的连线位置对不上了,展开期间先淡出,收起时淡回,
+  // 位置和普通视图完全一致。
+  function collectRoutedExpertNeighbors(stage, group) {
+    var m = (group.getAttribute("transform") || "").match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
+    var selfTx = m ? parseFloat(m[1]) : 0;
+    var selfTy = m ? parseFloat(m[2]) : 0;
+    var halfW = EXPAND_W / 2, halfH = EXPAND_H / 2, gap = 18;
+    var neighbors = [];
+    stage.querySelectorAll("[data-node-id]").forEach(function (el) {
+      var id = el.getAttribute("data-node-id");
+      if (!id || id === "routed_expert_bank") return;
+      var rect = el.querySelector("rect");
+      if (!rect) return;
+      var w = parseFloat(rect.getAttribute("width") || "0");
+      var h = parseFloat(rect.getAttribute("height") || "0");
+      if (!w || !h) return;
+      var mm = (el.getAttribute("transform") || "").match(/translate\(([-\d.]+)[,\s]+([-\d.]+)\)/);
+      if (!mm) return;
+      var tx = parseFloat(mm[1]), ty = parseFloat(mm[2]);
+      var relX = tx - selfTx, relY = ty - selfTy;
+      var overX = (halfW + w / 2 + gap) - Math.abs(relX);
+      var overY = (halfH + h / 2 + gap) - Math.abs(relY);
+      if (overX > 0 && overY > 0) {
+        neighbors.push({ el: el, id: id, tx: tx, ty: ty, relX: relX, relY: relY, overX: overX, overY: overY });
+      }
+    });
+    return neighbors;
+  }
+
+  function pushRoutedExpertNeighborsAway(stage, group) {
+    var neighbors = collectRoutedExpertNeighbors(stage, group);
+    var touchIds = ["routed_expert_bank"];
+    neighbors.forEach(function (n) {
+      // 从较窄的越界轴挤开(节点更贴近卡片左右两侧就横推,更贴近上下就竖推),避免同时对角挪动显得乱
+      var dx = 0, dy = 0;
+      if (n.overX < n.overY) dx = (n.relX >= 0 ? 1 : -1) * n.overX;
+      else dy = (n.relY >= 0 ? 1 : -1) * n.overY;
+      n.el.dataset.expandOrigTransform = n.el.getAttribute("transform") || "";
+      n.el.dataset.expandPushed = "routed_expert_bank";
+      n.el.style.transition = "transform 260ms cubic-bezier(.2,.7,.2,1)";
+      n.el.setAttribute("transform", "translate(" + (n.tx + dx).toFixed(1) + "," + (n.ty + dy).toFixed(1) + ")");
+      touchIds.push(n.id);
+    });
+    touchIds.forEach(function (id) {
+      stage.querySelectorAll('[data-source="' + id + '"], [data-target="' + id + '"]').forEach(function (edge) {
+        edge.style.transition = "opacity 200ms ease";
+        edge.style.opacity = "0";
+        edge.dataset.expandDimmed = "routed_expert_bank";
+      });
+    });
+  }
+
+  function restoreRoutedExpertNeighbors(stage) {
+    if (!stage) return;
+    stage.querySelectorAll('[data-expand-pushed="routed_expert_bank"]').forEach(function (el) {
+      el.style.transition = "transform 220ms ease";
+      el.setAttribute("transform", el.dataset.expandOrigTransform || el.getAttribute("transform") || "");
+      delete el.dataset.expandPushed;
+      delete el.dataset.expandOrigTransform;
+    });
+    stage.querySelectorAll('[data-expand-dimmed="routed_expert_bank"]').forEach(function (edge) {
+      edge.style.opacity = "";
+      delete edge.dataset.expandDimmed;
+    });
+  }
+
+  function showRoutedExpertBankExpand() {
+    var stage = document.getElementById("graphStage");
+    if (!stage) return;
+    var group = stage.querySelector('[data-node-id="routed_expert_bank"]');
+    if (!group || !group.parentNode) return;
+    // 先清掉可能残留的旧实例、还原上一次的邻居位移(不经过 hideRoutedExpertBankExpand,
+    // 避免它把下面刚设的 active 标记又清掉),再按当前布局重新计算一遍位移,幂等、不会累积漂移。
+    document.querySelectorAll('[data-node-expand="routed_expert_bank"]').forEach(function (el) { el.remove(); });
+    restoreRoutedExpertNeighbors(stage);
+    routedExpertExpandActive = true;
+    var NS = "http://www.w3.org/2000/svg";
+    var wrap = document.createElementNS(NS, "g");
+    wrap.setAttribute("class", "pto-node-expand-card");
+    wrap.setAttribute("data-node-expand", "routed_expert_bank");
+    // 与节点挂在同一个父级、复用节点自身的 translate,跟随整网图 pan/zoom 一起走;
+    // 追加为最后一个子节点保证画在最上层,不被相邻节点/连线遮挡。
+    wrap.setAttribute("transform", group.getAttribute("transform") || "");
+    wrap.innerHTML = buildExpertBankExpandMarkup();
+    group.parentNode.appendChild(wrap);
+    // 卡片比原节点大得多,几何上会盖住的邻居节点顺势挤开,让"节点变大"看起来更像真实的展开
+    pushRoutedExpertNeighborsAway(stage, group);
+    // model-graphviz-embed/pattern.js 用 ResizeObserver 盯着 #graphStage 容器尺寸,只要没有
+    // selectedItemId 就在尺寸变化(比如展开 Timeline dock 挤压整网图高度)时自动 fit() 回默认视图,
+    // 会把上面 applyDiagnosisFocus 刚做的聚焦平移冲掉。这里借 selectNode 钉住 selectedItemId
+    // 抑制这次自动回位;selectNode 会联动弹出 opv-modelviz 自带的节点详情浮层(#nodePopover),
+    // 这不是本卡片要的效果,借完 pin 效果立即把它关掉。
+    var svg = stage.querySelector("svg");
+    var vctrl = svg && svg.ptoModelGraphvizController;
+    if (vctrl && vctrl.selectNode) {
+      vctrl.selectNode("routed_expert_bank");
+      var popover = stage.querySelector("#nodePopover");
+      if (popover) popover.hidden = true;
+    }
+  }
+
+  function hideRoutedExpertBankExpand() {
+    routedExpertExpandActive = false;
+    var stage = document.getElementById("graphStage");
+    document.querySelectorAll('[data-node-expand="routed_expert_bank"]').forEach(function (el) { el.remove(); });
+    restoreRoutedExpertNeighbors(stage);
+    var svg = stage && stage.querySelector("svg");
+    var vctrl = svg && svg.ptoModelGraphvizController;
+    if (vctrl && vctrl.clearSelection) vctrl.clearSelection();
+  }
+
+  // opv-modelviz.js 的 centerView()(挂在 window resize 上)会无条件 fit() 回默认视图、
+  // 并重新弹出它自己的节点详情浮层,不受 selectedItemId 影响——凡是会派发 resize 的动作
+  // (展开/收起 Timeline dock、切换「全局/实时监控」整网图视图……)都会把刚钉好的聚焦平移和
+  // routed_expert_bank 卡片冲掉。opv-modelviz.js 先于本文件加载,这里的 resize 监听注册在
+  // 它之后,同一次 resize 事件里保证后触发,借此把聚焦平移和卡片重新钉回去。
+  window.addEventListener("resize", function () {
+    if (!routedExpertExpandActive) return;
+    applyDiagnosisFocus("moe-a2a");
+    showRoutedExpertBankExpand();
+  });
 
   function hideDiagnosisLocator() {
     const locator = $("diagnosisLocator");
@@ -2076,6 +2615,36 @@
     var zoom = Math.min(stageW / (bounds.x2 - bounds.x1 + padX * 2), stageH / (bounds.y2 - bounds.y1 + padY * 2), 1.8);
     zoom = Math.max(0.25, Math.min(2.6, zoom));
     ctrl.setTransform({ zoom: zoom, tx: stageW / 2 - cx * zoom, ty: stageH / 2 - cy * zoom });
+  }
+
+  // ── wzh 单屏页面专属:点击「时光机」上仅存的问题一红色标记时,不走 training-monitoring.html
+  // 那套「问题诊断卡片 → 定位链整块视图」下钻,而是原地把单屏各图表都联动到问题一事故时刻——
+  // 时光机拖块跳到事故 step(驱动精度/infra 图表与关键指标一并回放)、整网图聚焦 layer 38 router、
+  // infra 热力图叠加 rank 23 死锁标注、底部 Timeline 面板展开(默认即 node2 ranks 16-23 +
+  // rank 23 all-to-all timeout 高亮,已经就是"问题 rank"),相当于原地复现事故时刻的全部细节。
+  function activateProblemOneLens(caseKey) {
+    var marker = diagnosisMarkers.find(function (m) { return m.key === caseKey; });
+    var info = diagnosisCases[caseKey];
+    // 先展开 Timeline dock 面板再做整网图聚焦平移——PtoTrainingTwinDockTabs.select("timeline")
+    // 会派发一次 window resize,opv-modelviz 的 centerView() 监听 resize 会无条件把画面 fit()
+    // 回默认视图;顺序上让这次 resize 先发生,下面的 applyDiagnosisFocus 才是最后生效的那次。
+    // 展开 Timeline dock 本身还会异步挤压整网图容器高度,触发 pattern.js 内部另一个
+    // ResizeObserver 的自动 fit()——这一个由 showRoutedExpertBankExpand() 里钉住的
+    // selectedItemId 抑制,并且下面注册的全局 resize 监听兜底把任何后续 resize 引发的
+    // 重置都重新纠正回来。
+    window.PtoTrainingTwinTimelineDock?.setVisible(true);
+    window.PtoTrainingTwinDockTabs?.select("timeline");
+    applyViewStep(marker && marker.step != null ? marker.step : INCIDENT_STEP);
+    applyDiagnosisFocus(caseKey);
+    // 问题一精准展开 routed_expert_bank 单节点(而不是下钻整块「模型层展开图」页面),
+    // 全局/实时监控视图下都要看到,故不受 .twin-live-on 隐藏问题徽标的规则影响(见函数注释)。
+    if (caseKey === "moe-a2a") showRoutedExpertBankExpand();
+    var locator = $("diagnosisLocator");
+    if (locator && info) {
+      $("diagnosisLocatorLayer").textContent = info.layer || "";
+      $("diagnosisLocatorNote").textContent = info.note || "";
+      locator.hidden = false;
+    }
   }
 
   // 定位链数据:对应 定位链.md 中三个案例各自实际走过的链路节点
@@ -4203,7 +4772,9 @@
     const handleClick = (e) => {
       const key = e.currentTarget.dataset.markerKey;
       const card = document.querySelector(`.diagnosis-card[data-diagnosis="${key}"]`);
-      if (card) toggleDiagnosisCard(card);
+      if (card) { toggleDiagnosisCard(card); return; }
+      // wzh 单屏页面没有「问题诊断」卡片列表,改走单屏问题一透镜联动(时光机跳转 + 整网图/infra 高亮 + 展开 Timeline)
+      if (isWzhTwinPage()) activateProblemOneLens(key);
     };
 
     // 事件委托在进度条上(问题点纵向线挂在 track 内)
@@ -4229,6 +4800,7 @@
     bindControls();
     bindDiagnosisCards();
     bindDiagnosisMarkers();
+    bindTimeMachine();
     bindLayerViewTopbar();
     applyTheme(currentTheme, { skipRender: true });
     seedHistory();
@@ -4245,6 +4817,8 @@
       if (document.querySelector(".twin-center-pane")?.classList.contains("is-hif8-side-table")) {
         scheduleHif8GraphBadges(40);
       }
+      // opv-modelviz 重建 SVG 会连带清掉挂在旧 SVG 上的 routed_expert_bank 展开卡片,重建后按需重新挂上
+      if (routedExpertExpandActive) showRoutedExpertBankExpand();
     });
     $("hardwareSummary").textContent = `${hardwareProfiles[state.hardware].label}，每格为${hardwareProfiles[state.hardware].unit}。`;
     resetDevices();

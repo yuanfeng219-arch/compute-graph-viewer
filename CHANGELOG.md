@@ -5,6 +5,65 @@
 
 ---
 
+## 2026-07-20 — `wzh_training-monitoring.html` 更名为 `training-monitoring-v2.html`，V1 入口改回旧文件
+
+- 文件改名以贴合其 V2 定位；同步更新引用：`launch-v2.html`「训练任务监控」卡的 `href`（指向新文件）、`js/training-run-twin.js` 内一处说明性注释。
+- `launch-v2.html`：V1/V2 两个 variant 此前都误指向同一文件，现改为 V1 → `training-monitoring.html`（旧版）、V2 → `training-monitoring-v2.html`（新版）。
+
+## 2026-07-20 — launch-v2「训练任务监控」卡加 V1/V2 入口
+
+- `launch-v2.html`：「训练任务监控」卡片 href 与新增的 `variants: [V1, V2]` 底部入口（样式对齐「Pangu 训练时空透视」等既有卡片）均指向 `wzh_training-monitoring.html`；卡片原先指向的 `training-monitoring.html` 不再是本卡默认入口。
+
+## 2026-07-20 — 精度栏恢复 precision/recall/F1，8 图表 + infra 2 图表补指标说明气泡
+
+- `js/training-run-twin.js`：`ACC_CARD_DEFS` 新增 `f1` 卡（precision、recall 的调和平均，数据在 `metricsAtStep()` 里同步算出），补满精度栏 2×4 网格的第 8 格。
+- `css/training-run-twin.css`：新增 `--twin-chart-f1` 颜色变量（4 处主题变体）。
+- `wzh_training-monitoring.html`：删除此前把精度栏压缩成 2×2、隐藏 precision/recall 的局部 CSS 覆盖，恢复默认 2×4/640px 布局；「精度」8 图表 + 「集群监控」MFU/显存利用率 2 图表标题旁新增「?」气泡，悬浮/聚焦展示指标含义与好坏判定标准（复用既有 `#diagnosisTooltip` 浮层，绑定逻辑抽成 `window.wzhBindHelpTooltips` 供动态建卡后按需重新扫描绑定）；气泡文案按「指标解释 \n\n 判断标准(可多条)」分段(靠 `.diagnosis-bubble` 已有的 `white-space:pre-wrap`)，grad_norm/weight_diff 补充 L2 范数的直白解释，weight_diff 额外说明其与 grad_norm 两条曲线同步波动才是健康信号；精度 8 图卡面上原有的 note 说明行（如 precision 卡下「预测正例中的准确率」）改为 CSS 隐藏，避免与新气泡重复，图例(legend)不受影响仍保留。
+- `js/training-metrics-chart.js`：新增常驻事故点标注 `spec.markerStep`——独立于原本借用 hover 游标(`cursor`)实现的临时高亮，单独一层(`gMarker`)绘制红色虚线(`.pto-tmchart__marker`)，不受 hover 交互影响，超出当前窗口范围时自动不画。`css/training-run-twin.css` 配套加了该类样式。
+- `js/training-run-twin.js`：`renderMetricChart()` 里 `cursor` 与 `markerStep` 解耦（此前 3 张卡靠把 `cursor` 初值设成 `markerStep` 来常驻显示，游标线是中性灰色且与「问题一」讲述以外的图表不一致）；`ACC_CARD_DEFS` 全部 8 张卡 + `INFRA_CARD_DEFS` 的 MFU / 显存利用率都补上 `markerStep: INCIDENT_STEP`，统一在 step 41230 常驻红色虚线；INFRA_CARD_DEFS 的 `regions` 改由 `markerStep` 派生的等效区间自动生成，移除了重复的 `INFRA_REGIONS` 常量。同时把 x 轴刻度档数从写死的 `xTicks: 4` 改成按实际绘图宽度动态收缩(窄卡 2 档/中等 3 档/宽敞 4 档)，解决训练监控侧栏窄卡下首尾 step 数字交错重叠不可读的问题。
+
+## 2026-07-20 — 整网图 Fit 改为按高度适配窗口
+
+- `model-graphviz-embed/pattern.js`：`fit()` 新增 `fitMode: 'height'` 分支，缩放系数只由 `heightFit` 决定（不再与 `widthFit`/`readableFloor` 取 min/max）；`height` 分支进一步去掉全局 `MIN_ZOOM(0.18)` 下限——该下限本是给交互式缩放用的最小可读比例，但套用到 Fit 计算上会在可视区高度较小/图较高时把缩放顶回 0.18，导致图仍然纵向溢出而不是贴合窗口，因此改为仅用极小值(0.02)兜底避免 0/负值。宽度超出时依赖既有 pan 交互左右滚动查看。
+- `js/opv-modelviz.js`：openPangu 整网图渲染改用 `fitMode: 'height'`（原为 `'readable'`）。
+
+## 2026-07-19 — training-run-twin「W_gate」移入 infra 并列页签，精度栏改「Weight Diff」，EP All-to-All 联动抽牌动画
+
+- `wzh_training-monitoring.html`：W_gate(Router)·专家负载分布从「训练监控」列移入 infra 列，与 EP All-to-All 合并为 `#wzhRouterMeshCard` 并列页签（复用 `.seg`/`.segbtn` 分段控件，而非新造 tab 组件）；两个 tooltip 里"左侧/右侧"措辞相应改为"切换页签"。
+- `js/training-run-twin.js`：`ACC_CARD_DEFS` 精度栏新增 `weightdiff` 卡（`‖ΔW‖` 权重差分 + `grad_norm` 右轴对照线，事故步同步跳 inf），替代原 Router 卡在精度栏的位置；`metricsAtStep`/`buildAccuracyData` 同步产出 `weight_diff` 序列。
+- `css/training-run-twin.css`：新增 `--twin-chart-weightdiff` 图表色变量（4 处主题块）；`.twin-accuracy-cards` 2×3 网格改 2×4 以容纳第 7 张卡。
+- `wzh_training-monitoring.html`：EP All-to-All 新增 `#wzhMeshLiveFlow`（8 条跨节点竖线 + 虚线流动动画），由「实时监控」抽牌层的 `layerType(L)` 判定驱动——MoE 层显示流动、Dense 层隐去，与事故态的静态汇聚线互斥显示。
+
+## 2026-07-19 — training-run-twin「W_gate 专家负载分布」「EP All-to-All」默认展示最新态
+
+- `wzh_training-monitoring.html`：两张卡默认显示训练最新健康态（负载均衡/收发对称），不再固定展示 step 41230 事故内容；新增 `window.wzhSyncProblemOneMonitorCards` 回调按事故态/最新态切换 KPI、SVG 柱状图、mesh 热点圈与图例文案。
+- `js/training-run-twin.js`：`applyViewStep` 新增 `INCIDENT_STEP_TOLERANCE`(300 步) 容差判定，时光机拖动落在事故 step 附近或点击问题标记（精确跳转）时触发上述回调切回事故态，松手/离开后自动切回最新态。
+
+## 2026-07-19 — training-run-twin 去除中心区底部多余内边距，Timeline 底栏默认收起
+
+- `wzh_training-monitoring.html`：`.twin-center-scroll`（`.pto-ide-frame__pane-body`）去掉底部 8px padding，只保留右侧 8px；底部 Timeline dock 默认收起（`setVisible(false)`），需要时手动点顶栏按钮展开。
+
+## 2026-07-19 — training-run-twin 时光机进度条支持拖块回放历史 step
+
+- `wzh_training-monitoring.html` / `js/training-run-twin.js`：时光机进度条加拖块，可在 `[200, liveStep]` 区间内往回拖（越过最新 step 的部分被钳制，未执行的 step 不可回放），轨道上补一条浅色残影标出可回拖范围。拖动时展示时钟 `state.step` 与实时时钟 `liveStep` 分离，精度 / infra 各图表窗口、进度读数、集群热力图整体回放到拖中的 step；拖到事故步 41230 可复现 loss NaN / grad_norm inf / MFU 0%。标题在回放态变为「xx,xxx Step」并在同行最右露出「返回」按钮，点击回到最新 step 并恢复实时态。回放态的热力图改用绝对 step 播种的确定性噪声，同一 step 反复回放结果一致；拖动中间帧跳过 2048 格热力图重绘（实测占单帧耗时大头），松手时整套补齐。
+
+## 2026-07-19 — training-run-twin infra「集群监控」补 smoothing 滑条，与精度卡双向同步
+
+- `wzh_training-monitoring.html` / `js/training-run-twin.js`：「集群监控」标题右侧新增 `#infraSmoothSlot`，挂同款 smoothing 滑条控制 MFU / 显存利用率两图；滑条统一登记到 `smoothControls`，拖动任一处即镜像其余滑条的位置与读数并重画精度 / infra / 定位链各组图表。
+
+## 2026-07-19 — training-run-twin 去掉左右栏级标题，infra「?」下沉到集群监控
+
+- `wzh_training-monitoring.html`：删除左栏「训练监控」标题（`#runTwinHeader`）与右栏「infra」标题，减少一层冗余标题；原 infra 栏级「?」（集群规模/并行策略说明）移到「集群监控」标题后。两栏 body 补上顶部内边距（原由标题提供），并清掉随之失效的 `.twin-sidebar-title` 样式。
+
+## 2026-07-19 — training-run-twin 制品/事件流移入底部 Timeline dock，形成三页签
+
+- `wzh_training-monitoring.html`：训练监控列的「制品」「事件流」两张卡片移入底部 dock，与 Timeline 并列为三个页签（复用 ide-frame pattern 的 `__terminal-tablist` / `__terminal-tab` 视觉）；副标题随页签切换；切回 Timeline 时补发 `resize` 让泳道图重排。
+
+## 2026-07-19 — training-run-twin infra 栏「?」上移 + MFU/显存图 y 轴按健康段收窄
+
+- 「集群监控」标题旁的并行策略「?」气泡移到上级 infra 栏标题后（`.wzh-card-title` 复用 `.wzh-card-title-row`），页内 4 处「见…标题旁「?」」交叉引用同步改为「见 infra 栏标题旁「?」」。
+- MFU / 显存利用率两图原先把事故步跌到 0 的点纳入自适应值域，正常波动被压成图表顶部窄带、下方大片留白。`training-metrics-chart.js` 新增 `spec.yDomain`（显式轴域 + 折线层 clip），`training-run-twin.js` 用 `healthyDomain()` 排除事故窗口 `[INCIDENT_STEP, RECOVERY_END]` 后取值域；骤降段裁到画面外，事故仍由新增的 regions 区带与悬浮气泡真实数值体现。曲线纵向占比由约 1/4 提升到约 7/10。
+
 ## 2026-07-17 — training-run-twin 入口文件更名 wzh_index.html → training-monitoring.html
 
 - 个人前缀文件名改为语义化英文名(「训练监控」→ training monitoring)，避免与仓库内其它 `index.html`/`train/training-run-twin.html` 混淆。同步更新 `launch.html`、`launch-v2.html` 的入口链接，`SKILL.md`、`training-run-twin.css`、`training-run-twin.js`、`MindStudioNext.html` 中引用该文件名的注释；`CHANGELOG.md` 历史条目与 `prompt.md` 提示词记录保持原文不改。

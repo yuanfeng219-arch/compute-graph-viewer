@@ -12,6 +12,7 @@
   const SVGNS = 'http://www.w3.org/2000/svg';
   const el = (n, a) => { const e = document.createElementNS(SVGNS, n); if (a) for (const k in a) e.setAttribute(k, a[k]); return e; };
   const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  let clipSeq = 0;  // clipPath id 计数：同页多图共存时 id 不能撞
 
   function render(container, spec) {
     const host = typeof container === 'string' ? document.querySelector(container) : container;
@@ -40,6 +41,17 @@
       a.min = Math.min(a.min, ...vals); a.max = Math.max(a.max, ...vals);
     });
     Object.values(axes).forEach(a => { if (a.min === a.max) { a.max += 1; } const pad = (a.max - a.min) * 0.08; a.min -= pad; a.max += pad; });
+    // spec.yDomain = { left: [min, max] }：调用方显式指定轴域，覆盖上面的自适应结果。
+    // 用于指标含极端离群段（如 MFU/显存在事故步跌到 0）时，避免整条正常波动被压成顶部一条窄带；
+    // 落在域外的线段由 gLines 的 clip 裁到画面外。
+    if (spec.yDomain) {
+      Object.keys(spec.yDomain).forEach(ax => {
+        const d = spec.yDomain[ax];
+        if (!d || !axes[ax]) return;
+        const lo = Array.isArray(d) ? d[0] : d.min, hi = Array.isArray(d) ? d[1] : d.max;
+        if (isFinite(lo) && isFinite(hi) && hi > lo) axes[ax] = { min: lo, max: hi };
+      });
+    }
 
     const mapX = (step) => P.l + ((step - x0) / (x1 - x0 || 1)) * plotW;
     const mapY = (val, ax) => { const a = axes[ax || 'left']; return P.t + plotH - ((val - a.min) / (a.max - a.min || 1)) * plotH; };
@@ -98,8 +110,21 @@
     const gBrush = el('g'); svg.appendChild(gBrush);
     // 异常 band + 折线层
     const gAnom = el('g'); svg.appendChild(gAnom);
+    // 指定了 yDomain 时给折线层加裁剪：域外线段（如跌到 0 的事故段）不许画到坐标区外面去
     const gLines = el('g'); svg.appendChild(gLines);
+    if (spec.yDomain) {
+      const clipId = 'pto-tmchart-clip-' + (clipSeq += 1);
+      const defs = el('defs');
+      const cp = el('clipPath', { id: clipId });
+      cp.appendChild(el('rect', { x: P.l, y: P.t, width: plotW, height: plotH }));
+      defs.appendChild(cp);
+      svg.insertBefore(defs, svg.firstChild);
+      gLines.setAttribute('clip-path', 'url(#' + clipId + ')');
+    }
     const gDots = el('g'); svg.appendChild(gDots);
+    // 事故点等固定标注层：与下面的游标层(gCursor)分开——游标只在 hover 时跟随鼠标临时出现，
+    // 这层是不受 hover 影响、常驻显示的红色虚线（spec.markerStep），互不干扰
+    const gMarker = el('g'); svg.appendChild(gMarker);
     // 游标层
     const gCursor = el('g'); svg.appendChild(gCursor);
 
@@ -178,6 +203,13 @@
         gRegion.appendChild(el('rect', { class: 'pto-tmchart__anomaly-band', x: mapX(a), y: P.t, width: Math.max(1, mapX(b) - mapX(a)), height: plotH }));
       });
     }
+    function drawMarker() {
+      gMarker.innerHTML = '';
+      if (spec.markerStep == null) return;
+      if (spec.markerStep < x0 || spec.markerStep > x1) return;   // 超出当前窗口范围就不画，避免画到坐标区外
+      const mx = mapX(spec.markerStep);
+      gMarker.appendChild(el('line', { class: 'pto-tmchart__marker', x1: mx, y1: P.t, x2: mx, y2: P.t + plotH }));
+    }
     function drawBrush() {
       gBrush.innerHTML = '';
       if (!brush) return;
@@ -189,12 +221,14 @@
     function drawCursor() {
       gCursor.innerHTML = '';
       if (cursor == null) return;
+      // spec.cursorTooltip 图表：定位轴虚线随气泡一起只在 hover 时显示；鼠标移开(tooltipVisible=false)
+      // 整组都不画，避免移出后留下一条不再跟随鼠标的虚线残影
+      if (spec.cursorTooltip && !tooltipVisible) return;
       const cx = mapX(cursor);
       gCursor.appendChild(el('line', { class: 'pto-tmchart__cursor', x1: cx, y1: P.t, x2: cx, y2: P.t + plotH }));
       if (opt.compact) return;
       // spec.cursorTooltip：在定位轴旁显示 step + 各序列具体数值的气泡（默认关闭，保持原 Step 胶囊）
-      // 气泡仅在 hover（tooltipVisible）时绘制；鼠标移开则只留定位轴、不显示气泡
-      if (spec.cursorTooltip) { if (tooltipVisible) drawCursorBubble(cx); return; }
+      if (spec.cursorTooltip) { drawCursorBubble(cx); return; }
       const label = 'Step ' + cursor;
       const w = 26 + label.length * 5.4;
       const chipX = Math.min(Math.max(cx - w / 2, P.l), P.l + plotW - w);
@@ -273,7 +307,7 @@
       hit.addEventListener('pointerleave', () => { if (dragging) return; tooltipVisible = false; drawCursor(); if (spec.onCursorLeave) spec.onCursorLeave(); });
     }
 
-    drawRegions(); drawAnomaly(); drawBrush(); drawCursor();
+    drawRegions(); drawAnomaly(); drawBrush(); drawMarker(); drawCursor();
 
     // legend
     if (spec.legend !== false && !opt.compact) {
