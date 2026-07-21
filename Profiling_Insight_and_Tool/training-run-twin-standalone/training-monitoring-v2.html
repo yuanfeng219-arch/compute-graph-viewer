@@ -31,6 +31,9 @@
   <!-- 整网图组件(openPangu-2.0-Flash model-graphviz)：新版渲染引擎样式 + 组件样式,置于旧 pattern css 之后以覆盖 -->
   <link rel="stylesheet" href="./model-graphviz-embed/pattern.css">
   <link rel="stylesheet" href="./css/opv-modelviz.css">
+  <!-- 整网图组件样式(model-architecture-3d-deck pattern)：置于 opv-modelviz.css 之后，
+       让 .opv-stage 内的 deck 布局规则生效；节点语义色由 pattern.js 写成 --pto-model-deck-* 变量。 -->
+  <link rel="stylesheet" href="./css/model-architecture-3d-deck-pattern.css">
   <style>
     /* 「问题诊断」卡片复用 .twin-option 的选中/悬停视觉,点击后联动左侧架构图节点高亮 */
     .diagnosis-card {
@@ -198,6 +201,149 @@
     #graphStage.is-diagnosis-focus .pto-model-graphviz-cluster:not(.pto-diagnosis-focus-active) {
       opacity: 0.3;
     }
+
+    /* ══ 整网图(model-architecture-3d-deck)上的页面级叠加层 ══════════════════════
+       只新增本页自有的 .v3-* 类与 .is-diagnosis-* 状态类,不去改 pattern 内部的
+       node / cluster / annotation / side-label 样式(pattern.json 的 forbiddenOverrides)。
+       标注与徽标都插在 .pto-model-deck__graph 内,天然继承所在层的 3D 变换。 */
+
+    /* 问题标签条:上排「问题N」+ 下排标题,与锚点节点同宽、贴在其正上方 */
+    .v3-problem-badge {
+      position: absolute;
+      z-index: 8;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: var(--v3-badge-color, #dc2626);
+      color: #fff;
+      cursor: pointer;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .32);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    .v3-problem-badge b { font: 700 13px/1.1 system-ui, sans-serif; }
+    .v3-problem-badge span {
+      font: 500 10.5px/1.15 system-ui, sans-serif;
+      opacity: .92;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .v3-problem-badge.is-dimmed { opacity: .18; }
+    .v3-problem-badge.is-active { opacity: 1; transform: scale(1.04); }
+
+    /* 常驻标红:命中算子/分组框的描边(不改 pattern 的填充与语义色) */
+    #deckStage .pto-model-deck__node.is-diagnosis-active,
+    #deckStage .pto-model-deck__experts.is-diagnosis-active {
+      outline: 2px solid var(--danger, #dc2626);
+      outline-offset: 1px;
+    }
+    #deckStage .pto-model-deck__cluster.is-diagnosis-active {
+      border-color: var(--danger, #dc2626);
+    }
+
+    /* 聚焦:命中项保持不透明,同层其余节点压暗(层间的取舍已由 front 视图本身完成) */
+    #deckStage.is-diagnosis-focus .pto-model-deck__layer.is-front-layer .pto-model-deck__node:not(.is-diagnosis-focus-active),
+    #deckStage.is-diagnosis-focus .pto-model-deck__layer.is-front-layer .pto-model-deck__experts:not(.is-diagnosis-focus-active) {
+      opacity: .3;
+      transition: opacity 160ms ease;
+    }
+    #deckStage .pto-model-deck__node.is-diagnosis-focus-active,
+    #deckStage .pto-model-deck__experts.is-diagnosis-focus-active {
+      outline: 2.5px solid var(--danger, #dc2626);
+      outline-offset: 2px;
+    }
+
+    /* 问题二(HiF8)溢出率药丸:节点右上角,红=>1% 截断风险 / 绿=≤1% */
+    .v3-over-badge {
+      position: absolute;
+      z-index: 7;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font: 700 10px/1.3 ui-monospace, monospace;
+      background: rgba(255, 255, 255, .94);
+      white-space: nowrap;
+    }
+    :root[data-theme='dark'] .v3-over-badge { background: rgba(12, 12, 16, .82); }
+    .v3-over-badge.v3-over-crit { color: #dc2626; border: 1.6px solid #dc2626; }
+    .v3-over-badge.v3-over-ok { color: #16a34a; border: 1.4px solid #16a34a; }
+    :root[data-theme='dark'] .v3-over-badge.v3-over-crit { color: #ff4b7b; border-color: #ff4b7b; }
+    :root[data-theme='dark'] .v3-over-badge.v3-over-ok { color: #4ade80; border-color: #4ade80; }
+    #deckStage .pto-model-deck__node.c7over-node-crit { outline: 2.4px solid #dc2626; }
+    #deckStage .pto-model-deck__node.c7over-node-ok { outline: 1.8px solid #16a34a; }
+    :root[data-theme='dark'] #deckStage .pto-model-deck__node.c7over-node-crit { outline-color: #ff4b7b; }
+    :root[data-theme='dark'] #deckStage .pto-model-deck__node.c7over-node-ok { outline-color: #4ade80; }
+
+    /* deck 铺满 .opv-stage(页面已有的整网图容器),工具栏仍是页面自己那条 .opv-topbar */
+    #deckStage.pto-model-deck { height: 100%; min-height: 0; position: relative; }
+
+    /* ══ 逐层指标曲线(仅侧视)══════════════════════════════════════════════════
+       参考 precision-debugger 整网 2D 侧视顶部的「逐层 cosine」折线:一条对齐每层的
+       趋势曲线 + 阈值语言。这里扩成 temp.md 9 指标的多条叠放,配色见 METRIC_DEFS。 */
+    .deck-metric-curve { position: absolute; inset: 0; z-index: 30; pointer-events: none; width: 100%; height: 100%; display: none; }
+    /* 平滑主体:较粗 round-cap + 柔和投影(参考 op-rank-time 的 opv-transfer-line / precision 的 sv-curve) */
+    .deck-metric-curve__line {
+      stroke-width: 1.05; stroke-linecap: round; stroke-linejoin: round;
+      filter: drop-shadow(0 1px 3px color-mix(in srgb, var(--ide-pane-bg, var(--surface-1)) 78%, transparent));
+    }
+    /* lane 基线:细虚线,安静地界定每条曲线的落区 */
+    .deck-metric-curve__baseline { stroke: color-mix(in srgb, var(--foreground-muted) 24%, transparent); stroke-width: 1; stroke-dasharray: 3 5; }
+    /* 打点:背景色描边环(paint-order),普通点安静、坏点(标红)突出 */
+    .deck-metric-curve__dot { paint-order: stroke; stroke: var(--ide-pane-bg, var(--surface-1)); stroke-width: 1.2; opacity: .9; }
+    /* 越界读数:等宽字 + 背景描边保证任意曲线上都清晰 */
+    .deck-metric-curve__val {
+      fill: var(--danger, #dc2626); font: 700 9.5px/1 var(--font-mono, ui-monospace, monospace);
+      paint-order: stroke; stroke: var(--ide-pane-bg, var(--surface-1)); stroke-width: 3px; stroke-linejoin: round;
+    }
+    /* 左侧 lane 标签(text-anchor:end):指标名 + Top/单位,配左侧一枚小方色标。
+       字重/字体、色标形状都对齐左侧算子/模块标注(.pto-model-deck__side-label 及其 ::before),
+       两套标注是独立系统(位置/配色各自计算),这里只统一视觉样式。 */
+    .deck-metric-curve__label { fill: var(--foreground); font: 500 9px/1 var(--font-mono, ui-monospace, monospace); paint-order: stroke; stroke: var(--ide-pane-bg, var(--surface-1)); stroke-width: 3px; stroke-linejoin: round; }
+    .deck-metric-curve__sublabel { fill: var(--foreground-muted); font: 500 9px/1 var(--font-mono, ui-monospace, monospace); }
+    .deck-metric-curve__sw { stroke: var(--ide-pane-bg, var(--surface-1)); stroke-width: 1; }
+
+    /* 逐层指标下拉:挂在工具栏「算子染色」右侧,点按钮展开/收起,面板贴按钮右下角。
+       按钮字号/字色对齐同一工具栏的 .seg-lbl(「算子染色」等),不用 .btn-ghost 默认的 12px 灰字。 */
+    .deck-metric-dd { position: relative; display: inline-flex; }
+    #deckMetricDDBtn { font: 600 11px/1.2 var(--font-sans); color: var(--foreground); gap: 5px; }
+    #deckMetricDDBtn .deck-metric-dd__caret { width: 9px; height: 9px; flex: none; color: var(--foreground-muted); transition: transform var(--duration-fast, .15s) var(--easing-default, ease); }
+    .deck-metric-dd.is-open #deckMetricDDBtn .deck-metric-dd__caret { transform: rotate(180deg); }
+    .deck-metric-panel {
+      position: absolute; right: 0; top: calc(100% + 8px); z-index: 40; width: 230px;
+      display: none; flex-direction: column; gap: 6px;
+      padding: 10px 11px; border-radius: var(--radius-lg, 12px);
+      background: color-mix(in srgb, var(--ide-pane-bg, var(--surface-1)) 96%, transparent);
+      border: 1px solid var(--border-subtle); box-shadow: var(--shadow-md, 0 8px 24px rgba(0,0,0,.28));
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    }
+    .deck-metric-dd.is-open .deck-metric-panel { display: flex; }
+    .deck-metric-group { display: flex; flex-direction: column; gap: 3px; }
+    .deck-metric-group__h { font: 700 10px/1 var(--font-sans, system-ui); letter-spacing: .06em; color: var(--foreground-muted); margin-top: 3px; }
+    .deck-metric-row { display: flex; align-items: center; gap: 4px; padding: 2px 3px; border-radius: 6px; }
+    .deck-metric-row:hover { background: var(--state-hover, color-mix(in srgb, var(--foreground) 6%, transparent)); }
+    .deck-metric-row__main { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; cursor: pointer; }
+    .deck-metric-row input { margin: 0; accent-color: var(--primary); cursor: pointer; }
+    .deck-metric-sw { width: 12px; height: 3px; border-radius: 2px; flex: 0 0 auto; }
+    .deck-metric-rank { font: 700 9px/1 var(--font-mono, ui-monospace, monospace); color: var(--foreground-muted); flex: 0 0 auto; }
+    .deck-metric-name { font: 500 11px/1.2 var(--font-sans, system-ui); color: var(--foreground-secondary); }
+    .deck-metric-row input:checked ~ .deck-metric-name { color: var(--foreground); }
+    .deck-metric-panel__foot { font: 500 9.5px/1.3 var(--font-sans, system-ui); color: var(--foreground-muted); margin-top: 3px; }
+    /* 训练进度状态行:显示当前前向/反向扫到第几层 */
+    .deck-metric-panel__status {
+      margin-top: 4px; padding: 4px 7px; border-radius: 6px;
+      font: 600 10px/1.3 var(--font-mono, ui-monospace, monospace); color: var(--foreground-secondary);
+      background: color-mix(in srgb, var(--primary) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--primary) 26%, transparent);
+    }
+
+    /* ══ 训练过程动画:未执行到的层压到 30% 透明,已完成前向的层正常 ═══════════════
+       仅侧视生效(正视只显示单层,不需要);.is-pending 由适配器按前向进度逐层摘除。 */
+    /* 点亮过渡收短到 .18s:当前层的曲线打点是瞬时的,层点亮也要紧跟着"啪"地亮起,不能拖 0.45s 显得曲线跑在前面 */
+    #deckStage.pto-model-deck[data-view="right"] .pto-model-deck__layer { transition: opacity .18s var(--easing-out, ease); }
+    #deckStage.pto-model-deck[data-view="right"] .pto-model-deck__layer.is-pending { opacity: .3; }
 
     /* 点击「问题诊断」卡片后,Run Twin 面板切换为「定位链面板」:顶部定位链栏 sticky 吸顶,兼作锚点导航;
 
@@ -1043,7 +1189,7 @@
     .wzh-tm-track {
       position: relative;
       flex: none;
-      width: 138px;
+      width: 168px;
       height: 5px;
       min-width: 0;
       border-radius: var(--radius-pill, 999px);
@@ -1435,175 +1581,6 @@
       color: var(--primary);
     }
 
-    /* ══ 实时监控视图：整网图底部信息栏 + 46 层 3D 侧视卡 ══════════════════
-       层类型 = FFN(Dense/MoE) × 注意力(DSA/SWA) 组合出 4 类；卡片按类型着色，
-       当前进行的层做「抽牌」抬升；每 STEP_MS 高亮下一层，见页面底部实时监控脚本。 */
-    .twin-live-deck {
-      flex: 0 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 10px var(--space-3) 12px;
-      border-top: 1px solid var(--border-subtle);
-      background: color-mix(in srgb, var(--foreground) 2%, transparent);
-    }
-    .twin-live-deck[hidden] { display: none; }
-
-    /* 信息栏（一行字：epoch / step / layer + 类型，右侧图例） */
-    .twin-live-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      font: 600 12px/1.4 var(--font-mono, ui-monospace, monospace);
-      color: var(--foreground);
-    }
-    .twin-live-info-dot {
-      width: 9px; height: 9px; border-radius: 50%;
-      flex: 0 0 auto;
-      background: var(--highlight-copy-blue-500, #3b6fe0);
-      transition: background 240ms ease;
-    }
-    .twin-live-info-text { letter-spacing: 0.2px; }
-    .twin-live-legend { display: inline-flex; gap: 12px; margin-left: auto; flex-wrap: wrap; }
-    .twin-live-legend-item {
-      display: inline-flex; align-items: center; gap: 5px;
-      font: 500 10.5px/1 var(--font-sans);
-      color: var(--foreground-secondary);
-    }
-    .twin-live-legend-item i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
-
-    /* 3D 舞台：横向卡组（借鉴 precision-debugger「整网逐层 · 3D」的卡卡效果，
-       但改为横向排布、不做 45° 斜向）——46 片卡统一右倾拼成一条横向卡带，
-       每张卡右侧按层类型着色（叠压后连成 46 层类型色带），当前层只上移露出卡顶两行信息。
-       卡片用绝对定位 + translateX(--x) 排布，--x 由 positionDeck() 按容器宽度自适应算出。 */
-    .twin-live-deck-3d {
-      position: relative;
-      /* 高度 = 卡高(72) + 卡底距(10) + 上移抽出量(34) + 余量 —— 保证抬起的卡顶不被容器裁掉 */
-      height: 126px;
-      perspective: 1300px;
-      perspective-origin: 50% 38%;
-      overflow: hidden;
-    }
-    .twin-live-rail {
-      position: absolute;
-      inset: 0;
-      transform-style: preserve-3d;
-      transform: rotateX(9deg);        /* 只做极轻俯视，横向不做 45° 斜向 */
-      transform-origin: 50% 78%;
-    }
-    /* 图例行末尾「?」：说明 4 类层类型与间隔分布规则，紧跟在最后一项图例(MoE · SWA)右侧、同一行。
-       .twin-live-info 已有 gap:10px，这里再加 6px margin-left 凑够与上一项(legend)的 16px 间距。 */
-    .twin-live-legend-help { margin-left: 6px; }
-    /* 单片层卡：接光渐变卡面 + 右侧类型色条（借 precision-debugger .layer3d 视觉语言） */
-    .twin-live-card {
-      position: absolute;
-      bottom: 10px;
-      left: 0;
-      width: 68px;
-      height: 72px;
-      /* 上内边距压到 2px：「Layer N / 类型」两行紧贴卡顶，抬起 34px 时整体露在邻卡上沿之上 */
-      padding: 2px 5px 5px;
-      box-sizing: border-box;
-      /* 卡片是 <button>，浏览器默认把内容水平+垂直居中；这里显式改为「顶部左对齐」，
-         否则两行字会落在卡片中部，抬起时露不出来 */
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      justify-content: flex-start;
-      text-align: left;
-      border-radius: 7px 7px 5px 5px;
-      transform-origin: left center;
-      transform: translateX(var(--x, 0px)) rotateY(-25deg);
-      background: linear-gradient(158deg,
-        color-mix(in srgb, var(--surface-1) 92%, var(--foreground) 8%) 0%,
-        color-mix(in srgb, var(--surface-1) 88%, transparent) 48%,
-        color-mix(in srgb, var(--surface-2) 84%, #000 8%) 100%);
-      border: 1px solid var(--border-default);
-      /* 类型高光色条：卡片右侧。preserve-3d 下由真实 Z 决定遮挡，rotateY(-25deg) 使每张卡右侧
-         朝向观察者 → 左侧卡压在右侧卡之上，因此每张卡露出来的是「右边一条」，色条放右侧才可见。 */
-      border-right: 3px solid var(--card-color);
-      box-shadow: 0 12px 26px rgba(0,0,0,.4),
-                  inset 0 1px 0 color-mix(in srgb, var(--foreground) 10%, transparent);
-      color: var(--foreground);
-      cursor: pointer;
-      overflow: hidden;
-      /* 「落下」用的过渡（离开 is-active 时取的是本条规则）：故意比升起快得多，
-         否则卸任卡会在 340ms 里慢慢下落，与新卡同时离开基线 —— 看上去就是
-         「有张不是当前层的卡自己抬高了一点点」。升起的过渡见 .is-active。 */
-      transition: transform .12s cubic-bezier(.4,0,1,1), box-shadow .2s, border-color .2s;
-      will-change: transform;
-    }
-    /* 卡顶按类型色柔和色晕（贴内圆角、无硬边） */
-    .twin-live-card::before {
-      content: "";
-      position: absolute; left: 0; right: 0; top: 0; height: 42%;
-      background: linear-gradient(180deg, var(--card-color), transparent);
-      opacity: .16; pointer-events: none;
-    }
-    /* hover：轻微上移预览（同样不改变叠压层级，只是抬起来一点） */
-    .twin-live-card:hover:not(.is-active) {
-      transform: translateX(var(--x, 0px)) translateY(-9px) rotateY(-25deg);
-    }
-    /* 当前进行的层：只做「上移」——不前突、不放大、不摆正、不改 z-index，
-       保持与相邻卡的叠压关系不变，仅把卡顶(层号 + 类型)顶出卡带上沿露出来。
-       （对齐 precision-debugger .layer3d 的 --l3-lift 行为） */
-    .twin-live-card.is-active {
-      /* 「升起」用的过渡（进入 is-active 时取本条规则）：保留舒展的抽出手感 */
-      transition: transform .34s cubic-bezier(.2,.7,.2,1), box-shadow .34s, border-color .2s;
-      transform: translateX(var(--x, 0px)) translateY(-34px) rotateY(-25deg);
-      border-color: var(--card-color);
-      box-shadow: 0 16px 30px -6px color-mix(in srgb, var(--card-color) 50%, rgba(0,0,0,.5)),
-                  inset 0 1px 0 color-mix(in srgb, var(--foreground) 14%, transparent);
-    }
-    /* 卡内容：只保留卡顶的「Layer N」+ 类型两行（抬起时正是这两行露出卡带上沿）。
-       类型色已由卡顶 border-top 承担，故不再放色点，把宽度让给 "Layer 45" 全称。 */
-    .twin-live-card .tlc-h {
-      font: 700 10.5px/1.15 var(--font-sans);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .twin-live-card .tlc-type {
-      margin-top: 2px; font: 600 8px/1.2 var(--font-sans);
-      color: var(--foreground-secondary); white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis;
-    }
-    /* 当前卡的顶部信息提亮，露出时更醒目 */
-    .twin-live-card.is-active .tlc-type { color: var(--foreground); }
-
-    /* ── 实时监控下隐藏问题诊断标注（问题徽标 + 常态红描边），但保留问题卡片不受影响 ── */
-    .twin-graph-card { --live-accent: var(--highlight-copy-blue-500, #3b6fe0); }
-    .twin-graph-card.twin-live-on .pto-problem-badge { display: none !important; }
-    .twin-graph-card.twin-live-on .pto-model-graphviz-node.pto-diagnosis-active rect:not(.pto-diagnosis-pulse-ring) {
-      stroke: var(--border-subtle);
-      stroke-width: 1px;
-    }
-    .twin-graph-card.twin-live-on .pto-model-graphviz-edge.pto-diagnosis-active {
-      stroke: var(--border-subtle);
-      stroke-width: 1.5px;
-    }
-    .twin-graph-card.twin-live-on .pto-model-graphviz-cluster.pto-diagnosis-active > rect:first-child {
-      stroke: var(--border-subtle);
-      stroke-width: 1.5px;
-    }
-    /* 问题定位卡片在实时监控视图下不额外隐藏：显隐统一由 hidden 属性控制 */
-    /* ── 实时监控：整网图按当前层类型色描边高亮（放在抑制规则之后，优先级取胜） ── */
-    .twin-graph-card.twin-live-on .pto-model-graphviz-node.pto-live-active rect:not(.pto-diagnosis-pulse-ring) {
-      stroke: var(--live-accent);
-      stroke-width: 3px;
-    }
-    .twin-graph-card.twin-live-on .pto-model-graphviz-cluster.pto-live-active > rect:first-child {
-      stroke: var(--live-accent);
-      stroke-width: 2.5px;
-    }
-    /* ── 实时监控：非当前层(即底部卡组中未抬起的其余卡)所涉及的节点去色 ──
-       参考顶栏「算子染色」关闭态的处理思路(类别色统一压成中性灰,只留高亮信号),
-       这里让当前层(is-active 卡对应的 pto-live-active 节点)保留原类别色，
-       其余节点统一压成中性灰，突出当前层在整网图上的位置。 */
-    .twin-graph-card.twin-live-on .pto-model-graphviz-node:not(.pto-live-active) rect:not(.pto-diagnosis-pulse-ring) {
-      fill: var(--foreground-muted);
-      fill-opacity: 1;
-      transition: fill 200ms ease;
-    }
 
     /* ── 问题一「详情与修复建议」抽屉:从右侧滑出,iframe 内嵌 training-monitoring.html 的
        训练监控侧栏(?embed=locate-sidebar + ?diagnosis=moe-a2a 深链,加载后自动展开该问题的
@@ -1816,23 +1793,29 @@
             </div>
           </div>
           <div class="twin-architecture-stage">
-            <!-- 整网图「直接集成」pto-design-system 的 openPangu-2.0-Flash model-graphviz 组件(非 iframe):
-                 样式 css/opv-modelviz.css、逻辑 js/opv-modelviz.js、默认 schema js/opv-modelviz-schema.js、
-                 渲染引擎 model-graphviz-embed/pattern.(js|css);展开/下钻/配色/light mode/通信算子/标签避让原样保留。
-                 组件 IDs 均为其私有命名,随文件夹整体移动无影响;组件自带的主题按钮(原 opvTopThemeToggle/
-                 floatingThemeToggle)已删除,统一由页面顶栏唯一的月亮/太阳图标按钮驱动,组件通过
-                 MutationObserver 监听 documentElement[data-theme] 联动重新着色。 -->
+            <!-- 整网图改用 pto-design-system 的 model-architecture-3d-deck pattern(CSS 3D 层叠,非 iframe):
+                 样式 css/model-architecture-3d-deck-pattern.css、逻辑 js/model-architecture-3d-deck-pattern.js,
+                 语义配色仍复用 model-graphviz-embed/pattern.js 的 modelArchitectureColormap(须先加载)。
+                 组件自带工具栏用 showChrome:false 关掉,改由下面这条与 v2 同款的 .opv-topbar 驱动,
+                 保留「标题 + Fit/缩放 + 算子染色」的既有布局并补上组件特有的视图切换。
+                 问题标注、routed_expert_bank 展开与连线动画、去色由 js/training-monitoring-v2-deck.js
+                 注册的 window.PtoTwinGraphAdapter 接管(training-run-twin.js 见到适配器即让出这几处绘制)。
+                 舞台 id 特意不叫 graphStage:v2 那套面向 SVG 的标注/平移代码全部以 #graphStage 为入口,
+                 换名后它们自然空转,不会在 DOM 结构完全不同的 deck 上画出错位的图形。 -->
             <section id="opvHost" class="opv-app pto-model-graphviz-pattern-page" data-embed="1">
               <header class="opv-topbar" style="justify-content:flex-end; border-bottom:0;">
-                <!-- 整网图标题与 Fit 工具栏同处一行(容器2)：标题左、工具栏右 -->
+                <!-- 整网图标题与工具栏同处一行(容器2)：标题左、工具栏右 -->
                 <span class="wzh-graph-inline-title">整网图</span>
                 <!-- 「溢出率」标题:仅在问题二(整网图卡搬进 .twin-hif8-side-stage)时显示于工具栏左侧 -->
                 <span class="opv-topbar-title" id="hif8OverflowTitle">溢出率</span>
                 <div class="opv-actions">
-                  <!-- 视图页签：全局(问题诊断标注) / 实时监控(按层高亮 + 46 层进度) -->
-                  <span class="seg" id="viewModeSeg" title="整网图视图模式">
-                    <button class="segbtn" data-v="global" onclick="setGraphViewMode('global')" title="全局：标注全部问题诊断">全局</button>
-                    <button class="segbtn on" data-v="live" onclick="setGraphViewMode('live')" title="实时监控：按层高亮 + 逐层推进">实时</button>
+                  <span class="seg-lbl">视图</span>
+                  <!-- 只保留正视/侧视两个正交投影,不出等轴 3D 视角。
+                       落地在侧视(46 层全可见、5 枚问题标注同时在场),点问题自动切正视下钻;
+                       初始高亮由适配器 mount 结束时按 controller.state.view 兜底同步一次。 -->
+                  <span class="seg" id="deckViewSeg" title="模型架构投影方式">
+                    <button class="segbtn" type="button" data-deck-view="front" title="正视：单层完整算子图">正视</button>
+                    <button class="segbtn on" type="button" data-deck-view="right" title="侧视：按算子行看全网深度">侧视</button>
                   </span>
                   <span class="tsep"></span>
                   <button class="btn btn-ghost" type="button" id="zoomOut">-</button>
@@ -1841,82 +1824,26 @@
                   <span class="tsep"></span>
                   <span class="seg-lbl">算子染色</span>
                   <span class="seg" id="opColorSeg" title="整网算子染色方式">
-                    <button class="segbtn" data-c="off" onclick="setOpColorMode('off')" title="不染色（中性）">关</button>
-                    <button class="segbtn on" data-c="cat" onclick="setOpColorMode('cat')" title="按算子类别：归一化/线性/注意力/MoE">类别</button>
+                    <button class="segbtn" type="button" data-c="off" onclick="setOpColorMode('off')" title="不染色（中性）">关</button>
+                    <button class="segbtn on" type="button" data-c="cat" onclick="setOpColorMode('cat')" title="按算子类别：归一化/线性/注意力/MoE">类别</button>
                   </span>
-                  <span class="tsep lv-topbar-level"></span>
-                  <span class="seg-lbl lv-topbar-level">层级</span>
-                  <span class="hsel-dd lv-topbar-level" id="flatLevelDD">
-                    <button type="button" class="hsel hsel-btn" id="flatLevelBtn" onclick="toggleFlatLevelMenu(event)" title="展开层级">
-                      <span id="flatLevelLabel">L5 · Operator</span>
-                      <svg class="hsel-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                  <span class="tsep"></span>
+                  <!-- 逐层指标下拉:面板由 js/training-monitoring-v2-deck.js 的 buildMetricPanel() 注入,
+                       按钮文案「N项层指标」随勾选数联动(updateMetricDDLabel)。 -->
+                  <div class="deck-metric-dd" id="deckMetricDD">
+                    <button class="btn btn-ghost" type="button" id="deckMetricDDBtn" aria-haspopup="true" aria-expanded="false" title="逐层指标曲线：选择叠加显示在整网图上的逐层指标">
+                      <span id="deckMetricDDLabel">3项层指标</span>
+                      <svg class="deck-metric-dd__caret" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
-                    <div class="hsel-menu" id="flatLevelMenu" hidden role="listbox">
-                      <button type="button" class="hsel-item" data-v="1" onclick="pickFlatLevel('1')">L1 · Model</button>
-                      <button type="button" class="hsel-item" data-v="2" onclick="pickFlatLevel('2')">L2 · DecoderLayer</button>
-                      <button type="button" class="hsel-item" data-v="3" onclick="pickFlatLevel('3')">L3 · Attention / MoE</button>
-                      <button type="button" class="hsel-item" data-v="4" onclick="pickFlatLevel('4')">L4 · Q·K·V / Expert</button>
-                      <button type="button" class="hsel-item is-sel" data-v="5" onclick="pickFlatLevel('5')">L5 · Operator</button>
-                    </div>
-                  </span>
-                  <!-- 以下元素被 opv-modelviz.js 的初始化代码引用，不能删除，否则 JS 报错导致整网图无法加载 -->
-                  <input id="schemaFileInput" type="file" accept=".json,application/json" hidden>
+                  </div>
                 </div>
               </header>
-              <!-- 独立的主题切换按钮已删除,组件内部通过 MutationObserver 监听 documentElement[data-theme]
-                   跟随页面顶栏唯一的主题开关(#themeToggle,月亮/太阳图标)联动重新着色,见 opv-modelviz.js -->
-              <section class="opv-color-panel" id="colorPanel" aria-label="Light mode HSL controls" hidden>
-                <div class="opv-color-head">
-                  <div class="opv-color-title">Light HSL</div>
-                  <button class="btn btn-ghost" type="button" id="colorReset">Reset</button>
-                </div>
-                <label class="opv-color-row" for="colorHue">
-                  <span>Hue</span>
-                  <input id="colorHue" type="range" min="-180" max="180" step="1">
-                  <output id="colorHueValue" for="colorHue">2</output>
-                </label>
-                <label class="opv-color-row" for="colorSaturation">
-                  <span>Saturation</span>
-                  <input id="colorSaturation" type="range" min="30" max="88" step="1">
-                  <output id="colorSaturationValue" for="colorSaturation">79%</output>
-                </label>
-                <label class="opv-color-row" for="colorLightness">
-                  <span>Lightness</span>
-                  <input id="colorLightness" type="range" min="58" max="86" step="1">
-                  <output id="colorLightnessValue" for="colorLightness">76%</output>
-                </label>
-                <div class="opv-color-swatches" id="colorPreview" aria-hidden="true"></div>
-              </section>
-              <section class="opv-stage pto-model-architecture-stage" id="graphStage" aria-label="openPangu model architecture graph">
-                <div class="opv-node-popover" id="nodePopover" hidden></div>
-              </section>
-              <div class="opv-status" id="statusText">Loading schema.</div>
+              <!-- 主题跟随页面顶栏唯一的 #themeToggle:适配器用 MutationObserver 监听
+                   documentElement[data-theme],再调 controller.setTheme() 重新取语义色。 -->
+              <section class="opv-stage pto-model-architecture-stage" id="deckStage" aria-label="openPangu-2.0-Flash 模型架构 3D 层叠图"></section>
             </section>
             <!-- 模型层「查看」按钮打开后,整网图区域覆盖展示 MoE 层展开图(见 openModelLayerView) -->
             <div id="modelLayerStage" class="twin-layer-stage" hidden></div>
-          </div>
-          <!-- 实时监控视图：整网图底部信息栏 + 46 层 3D 侧视卡（默认隐藏，切到「实时监控」页签时显示） -->
-          <div class="twin-live-deck" id="twinLiveDeck" hidden>
-            <div class="twin-live-info" id="twinLiveInfo">
-              <span class="twin-live-info-dot" id="twinLiveDot"></span>
-              <span class="twin-live-info-text" id="twinLiveText">Epoch -- · Step -- · Layer -- / 46</span>
-              <span class="twin-live-legend" id="twinLiveLegend"></span>
-              <span class="wzh-help twin-live-legend-help" tabindex="0" data-tooltip="4 类层类型 = FFN 维度(Dense/MoE) × 注意力维度(DSA/SWA)：
-Dense·DSA / Dense·SWA：前 2 层(L0-1)为 Dense FFN，训练早期先稳住再切 MoE
-MoE·DSA / MoE·SWA：其余 44 层(L2-45)为 MoE FFN，稀疏专家换取大容量而不显著加算力
-
-DSA = Dynamic/Sparse Attention Indexer(稀疏注意力索引器)：
-先从 2048 个候选 key 中挑 24 个再做注意力，压缩长上下文算力，服务 512K 超长上下文；
-每 3 层出现一次(L0,3,6,…,45，共 16 层)，周期性兜住全局/长程依赖
-
-SWA = Sliding Window Attention(滑动窗口注意力)：
-只关注局部窗口内的 token，算力/显存开销更低；其余 30 层用它撑起大部分层数
-
-间隔分布：多数层用低成本的 MoE+SWA，少数层周期性插入 DSA 补全全局视野，在算力开销和长程建模能力间取平衡">?</span>
-            </div>
-            <div class="twin-live-deck-3d">
-              <div class="twin-live-rail" id="twinLiveRail"></div>
-            </div>
           </div>
         </section>
                       <!-- 右侧：训练监控侧栏 -->
@@ -1974,7 +1901,8 @@ MoE：256+1（top-8 路由 · EP 切分）">?</span>
                           </section>
 
                           <!-- W_gate (Router)·专家负载分布 + 分布式通信·EP All-to-All：从训练监控列移入，
-                               与本卡合并为并列页签(问题一根因链路：router 倾斜 → EP rank 23 all-to-all 死锁)。
+                               与本卡合并为并列页签(问题一根因链路：router softmax FP8 溢出 → logits 爆炸
+                               → 路由塌缩 → EP rank 23 all-to-all 死锁 + loss NaN 双发)。
                                64 个 EP rank 取 32 个代表性切片（4 节点×8 GPU），按 openPangu-2.0-Flash 真实
                                并行策略（DP8×PP4×EP64，无 TP/CP，见 infra 栏标题旁「?」）重构。 -->
                           <div class="twin-card-heading wzh-moe-heading">
@@ -1985,8 +1913,8 @@ MoE：256+1（top-8 路由 · EP 切分）">?</span>
                           <section class="twin-monitor-card" aria-label="专家负载与通信" id="wzhRouterMeshCard">
                             <div class="wzh-tab-bar">
                               <span class="seg" id="wzhRouterMeshSeg" role="tablist" aria-label="专家负载 / 通信切换">
-                                <button class="segbtn on" type="button" role="tab" aria-selected="true" aria-controls="wzhMeshPanel" data-wzh-tab="mesh">EP All-to-All（取32 EP切片）<span class="wzh-help" tabindex="0" data-tooltip="衡量什么：MoE 专家并行(EP)域内，各 EP rank 的 all-to-all dispatch/combine 收发是否对称（健康时 send≈recv）。异常信号：某个 rank 的 send/recv 严重不对称（如 send=0 但 recv 远高于基线），或大量流量汇聚到单一 rank，形成通信热点/黑洞。能做什么判断：收发不对称通常意味着该 rank 命中的专家吸收了过量 token（切换到「W_gate (Router)」页签确认是否同一专家），其余 rank 会在 all-to-all 同步点空等、MFU 骤降，不处理会演变成超时死锁；可临时延长超时兜底，长期需调整 router 负载均衡（n_group/z-loss）。">?</span></button>
-                                <button class="segbtn" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="wzhRouterPanel" data-wzh-tab="router">W_gate (Router)<span class="wzh-help" tabindex="0" data-tooltip="衡量什么：256 个路由专家各自拿到的 token 占比，理想应接近均匀（1/256≈0.39%）。异常信号：单个专家占比远超基线、其余专家趋近于 0，说明 router 打分坍缩到少数专家（专家坍缩/路由倾斜）。能做什么判断：看到「一家独大」的分布应立即预警——该专家所在 EP rank 的 all-to-all 通信会随之暴涨，若不及时干预（增大 n_group、加 z-loss 正则）会演变成「EP All-to-All」页签里的通信死锁，即本页问题一的事故链路。">?</span></button>
+                                <button class="segbtn on" type="button" role="tab" aria-selected="true" aria-controls="wzhMeshPanel" data-wzh-tab="mesh">EP All-to-All（取32 EP切片）<span class="wzh-help" tabindex="0" data-tooltip="衡量什么：MoE 专家并行(EP)域内，各 EP rank 的 all-to-all dispatch/combine 收发是否对称（健康时 send≈recv）。异常信号：某个 rank 的 send/recv 严重不对称（如 send=0 但 recv 远高于基线），或大量流量汇聚到单一 rank，形成通信热点/黑洞。能做什么判断：收发不对称通常意味着该 rank 命中的专家吸收了过量 token（切换到「W_gate (Router)」页签确认是否同一专家），其余 rank 会在 all-to-all 同步点空等、MFU 骤降，不处理会演变成超时死锁——根因常为 router softmax 在低精度下溢出（FP8/FP16 下 logits>100 即可触发），需优先将 router softmax 改 FP32 计算、加 z-loss 抑制 logits 极端值、降低 router 学习率；临时延长超时兜底。">?</span></button>
+                                <button class="segbtn" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="wzhRouterPanel" data-wzh-tab="router">W_gate (Router)<span class="wzh-help" tabindex="0" data-tooltip="衡量什么：256 个路由专家各自拿到的 token 占比，理想应接近均匀（1/256≈0.39%）。异常信号：单个专家占比远超基线、其余专家趋近于 0，说明 router 打分坍缩到少数专家（专家坍缩/路由倾斜）。能做什么判断：看到「一家独大」的分布应立即预警——该专家所在 EP rank 的 all-to-all 通信会随之暴涨，若不及时干预会演变成「EP All-to-All」页签里的通信死锁。根因常为 router softmax 低精度溢出，核心修复为 router 改 FP32 计算 + z-loss + 降 router lr，n_group 增大为辅助保障。即本页问题一的事故链路。">?</span></button>
                               </span>
                             </div>
 
@@ -2190,14 +2118,14 @@ MoE：256+1（top-8 路由 · EP 切分）">?</span>
   <!-- 问题一「详情与修复建议」抽屉:整网图上方「问题定位」卡片(#diagnosisLocator)里的
        「详情与修复建议」按钮打开,内容为 iframe 内嵌 training-monitoring.html 的训练监控侧栏
        (?embed=locate-sidebar,只取 .twin-monitor-sidebar,隐藏顶栏/rail/问题诊断列/整网图/Timeline),
-       带 ?diagnosis=moe-a2a 深链(见该页 js 的 applyDeepLinkDiagnosis)自动展开该问题的定位链分步叙事
-       (本页看板未覆盖这套结构化步骤)。 -->
+       带 ?diagnosis=moe-a2a 深链(见该页 js 的 applyDeepLinkDiagnosis)自动展开该问题的定位链分步叙事。
+       根因为 router softmax 在 FP8 下计算导致 logits 溢出,同时触发 loss NaN 与 all-to-all 死锁。 -->
   <div class="wzh-locate-drawer-overlay" id="problemOneLocateDrawerOverlay" hidden>
     <aside class="wzh-locate-drawer" role="dialog" aria-modal="true" aria-label="问题一 · 详情与修复建议">
       <header class="wzh-locate-drawer-head">
         <div>
           <div class="wzh-locate-drawer-kicker">问题一 · 详情与修复建议</div>
-          <div class="wzh-locate-drawer-title">MoE all-to-all 超时导致 loss NaN</div>
+          <div class="wzh-locate-drawer-title">Router 数值溢出 → 路由塌缩，同时触发 loss NaN 与 all-to-all 死锁</div>
         </div>
         <div class="wzh-locate-drawer-actions">
           <button class="btn btn-ghost btn-icon btn-sm" id="problemOneLocateDrawerClose" type="button" aria-label="关闭抽屉" title="关闭">✕</button>
@@ -2253,34 +2181,8 @@ MoE：256+1（top-8 路由 · EP 切分）">?</span>
       document.dispatchEvent(new CustomEvent('opv-recolor'));
     }
 
-    // ── 层级下拉 ──
-    function toggleFlatLevelMenu(e) {
-      e.stopPropagation();
-      var dd = document.getElementById('flatLevelDD');
-      var menu = document.getElementById('flatLevelMenu');
-      var open = !menu.hidden;
-      menu.hidden = open;
-      dd.classList.toggle('open', !open);
-      if (!open) {
-        var close = function(ev) {
-          if (!dd.contains(ev.target)) { menu.hidden = true; dd.classList.remove('open'); document.removeEventListener('click', close); }
-        };
-        setTimeout(function() { document.addEventListener('click', close); }, 0);
-      }
-    }
-
-    function pickFlatLevel(level) {
-      var menu = document.getElementById('flatLevelMenu');
-      var label = document.getElementById('flatLevelLabel');
-      menu.querySelectorAll('.hsel-item').forEach(function(item) {
-        item.classList.toggle('is-sel', item.dataset.v === level);
-      });
-      var names = { '1': 'L1 · Model', '2': 'L2 · DecoderLayer', '3': 'L3 · Attention / MoE', '4': 'L4 · Q·K·V / Expert', '5': 'L5 · Operator' };
-      label.textContent = names[level] || ('L' + level);
-      menu.hidden = true;
-      document.getElementById('flatLevelDD').classList.remove('open');
-      document.dispatchEvent(new CustomEvent('opv-set-level', { detail: { level: parseInt(level) } }));
-    }
+    // 「层级 L1~L5」下拉已随 opv-modelviz 一并移除:3D deck 的层级语义是 46 个 decoder 层
+    // 沿深度铺开 + 视图切换,不再有"把整图压平到第 N 级"这个概念。
   </script>
   <script>
     // ══ 「W_gate 专家负载分布」「分布式通信 EP All-to-All」联动时光机 ══════════
@@ -2428,255 +2330,6 @@ MoE：256+1（top-8 路由 · EP 切分）">?</span>
         panels.forEach(function (p) { p.hidden = p.dataset.wzhPanel !== name; });
       }
       buttons.forEach(function (b) { b.addEventListener('click', function () { select(b.dataset.wzhTab); }); });
-    })();
-  </script>
-  <script>
-    // ══ 实时监控视图（整网图页签「实时监控」）════════════════════════════════
-    // 全局视图 = 现有问题诊断标注；实时监控 = 隐藏问题标注，按当前层高亮整网图对应局部，
-    // 底部 46 层 3D 侧视卡逐层「抽牌」推进，信息栏显示 epoch/step/layer(类型)。
-    // 层号→类型规则来自 openPangu-2.0-Flash 架构：FFN(Dense L0~1 / MoE L2~45) × 注意力(DSA 每3层 / SWA 其余)。
-    (function () {
-      var LAYER_COUNT = 46;
-      var STEP_MS = 1600;               // 每层高亮停留时长（若干秒后推进到下一层）
-      var liveLayer = 0, liveTimer = null;
-      var LIVE_CYCLE_MS = LAYER_COUNT * STEP_MS;   // 46 层跑完一圈的真实耗时
-      // 训练节奏锚点：脚本执行时只设一次，之后切页签(global/live)或点 3D 卡片都不会重置它——
-      // 当前该高亮哪一层，永远是「真实流逝时间 mod 一圈时长」算出来的，不依赖 setInterval 累计的计数器，
-      // 这样切走再切回来 / 点卡片查看后，播放头会自动落回「此刻真实应该在的层」，而不是从 0 或被点的层重新起播。
-      var liveAnchorTime = Date.now();
-      var liveLapsDone = 0;             // 锚点以来已经跑满的整圈数，用于按圈驱动 twinAdvanceStep 且不重复计数
-
-      function computeLivePosition() {
-        var elapsed = Date.now() - liveAnchorTime;
-        return {
-          layer: Math.floor((elapsed % LIVE_CYCLE_MS) / STEP_MS),
-          laps: Math.floor(elapsed / LIVE_CYCLE_MS),
-        };
-      }
-
-      var TYPES = {
-        'dense-dsa': { label: 'Dense · DSA', color: '#0ea5e9' },
-        'dense-swa': { label: 'Dense · SWA', color: '#22c55e' },
-        'moe-dsa':   { label: 'MoE · DSA',   color: '#8b5cf6' },
-        'moe-swa':   { label: 'MoE · SWA',   color: '#f59e0b' }
-      };
-      function layerType(L) {
-        var dense = L < 2;               // first_k_dense_replace = 2
-        var dsa = (L % 3) === 0;          // dsa_layers = 0,3,6,…,45
-        return (dense ? 'dense-' : 'moe-') + (dsa ? 'dsa' : 'swa');
-      }
-
-      // 各类型在整网图上要点亮的节点 / cluster（node-id / cluster-id 与 opv-modelviz-schema.js 一致）。
-      // 注意：下面几组只覆盖「随层类型变化」的节点；解码层模板里每层都会跑一遍的公共节点
-      // （norm/投影/因果卷积/通信集合等，见 opv-modelviz.js 的 COLLAPSIBLE.sparse_mla_attention /
-      // ffn_choice 全量列表）以及只跑一次、不属于任何具体层的全局节点（embedding/final_norm/
-      // lm_head/logits/mtp…）都归进 ALWAYS_ON —— 否则这些节点会因为从未被打上 pto-live-active，
-      // 在「非当前层去色」规则下被误判成"从没用上"，永远显示成灰色。
-      var ATTN_CORE = [
-        'input_layernorm', 'mhc_attention', 'sparse_mla_attention',
-        'q_a_proj', 'q_causal_conv', 'q_residual_add', 'q_a_norm', 'q_b_proj',
-        'kv_a_proj', 'kv_causal_conv', 'kv_residual_add', 'kv_a_norm', 'kv_b_proj',
-        'rope_apply', 'rope_cache', 'kv_cache', 'query_tensor', 'key_tensor', 'value_tensor',
-        'attention_core', 'o_causal_conv', 'o_residual_add', 'o_proj', 'attention_projection_weights',
-        'attention_all_gather', 'attention_reduce_scatter', 'post_attention_norm', 'mhc_attention_post'
-      ];
-      var DSA_NODES = ['dsa_indexer', 'param_sink_state', 'mome_state'];
-      var FFN_COMMON = ['pre_mlp_norm', 'ffn_choice', 'post_mlp_norm', 'block_post_norm', 'ffn_all_gather', 'ffn_reduce_scatter'];
-      var DENSE_NODES = ['dense_mlp', 'dense_mlp_weights', 'dense_gate_up', 'dense_silu', 'dense_down'];
-      var MOE_NODES = [
-        'moe_ffn', 'router_weight', 'router_gate', 'route_topk',
-        'moe_all_to_all_dispatch', 'expert_bank_weights', 'routed_expert_bank',
-        'shared_expert_weights', 'shared_expert_mlp', 'moe_all_to_all_combine',
-        'moe_combine', 'expert_parallel_state'
-      ];
-      // 不属于「解码层模板」、每 step 只走一次的全局节点：无论当前高亮哪一层都应保持常亮
-      var ALWAYS_ON = [
-        'input_tokens', 'token_embedding', 'embedding_weight', 'positions',
-        'final_norm', 'lm_head', 'lm_head_weight', 'logits',
-        'mtp_module', 'mtp_input_norms', 'mtp_eh_proj', 'mtp_decoder_layer', 'mtp_head_weight', 'mtp_shared_head', 'mtp_logits'
-      ];
-      function layerNodes(L) {
-        var t = layerType(L), ids = ATTN_CORE.concat(FFN_COMMON, ALWAYS_ON);
-        if (t.indexOf('dsa') >= 0) ids = ids.concat(DSA_NODES);
-        ids = ids.concat(t.indexOf('dense') === 0 ? DENSE_NODES : MOE_NODES);
-        return ids;
-      }
-      function layerClusters(L) {
-        return ['attention-block', 'ffn-block'].concat(layerType(L).indexOf('dense') === 0 ? [] : ['moe-block']);
-      }
-
-      function graphCard() { return document.querySelector('.twin-graph-card'); }
-      function graphStage() { return document.getElementById('graphStage'); }
-
-      function clearGraphHighlight() {
-        var stage = graphStage();
-        if (!stage) return;
-        stage.querySelectorAll('.pto-live-active').forEach(function (el) { el.classList.remove('pto-live-active'); });
-      }
-      function applyGraphHighlight(L) {
-        var stage = graphStage();
-        if (!stage) return;
-        clearGraphHighlight();
-        var card = graphCard();
-        if (card) card.style.setProperty('--live-accent', TYPES[layerType(L)].color);
-        layerNodes(L).forEach(function (id) {
-          var g = stage.querySelector('[data-node-id="' + id + '"]');
-          if (g) g.classList.add('pto-live-active');
-        });
-        layerClusters(L).forEach(function (id) {
-          var c = stage.querySelector('[data-cluster-id="' + id + '"]');
-          if (c) c.classList.add('pto-live-active');
-        });
-      }
-
-      // 按容器宽度自适应铺开 46 张卡（横向卡带，整体居中；窄容器则密叠只露色脊）
-      function positionDeck() {
-        var rail = document.getElementById('twinLiveRail');
-        if (!rail) return;
-        var cards = rail.querySelectorAll('.twin-live-card');
-        if (!cards.length) return;
-        // 步距按容器宽度反推，保证 46 张卡 + 两侧留白始终落在容器内（小分辨率下自动密叠）
-        var w = rail.clientWidth || 600, CARD = 68, PAD = 4;
-        var step = Math.min(15, (w - CARD - PAD * 2) / (LAYER_COUNT - 1));
-        if (step < 3) step = 3;                       // 极窄时的下限，避免卡片完全重合
-        var total = (LAYER_COUNT - 1) * step + CARD;
-        var pad = Math.max(PAD, (w - total) / 2);
-        cards.forEach(function (c, L) {
-          c.style.setProperty('--x', (pad + L * step).toFixed(1) + 'px');
-          c.style.zIndex = String(L + 1);   // 右侧卡叠在上（扇形卡组），当前卡由 CSS 提到 60
-        });
-      }
-
-      // 构建 46 层 3D 侧视卡 + 图例（只建一次）
-      function buildDeck() {
-        var rail = document.getElementById('twinLiveRail');
-        if (rail && !rail.childElementCount) {
-          for (var L = 0; L < LAYER_COUNT; L++) {
-            var t = layerType(L);
-            var card = document.createElement('button');
-            card.type = 'button';
-            card.className = 'twin-live-card';
-            card.dataset.layer = String(L);
-            card.dataset.type = t;
-            card.style.setProperty('--card-color', TYPES[t].color);
-            card.title = 'Layer ' + L + ' · ' + TYPES[t].label;
-            // 卡内容只放卡顶信息：Layer 全称 + 类型 —— 当前层上移时正是这两行露出卡带上沿
-            card.innerHTML =
-              '<div class="tlc-h">Layer ' + L + '</div>' +
-              '<div class="tlc-type">' + TYPES[t].label + '</div>';
-            // 点卡片只是临时预览该层(立即高亮 + 更新整网图/信息条)，不改真实节奏的锚点/圈数，
-            // 下一次 tickLive(≤STEP_MS 后)会把播放头自动带回「真实此刻应该在的层」
-            card.addEventListener('click', function () { setLiveLayer(parseInt(this.dataset.layer, 10)); });
-            rail.appendChild(card);
-          }
-          positionDeck();
-        }
-        var legend = document.getElementById('twinLiveLegend');
-        if (legend && !legend.childElementCount) {
-          Object.keys(TYPES).forEach(function (k) {
-            var item = document.createElement('span');
-            item.className = 'twin-live-legend-item';
-            var sw = document.createElement('i'); sw.style.background = TYPES[k].color;
-            item.appendChild(sw);
-            item.appendChild(document.createTextNode(TYPES[k].label));
-            legend.appendChild(item);
-          });
-        }
-      }
-
-      // step 与「时光机」同源：优先读 training-run-twin.js 暴露的 state.step，退化时读进度条文本
-      function currentStep() {
-        if (typeof window.twinGetStep === 'function') return window.twinGetStep();
-        var el = document.getElementById('progressStepCurrent');
-        return el ? (parseInt((el.textContent || '0').replace(/[^\d]/g, ''), 10) || 0) : 0;
-      }
-
-      function updateInfo(L) {
-        var t = TYPES[layerType(L)];
-        var text = document.getElementById('twinLiveText');
-        var dot = document.getElementById('twinLiveDot');
-        if (dot) dot.style.background = t.color;
-        if (text) {
-          text.textContent = 'Step ' + currentStep().toLocaleString() +
-            ' · Layer ' + L + ' / ' + LAYER_COUNT + ' · ' + t.label;
-        }
-      }
-
-      function setLiveLayer(L) {
-        liveLayer = ((L % LAYER_COUNT) + LAYER_COUNT) % LAYER_COUNT;
-        var rail = document.getElementById('twinLiveRail');
-        if (rail) {
-          rail.querySelectorAll('.twin-live-card').forEach(function (c) {
-            c.classList.toggle('is-active', parseInt(c.dataset.layer, 10) === liveLayer);
-          });
-        }
-        applyGraphHighlight(liveLayer);
-        updateInfo(liveLayer);
-        // EP All-to-All 只在 MoE 层(L2-45)才会发生专家分发；Dense 层(L0-1)同步隐去流动示意
-        if (typeof window.wzhSetMeshLiveActive === 'function') {
-          window.wzhSetMeshLiveActive(layerType(liveLayer).indexOf('moe') === 0);
-        }
-      }
-
-      function tickLive() {
-        var pos = computeLivePosition();
-        if (pos.laps > liveLapsDone) {
-          // 期间(哪怕切去了 global 视图或页签不可见)跑满的整圈数一次性补上，
-          // 保证「训练进度」的 step 计数不会因为没在看实时监控而漏跳
-          var lapsAdvanced = pos.laps - liveLapsDone;
-          liveLapsDone = pos.laps;
-          if (typeof window.twinAdvanceStep === 'function') window.twinAdvanceStep(lapsAdvanced);
-        }
-        setLiveLayer(pos.layer);
-      }
-      function startLive() {
-        stopLive();
-        tickLive();   // 立刻对齐到「此刻真实节奏下应该在哪一层」，而不是从 0 起播
-        liveTimer = setInterval(tickLive, STEP_MS);
-      }
-      function stopLive() {
-        if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
-      }
-
-      window.setGraphViewMode = function (mode) {
-        var live = mode === 'live';
-        // 保存问题卡片的可见状态，切换页签后恢复
-        var locator = document.getElementById('diagnosisLocator');
-        var locatorWasVisible = locator && locator.classList.contains('is-visible');
-        document.querySelectorAll('#viewModeSeg .segbtn').forEach(function (b) {
-          b.classList.toggle('on', b.dataset.v === mode);
-        });
-        var deck = document.getElementById('twinLiveDeck');
-        var card = graphCard();
-        if (card) card.classList.toggle('twin-live-on', live);
-        if (live) {
-          buildDeck();
-          if (deck) deck.hidden = false;
-          requestAnimationFrame(positionDeck);
-          startLive();
-        } else {
-          stopLive();
-          clearGraphHighlight();
-          if (deck) deck.hidden = true;
-          if (typeof window.wzhSetMeshLiveActive === 'function') window.wzhSetMeshLiveActive(false);
-        }
-        window.dispatchEvent(new Event('resize'));
-        // resize 可能触发 DOM 重建，稍后恢复卡片可见状态
-        if (locatorWasVisible && locator) {
-          requestAnimationFrame(function () { locator.classList.add('is-visible'); });
-        }
-      };
-
-      // 预建卡片，避免首屏闪动
-      document.addEventListener('DOMContentLoaded', function () { buildDeck(); }, { once: true });
-      // 默认进入「实时监控」视图。用 load 而非 DOMContentLoaded：本脚本先于 opv-modelviz.js 执行，
-      // 需等整网图把节点渲染进 #graphStage 后再首次高亮（即使早了，逐层推进也会自动补上）。
-      window.addEventListener('load', function () { setGraphViewMode('live'); }, { once: true });
-      // 容器宽度变化（窗口/分栏）时重新铺开卡带，仅在实时监控可见时
-      window.addEventListener('resize', function () {
-        var deck = document.getElementById('twinLiveDeck');
-        if (deck && !deck.hidden) positionDeck();
-      });
     })();
   </script>
   <script>
@@ -2907,12 +2560,19 @@ MoE：256+1（top-8 路由 · EP 切分）">?</span>
     })();
   </script>
   <script src="./model-graphviz-embed/pattern.js"></script>
-  <script src="./js/opv-modelviz-schema.js"></script>
-  <script src="./js/opv-modelviz.js"></script>
+  <!-- 整网图渲染器:model-architecture-3d-deck。必须在 model-graphviz-embed/pattern.js 之后加载
+       (它要用后者导出的 PtoModelGraphvizPattern.modelArchitectureColormap 取语义配色)。
+       原 opv-modelviz-schema.js / opv-modelviz.js(SVG 整网图)已从本页移除。 -->
+  <script src="./js/model-architecture-3d-deck-pattern.js"></script>
   <script src="./js/training-metrics-chart.js"></script>
   <script src="./js/swimlane-task.js"></script>
   <script src="./js/timeline-swimlane.js"></script>
   <script src="./js/hif8-case7.js"></script>
+  <!-- 整网图适配器:挂载 3D deck 并注册 window.PtoTwinGraphAdapter。必须先于 training-run-twin.js
+       ——后者在求值时就跑完 boot()/applyDefaultDiagnosisMarkers(),那时适配器必须已经就位,
+       否则问题标注会走进已经不存在的 SVG 分支。适配器反过来只在用户交互时才取
+       window.PtoTwinGraphBridge,所以两边的加载顺序不构成循环依赖。 -->
+  <script src="./js/training-monitoring-v2-deck.js"></script>
   <script src="./js/training-run-twin.js"></script>
   <script>
     // 「精度」8 图 + 「集群监控」infra 2 图标题旁补「?」说明气泡：解释指标含义 + 好坏判定标准。

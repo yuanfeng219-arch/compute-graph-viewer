@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-07-21 — `training-monitoring-v3.html` 合并入 `training-monitoring-v2.html`
+
+- 删除旧 `training-monitoring-v2.html`（SVG 整网图版），将 `training-monitoring-v3.html`（3D deck 整网图版）重命名为 `training-monitoring-v2.html`。
+- 同步重命名 `js/training-monitoring-v3-deck.js` → `js/training-monitoring-v2-deck.js`，更新 HTML 内 `<script src>` 引用。
+- 更新 `js/model-architecture-3d-deck-pattern.js`、`css/model-architecture-3d-deck-pattern.css`、`js/training-run-twin.js` 内引用 v3 的注释为 v2。
+- `launch-v2.html` 已指向 `training-monitoring-v2.html`，无需额外修改。
+
+## 2026-07-20 — 新增 `training-monitoring-v3.html`：整网图换成 model-architecture-3d-deck 组件
+
+- 新增 `training-monitoring-v3.html`（从 v2 复制，现已是新版 v2），整网图由 SVG 的 `opv-modelviz` 换成 pto-design-system 的 `model-architecture-3d-deck` pattern（CSS 3D 层叠，46 层沿深度铺开）；组件与样式 vendored 为 `js/model-architecture-3d-deck-pattern.js` / `css/model-architecture-3d-deck-pattern.css`。
+- 新增 `js/training-monitoring-v2-deck.js` 适配器（`window.PtoTwinGraphAdapter`）：承接旧 v2 在整网图上叠加的全部内容——常驻问题标注、点问题后的聚焦、`routed_expert_bank`(deck 里为 `expert_pool`) 原地展开卡片与 all-to-all 连线动画、算子去色、问题二 HiF8 溢出率徽标；内含 v2↔deck 的节点 id 映射表。
+- 问题标注按用户口径挂到「问题实际发生的层」：问题一 L38 / 问题三 L33 / 问题四 L35 / 问题五 L23（跨栈链路问题取代表层）/ 问题二 输出区；聚焦时切正视并把该层提到最前。
+- `js/training-run-twin.js` 改为可插拔绘制：上述几处一旦发现 `window.PtoTwinGraphAdapter` 就把绘制让给适配器，业务语义仍只有一份；新增 `window.PtoTwinGraphBridge` 供适配器回调诊断联动入口。v2 与 `training-monitoring.html` 不注册适配器，继续走原 SVG 实现，行为不变。
+- v3 移除 v2 的「全局/实时」视图页签与底部 46 层 3D 侧视卡（`twin-live-deck`）；工具栏补上并行标注（PP/TP/EP/DP）切换，去掉不适用的 L1~L5 层级下拉。
+- 视图只保留正视/侧视两个正交投影，不出组件的等轴 3D（iso）视角。动线为「侧视总览 → 正视下钻」：侧视下 46 层全可见、5 枚问题标注同时在场（承接原 3D 视角的总览作用），故作为落地视图；点问题时切正视并把事故层提到最前——正视下只有 `is-front-layer` 那层不透明可交互，天然就是 v2 那套聚焦效果。Fit 回侧视总览。
+- 侧视新增「逐层指标曲线」（移植自 precision-debugger 整网 2D 侧视顶部的「逐层 cosine」折线 + op-rank-time 的 transfer line chart 样式）：对齐每一层的趋势曲线，随 pan/zoom/旋转逐帧跟随。指标取自 `temp.md` 的 9 项（精度/性能/Infra 各 Top1~3），做成勾选面板，默认每类只勾 Top1（grad_weight_l2_norm / layer_fwd_bwd_latency / peak_activation_mem）。46 层曲线数据结合业务构造，事故层 L33/L35/L38 做出与红色标注一致的形变（如权重梯度 L2 在 L38 越 1.0 阈值爆炸）。为此给 vendored 的 `model-architecture-3d-deck` pattern 加了 `options.onOverlay` 每帧覆盖层收尾钩子（需回流上游）。
+- 逐层曲线样式打磨：① 不再独立占一块顶部分区，改为每指标一条 lane 自模型层顶部向上堆叠、紧贴模型层，lane 高按选中条数自适应压缩；② Catmull-Rom 平滑成顺滑曲线并收窄构造数据的噪声幅度，消除原先的锯齿抖动；③ 曲线名改到左侧（text-anchor:end，配一小段竖色标 + Top/单位副标）；④ 线加粗到 2.1px round-cap + 柔和 drop-shadow，打点带背景描边环，越界点标红并按 `temp.md` 阈值贴数值读数（贪心留距防重叠）。
+- 侧视卡顿优化（先减重节点绘制路线）：整网 3D deck 侧视下 46 层同时在场共 3778 个元素（1451 个带渐变+双阴影的节点 + 1772 条层内连线 + 92 个 preserve-3d 上下文），逐帧栅格化是卡顿主因（对照 precision-debugger 侧视是单一扁平 SVG 故不卡）。① 正视只显示单层，其余 45 层由 `opacity:0` 改 `display:none`，彻底移出合成树；② 侧视（data-view="right"）下把节点/专家池的渐变压成扁平填充、去掉 inset/drop 双阴影、层内文字透明（22px 薄片本就看不清），可读算子名仍由 side-labels 提供；③ 侧视整块隐藏层内连线 `__edges`——层间数据流由屏幕坐标的 interlayer-spine/side-guides 另画，不受影响。正视与下钻仍是单层，保留原有光泽。若仍不够顺，下一档是把侧视换成扁平 2D SVG（option B）。
+- 训练动画时序修正为「层先亮起 → 算完 → 才出曲线点」：前向时第 prog.fwd 层是正在计算的层，应已点亮(reached)但还没出点；点亮前沿因此比已出点的层领先一层——层点亮传 `prog.fwd+1`(已完成 0..prog.fwd-1 + 正在算的 prog.fwd)，曲线打点仍 `L < prog.fwd` 只画算完的层。二者仍由同一个 prog.fwd 在同一次调用算出，不漂移。验证:t=0 亮 1 层(L0 在算)出 0 点、t=10s 亮 11 层出 10 点、前向完成后亮=点各 46。
+- 训练动画曲线「跑在模型层前面」根因修复（宽度相关的横向缩放）：曲线 SVG 的 viewBox 用的是 `viewport.clientWidth/clientHeight`，而曲线点坐标 `xs[L]` 是按 `viewport.getBoundingClientRect()`（实际渲染像素框）换算的。两者只要差 1px（边框/子像素/布局未落定/infra 栏影响视口宽），SVG 就给 viewBox 乘一个随 x 放大的缩放系数，曲线越往右越比模型层跑得快、看着提前好几层；用户实测「收起右侧 infra 栏后才对齐」正是那一刻两把尺子恰好相等。改为 viewBox 也用同一个 `getBoundingClientRect()` 的宽高，并加 `preserveAspectRatio="none"` 保证 x/y 各自 1:1、绝不再缩放。验证:在 clientWidth(1100)≠BCR(1200) 的构造场景下，L10 卡片中心 x=329 对应的曲线点 cx≈329（未被 1.09× 拉伸）。
+- 训练动画曲线与层点亮对齐修复：原来层点亮在 animTick 里按 fwdDone 算、曲线在 renderMetricCurve 里按 prog.fwd 算，两处分算 + 层点亮 0.45s 淡入过渡，导致视觉上曲线跑在层前面。改为单一真源——层点亮改由 renderMetricCurve 用与曲线揭示完全相同的 prog.fwd 在同一次调用里算完（animTick 只推进状态 + 触发重画，加 lastLitFwd 去抖），并把点亮过渡收短到 .18s 让层紧跟曲线打点。验证：t=10s 恰好 10 层亮 + 10 个点，t=45s→45，t=46.5s→46，每个时刻「亮到第几层」==「曲线画到第几层」。
+- 侧视图加「训练过程动画」：播放一个训练 step。前向 L0→L45（1s/层）逐层点亮，未执行到的层压到 30% 透明；前向类指标随扫层从左往右逐层描点。全部层亮完后，反向 L45→L0（0.2s/层）沿途从右往左回描反向类指标。每个 step 走完短暂停顿后循环，面板底部显示当前前向/反向扫到第几层。指标按 `temp.md` 采集阶段分前/反向（`METRIC_FLOW`）：纯 Fwd（hidden_states_std/attention_entropy/peak_activation_mem/pp_transfer_bytes）为前向；梯度类及合并指标显著信号出现在反向的（grad_weight_l2_norm/layer_fwd_bwd_latency/layer_mfu/effective_flops_ratio/hbm_bandwidth_util）为反向。动画仅侧视播放，切正视即停并复位层透明度；`prefers-reduced-motion` 下直接全亮全曲线不动。
+- 修 `model-architecture-3d-deck` 的 `showChrome:false` 空指针：`apply()` 未判空就写 `[data-deck-readout]`，关掉自带工具栏时必崩（vendored 副本已修，需回流上游 `pto-design-system`）。
+
 ## 2026-07-20 — `training-monitoring-v2.html` 新增问题一「详情与修复建议」抽屉，顶栏进度条简化为常显态
 
 - 新增「详情与修复建议」抽屉：入口从顶栏进度条面板移到点击问题点后弹出的中央「问题定位」卡片(`#diagnosisLocator`)上，按钮打开右侧抽屉，iframe 内嵌 `training-monitoring.html`（新增 `?embed=locate-sidebar` 内嵌模式，只渲染 `.twin-monitor-sidebar` 训练监控侧栏，配合已有的 `?diagnosis=moe-a2a` 深链自动展开定位链面板）。
