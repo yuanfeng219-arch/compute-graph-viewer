@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="../../pto-design-system/patterns/aiv-core-object/pattern.css">
   <link rel="stylesheet" href="../../pto-design-system/patterns/memory-architecture/pattern.css">
   <link rel="stylesheet" href="../../pto-design-system/patterns/hardware-architecture-viewport/pattern.css">
+  <link rel="stylesheet" href="../../pto-design-system/patterns/floating-playback-control/pattern.css">
   <style>
     * { box-sizing: border-box; }
 
@@ -59,6 +60,10 @@
       height: 100%;
       overflow: auto;
     }
+
+    .pane-view[hidden],
+    .generated-project-tabs[hidden],
+    .generated-project-view[hidden] { display: none !important; }
 
     .eyebrow {
       color: var(--foreground-muted);
@@ -107,6 +112,26 @@
       color: var(--foreground);
       font: var(--text-mono);
       text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .layout-value-cell {
+      min-width: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
+    }
+
+    .layout-lab-button {
+      height: 28px;
+      min-height: 28px;
+      padding-inline: var(--space-2);
+      border-radius: var(--radius-md);
+      color: var(--primary-hover);
+      font: var(--text-label);
+      line-height: 1;
       white-space: nowrap;
     }
 
@@ -264,6 +289,282 @@
       display: block;
       border: 0;
       background: var(--background);
+    }
+
+    .add-api-view {
+      min-height: 100%;
+      display: grid;
+      grid-template-columns: 240px minmax(760px, 1fr);
+      gap: var(--space-3);
+      padding: var(--space-3);
+      overflow: auto;
+      background: color-mix(in srgb, var(--surface-1) 68%, transparent);
+    }
+
+    .add-api-view[hidden] { display: none; }
+
+    .add-api-sidebar,
+    .add-api-stage-shell {
+      min-width: 0;
+      border-radius: var(--radius-lg);
+      background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+    }
+
+    .add-api-sidebar {
+      align-self: start;
+      display: grid;
+      gap: var(--space-4);
+      padding: var(--space-4);
+    }
+
+    .add-api-sidebar__head,
+    .add-api-panel,
+    .add-api-formula,
+    .add-api-note {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .add-api-sidebar__head {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: baseline;
+    }
+
+    .add-api-sidebar__head strong,
+    .add-api-panel strong,
+    .add-api-formula strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+    }
+
+    .add-api-sidebar__head span,
+    .add-api-note,
+    .add-api-param-help {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .add-api-select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--input-border);
+      border-radius: var(--input-radius);
+      background: var(--input-bg);
+      color: var(--input-fg);
+      padding: 0 var(--space-3);
+      font: var(--text-body-sm);
+    }
+
+    .add-api-param-grid {
+      display: grid;
+      gap: var(--space-2);
+    }
+
+    .add-api-param-row {
+      min-height: 32px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 42px;
+      gap: var(--space-2);
+      align-items: center;
+      padding: var(--space-2);
+      border-radius: var(--radius-sm);
+      background: var(--surface-1);
+    }
+
+    .add-api-param-row span {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .add-api-param-row code {
+      color: var(--foreground);
+      font: var(--text-mono);
+      text-align: right;
+    }
+
+    .add-api-formula code {
+      display: block;
+      overflow-x: auto;
+      padding: var(--space-3);
+      border-radius: var(--radius-md);
+      background: var(--code-bg);
+      color: var(--code-fg);
+      font: var(--text-mono);
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+
+    .add-api-stage-shell {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .add-api-stage-header {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: 0 var(--space-4);
+      background: color-mix(in srgb, var(--surface-3) 50%, transparent);
+    }
+
+    .add-api-stage-header strong {
+      color: var(--foreground);
+      font: var(--text-body-sm);
+    }
+
+    .add-api-stage-header span {
+      color: var(--foreground-secondary);
+      font: var(--text-mono);
+    }
+
+    .add-api-playback {
+      position: absolute;
+      top: var(--space-3);
+      left: 50%;
+      z-index: 3;
+      width: min(860px, calc(100% - 48px));
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .add-api-playback .pto-floating-playback--preview {
+      justify-content: center;
+    }
+
+    .add-api-playback .pto-floating-playback {
+      pointer-events: auto;
+    }
+
+    .add-api-canvas {
+      min-width: 1040px;
+      min-height: 720px;
+      display: grid;
+      grid-template-rows: repeat(3, minmax(190px, 1fr));
+      gap: 0;
+      padding: 72px var(--space-4) var(--space-4);
+      overflow: auto;
+      background: #f7f8fa;
+      color: #1f2933;
+    }
+
+    .add-api-memory-row {
+      display: grid;
+      grid-template-columns: 128px minmax(820px, 1fr);
+      gap: var(--space-4);
+      padding: var(--space-4) var(--space-3);
+      border-bottom: 1px solid #dde2e8;
+      background: #ffffff;
+    }
+
+    .add-api-memory-row:last-child {
+      border-bottom: 0;
+    }
+
+    .add-api-memory-label {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+      padding-top: var(--space-2);
+    }
+
+    .add-api-memory-label strong {
+      color: #1f2933;
+      font: 700 18px / 1.2 var(--font-sans);
+    }
+
+    .add-api-memory-label span {
+      color: #697586;
+      font: 600 12px / 1.3 var(--font-sans);
+    }
+
+    .add-api-grid {
+      display: grid;
+      grid-template-columns: repeat(32, minmax(18px, 1fr));
+      gap: 4px;
+      align-content: start;
+    }
+
+    .add-api-cell {
+      aspect-ratio: 1;
+      min-width: 0;
+      border: 1px solid #dfe4ea;
+      border-radius: 5px;
+      background: #f3f6f9;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7);
+    }
+
+    .add-api-cell.is-window {
+      background: #e6f4f7;
+      border-color: #acd6df;
+    }
+
+    .add-api-cell.is-read {
+      background: #d9eef5;
+      border-color: #86c5d4;
+    }
+
+    .add-api-cell.is-written {
+      background: #2f7f93;
+      border-color: #2b6f81;
+    }
+
+    .add-api-cell.is-current {
+      background: #ffc857;
+      border-color: #efa22c;
+      box-shadow: 0 0 0 2px rgba(255, 200, 87, .28);
+    }
+
+    .add-api-stage-footer {
+      display: grid;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4) var(--space-4);
+      background: color-mix(in srgb, var(--surface-2) 90%, transparent);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .add-api-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+      align-items: center;
+    }
+
+    .add-api-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+
+    .add-api-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid var(--border-default);
+      background: var(--surface-3);
+    }
+
+    .add-api-swatch--window { background: #e6f4f7; border-color: #acd6df; }
+    .add-api-swatch--read { background: #d9eef5; border-color: #86c5d4; }
+    .add-api-swatch--written { background: #2f7f93; border-color: #2b6f81; }
+    .add-api-swatch--current { background: #ffc857; border-color: #efa22c; }
+
+    @media (max-width: 1180px) {
+      .add-api-view {
+        grid-template-columns: 1fr;
+      }
+
+      .add-api-sidebar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
 
     .recommendation-panel[hidden],
@@ -1714,6 +2015,113 @@
     .candidate-code-preview__footer { border-top: 1px solid var(--border-subtle); border-bottom: 0; }
     .candidate-code-preview__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
+    .generated-project-tree {
+      padding: var(--space-2) 6px var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      color: var(--foreground-secondary);
+      font: 500 12px / 1.45 var(--font-sans);
+    }
+
+    .generated-project-tree__group {
+      padding: 6px var(--space-2) 4px;
+      color: var(--foreground);
+      font-weight: 700;
+    }
+
+    .generated-project-tree__row {
+      min-height: 26px;
+      display: grid;
+      grid-template-columns: 16px 16px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 0 var(--space-2) 0 calc(8px + var(--tree-depth, 0) * 16px);
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      font: inherit;
+    }
+
+    .generated-project-tree__row.is-active,
+    .generated-project-tree__row:hover {
+      background: var(--state-selected);
+      color: var(--foreground);
+    }
+
+    .generated-project-tree__icon,
+    .generated-project-tree__chevron {
+      width: 15px;
+      height: 15px;
+      display: block;
+      fill: none;
+      stroke: var(--ide-frame-icon-stroke);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: var(--ide-frame-icon-opacity-secondary);
+    }
+
+    .generated-project-tree__name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .generated-project-tree__status {
+      color: var(--foreground-muted);
+      font: var(--text-mono);
+    }
+
+    .generated-project-tree__status.is-modified { color: var(--warning); }
+
+    .generated-project-breadcrumbs {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 var(--space-4);
+      overflow: hidden;
+      color: var(--foreground-muted);
+      font: var(--text-mono);
+      white-space: nowrap;
+    }
+
+    .generated-project-breadcrumbs strong {
+      color: var(--foreground-secondary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .generated-project-code-surface {
+      height: calc(100% - 34px);
+      overflow: auto;
+      padding: 6px 0 var(--space-4);
+      background:
+        linear-gradient(90deg, color-mix(in srgb, var(--foreground) 5%, transparent) 1px, transparent 1px) 46px 0 / 1px 100% no-repeat;
+    }
+
+    .generated-project-code-surface .pto-ide-frame__code-line {
+      grid-template-columns: 50px minmax(720px, 1fr);
+      min-height: 23px;
+    }
+
+    .generated-project-code-surface .pto-ide-frame__code-line-code {
+      padding: 0 22px 0 var(--space-3);
+    }
+
+    .generated-project-code-surface .pto-ide-frame__code-line-code::before { display: none; }
+
+    .generated-project-code-surface .syntax-generated { color: var(--success); }
+    .generated-project-code-surface .syntax-user { color: var(--warning); }
+    .generated-project-code-surface .syntax-keyword { color: var(--accent); }
+    .generated-project-code-surface .syntax-type { color: var(--primary-hover); }
+    .generated-project-code-surface .syntax-number { color: var(--warning); }
+    .generated-project-code-surface .syntax-call { color: var(--primary-hover); }
+
     @media (max-width: 720px) {
       .candidate-code-preview { padding: var(--space-3); }
       .candidate-code-preview__workbench { grid-template-columns: 1fr; }
@@ -2255,10 +2663,9 @@
         </div>
       </div>
     </header>
-
-    <div class="pto-ide-frame__body">
+      <div class="pto-ide-frame__body">
       <nav class="pto-ide-frame__activity-rail pto-ide-frame__standalone-chrome" aria-label="Activity rail">
-        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button is-selected" type="button" data-ide-toggle="explorer" aria-label="Toggle operator input" aria-controls="recommendation-trace-explorer-pane" aria-expanded="true" aria-pressed="true" title="Operator input">
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" data-ide-toggle="explorer" aria-label="Toggle file explorer" aria-controls="recommendation-trace-explorer-pane" aria-expanded="true" aria-pressed="false" title="Explorer">
           <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9l-.81-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
         </button>
         <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Search" title="Search">
@@ -2270,17 +2677,20 @@
         <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Terminal" title="Terminal">
           <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m7 9 3 3-3 3"></path><path d="M12 15h5"></path></svg>
         </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button is-selected" type="button" data-ide-toggle="operator" aria-label="Open operator input and recommendation trace" aria-controls="recommendation-trace-explorer-pane recommendation-trace-panel-pane" aria-expanded="true" aria-pressed="true" title="Operator input + recommendation trace">
+          <img class="pto-ide-frame__rail-icon" src="assets/ascend-c-logo.png" alt="Recommendation">
+        </button>
       </nav>
 
       <div class="pto-ide-frame__workarea">
         <div class="pto-ide-frame__split" data-ide-split="standalone-main" data-storage-key="recommendation-trace-v3-ide-frame" data-split-direction="horizontal" data-sizes="1,1" data-pixel-sizes="300,0" data-min-size="236,600">
           <aside class="pto-ide-frame__pane pto-ide-frame__explorer" data-ide-pane="explorer" id="recommendation-trace-explorer-pane">
             <header class="pto-ide-frame__pane-header">
-              <h2 class="pto-ide-frame__pane-title">Operator Input</h2>
-              <span class="pto-ide-frame__pane-meta">Cube + Vector · FP16</span>
+              <h2 class="pto-ide-frame__pane-title" data-explorer-title>Operator Input</h2>
+              <span class="pto-ide-frame__pane-meta" data-explorer-meta>Cube + Vector · FP16</span>
             </header>
             <div class="pto-ide-frame__pane-body pane-scroll">
-              <div class="operator-input-panel">
+              <div class="operator-input-panel pane-view" data-explorer-view="operator">
                 <section class="operator-context-hero" aria-labelledby="problemTitle">
                   <div>
                     <div class="eyebrow">Operator</div>
@@ -2288,7 +2698,13 @@
                   </div>
                   <div class="context-kv">
                     <div class="context-kv-row"><span>Shape</span><code>M/K/N = 4096</code></div>
-                    <div class="context-kv-row"><span>Layout</span><code>ND → ND</code></div>
+                    <div class="context-kv-row">
+                      <span>Layout</span>
+                      <div class="layout-value-cell">
+                        <code>ND → ND</code>
+                        <button class="btn btn-ghost layout-lab-button" type="button" data-format-lab aria-label="Open Format Lab">Lab</button>
+                      </div>
+                    </div>
                     <div class="context-kv-row"><span>SoC</span><code>Ascend 910B</code></div>
                   </div>
                 </section>
@@ -2354,10 +2770,14 @@
                 </div>
                 <button class="btn btn-solid operator-show-trace" type="button" data-show-trace>Show Trace</button>
               </div>
+              <div class="generated-project-tree pane-view" data-explorer-view="project" aria-label="Generated operator project files" hidden></div>
             </div>
           </aside>
 
-          <main class="pto-ide-frame__pane" data-ide-pane="editor-preview">
+          <main class="pto-ide-frame__pane" data-ide-pane="editor-preview" id="recommendation-trace-panel-pane">
+            <div class="pto-ide-frame__tabstrip generated-project-tabs" data-generated-project-tabstrip hidden>
+              <div class="tab-control" role="tablist" aria-label="Generated project tabs" data-generated-project-tabs></div>
+            </div>
             <header class="pto-ide-frame__pane-header">
               <h2 class="pto-ide-frame__pane-title" data-center-title>Recommendation Trace</h2>
               <span class="pto-ide-frame__pane-meta" data-center-meta>Candidates · final design-time stage</span>
@@ -2661,6 +3081,85 @@
               <section class="api-visualization-view" id="load3dApiView" hidden aria-label="Load3D API visualization">
                 <iframe class="api-visualization-frame" id="load3dApiFrame" title="Load3D API visualization"></iframe>
               </section>
+              <section class="api-visualization-view" id="formatLabView" hidden aria-label="Format Lab">
+                <iframe class="api-visualization-frame" id="formatLabFrame" title="Format Lab"></iframe>
+              </section>
+              <section class="api-visualization-view add-api-view" id="addApiView" hidden aria-label="Add API visualization">
+                <aside class="add-api-sidebar" aria-label="Add API parameter sandbox">
+                  <div class="add-api-sidebar__head">
+                    <strong>API 可视化</strong>
+                    <span>Add</span>
+                  </div>
+                  <label class="add-api-panel" for="addApiSelect">
+                    <strong>API</strong>
+                    <select class="add-api-select" id="addApiSelect" aria-label="API">
+                      <option selected>add</option>
+                    </select>
+                  </label>
+                  <p class="add-api-note">
+                    Add 对两个 LocalTensor 做逐元素相加，把结果写入 dstLocal；这里展示的是参数如何映射到 src0Local、src1Local 与 dstLocal 的读写窗口。
+                  </p>
+                  <div class="add-api-panel" aria-label="Add visualization parameters">
+                    <strong>参数沙盒</strong>
+                    <div class="add-api-param-grid">
+                      <div class="add-api-param-row"><span>block-count</span><code>4</code></div>
+                      <div class="add-api-param-row"><span>block-size</span><code>2</code></div>
+                      <div class="add-api-param-row"><span>src-stride</span><code>0</code></div>
+                      <div class="add-api-param-row"><span>dst-stride</span><code>0</code></div>
+                    </div>
+                    <span class="add-api-param-help">这些是可视化沙盒参数；CANNVision 按 32-byte 单位换算为 FP16 元素窗口。</span>
+                  </div>
+                  <div class="add-api-formula">
+                    <strong>官方 API 形态</strong>
+                    <code>AscendC::Add(dstLocal, src0Local, src1Local, count);</code>
+                    <code>AscendC::Add(dstLocal, src0Local, src1Local, mask, repeatTime, repeatParams);</code>
+                  </div>
+                </aside>
+                <div class="add-api-stage-shell">
+                  <header class="add-api-stage-header">
+                    <strong>参数沙盒</strong>
+                    <span>FP16 · 32-byte block unit · binary vector op</span>
+                  </header>
+                  <div class="add-api-playback" data-add-api-playback></div>
+                  <div class="add-api-canvas" aria-label="Add LocalTensor read and write windows">
+                    <section class="add-api-memory-row" aria-labelledby="addSrc0Label">
+                      <div class="add-api-memory-label">
+                        <strong id="addSrc0Label">src0Local</strong>
+                        <span>/第一个源数据集</span>
+                      </div>
+                      <div class="add-api-grid" data-add-api-grid="src0"></div>
+                    </section>
+                    <section class="add-api-memory-row" aria-labelledby="addSrc1Label">
+                      <div class="add-api-memory-label">
+                        <strong id="addSrc1Label">src1Local</strong>
+                        <span>/第二个源数据集</span>
+                      </div>
+                      <div class="add-api-grid" data-add-api-grid="src1"></div>
+                    </section>
+                    <section class="add-api-memory-row" aria-labelledby="addDstLabel">
+                      <div class="add-api-memory-label">
+                        <strong id="addDstLabel">dstLocal</strong>
+                        <span>/目标数据集</span>
+                      </div>
+                      <div class="add-api-grid" data-add-api-grid="dst"></div>
+                    </section>
+                  </div>
+                  <footer class="add-api-stage-footer">
+                    <span>当前窗口：patch 0, element 3 · 读取 src0Local/src1Local 对应元素，并写入 dstLocal。</span>
+                    <span>Elementwise 语义：dstLocal[i] = src0Local[i] + src1Local[i]；高维切分形态通过 mask / repeatTime / BinaryRepeatParams 表达重复与 stride。</span>
+                    <div class="add-api-legend" aria-label="Add visualization legend">
+                      <span class="add-api-legend-item"><span class="add-api-swatch add-api-swatch--window"></span>当前窗口行</span>
+                      <span class="add-api-legend-item"><span class="add-api-swatch add-api-swatch--read"></span>当前读取 cell</span>
+                      <span class="add-api-legend-item"><span class="add-api-swatch add-api-swatch--written"></span>已写入</span>
+                      <span class="add-api-legend-item"><span class="add-api-swatch add-api-swatch--current"></span>当前写入 cell</span>
+                    </div>
+                  </footer>
+                </div>
+              </section>
+              <section class="generated-project-view" data-generated-project-view hidden aria-label="Generated operator project code view">
+                <div class="generated-project-breadcrumbs" data-generated-project-breadcrumbs></div>
+                <div class="pto-ide-frame__code-surface generated-project-code-surface" data-generated-project-code aria-label="Generated code surface"></div>
+              </section>
             </div>
           </main>
 
@@ -2714,6 +3213,7 @@
   <script src="../../pto-design-system/patterns/aiv-core-object/pattern.js"></script>
   <script src="../../pto-design-system/patterns/aic-core-object/pattern.js"></script>
   <script src="../../pto-design-system/patterns/memory-architecture/pattern.js"></script>
+  <script src="../../pto-design-system/patterns/floating-playback-control/pattern.js"></script>
   <script src="../../pto-design-system/patterns/hardware-architecture-viewport/pattern.js"></script>
   <script>
     window.addEventListener('DOMContentLoaded', () => {
@@ -4356,6 +4856,19 @@
       let activeCandidateEngineeringPlan = 'balanced';
       let candidatePreviewFiles = {};
       let candidatePreviewOpener = null;
+      let activeGeneratedProjectFile = 'kernel';
+
+      const generatedProjectFileMeta = {
+        tiling: { folder: 'op_host', name: 'op_tiling.h', label: 'Tiling data' },
+        host: { folder: 'op_host', name: 'op_tiling.cpp', label: 'Host tiling' },
+        kernel: { folder: 'op_kernel', name: 'op_kernel.cpp', label: 'Kernel schedule' }
+      };
+
+      const folderIcon = '<svg class="generated-project-tree__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9l-.81-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>';
+      const fileIcon = '<svg class="generated-project-tree__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path></svg>';
+      const openChevron = '<svg class="generated-project-tree__chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>';
+      const closedChevron = '<svg class="generated-project-tree__chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>';
+      const closeIcon = '<span class="pto-ide-frame__tab-close" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></span>';
 
       const escapeCandidatePreviewCode = (value) => String(value)
         .replace(/&/g, '&amp;')
@@ -4401,6 +4914,156 @@
         });
       };
 
+      const renderGeneratedProjectTree = () => {
+        const root = $('[data-explorer-view="project"]');
+        if (!root) return;
+        root.innerHTML = `
+          <div class="generated-project-tree__group">文件</div>
+          <div class="generated-project-tree__row" style="--tree-depth:0">
+            ${closedChevron}
+            ${folderIcon}
+            <span class="generated-project-tree__name">matmul-bias-gelu-op</span>
+            <span class="generated-project-tree__status"></span>
+          </div>
+          <div class="generated-project-tree__row" style="--tree-depth:1">
+            ${openChevron}
+            ${folderIcon}
+            <span class="generated-project-tree__name">op_host</span>
+            <span class="generated-project-tree__status"></span>
+          </div>
+          <button class="generated-project-tree__row" type="button" data-generated-project-file="tiling" style="--tree-depth:2">
+            <span></span>
+            ${fileIcon}
+            <span class="generated-project-tree__name">op_tiling.h</span>
+            <span class="generated-project-tree__status is-modified">M</span>
+          </button>
+          <button class="generated-project-tree__row" type="button" data-generated-project-file="host" style="--tree-depth:2">
+            <span></span>
+            ${fileIcon}
+            <span class="generated-project-tree__name">op_tiling.cpp</span>
+            <span class="generated-project-tree__status is-modified">M</span>
+          </button>
+          <div class="generated-project-tree__row" style="--tree-depth:1">
+            ${openChevron}
+            ${folderIcon}
+            <span class="generated-project-tree__name">op_kernel</span>
+            <span class="generated-project-tree__status"></span>
+          </div>
+          <button class="generated-project-tree__row" type="button" data-generated-project-file="kernel" style="--tree-depth:2">
+            <span></span>
+            ${fileIcon}
+            <span class="generated-project-tree__name">op_kernel.cpp</span>
+            <span class="generated-project-tree__status is-modified">M</span>
+          </button>
+        `;
+      };
+
+      const renderGeneratedProjectTabs = () => {
+        const tabs = $('[data-generated-project-tabs]');
+        if (!tabs) return;
+        tabs.replaceChildren(...Object.entries(generatedProjectFileMeta).map(([key, meta]) => {
+          const tab = document.createElement('button');
+          tab.type = 'button';
+          tab.role = 'tab';
+          tab.className = `tab-control-item${key === activeGeneratedProjectFile ? ' is-selected' : ''}`;
+          tab.dataset.generatedProjectFile = key;
+          tab.setAttribute('aria-selected', String(key === activeGeneratedProjectFile));
+          tab.innerHTML = `${meta.name} ${closeIcon}`;
+          return tab;
+        }));
+      };
+
+      const renderGeneratedProjectFile = (key = activeGeneratedProjectFile) => {
+        const file = candidatePreviewFiles[key];
+        if (!file) return;
+        activeGeneratedProjectFile = key;
+        const meta = generatedProjectFileMeta[key];
+        const plan = candidateEngineeringPlans[activeCandidateEngineeringPlan];
+        const breadcrumbs = $('[data-generated-project-breadcrumbs]');
+        if (breadcrumbs) {
+          breadcrumbs.innerHTML = `
+            <strong>matmul-bias-gelu-op</strong>
+            <span>/</span>
+            <strong>${meta.folder}</strong>
+            <span>/</span>
+            <strong>${meta.name}</strong>
+            <span>/</span>
+            <span>${plan.title}</span>
+          `;
+        }
+        const code = $('[data-generated-project-code]');
+        if (code) {
+          code.innerHTML = file.code.split('\n').map((line, index) => `
+            <div class="pto-ide-frame__code-line${line.includes('[Generated]') ? ' is-related' : ''}${line.includes('[User Code]') ? ' is-active' : ''}">
+              <span class="pto-ide-frame__code-line-number">${index + 1}</span>
+              <span class="pto-ide-frame__code-line-code">${highlightCandidatePreviewCode(line)}</span>
+            </div>
+          `).join('');
+        }
+        $$('[data-generated-project-file]').forEach((control) => {
+          const selected = control.dataset.generatedProjectFile === key;
+          control.classList.toggle('is-active', selected);
+          if (control.role === 'tab') control.setAttribute('aria-selected', String(selected));
+          if (control.tagName.toLowerCase() === 'button') control.setAttribute('aria-pressed', String(selected));
+        });
+        renderGeneratedProjectTabs();
+        setText('[data-center-meta]', `${meta.name} · ${meta.label}`);
+      };
+
+      const ensureExplorerPaneOpen = () => {
+        const frame = $('[data-ide-frame]');
+        const explorerToggle = $('.pto-ide-frame__activity-rail [data-ide-toggle="explorer"]');
+        if (frame?.dataset.explorerCollapsed === 'true') {
+          explorerToggle?.click();
+        }
+        explorerToggle?.classList.add('is-selected');
+        explorerToggle?.setAttribute('aria-expanded', 'true');
+        explorerToggle?.setAttribute('aria-pressed', 'true');
+      };
+
+      const setGeneratedProjectMode = (planKey) => {
+        const plan = candidateEngineeringPlans[planKey];
+        if (!plan) return;
+        activeCandidateEngineeringPlan = planKey;
+        candidatePreviewFiles = buildCandidatePreviewFiles(plan);
+        activeGeneratedProjectFile = 'kernel';
+        closeCandidateCodePreview();
+        ensureExplorerPaneOpen();
+        const operatorToggle = $('[data-ide-toggle="operator"]');
+        operatorToggle?.classList.remove('is-selected');
+        operatorToggle?.setAttribute('aria-expanded', 'false');
+        operatorToggle?.setAttribute('aria-pressed', 'false');
+        setText('[data-explorer-title]', '资源管理器');
+        setText('[data-explorer-meta]', 'PTO');
+        $('[data-explorer-view="operator"]').hidden = true;
+        $('[data-explorer-view="project"]').hidden = false;
+        $('#decisionTracePanel').hidden = true;
+        $('#load3dApiView').hidden = true;
+        $('#formatLabView').hidden = true;
+        $('#addApiView').hidden = true;
+        $('[data-generated-project-view]').hidden = false;
+        $('[data-generated-project-tabstrip]').hidden = false;
+        setText('[data-center-title]', '预览');
+        setText('[data-status-stage]', `Generated project · ${plan.title} · ${plan.cubeTile} · Buffer ${plan.bufferNum}`);
+        renderGeneratedProjectTree();
+        renderGeneratedProjectTabs();
+        renderGeneratedProjectFile(activeGeneratedProjectFile);
+        $('[data-ide-pane="editor-preview"] .pane-scroll')?.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      const setOperatorPlanningMode = () => {
+        closeCandidateCodePreview();
+        ensureExplorerPaneOpen();
+        setText('[data-explorer-title]', 'Operator Input');
+        setText('[data-explorer-meta]', 'Cube + Vector · FP16');
+        $('[data-explorer-view="operator"]').hidden = false;
+        $('[data-explorer-view="project"]').hidden = true;
+        $('[data-generated-project-view]').hidden = true;
+        $('[data-generated-project-tabstrip]').hidden = true;
+        showRecommendationTrace();
+        selectTraceView(lastTraceView || 'candidates');
+      };
+
       const openCandidateCodePreview = (key, opener) => {
         const plan = candidateEngineeringPlans[key];
         if (!plan) return;
@@ -4429,6 +5092,7 @@
           '[data-candidate-project-status]',
           `已准备 ${plan.title} 的 Mock 算子工程：op_host/op_tiling.h · op_host/op_tiling.cpp · op_kernel/op_kernel.cpp；尚未写入本地目录。`
         );
+        setGeneratedProjectMode(key);
       };
 
       const operatorApis = {
@@ -4449,8 +5113,8 @@
           copy: '执行 M × K 与 K × N tile 的矩阵乘加；M/N/K 粒度、输入位置和累加类型共同限制合法候选。'
         },
         Add: {
-          title: 'Add · Vector BiasAdd',
-          copy: '在 Vector processing block 上执行逐元素加法；bias[N] 需要先通过目标平台支持的广播或重复装载方式映射到每个 M 行，具体广播 API 仍需按 CANN / SoC 版本验证。'
+          title: 'Add · Vector elementwise add',
+          copy: '在 Vector processing block 上执行逐元素加法；常见形态为 Add(dstLocal, src0Local, src1Local, count)，高维切分可通过 mask / repeatTime / BinaryRepeatParams 表达。'
         },
         Gelu: {
           title: 'Gelu · Vector activation',
@@ -5524,9 +6188,166 @@
       };
 
       let selectedOperatorApi = null;
+      let addApiMounted = false;
+      let addApiStep = 4;
+      let addApiPlaying = false;
+      let addApiPlayback = null;
+      let addApiTimer = null;
+
+      const addApiGridConfig = {
+        columns: 32,
+        rows: 8,
+        totalSteps: 300,
+        blockCount: 4,
+        blockSizeParam: 2,
+        elementSize: 2,
+        blockByteUnit: 32
+      };
+
+      const stopAddApiPlayback = () => {
+        addApiPlaying = false;
+        if (addApiTimer) {
+          clearInterval(addApiTimer);
+          addApiTimer = null;
+        }
+      };
+
+      const renderAddApiCells = () => {
+        const { columns, rows, totalSteps, blockSizeParam, elementSize, blockByteUnit } = addApiGridConfig;
+        const totalCells = columns * rows;
+        const blockElements = Math.max(1, Math.floor(blockSizeParam * blockByteUnit / elementSize));
+        const currentElement = Math.max(0, (addApiStep - 1) % blockElements);
+        const activeBlock = Math.floor(Math.max(0, addApiStep - 1) / blockElements) % addApiGridConfig.blockCount;
+        const windowStart = activeBlock * blockElements;
+        const windowEnd = Math.min(windowStart + blockElements, totalCells);
+        const currentIndex = Math.min(windowStart + currentElement, totalCells - 1);
+
+        $$('[data-add-api-grid]').forEach((grid) => {
+          const gridKind = grid.dataset.addApiGrid;
+          const cells = [];
+          for (let index = 0; index < totalCells; index += 1) {
+            const cell = document.createElement('span');
+            const inWindow = index >= windowStart && index < windowEnd;
+            const isPast = index >= windowStart && index < currentIndex;
+            const isCurrent = index === currentIndex;
+            cell.className = 'add-api-cell';
+            if (inWindow) cell.classList.add('is-window');
+            if ((gridKind === 'src0' || gridKind === 'src1') && isCurrent) cell.classList.add('is-read');
+            if (gridKind === 'dst' && isPast) cell.classList.add('is-written');
+            if (gridKind === 'dst' && isCurrent) cell.classList.add('is-current');
+            cell.setAttribute('aria-label', `${gridKind} element ${index}`);
+            cells.push(cell);
+          }
+          grid.replaceChildren(...cells);
+        });
+
+        const root = $('#addApiView');
+        if (root) {
+          root.dataset.addApiStep = String(addApiStep);
+          root.dataset.addApiElement = String(currentElement);
+          root.dataset.addApiPatch = String(activeBlock);
+        }
+
+        const helper = window.PtoFloatingPlaybackControl;
+        const control = $('[data-add-api-playback] .pto-floating-playback');
+        if (!helper || !control) return;
+
+        const playBtn = control.querySelector('#add-api-play-btn');
+        const scrubber = control.querySelector('#add-api-scrubber');
+        const label = control.querySelector('#add-api-scrubber-label');
+        const opname = control.querySelector('#add-api-scrubber-opname');
+        if (scrubber) {
+          scrubber.max = String(totalSteps);
+          scrubber.value = String(addApiStep);
+        }
+        if (label) label.textContent = `${addApiStep} / ${totalSteps}`;
+        if (opname) opname.textContent = `patch ${activeBlock}, element ${currentElement}`;
+        if (playBtn) playBtn.innerHTML = helper.iconLabel(addApiPlaying ? 'pause' : 'play', addApiPlaying ? 'Pause' : 'Play');
+        addApiPlayback?.sync({ playing: addApiPlaying });
+      };
+
+      const setupAddApiPlayback = () => {
+        if (addApiMounted) return;
+        addApiMounted = true;
+
+        const mount = $('[data-add-api-playback]');
+        const helper = window.PtoFloatingPlaybackControl;
+        if (mount && helper) {
+          const ids = {
+            shell: 'add-api-floating-shell',
+            toggle: 'add-api-floating-toggle',
+            collapsedButton: 'add-api-collapsed-btn',
+            collapsedIcon: 'add-api-collapsed-icon',
+            controls: 'add-api-controls-row',
+            stepBack: 'add-api-step-back-btn',
+            play: 'add-api-play-btn',
+            stepForward: 'add-api-step-fwd-btn',
+            replay: 'add-api-replay-btn',
+            scrubber: 'add-api-scrubber',
+            scrubberLabel: 'add-api-scrubber-label',
+            scrubberOpname: 'add-api-scrubber-opname',
+            scrubberHover: 'add-api-scrubber-hover'
+          };
+          const control = helper.createControl({ className: 'pto-floating-playback--preview', ids });
+          mount.replaceChildren(control);
+          addApiPlayback = helper.init({
+            root: control,
+            isPlaying: () => addApiPlaying
+          });
+          helper.initScrubberHover({
+            root: control,
+            totalSteps: addApiGridConfig.totalSteps + 1,
+            getLabelForStep: (step) => {
+              const element = Math.max(0, (step - 1) % (addApiGridConfig.blockSizeParam * addApiGridConfig.blockByteUnit / addApiGridConfig.elementSize));
+              const patch = Math.floor(Math.max(0, step - 1) / (addApiGridConfig.blockSizeParam * addApiGridConfig.blockByteUnit / addApiGridConfig.elementSize)) % addApiGridConfig.blockCount;
+              return `Step ${step} · patch ${patch}, element ${element}`;
+            }
+          });
+
+          control.querySelector('#add-api-step-back-btn')?.addEventListener('click', () => {
+            stopAddApiPlayback();
+            addApiStep = Math.max(0, addApiStep - 1);
+            renderAddApiCells();
+          });
+          control.querySelector('#add-api-step-fwd-btn')?.addEventListener('click', () => {
+            stopAddApiPlayback();
+            addApiStep = Math.min(addApiGridConfig.totalSteps, addApiStep + 1);
+            renderAddApiCells();
+          });
+          control.querySelector('#add-api-replay-btn')?.addEventListener('click', () => {
+            stopAddApiPlayback();
+            addApiStep = 0;
+            renderAddApiCells();
+          });
+          control.querySelector('#add-api-scrubber')?.addEventListener('input', (event) => {
+            stopAddApiPlayback();
+            addApiStep = Number(event.target.value) || 0;
+            renderAddApiCells();
+          });
+          control.querySelector('#add-api-play-btn')?.addEventListener('click', () => {
+            addApiPlaying = !addApiPlaying;
+            if (addApiPlaying) {
+              addApiTimer = setInterval(() => {
+                addApiStep = addApiStep >= addApiGridConfig.totalSteps ? 0 : addApiStep + 1;
+                renderAddApiCells();
+              }, 220);
+            } else {
+              stopAddApiPlayback();
+            }
+            renderAddApiCells();
+          });
+        }
+
+        renderAddApiCells();
+      };
 
       const showRecommendationTrace = () => {
         $('#load3dApiView').hidden = true;
+        $('#formatLabView').hidden = true;
+        $('#addApiView').hidden = true;
+        stopAddApiPlayback();
+        $('[data-generated-project-view]').hidden = true;
+        $('[data-generated-project-tabstrip]').hidden = true;
         $('#decisionTracePanel').hidden = false;
         setText('[data-center-title]', 'Recommendation Trace');
         setText('[data-center-meta]', 'Candidates · final design-time stage');
@@ -5534,29 +6355,76 @@
         if (centerScroll) centerScroll.scrollTop = 0;
       };
 
-      const showLoad3dApiVisualization = () => {
+      const showLoad3dApiVisualization = (apiKey = 'Load3D') => {
         $('#decisionTracePanel').hidden = true;
+        $('#formatLabView').hidden = true;
+        $('#addApiView').hidden = true;
+        stopAddApiPlayback();
+        $('[data-generated-project-view]').hidden = true;
+        $('[data-generated-project-tabstrip]').hidden = true;
         $('#load3dApiView').hidden = false;
         setText('[data-center-title]', 'API 可视化');
-        setText('[data-center-meta]', 'Load3D · mock mapping');
+        setText('[data-center-meta]', `${apiKey} · interactive parameter sandbox`);
+        setText('[data-status-stage]', `${apiKey} API · interactive visualization sandbox`);
         const centerScroll = $('[data-ide-pane="editor-preview"] .pane-scroll');
         if (centerScroll) centerScroll.scrollTop = 0;
 
         const frame = $('#load3dApiFrame');
-        if (frame.dataset.load3dMounted === 'true') return;
-        frame.dataset.load3dMounted = 'true';
-        frame.src = 'operator%20planning.html?embed=load3d';
+        const nextSrc = `operator%20planning.html?embed=load3d&api=${encodeURIComponent(apiKey)}`;
+        if (frame.dataset.apiVisualizationSrc === nextSrc) return;
+        frame.dataset.apiVisualizationSrc = nextSrc;
+        frame.src = nextSrc;
+      };
+
+      const showFormatLab = () => {
+        $('#decisionTracePanel').hidden = true;
+        $('#load3dApiView').hidden = true;
+        $('#addApiView').hidden = true;
+        stopAddApiPlayback();
+        $('[data-generated-project-view]').hidden = true;
+        $('[data-generated-project-tabstrip]').hidden = true;
+        $('#formatLabView').hidden = false;
+        setText('[data-center-title]', 'Format Lab');
+        setText('[data-center-meta]', 'Layout · ND → ND');
+        setText('[data-status-stage]', 'Format Lab · logical ND contract / physical layout inspection');
+        const centerScroll = $('[data-ide-pane="editor-preview"] .pane-scroll');
+        if (centerScroll) centerScroll.scrollTop = 0;
+
+        const frame = $('#formatLabFrame');
+        if (frame.dataset.formatMounted === 'true') return;
+        frame.dataset.formatMounted = 'true';
+        frame.src = 'operator%20planning.html?embed=format';
+      };
+
+      const showAddApiVisualization = () => {
+        showLoad3dApiVisualization('Add');
+      };
+
+      const openOperatorWorkspace = () => {
+        const operatorToggle = $('[data-ide-toggle="operator"]');
+        const explorerToggle = $('.pto-ide-frame__activity-rail [data-ide-toggle="explorer"]');
+        setOperatorPlanningMode();
+        if (operatorToggle) {
+          operatorToggle.classList.add('is-selected');
+          operatorToggle.setAttribute('aria-expanded', 'true');
+          operatorToggle.setAttribute('aria-pressed', 'true');
+        }
+        if (explorerToggle) {
+          explorerToggle.classList.remove('is-selected');
+          explorerToggle.setAttribute('aria-expanded', 'false');
+          explorerToggle.setAttribute('aria-pressed', 'false');
+        }
+        requestAnimationFrame(queueLineageLayout);
       };
 
       const selectOperatorApi = (key) => {
-        selectedOperatorApi = key === 'Load3D' ? key : (selectedOperatorApi === key ? null : key);
+        selectedOperatorApi = null;
         $$('[data-operator-api]').forEach((control) => {
-          const selected = control.dataset.operatorApi === selectedOperatorApi;
-          control.classList.toggle('is-selected', selected);
-          control.setAttribute('aria-pressed', String(selected));
+          control.classList.remove('is-selected');
+          control.setAttribute('aria-pressed', 'false');
         });
 
-        const api = operatorApis[selectedOperatorApi];
+        const api = operatorApis[key];
         setText('[data-operator-api-title]', api ? api.title : 'API chain');
         setText(
           '[data-operator-api-copy]',
@@ -5565,7 +6433,11 @@
 
         if (!api) return;
         if (key === 'Load3D') {
-          showLoad3dApiVisualization();
+          showLoad3dApiVisualization('Load3D');
+          return;
+        }
+        if (key === 'Add') {
+          showAddApiVisualization();
           return;
         }
         showRecommendationTrace();
@@ -5574,9 +6446,21 @@
       };
 
       document.addEventListener('click', (event) => {
+        const operatorToggle = event.target.closest('[data-ide-toggle="operator"]');
+        if (operatorToggle) {
+          event.preventDefault();
+          openOperatorWorkspace();
+          return;
+        }
+
         const showTrace = event.target.closest('[data-show-trace]');
         if (showTrace) {
           showRecommendationTrace();
+          return;
+        }
+        const formatLab = event.target.closest('[data-format-lab]');
+        if (formatLab) {
+          showFormatLab();
           return;
         }
         const operatorApi = event.target.closest('[data-operator-api]');
@@ -5627,6 +6511,11 @@
         const fileTrigger = target.closest('[data-candidate-code-preview-file]');
         if (fileTrigger) {
           showCandidatePreviewFile(fileTrigger.dataset.candidateCodePreviewFile);
+          return;
+        }
+        const generatedProjectFileTrigger = target.closest('[data-generated-project-file]');
+        if (generatedProjectFileTrigger) {
+          renderGeneratedProjectFile(generatedProjectFileTrigger.dataset.generatedProjectFile);
           return;
         }
         if (target.closest('[data-regenerate-candidate-code-preview]')) {

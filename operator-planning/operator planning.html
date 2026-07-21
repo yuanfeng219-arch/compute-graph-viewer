@@ -2241,6 +2241,157 @@
       background: #ffbf4d;
       box-shadow: inset 0 0 0 2px rgba(255,244,214,0.78), 0 0 18px rgba(255,191,77,0.38);
     }
+    .op-add-stage {
+      grid-column: 1 / -1;
+      overflow: hidden;
+    }
+    .op-add-body {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+      min-width: 0;
+    }
+    .op-add-tensors {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+    .op-add-tensor {
+      position: relative;
+      display: grid;
+      grid-template-columns: 132px minmax(0, 1fr);
+      gap: 14px;
+      min-height: 168px;
+      padding: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      background:
+        radial-gradient(circle at 18% 10%, color-mix(in srgb, var(--operator-cyan) 10%, transparent), transparent 30%),
+        linear-gradient(135deg, color-mix(in srgb, var(--foreground) 5%, transparent), rgba(10, 14, 18, 0.34));
+    }
+    .op-add-tensor::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.24;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.13) 1px, transparent 1px);
+      background-size: 34px 28px;
+    }
+    .op-add-tensor-label {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      align-content: start;
+      gap: 7px;
+      padding-top: 2px;
+    }
+    .op-add-tensor-label strong {
+      color: var(--foreground);
+      font: var(--text-title-sm);
+    }
+    .op-add-tensor-label span {
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+    .op-add-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(32, minmax(18px, 1fr));
+      gap: 4px;
+      align-content: start;
+      min-width: 0;
+    }
+    .op-add-cell {
+      aspect-ratio: 1;
+      min-width: 0;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 5px;
+      background: rgba(255,255,255,0.028);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .op-add-cell.is-window {
+      background: rgba(72,199,232,0.16);
+      border-color: rgba(72,199,232,0.22);
+    }
+    .op-add-cell.is-read {
+      background: rgba(72,199,232,0.30);
+      border-color: rgba(72,199,232,0.44);
+    }
+    .op-add-cell.is-written {
+      background: rgba(72,199,232,0.42);
+      border-color: rgba(72,199,232,0.52);
+    }
+    .op-add-cell.is-active {
+      z-index: 2;
+      background: #ffbf4d;
+      border-color: rgba(255,244,214,0.78);
+      box-shadow: inset 0 0 0 2px rgba(255,244,214,0.78), 0 0 18px rgba(255,191,77,0.36);
+    }
+    .op-add-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 12px;
+      min-width: 0;
+    }
+    .op-add-panel {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      background:
+        radial-gradient(circle at 20% 12%, color-mix(in srgb, var(--operator-cyan) 10%, transparent), transparent 32%),
+        linear-gradient(135deg, color-mix(in srgb, var(--foreground) 5%, transparent), rgba(10, 14, 18, 0.34));
+      padding: 14px;
+    }
+    .op-add-panel h4 {
+      margin: 0 0 10px;
+      color: var(--foreground);
+      font: var(--text-title-sm);
+    }
+    .op-add-formula {
+      display: grid;
+      gap: 8px;
+      color: var(--foreground-secondary);
+      font: var(--text-body-sm);
+    }
+    .op-add-formula code {
+      display: block;
+      padding: 10px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      background: rgba(0,0,0,0.18);
+      color: var(--operator-cyan);
+      font: var(--text-code);
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+    .op-add-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+      color: var(--foreground-secondary);
+      font: var(--text-label);
+    }
+    .op-add-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .op-add-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.028);
+    }
+    .op-add-swatch.window { background: rgba(72,199,232,0.16); }
+    .op-add-swatch.read { background: rgba(72,199,232,0.30); }
+    .op-add-swatch.written { background: rgba(72,199,232,0.42); }
+    .op-add-swatch.active { background: #ffbf4d; }
     .op-load3d-empty {
       position: relative;
       z-index: 1;
@@ -2274,12 +2425,18 @@
       .op-load3d-input {
         grid-template-columns: 1fr;
       }
+      .op-add-summary {
+        grid-template-columns: 1fr;
+      }
       .op-load3d-canvas {
         height: 300px;
       }
     }
     @media (max-width: 980px) {
       .op-load3d-views {
+        grid-template-columns: 1fr;
+      }
+      .op-add-tensor {
         grid-template-columns: 1fr;
       }
     }
@@ -3861,6 +4018,12 @@ CopyOut(TILE_NUM - 1, (TILE_NUM - 1) % BUFFER_NUM);`,
           leftTopH: 0, leftTopW: 0,
           repeatMode: 0, repeatTime: 3, jumpStride: 1, channelSize: 16, padValue: 0, showChannelPadding: true
         },
+        addApi: {
+          blockCount: 4,
+          blockSize: 2,
+          srcStride: 0,
+          dstStride: 0
+        },
         pipeline: 'auto',
         pipelineViewMode: 'tile',
         selectedPipelineBlock: null,
@@ -3873,12 +4036,24 @@ CopyOut(TILE_NUM - 1, (TILE_NUM - 1) % BUFFER_NUM);`,
         }
       };
 
-      const isLoad3dEmbed = new URLSearchParams(window.location.search).get('embed') === 'load3d';
-      if (isLoad3dEmbed) {
+      const embedParams = new URLSearchParams(window.location.search);
+      const embedMode = embedParams.get('embed');
+      const isLoad3dEmbed = embedMode === 'load3d';
+      const isFormatEmbed = embedMode === 'format';
+      if (isLoad3dEmbed || isFormatEmbed) {
         document.documentElement.dataset.embedApi = 'true';
-        state.operatorId = 'OP-003';
-        state.view = 'api';
-        state.selectedApi = 'Load3D';
+        if (isLoad3dEmbed) {
+          state.operatorId = 'OP-003';
+          state.view = 'api';
+          state.selectedApi = embedParams.get('api') === 'Add' ? 'Add' : 'Load3D';
+        } else {
+          state.operatorId = 'OP-004';
+          state.view = 'format';
+          state.format.layout = embedParams.get('layout') || 'ND';
+          state.format.dtype = embedParams.get('dtype') || 'float16';
+          state.format.rows = Number(embedParams.get('rows')) || 16;
+          state.format.cols = Number(embedParams.get('cols')) || 16;
+        }
       }
 
       const $ = (sel, root = document) => root.querySelector(sel);
@@ -5650,6 +5825,249 @@ CopyOut(TILE_NUM - 1, (TILE_NUM - 1) % BUFFER_NUM);`,
         `;
       }
 
+      function apiVisualizationOptions(operator = currentOperator()) {
+        if (isLoad3dEmbed) return ['Load3D', 'Add'];
+        const allowed = new Set(['Load3D', 'Add']);
+        return operator.apis.filter((api) => allowed.has(api));
+      }
+
+      function addApiBlockElements(params = state.addApi) {
+        const elementSize = dtypeSize[state.dtype] || 2;
+        return Math.max(1, Math.floor((params.blockSize * 32) / elementSize));
+      }
+
+      function addApiTotalSteps(params = state.addApi) {
+        return Math.max(1, params.blockCount * addApiBlockElements(params));
+      }
+
+      function addApiContext() {
+        const params = state.addApi;
+        const totalCells = 32 * 8;
+        const blockElements = addApiBlockElements(params);
+        const srcStride = blockElements + Math.max(0, params.srcStride * 32 / (dtypeSize[state.dtype] || 2));
+        const dstStride = blockElements + Math.max(0, params.dstStride * 32 / (dtypeSize[state.dtype] || 2));
+        const step = Math.max(0, Math.min(state.apiStep || 0, addApiTotalSteps(params) - 1));
+        const patch = Math.floor(step / blockElements) % params.blockCount;
+        const element = step % blockElements;
+        const srcStart = Math.min(totalCells - 1, Math.floor(patch * srcStride));
+        const dstStart = Math.min(totalCells - 1, Math.floor(patch * dstStride));
+        return {
+          params,
+          totalCells,
+          blockElements,
+          step,
+          patch,
+          element,
+          srcStart,
+          dstStart,
+          srcCurrent: Math.min(totalCells - 1, srcStart + element),
+          dstCurrent: Math.min(totalCells - 1, dstStart + element),
+          srcEnd: Math.min(totalCells, srcStart + blockElements),
+          dstEnd: Math.min(totalCells, dstStart + blockElements)
+        };
+      }
+
+      function stopAddApiPlayback() {
+        stopApiPlayback();
+      }
+
+      function startAddApiPlayback() {
+        const total = addApiTotalSteps();
+        if (total <= 0) return;
+        state.apiPlaying = true;
+        if (state.apiStep >= total - 1) state.apiStep = 0;
+        if (apiPlaybackTimer) clearInterval(apiPlaybackTimer);
+        apiPlaybackTimer = setInterval(() => {
+          const maxStep = addApiTotalSteps() - 1;
+          if (state.apiStep >= maxStep) {
+            stopApiPlayback();
+            renderApiAndInspector();
+            return;
+          }
+          state.apiStep += 1;
+          renderApiAndInspector();
+        }, Math.round(520 / (state.apiSpeed || 1)));
+        renderApiAndInspector();
+      }
+
+      function mountAddApiPlaybackControl() {
+        const mount = document.getElementById('apiPlaybackMount');
+        if (!mount) return;
+        mount.replaceChildren();
+        const ids = {
+          shell: 'apiPlaybackShell',
+          toggle: 'apiPlaybackToggle',
+          collapsedButton: 'apiPlaybackCollapsedButton',
+          collapsedIcon: 'apiPlaybackCollapsedIcon',
+          controls: 'apiPlaybackControls',
+          stepBack: 'apiPlaybackPrev',
+          play: 'apiPlaybackPlay',
+          stepForward: 'apiPlaybackNext',
+          replay: 'apiPlaybackReplay',
+          scrubber: 'apiPlaybackScrubber',
+          scrubberLabel: 'apiPlaybackScrubberLabel',
+          scrubberOpname: 'apiPlaybackScrubberOpname',
+          scrubberHover: 'apiPlaybackScrubberHover'
+        };
+        if (!window.PtoFloatingPlaybackControl?.createControl || !window.PtoFloatingPlaybackControl?.init) {
+          mount.innerHTML = '<div class="soft-note">Playback control unavailable. API visualization remains interactive through the parameter panel.</div>';
+          return;
+        }
+        const control = window.PtoFloatingPlaybackControl.createControl({
+          className: 'pto-floating-playback--preview',
+          ids,
+        });
+        mount.appendChild(control);
+        const controller = window.PtoFloatingPlaybackControl.init({
+          root: mount,
+          ids,
+          isPlaying: () => state.apiPlaying,
+        });
+        window.PtoFloatingPlaybackControl.initScrubberHover({
+          root: mount,
+          ids,
+          getTotalSteps: () => addApiTotalSteps(),
+          getLabelForStep: (step) => {
+            const ctx = addApiContext();
+            const blockElements = ctx.blockElements || 1;
+            const patch = Math.floor(step / blockElements) % state.addApi.blockCount;
+            const element = step % blockElements;
+            return `Step ${step + 1} · patch ${patch}, element ${element}`;
+          },
+        });
+        const stepLabel = mount.querySelector(`#${ids.scrubberLabel}`);
+        const opname = mount.querySelector(`#${ids.scrubberOpname}`);
+        const scrubber = mount.querySelector(`#${ids.scrubber}`);
+        const play = mount.querySelector(`#${ids.play}`);
+        const syncPlayback = () => {
+          const ctx = addApiContext();
+          controller.sync({ isPlaying: () => state.apiPlaying });
+          if (stepLabel) stepLabel.textContent = `${ctx.step + 1} / ${addApiTotalSteps()}`;
+          if (opname) opname.textContent = `patch ${ctx.patch}, element ${ctx.element}`;
+          if (scrubber) {
+            scrubber.min = '0';
+            scrubber.max = String(Math.max(0, addApiTotalSteps() - 1));
+            scrubber.value = String(ctx.step);
+          }
+          if (play) {
+            play.innerHTML = window.PtoFloatingPlaybackControl.iconLabel(
+              state.apiPlaying ? 'pause' : 'play',
+              state.apiPlaying ? 'Pause' : 'Play'
+            );
+          }
+        };
+        const goStep = (nextStep) => {
+          state.apiStep = Math.max(0, Math.min(addApiTotalSteps() - 1, nextStep));
+          syncPlayback();
+          renderApiAndInspector();
+        };
+        mount.querySelector(`#${ids.stepBack}`)?.addEventListener('click', () => {
+          stopAddApiPlayback();
+          goStep((state.apiStep || 0) - 1);
+        });
+        mount.querySelector(`#${ids.play}`)?.addEventListener('click', () => {
+          if (state.apiPlaying) {
+            stopAddApiPlayback();
+            syncPlayback();
+            return;
+          }
+          startAddApiPlayback();
+        });
+        mount.querySelector(`#${ids.stepForward}`)?.addEventListener('click', () => {
+          stopAddApiPlayback();
+          goStep((state.apiStep || 0) + 1);
+        });
+        mount.querySelector(`#${ids.replay}`)?.addEventListener('click', () => {
+          stopAddApiPlayback();
+          goStep(0);
+          startAddApiPlayback();
+        });
+        scrubber?.addEventListener('input', (event) => {
+          stopAddApiPlayback();
+          goStep(Number(event.target.value));
+        });
+        syncPlayback();
+      }
+
+      function renderAddApiGrid(kind, ctx) {
+        const cells = [];
+        const isSource = kind === 'src0' || kind === 'src1';
+        const start = isSource ? ctx.srcStart : ctx.dstStart;
+        const end = isSource ? ctx.srcEnd : ctx.dstEnd;
+        const current = isSource ? ctx.srcCurrent : ctx.dstCurrent;
+        for (let index = 0; index < ctx.totalCells; index += 1) {
+          const classes = ['op-add-cell'];
+          const inWindow = index >= start && index < end;
+          const isPast = index >= start && index < current;
+          const isActive = index === current;
+          if (inWindow) classes.push('is-window');
+          if (isSource && isActive) classes.push('is-read');
+          if (!isSource && isPast) classes.push('is-written');
+          if (!isSource && isActive) classes.push('is-active');
+          cells.push(`<span class="${classes.join(' ')}" title="${kind} element ${index}"></span>`);
+        }
+        return cells.join('');
+      }
+
+      function renderAddScene() {
+        const ctx = addApiContext();
+        state.apiStep = ctx.step;
+        return `
+          <section class="viz-panel op-add-stage">
+            <header class="section-head">
+              <h3>参数沙盒</h3>
+              <span class="section-meta">LocalTensor + LocalTensor → LocalTensor</span>
+            </header>
+            <div class="op-load3d-playback-mount" id="apiPlaybackMount"></div>
+            <div class="op-add-body">
+              <section class="op-add-tensors" aria-label="Add LocalTensor windows">
+                ${[
+                  ['src0', 'src0Local', '/第一个源数据集'],
+                  ['src1', 'src1Local', '/第二个源数据集'],
+                  ['dst', 'dstLocal', '/目标数据集']
+                ].map(([kind, title, subtitle]) => `
+                  <article class="op-add-tensor">
+                    <div class="op-add-tensor-label">
+                      <strong>${title}</strong>
+                      <span>${subtitle}</span>
+                    </div>
+                    <div class="op-add-grid" data-add-grid-kind="${kind}">
+                      ${renderAddApiGrid(kind, ctx)}
+                    </div>
+                  </article>
+                `).join('')}
+              </section>
+              <section class="op-add-summary">
+                <article class="op-add-panel">
+                  <h4>映射规则</h4>
+                  <div class="op-load3d-kv">
+                    <div class="op-load3d-kv-row"><span>当前窗口</span><code>patch ${ctx.patch}</code></div>
+                    <div class="op-load3d-kv-row"><span>当前元素</span><code>${ctx.element}</code></div>
+                    <div class="op-load3d-kv-row"><span>src offset</span><code>${ctx.srcCurrent}</code></div>
+                    <div class="op-load3d-kv-row"><span>dst offset</span><code>${ctx.dstCurrent}</code></div>
+                    <div class="op-load3d-kv-row"><span>元素窗口</span><code>${ctx.blockElements} FP16 elems</code></div>
+                  </div>
+                </article>
+                <article class="op-add-panel">
+                  <h4>官方 API 形态</h4>
+                  <div class="op-add-formula">
+                    <code>AscendC::Add(dstLocal, src0Local, src1Local, count);</code>
+                    <code>AscendC::Add(dstLocal, src0Local, src1Local, mask, repeatTime, repeatParams);</code>
+                    <div>沙盒参数用于解释 block 和 stride 如何影响读写窗口，不等同于官方函数签名。</div>
+                  </div>
+                </article>
+              </section>
+              <div class="op-add-legend" aria-label="Add visualization legend">
+                <span><i class="op-add-swatch window"></i>当前窗口</span>
+                <span><i class="op-add-swatch read"></i>当前读取 cell</span>
+                <span><i class="op-add-swatch written"></i>已写入</span>
+                <span><i class="op-add-swatch active"></i>当前写入 cell</span>
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
       function renderLoad3dScene() {
         const p = load3dParams();
         const shape = load3dShape(p);
@@ -5787,8 +6205,10 @@ CopyOut(TILE_NUM - 1, (TILE_NUM - 1) % BUFFER_NUM);`,
 
       function renderApi() {
         const p = currentOperator();
-        if (!p.apis.includes(state.selectedApi)) state.selectedApi = p.apis[0] || 'Load3D';
+        const apiOptions = apiVisualizationOptions(p);
+        if (!apiOptions.includes(state.selectedApi)) state.selectedApi = apiOptions[0] || 'Load3D';
         const isLoad3D = state.selectedApi === 'Load3D';
+        const isAdd = state.selectedApi === 'Add';
         const sampled = sampleCoords();
         const win = currentWindow();
         const sampleSummary = sampled.map((item) => `${item.kh},${item.kw} → ${item.srcH},${item.srcW}`).join(' · ');
@@ -5800,16 +6220,17 @@ CopyOut(TILE_NUM - 1, (TILE_NUM - 1) % BUFFER_NUM);`,
                 <div class="api-select-field">
                   <label for="apiSelect">API</label>
                   <select class="api-select" id="apiSelect" data-api-select aria-label="选择 API 可视化">
-                    ${p.apis.map((api) => `<option value="${api}" ${api === state.selectedApi ? 'selected' : ''}>${api}</option>`).join('')}
+                    ${apiOptions.map((api) => `<option value="${api}" ${api === state.selectedApi ? 'selected' : ''}>${api}</option>`).join('')}
                   </select>
                 </div>
-                <p class="api-note">${isLoad3D ? 'Load3D 是这个算子的细节映射演示。' : `${state.selectedApi} 已选中。当前这个 UX 演示仍把细节元素映射放在 Load3D 上。`}</p>
+                <p class="api-note">${isLoad3D ? 'Load3D 展示滑窗如何从源体素映射到 A2 逻辑矩阵。' : 'Add 展示两个 LocalTensor 的逐元素读取和 dstLocal 写入窗口。'}</p>
                 <div class="control-stack" id="apiControls"></div>
               </div>
             </aside>
             <section class="api-canvas">
               ${isLoad3D ? renderLoad3dScene() : ''}
-              ${!isLoad3D ? `<article class="viz-panel load3d-insight">
+              ${isAdd ? renderAddScene() : ''}
+              ${!isLoad3D && !isAdd ? `<article class="viz-panel load3d-insight">
                 <header class="section-head"><h3>三维读法</h3><span class="section-meta">调参数时会发生什么</span></header>
                 <div class="section-body">
                   <div class="load3d-summary">
@@ -5841,6 +6262,10 @@ CopyOut(TILE_NUM - 1, (TILE_NUM - 1) % BUFFER_NUM);`,
             renderLoad3dNativeCanvases();
             mountApiPlaybackControl(load3dPatches(load3dParams(), load3dShape(load3dParams())));
           });
+        } else if (isAdd) {
+          requestAnimationFrame(() => {
+            mountAddApiPlaybackControl();
+          });
         } else {
           const mount = document.getElementById('apiPlaybackMount');
           if (mount) mount.replaceChildren();
@@ -5849,11 +6274,78 @@ CopyOut(TILE_NUM - 1, (TILE_NUM - 1) % BUFFER_NUM);`,
         $('[data-api-select]')?.addEventListener('change', (event) => {
           stopApiPlayback();
           state.selectedApi = event.target.value;
+          state.apiStep = state.selectedApi === 'Add' ? 3 : 0;
           renderAll();
         });
       }
 
+      function renderAddApiControls() {
+        const fields = [
+          { key: 'blockCount', label: 'block-count', min: 1, max: 8 },
+          { key: 'blockSize', label: 'block-size', min: 1, max: 8 },
+          { key: 'srcStride', label: 'src-stride', min: 0, max: 8 },
+          { key: 'dstStride', label: 'dst-stride', min: 0, max: 8 }
+        ];
+        const presets = [
+          { name: '连续写入', values: { blockCount: 4, blockSize: 2, srcStride: 0, dstStride: 0 } },
+          { name: '源跳读', values: { blockCount: 4, blockSize: 2, srcStride: 1, dstStride: 0 } },
+          { name: '目标留缝', values: { blockCount: 4, blockSize: 2, srcStride: 0, dstStride: 1 } },
+          { name: '短窗口', values: { blockCount: 6, blockSize: 1, srcStride: 0, dstStride: 0 } }
+        ];
+        const clampValue = (value, min, max) => Math.max(min, Math.min(max, value));
+        const intValue = (value, fallback) => {
+          const next = Number.parseInt(value, 10);
+          return Number.isFinite(next) ? next : fallback;
+        };
+        state.apiStep = Math.max(0, Math.min(state.apiStep || 0, addApiTotalSteps() - 1));
+        $('#apiControls').innerHTML = `
+          <div class="api-learn-controls">
+            <section class="group">
+              <div class="group-title">预设场景</div>
+              <div class="presets">
+                ${presets.map((preset, index) => `<button class="preset" type="button" data-add-api-preset="${index}">${preset.name}</button>`).join('')}
+              </div>
+            </section>
+            <section class="group">
+              <div class="group-title">参数沙盒</div>
+              <div class="grid-2">
+                ${fields.map((field) => `
+                  <div class="field">
+                    <label for="add-api-${field.key}">${field.label}</label>
+                    <input class="input" id="add-api-${field.key}" type="number" min="${field.min}" max="${field.max}" value="${state.addApi[field.key]}">
+                  </div>
+                `).join('')}
+              </div>
+              <div class="hint-text">block-size 和 stride 按 CANNVision 语义以 32-byte 为单位换算；当前 dtype 为 ${state.dtype}。</div>
+            </section>
+            <section class="derived">
+              <div><strong>窗口元素</strong> ${addApiBlockElements()} elems / block</div>
+              <div><strong>总步骤</strong> ${addApiTotalSteps()} element writes</div>
+              <div><strong>语义</strong> dstLocal[i] = src0Local[i] + src1Local[i]</div>
+            </section>
+          </div>
+        `;
+        fields.forEach((field) => {
+          document.getElementById(`add-api-${field.key}`)?.addEventListener('input', (event) => {
+            state.addApi[field.key] = clampValue(intValue(event.target.value, state.addApi[field.key]), field.min, field.max);
+            state.apiStep = Math.min(state.apiStep || 0, addApiTotalSteps() - 1);
+            renderApiAndInspector();
+          });
+        });
+        $$('[data-add-api-preset]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            Object.assign(state.addApi, presets[Number(btn.dataset.addApiPreset)].values);
+            state.apiStep = 0;
+            renderApiAndInspector();
+          });
+        });
+      }
+
       function renderApiControls() {
+        if (state.selectedApi === 'Add') {
+          renderAddApiControls();
+          return;
+        }
         const fieldMap = { Hi: 'H', Wi: 'W', Hk: 'filterH', Wk: 'filterW' };
         const fields = [
           { key: 'Hi', label: 'Hi', min: 1, max: 8, group: '输入源参数' },
