@@ -1090,8 +1090,8 @@
                           <span class="diagnosis-severity is-p0">P0</span>
                           <span class="diagnosis-category">精度</span>
                         </div>
-                        <small><strong>MoE all-to-all 超时导致 loss NaN</strong></small>
-                        <small class="diagnosis-desc" data-tooltip="layer 38 router 将 98% token 集中路由到 expert 193,EP rank 23 all-to-all send/recv 死锁,其余 rank 空等超时">layer 38 router 将 98% token 集中路由到 expert 193,EP rank 23 all-to-all send/recv 死锁</small>
+                        <small><strong>Router 数值溢出 → 路由塌缩，同时触发 loss NaN 与 all-to-all 死锁</strong></small>
+                        <small class="diagnosis-desc" data-tooltip="router softmax 在 FP8 下计算导致 logits 溢出(1846→inf)→路由概率退化→98% token 集中到 expert 193→同时触发 NaN 传播与 EP rank 23 all-to-all 死锁">router softmax FP8 溢出→logits 爆炸→98% token 集中 expert 193→NaN+死锁双发</small>
                       </div>
                       <div class="twin-option diagnosis-card" data-diagnosis="perf-compute-bottleneck" role="button" tabindex="0">
                         <div class="diagnosis-card-head">

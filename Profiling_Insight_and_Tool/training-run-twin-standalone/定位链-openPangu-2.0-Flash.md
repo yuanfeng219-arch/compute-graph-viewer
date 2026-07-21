@@ -98,11 +98,13 @@
 
 ---
 
-## 案例一：通信分支 — MoE all-to-all 超时导致 loss NaN
+## 案例一：通信分支 — Router 数值溢出导致路由塌缩，同时触发 loss NaN 与 all-to-all 死锁
 
-> **路径**：迭代层 → 仅多卡异常 → 通信调度层 → 模型层 → infra层 → 超参/代码层
+> **路径**：迭代层 → 仅多卡异常 → 通信调度层 → 模型层 → 数值层 → infra层 → 超参/代码层
 
 **背景**：64 GPU 训练 openPangu-2.0-Flash，EP=64，TP=1，PP=4，FP8 精度，seq_len=4096，global_batch=1024。训练至 step ~15000 时 loss 突发 NaN。
+
+**关键认知**：死锁本身不会产生 NaN（死锁的典型表现是 hang/无输出），但 router logits 的数值溢出会**同时**导致两个平行后果——softmax 出 NaN 污染 loss，与路由概率塌缩触发 all-to-all 死锁。本案例的诊断从通信表象出发，最终追溯到 router 的数值层根因。
 
 ### 1. 迭代层
 
@@ -120,37 +122,49 @@
 | **结果** | 单卡：loss=3.21，grad_norm=11.8，完全正常 / 多卡：loss=NaN，grad_norm=inf |
 | **判据** | 仅多卡复现，单卡正常 → **切入通信分支** |
 
+> ⚠️ 单卡正常 ≠ 一定是纯粹的通信问题。可能是 router 数值溢出在单卡上被 FP8 截断掩盖（单卡无 all-to-all 则不触发 expert 塌缩的级联效应），需在模型层深挖。
+
 ### 3. 通信调度层
 
 | 步骤 | 内容 |
 |------|------|
-| **观测** | 开启 `NCCL_DEBUG=INFO` 重跑 step 15203。NCCL trace 显示 EP rank 23（node2 GPU 7）在 `all-to-all` 调用处超时（30s timeout）。该调用属于 layer 38 MoE 的 expert dispatch 阶段。<br>↳ 可在「模型层级」页签的 per-rank timeline 中复现：rank 23 的 all-to-all 横条拉满 30s（红），其余 63 rank 在同期显示为空等（Wait 段）。 |
-| **进一步确认** | 对比各 rank 的 all-to-all send/recv buffer size：rank 23 的 send buffer 为 0（没有 token 被 router 分发到其他 rank 的 expert），而 recv buffer 期望接收 2048 token × 2560 dim × 8 experts 的数据，size 不匹配导致死锁 |
-| **判据** | all-to-all send/recv 不匹配 → 通信调度失步 |
+| **观测** | 开启 `NCCL_DEBUG=INFO` 重跑 step 15203。NCCL trace 显示 EP rank 23（node2 GPU 7）在 `all-to-all` 调用处超时（30s timeout）。该调用属于 layer 38 MoE 的 expert dispatch 阶段。<br>↳ 可在 per-rank timeline 中复现：rank 23 的 all-to-all 横条拉满 30s（红），其余 63 rank 同期显示为空等（Wait 段）。 |
+| **进一步确认** | 对比各 rank 的 all-to-all send/recv buffer size：rank 23 的 send buffer 为 0（没有 token 被 router 分发到其他 rank 的 expert），而 recv buffer 期望接收大量 token 数据，size 不匹配导致死锁 |
+| **判据** | all-to-all send/recv 不匹配 → 通信调度失步。但死锁只是"果"，需继续追"因"——为什么 router 会把几乎所有 token 分配给 rank 23？ |
 | **产出** | 异常通信原语：`all-to-all` / 异常 rank：EP rank 23 / 关联层：layer 38 MoE |
 
-### 4. 模型层（回到主干定位影响层）
+### 4. 模型层
 
 | 步骤 | 内容 |
 |------|------|
-| **观测** | 提取 step 15203 各层 router 的 token-to-expert 分配统计。layer 38 的 router 将当前 micro-batch 中 98% 的 token 路由到了 expert 193（恰好位于 EP rank 23），其余 255 个 expert 几乎无 token |
-| **根因** | Router 的 `n_group=8`（将 256 个 expert 分成若干组，每组内独立做 topk 选择）、`topk_group=4` 配置下，gate weight 的 sigmoid score（router 输出经 sigmoid 归一化后的专家亲和度，0~1 之间）超过 0.99，表明某个 token 群体的 hidden state 对 expert 193 产生了极端偏好，导致该 expert 所在的 rank 23 通信负载骤增、其余 rank 空等，形成 all-to-all 死锁 |
-| **产出** | 问题层：`model.layers.38.mlp.router` / 路由倾斜度：单 expert 收到 98% token |
+| **观测** | 提取 step 15203 所有 256 个 expert 的 token 分配统计：expert 193 收到 98% token（约 8028/8192），其余 255 个 expert 合计仅 164 token，其中 247 个 expert 为 dead expert（0 token）。expert 193 恰好位于 EP rank 23 |
+| **判据** | 全量 expert 分布严重塌缩——不仅是 expert 193 过载，255 个 expert 几乎完全闲置。这不是普通的路由倾斜（CV=10~20%），而是 router 的 softmax 输出几乎退化为 one-hot |
 
-### 5. infra层
+### 5. 数值层 — 追查 router 的精度路径
+
+> 此层是本案例的**核心转折点**：从"通信怎么死的"下钻到"数值为什么先崩了"。
 
 | 步骤 | 内容 |
 |------|------|
-| **观测** | 问题集中在 EP rank 23（node2 GPU 7），属于 PP stage 3（layers 34~45），该节点其余 7 个 GPU 均在 step 15203 的 all-to-all 中等待 rank 23 而空闲 |
-| **判据** | 问题聚集在单个 EP rank → 局部路由倾斜，非全局硬件故障 |
+| **观测** | ① dump step 15203 时 layer 38 router 的 raw logits（softmax 之前），发现 max(logits)=**1846**（正常应 < 50），且存在 `inf` 值——FP8 E4M3 下 `exp(1846)` 直接溢出为 inf。② 检查 router 计算精度路径：当前实现中 router 的 softmax 在 **FP8** 下计算（`router_logits → FP8 cast → softmax`），而非业界建议的 FP32。③ AMP scaler 日志显示 loss scale 从 step 15000 起从 65536 持续衰减至 step 15202 的 4096，说明训练已处于持续 FP 溢出的临界状态 |
+| **判据** | FP8 下 router logits 溢出 → softmax 产生 NaN/inf → 路由概率退化为一组非法值 → top-k 选取极端集中于单个 expert（expert 193）→ 同时触发两个后果：**A)** NaN 沿 forward 传播到 loss；**B)** 所有 token 路由到 rank 23 → all-to-all 死锁。**死锁和 NaN 是同一 root cause 的两个平行后果，而非因果关系** |
+| **产出** | 根因：router softmax 在 FP8 精度下计算，logits 动态范围超出 FP8 表示能力 / 前置信号：AMP loss scale 持续衰减（65536→4096）是 NaN 的预警指标 / dead expert 占比 96.5%（247/256） |
+
+### 6. infra层
+
+| 步骤 | 内容 |
+|------|------|
+| **观测** | 问题集中在 EP rank 23（node2 GPU 7），属于 PP stage 3（layers 34~45）。AMP scaler 衰减在全部 64 rank 上同步发生，但 only rank 23 因 expert 193 的地理位置成为死锁的"引爆点"——如果 expert 193 位于其他 rank，只会换一个 rank 触发死锁 |
+| **判据** | 问题聚集在单个 EP rank → 局部路由塌缩，非全局硬件故障。但根因（router FP8 overflow）是系统性的 |
 | **产出** | 嫌疑范围：node2 GPU 7（EP rank 23），PP stage 3，layer 38 MoE |
 
-### 6. 超参/代码层
+### 7. 超参/代码层
 
 | 步骤 | 内容 |
 |------|------|
-| **修改** | ① 增大 router 的 `n_group` 从 8→16，分散 expert 选择范围；② 在 router gate 前增加 z-loss 正则项（系数 1e-4），抑制 gate logit 极端值；③ NCCL all-to-all 超时从 30s 延长至 60s 作为兜底 |
-| **验证** | 修改后从 step 15000 续跑，step 15203 正常通过，继续训练 5000 step 无 NaN |
+| **诊断总结** | 根因是 router softmax 在 FP8 下计算 + 缺乏 logits 正则化。三个问题叠加：① 精度路径错误（FP8 softmax，应 FP32）；② 无 z-loss 抑制 logits 极端值；③ router 学习率与 expert 相同（应降低）。AMP scaler 持续衰减是可在 NaN 前捕获的预警信号 |
+| **修改** | 按优先级：① **router softmax 改 FP32** ——`router_logits = router(x.float()); probs = softmax(router_logits); probs = probs.to(dtype)`，这是最关键的修复，消除 logits 溢出的可能性；② **加 z-loss** ——系数 1e-4，抑制 logits 向极端漂移；③ **降低 router 学习率** ——router lr = expert lr × 0.1；④ **gradient clipping** ——`clip_grad_norm=1.0`，MoE 训练的标配；⑤ 增大 `n_group` 8→16 作为路由多样性的辅助保障；⑥ NCCL timeout 30s→60s 作为训练不中断的兜底 |
+| **验证** | ①~④ 从 step 15000 续跑：router logits max 稳定在 18~35（安全范围），AMP scaler 维持在 65536 不衰减，256 expert 的 token CV 降至 8~15%。step 15203 正常通过，继续训练 5000 step 无 NaN 无死锁 |
 
 ---
 

@@ -602,7 +602,7 @@
       },
       // 问题标注：对应进度条上 5 个诊断标记，标在整网图的首个问题节点上
       problemMarkers: [
-        { id: "1", nodeId: "router",              diagnosisKey: "moe-a2a",                  label: "问题1：MoE all-to-all 超时", sub: "layer 38 router → rank 23 死锁 → loss NaN" },
+        { id: "1", nodeId: "router",              diagnosisKey: "moe-a2a",                  label: "问题1：Router 数值溢出", sub: "FP8 softmax 溢出 → NaN + 死锁双发" },
         { id: "2", nodeId: "lm_head",             diagnosisKey: "perf-compute-bottleneck",  label: "问题2：lm_head 带宽瓶颈", sub: "vocab 151552 尾块非对齐 → cube_util 仅 49%" },
         { id: "3", nodeId: "query_tensor",        diagnosisKey: "qproj-overflow",           label: "问题3：q_proj FP8 溢出", sub: "layer 33 q_proj 输入 3.2% 超 FP8 E4M3 max(448)" },
         { id: "4", nodeId: "query_projection",    diagnosisKey: "low-precision-training",    label: "问题4：低精训练 loss 不收敛", sub: "FP8 深层数值退化 → layer 35 偏差起点 → 梯度消失" },
@@ -1794,6 +1794,14 @@
   };
   window.twinGetStep = function () { return state.step; };
 
+  // 供 training-monitoring-v2.html 的 3D deck 适配器复用本文件里的诊断联动入口
+  // (适配器负责画图,业务语义仍只有这一份实现)。函数声明会提升,这里引用晚定义的函数是安全的。
+  window.PtoTwinGraphBridge = {
+    activateProblemOneLens: function (key) { activateProblemOneLens(key); },
+    enterProblemOneLayerView: function () { enterProblemOneLayerView(); },
+    lvSelectedExperts: function (hotExpert) { return lvSelectedExperts(hotExpert); },
+  };
+
   function renderAll() {
     renderVitals();
     renderProgress();
@@ -1845,7 +1853,7 @@
         ["shared_expert_mlp", "moe_all_to_all_combine"]
       ],
       clusterIds: ["moe-block"],
-      note: "Router → all-to-all dispatch → Routed Experts → all-to-all combine。EP rank 23 死锁,其余 rank 空等超时。",
+      note: "Router FP8 softmax 溢出→路由塌缩→all-to-all 死锁+NaN 双发。根因在数值层,通信只是表象。",
     },
     "qproj-overflow": {
       layer: "Layer 33 · GQA Attention",
@@ -1891,7 +1899,7 @@
 
   // 进度条诊断标记:step 在 0~totalSteps 范围内,百分比自动换算
   const diagnosisMarkers = [
-    { key: "moe-a2a", step: INCIDENT_STEP, severity: "p0", category: "精度", num: "一", label: "MoE all-to-all 超时导致 loss NaN", sub: "layer 38 router 将 98% token 集中路由到 expert 193，EP rank 23 all-to-all send/recv 死锁，其余 rank 空等" },
+    { key: "moe-a2a", step: INCIDENT_STEP, severity: "p0", category: "精度", num: "一", label: "Router 数值溢出 → 路由塌缩，同时触发 loss NaN 与 all-to-all 死锁", sub: "router softmax FP8 溢出 → 98% token 集中到 expert 193 → NaN + 死锁双发" },
     { key: "perf-compute-bottleneck", stepFrom: 20000, stepTo: 120000, severity: "p1", category: "性能", num: "二", label: "算子带宽瓶颈 + AICPU 回退", sub: "lm_head vocab 非对齐, cube_util 49%, AICPU 526ms" },
     { key: "qproj-overflow", step: 8500, severity: "p1", category: "精度", num: "三", label: "q_proj FP8 精度溢出 → grad_norm 发散", sub: "layer 33 q_proj 3.2% 超 FP8 max(448)" },
     { key: "low-precision-training", stepFrom: 28000, stepTo: 35000, severity: "p1", category: "精度", num: "四", label: "低精训练 loss 不收敛 → 梯度消失", sub: "FP8 E4M3 深层激活值长尾, 峰度 +15.3, SNR 降至 6.8dB" },
@@ -1956,6 +1964,13 @@
   // 常态标红 + 问题序号徽标:页面加载后在 #graphStage（新整网图）上标出诊断案例命中的节点/连线/Cluster,
   // 并在第一个命中节点旁画红色胶囊序号徽标
   function applyDefaultDiagnosisMarkers() {
+    // training-monitoring-v2.html 把整网图换成了 model-architecture-3d-deck(CSS 3D DOM,
+    // 不是 SVG),节点几何与徽标绘制方式完全不同,由它自己注册的适配器接管;旧 v2/training-monitoring.html
+    // 没有适配器,继续走下面这套 SVG 实现,行为不变。下同。
+    if (window.PtoTwinGraphAdapter) {
+      window.PtoTwinGraphAdapter.renderMarkers(diagnosisCases, diagnosisMarkers, problemSeverityColor);
+      return;
+    }
     var stage = document.getElementById('graphStage');
     if (!stage) return;
     var NS = "http://www.w3.org/2000/svg";
@@ -2225,6 +2240,12 @@
   }
 
   function clearDiagnosisFocus() {
+    if (window.PtoTwinGraphAdapter) {
+      window.PtoTwinGraphAdapter.clearFocus();
+      highlightProblemBadge(null);
+      hideRoutedExpertBankExpand();
+      return;
+    }
     var stage = document.getElementById("graphStage");
     if (stage) {
       stage.classList.remove("is-diagnosis-focus");
@@ -2235,6 +2256,7 @@
   }
 
   function highlightProblemBadge(caseKey) {
+    if (window.PtoTwinGraphAdapter) { window.PtoTwinGraphAdapter.highlightBadge(caseKey); return; }
     var stage = document.getElementById("graphStage");
     if (!stage) return;
     stage.querySelectorAll(".pto-problem-badge").forEach(function(b) {
@@ -2411,6 +2433,11 @@
   }
 
   function showRoutedExpertBankExpand() {
+    if (window.PtoTwinGraphAdapter) {
+      routedExpertExpandActive = true;
+      window.PtoTwinGraphAdapter.showExpertExpand(buildExpertBankExpandMarkup, startLayerA2A);
+      return;
+    }
     var stage = document.getElementById("graphStage");
     if (!stage) return;
     var group = stage.querySelector('[data-node-id="routed_expert_bank"]');
@@ -2451,6 +2478,7 @@
   function hideRoutedExpertBankExpand() {
     routedExpertExpandActive = false;
     if (lvAnimRaf) { cancelAnimationFrame(lvAnimRaf); lvAnimRaf = null; }
+    if (window.PtoTwinGraphAdapter) { window.PtoTwinGraphAdapter.hideExpertExpand(); return; }
     var stage = document.getElementById("graphStage");
     document.querySelectorAll('[data-node-expand="routed_expert_bank"]').forEach(function (el) { el.remove(); });
     restoreRoutedExpertNeighbors(stage);
@@ -2600,6 +2628,11 @@
     applyInfraHeatHighlight(caseKey);
     highlightProblemBadge(caseKey);
     if (!info) { hideDiagnosisLocator(); return; }
+    if (window.PtoTwinGraphAdapter) {
+      window.PtoTwinGraphAdapter.focus(caseKey, info);
+      hideDiagnosisLocator();
+      return;
+    }
     var stage = document.getElementById("graphStage");
     if (stage) {
       stage.classList.add("is-diagnosis-focus");
@@ -2711,8 +2744,8 @@
   // 定位链数据:对应 定位链.md 中三个案例各自实际走过的链路节点
   const locateChains = {
     "moe-a2a": {
-      title: "定位链 · MoE all-to-all 超时导致 loss NaN",
-      meta: "路径:迭代层 → 仅多卡异常 → 通信调度层 → 模型层 → infra层 → 超参/代码层",
+      title: "定位链 · Router 数值溢出 → 路由塌缩 → NaN+死锁双发",
+      meta: "路径:迭代层 → 通信调度层 → 模型层 → 数值层 → infra层 → 超参/代码层",
       steps: [
         { label: "迭代层", short: `Step ${INCIDENT_STEP}`, sub: `WHEN · step ${INCIDENT_STEP} loss 跳变至 NaN`,
           showSmoothing: true,
@@ -2745,18 +2778,37 @@
               </div>
               <span class="btn btn-solid btn-sm twin-layerview-cta-btn">查看</span>
             </div>
-            <p class="twin-locate-metric-note">layer 38 的 router 将当前 micro-batch 中 98% 的 token 路由到了 expert 193(恰好位于 EP rank 23),其余 255 个 expert 几乎无 token。</p>
+            <p class="twin-locate-metric-note">layer 38 的 router 将当前 micro-batch 中 98% 的 token 路由到了 expert 193(恰好位于 EP rank 23)，其余 255 个 expert 中 <strong style="color:#dc2626">247 个为 dead expert(0 token)</strong>——这是路由彻底塌缩，不是普通倾斜。</p>
             <p style="margin:8px 0 0;font-size:12px;color:var(--foreground-secondary);line-height:1.5">对比分析收发数据， layer 38 每个 rank 的 all-to-all send/recv buffer size 对比如下图：</p>
             <canvas id="bufChart" style="width:100%;height:168px;margin:6px 0 0;display:block;background:var(--surface-2);border-radius:6px"></canvas>
-            <p style="margin:8px 0 0;font-size:12px;color:var(--foreground-secondary);line-height:1.5">进一步证实 rank 23 的 send buffer 为 0（没有 token 被 router 分发到其他 rank 的 expert），而 recv buffer 期望接收 2048 token × 2560 dim × 8 experts 的数据，size 不匹配导致死锁。</p>
-            <p class="twin-locate-metric-note">↳ 需在【infra层】识别对训练集群的影响。</p>
+            <p style="margin:8px 0 0;font-size:12px;color:var(--foreground-secondary);line-height:1.5">rank 23 的 send buffer 为 0（没有 token 被 router 分发到其他 rank 的 expert），recv buffer 期望接收大量 token 数据，size 不匹配导致死锁——但死锁只是果。</p>
+            <p class="twin-locate-metric-note">↳ 需在【数值层】追查 router 的精度路径——为什么 softmax 输出会退化为 one-hot？</p>
           ` },
-        { label: "infra层", short: "EP rank 23", sub: "CONTEXT · EP rank 23 / PP stage 3 / DP0",
+        { label: "数值层", short: "FP8 softmax 溢出", sub: "WHICH(数值) · router logits max=1846→inf, FP8 softmax 溢出",
+          content: `
+            <p class="twin-locate-metric-note" style="margin:0 0 8px">此层是定位链的<strong style="color:var(--highlight-copy-blue-500, #3b6fe0)">核心转折点</strong>：从"通信怎么死的"下钻到"数值为什么先崩了"。</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 10px">
+              <div style="border:1px solid var(--border-subtle);border-radius:8px;padding:10px 12px;background:var(--surface-2)">
+                <div style="font-size:11px;color:var(--foreground-muted)">router logits max</div>
+                <div style="font-size:22px;font-weight:700;color:#dc2626;font-family:ui-monospace,monospace;margin-top:4px">1846</div>
+                <div style="font-size:11px;color:var(--foreground-muted);margin-top:2px">正常应 &lt;50</div>
+              </div>
+              <div style="border:1px solid var(--border-subtle);border-radius:8px;padding:10px 12px;background:var(--surface-2)">
+                <div style="font-size:11px;color:var(--foreground-muted)">AMP loss scale</div>
+                <div style="font-size:22px;font-weight:700;color:#dc2626;font-family:ui-monospace,monospace;margin-top:4px">65536→4096</div>
+                <div style="font-size:11px;color:var(--foreground-muted);margin-top:2px">持续衰减=溢出前兆</div>
+              </div>
+            </div>
+            <p style="margin:8px 0 0;font-size:12px;color:var(--foreground-secondary);line-height:1.5">dump step ${INCIDENT_STEP} 时 layer 38 router 的 raw logits（softmax 之前），发现 max(logits)=<strong style="color:#dc2626">1846</strong>，且存在 inf 值——FP8 E4M3 下 exp(1846) 直接溢出为 inf。</p>
+            <p style="margin:8px 0 0;font-size:12px;color:var(--foreground-secondary);line-height:1.5">检查 router 计算精度路径：当前实现中 router 的 softmax 在 <strong style="color:#dc2626">FP8</strong> 下计算（<code>router_logits → FP8 cast → softmax</code>），而非业界建议的 FP32。AMP scaler 日志显示 loss scale 从 step 15000 起从 65536 持续衰减至 step 15202 的 4096，说明训练已处于持续 FP 溢出的临界状态。</p>
+            <p style="margin:10px 0 0;font-size:12px;color:var(--foreground);font-weight:600;line-height:1.5">判据：FP8 下 router logits 溢出 → softmax 产生 NaN/inf → 路由概率退化 → top-k 集中于 expert 193 → <strong style="color:#dc2626">同时触发两个后果</strong>：A) NaN 沿 forward 传播到 loss；B) 所有 token 路由到 rank 23 → all-to-all 死锁。死锁和 NaN 是同一 root cause 的两个平行后果，而非因果关系。</p>
+          ` },
+        { label: "infra层", short: "EP rank 23", sub: "CONTEXT · EP rank 23 / PP stage 3",
           // infra 示意图完全复用外层「训练监控 · infra」的集群热力图(#heat 的 DP8×PP4×EP64 网格),
           // 由 syncLocateInfraHeat() 把当前 util 着色镜像到 #locateInfraHeat,再叠加本问题的 hot/warm 标记。
           content: `
             <div class="twin-infra-heat-block">
-              <p style="margin:0 0 8px;font-size:11px;color:var(--foreground-secondary);line-height:1.5"><strong style="color:#dc2626">node 2</strong> 的异常着色形成了本次病因指纹：</p>
+              <p style="margin:0 0 8px;font-size:11px;color:var(--foreground-secondary);line-height:1.5">AMP scaler 衰减在全部 64 rank 上同步发生，但 <strong style="color:#dc2626">only rank 23</strong> 因 expert 193 的地理位置成为死锁的"引爆点"——如果 expert 193 位于其他 rank，只会换一个 rank 触发死锁。问题聚集在单个 EP rank → 局部路由塌缩，但根因（router FP8 overflow）是系统性的。</p>
               <div id="locateInfraHeat" class="twin-heat locate-infra-heat"></div>
               <div class="twin-legend" style="margin-top:8px;font-size:11px">
                 <span><i class="twin-swatch twin-swatch-util-low"></i>&lt;70% util</span>
@@ -2765,38 +2817,50 @@
                 <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:2px;outline:2px solid #dc2626;outline-offset:1px"></i>EP rank 23 死锁</span>
                 <span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:10px;border-radius:2px;outline:2px solid #ea580c;outline-offset:1px"></i>EP 16–22 空等</span>
               </div>
-              <p style="margin:8px 0 0;font-size:11px;color:var(--foreground-secondary);line-height:1.5"><span style="color:#dc2626;font-weight:700">EP rank 23</span> 在 all-to-all 死锁,<span style="color:#ea580c;font-weight:600">EP rank 16–22</span> 空等超时;异常聚集在单个 EP rank → 局部路由倾斜。</p>
             </div>
           ` },
-        { label: "超参/代码层", short: "3 处代码改动", sub: "FIX · n_group 8→16 + z-loss + 超时延长",
+        { label: "超参/代码层", short: "6 处代码改动", sub: "FIX · router 改 FP32 + z-loss + 降 lr + grad clip + n_group + 超时延长",
           content: `
-            <p class="twin-locate-metric-note" style="margin:0 0 12px">综合以上各层定位诊断，代码修改建议如下：</p>
+            <p class="twin-locate-metric-note" style="margin:0 0 12px">根因是 router softmax 在 FP8 下计算 + 缺乏 logits 正则化。按优先级修改如下：</p>
             <div style="display:flex;flex-direction:column;gap:12px;">
               <div style="border:1px solid var(--border-subtle);border-radius:8px;overflow:hidden">
-                <div style="padding:8px 12px;background:var(--surface-2);font-size:12px;font-weight:600;color:var(--foreground)">① model_config.json</div>
+                <div style="padding:8px 12px;background:var(--surface-2);font-size:12px;font-weight:600;color:var(--foreground)">① router.py · softmax 改 FP32（最关键）</div>
                 <div style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;line-height:1.7;padding:10px 12px;background:var(--surface-1);overflow-x:auto">
-                  <div style="color:var(--foreground-muted)">&nbsp;&nbsp;"num_experts": 256,</div>
-                  <div style="color:var(--foreground-muted)">&nbsp;&nbsp;"top_k": 8,</div>
-                  <div style="background:rgba(220,38,38,.1);color:#dc2626">− &nbsp;"n_group": <strong>8</strong>,</div>
-                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ &nbsp;"n_group": <strong>16</strong>,&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># router 分组 8→16，增加 expert 选择多样性，分散热点</span></div>
-                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ &nbsp;"topk_group": <strong>6</strong>,&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># topk_group 4→6，减少单一 expert 垄断概率</span></div>
+                  <div style="background:rgba(220,38,38,.1);color:#dc2626">− router_logits = router(x); probs = softmax(router_logits)&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># FP8 下 logits 溢出</span></div>
+                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ router_logits = <strong>router(x.float())</strong>; probs = <strong>softmax(router_logits)</strong></div>
+                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ probs = probs.to(dtype)&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># softmax 在 FP32 计算后再 cast 回</span></div>
                 </div>
               </div>
               <div style="border:1px solid var(--border-subtle);border-radius:8px;overflow:hidden">
-                <div style="padding:8px 12px;background:var(--surface-2);font-size:12px;font-weight:600;color:var(--foreground)">② training_args.yaml</div>
+                <div style="padding:8px 12px;background:var(--surface-2);font-size:12px;font-weight:600;color:var(--foreground)">② training_args.yaml · z-loss + grad clip</div>
                 <div style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;line-height:1.7;padding:10px 12px;background:var(--surface-1);overflow-x:auto">
-                  <div style="color:var(--foreground-muted)">&nbsp;&nbsp;aux_loss_coeff: 0.001</div>
-                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ &nbsp;z_loss_coeff: <strong>1e-4</strong>&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># gate 前增加 z-loss 正则项，抑制 gate logit 极端值</span></div>
+                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ z_loss_coeff: <strong>1e-4</strong>&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># gate 前加 z-loss 抑制 logits 极端值</span></div>
+                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ clip_grad_norm: <strong>1.0</strong>&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># MoE 训练标配</span></div>
                 </div>
               </div>
               <div style="border:1px solid var(--border-subtle);border-radius:8px;overflow:hidden">
-                <div style="padding:8px 12px;background:var(--surface-2);font-size:12px;font-weight:600;color:var(--foreground)">③ env.sh</div>
+                <div style="padding:8px 12px;background:var(--surface-2);font-size:12px;font-weight:600;color:var(--foreground)">③ optimizer_config.json · router 学习率</div>
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;line-height:1.7;padding:10px 12px;background:var(--surface-1);overflow-x:auto">
+                  <div style="background:rgba(220,38,38,.1);color:#dc2626">− router_lr: <strong>3e-4</strong>&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># 与 expert 相同</span></div>
+                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ router_lr: <strong>3e-5</strong>&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># expert lr × 0.1</span></div>
+                </div>
+              </div>
+              <div style="border:1px solid var(--border-subtle);border-radius:8px;overflow:hidden">
+                <div style="padding:8px 12px;background:var(--surface-2);font-size:12px;font-weight:600;color:var(--foreground)">④ model_config.json · n_group 辅助保障</div>
+                <div style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;line-height:1.7;padding:10px 12px;background:var(--surface-1);overflow-x:auto">
+                  <div style="background:rgba(220,38,38,.1);color:#dc2626">− "n_group": <strong>8</strong>,</div>
+                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ "n_group": <strong>16</strong>,&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># 分散 expert 选择,辅助保障</span></div>
+                </div>
+              </div>
+              <div style="border:1px solid var(--border-subtle);border-radius:8px;overflow:hidden">
+                <div style="padding:8px 12px;background:var(--surface-2);font-size:12px;font-weight:600;color:var(--foreground)">⑤ env.sh · NCCL 超时兜底</div>
                 <div style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;line-height:1.7;padding:10px 12px;background:var(--surface-1);overflow-x:auto">
                   <div style="background:rgba(220,38,38,.1);color:#dc2626">− export NCCL_IB_TIMEOUT=<strong>30</strong></div>
-                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ export NCCL_IB_TIMEOUT=<strong>60</strong>&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># all-to-all 超时延长 30→60s 兜底</span></div>
+                  <div style="background:rgba(22,163,74,.1);color:#16a34a">+ export NCCL_IB_TIMEOUT=<strong>60</strong>&nbsp;&nbsp;<span style="color:var(--foreground-muted);font-family:system-ui"># 训练不中断兜底</span></div>
                 </div>
               </div>
             </div>
+            <p style="margin:12px 0 0;font-size:12px;color:#16a34a;font-weight:600;line-height:1.5">验证：①~④ 从 step 15000 续跑，router logits max 稳定在 18~35（安全范围），AMP scaler 维持在 65536 不衰减，256 expert 的 token CV 降至 8~15%。step 15203 正常通过，继续训练 5000 step 无 NaN 无死锁。</p>
           ` },
       ],
       // 单/多卡均异常时会绕过「通信调度层」直接从迭代层进入模型层,用弧形虚线标出这条未被走到的旁路
@@ -4563,6 +4627,7 @@
     if (graphCard && centerScroll && graphCard.parentElement && graphCard.parentElement.id === "hif8GraphSlot") {
       centerScroll.appendChild(graphCard);
     }
+    if (window.PtoTwinGraphAdapter) { window.PtoTwinGraphAdapter.clearOverflowBadges(); return; }
     document.querySelectorAll("#graphStage .c7over-badge").forEach((el) => el.remove());
     document.querySelectorAll("#graphStage .c7over-node-crit, #graphStage .c7over-node-ok")
       .forEach((el) => el.classList.remove("c7over-node", "c7over-node-crit", "c7over-node-ok"));
@@ -4571,8 +4636,10 @@
   // 把每层当前步溢出率(取自 hif8-case7)注入到 #graphStage 命中算子节点的右上角(药丸徽标,红/绿 2 档)
   // 返回命中并注入的节点数,供 scheduleHif8GraphBadges 判断整网图是否已就绪(未就绪则重试)
   function refreshHif8GraphBadges() {
+    if (!window.PtoHif8Case7 || !window.PtoHif8Case7.overflowMap) return 0;
+    if (window.PtoTwinGraphAdapter) return window.PtoTwinGraphAdapter.refreshOverflowBadges(window.PtoHif8Case7.overflowMap());
     const stage = document.getElementById("graphStage");
-    if (!stage || !window.PtoHif8Case7 || !window.PtoHif8Case7.overflowMap) return 0;
+    if (!stage) return 0;
     if (!stage.querySelector("svg")) return 0;                    // 整网图 SVG 未就绪
     const map = window.PtoHif8Case7.overflowMap();
     const NS = "http://www.w3.org/2000/svg";
