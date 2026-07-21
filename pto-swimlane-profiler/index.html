@@ -1453,7 +1453,7 @@ body {
                               <div class="sl-timeline-head">
                                 <div class="sl-timeline-band">
                                   <div class="sl-timeline-corner">
-                                    <span class="sl-corner-title" title="注意力得分">注意力得分</span>
+                                    <span class="sl-corner-title" id="swimlaneObjectTitle"></span>
                                   </div>
                                   <div class="sl-timeline-right">
                                     <div class="sl-global-ruler" id="globalRulerScale" aria-label="全局时间尺">
@@ -2070,6 +2070,7 @@ const mixModeBtn = document.getElementById('mixModeBtn');
 const syncPathBtn = document.getElementById('syncPathBtn');
 const runHistoryBody = document.getElementById('runHistoryBody');
 const swimlanePaneTitle = document.getElementById('swimlanePaneTitle');
+const swimlaneObjectTitle = document.getElementById('swimlaneObjectTitle');
 const tooltip = document.getElementById('tooltip');
 const frameEl = document.querySelector('[data-ide-frame]');
 const canvasPane = document.getElementById('canvasPane');
@@ -3448,6 +3449,11 @@ function runCardHtml(r) {
 function renderRunHistory() {
   if (!runHistoryBody) return;
   if (swimlanePaneTitle) swimlanePaneTitle.textContent = `${state.selectedRunId} · merged_swimlane`;
+  if (swimlaneObjectTitle) {
+    const runObject = CURRENT_RUN.operator || CURRENT_RUN.projectName || CURRENT_RUN.modelName || '运行对象';
+    swimlaneObjectTitle.textContent = runObject;
+    swimlaneObjectTitle.title = `运行对象：${runObject}`;
+  }
   runHistoryBody.innerHTML = `<div class="sl-history-stack">${runList().map(runCardHtml).join('')}</div>`;
   runHistoryBody.querySelectorAll('.sl-run-card__head[data-run-id]').forEach((btn) => {
     btn.addEventListener('click', () => {
