@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Code Recovery · Vector Add</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="pto-design-system/tokens/foundation.css">
-  <link rel="stylesheet" href="pto-design-system/tokens/semantic.css">
-  <link rel="stylesheet" href="pto-design-system/tokens/components.css">
-  <link rel="stylesheet" href="pto-design-system/css/style.css">
-  <link rel="stylesheet" href="pto-design-system/patterns/workbench-shell/pattern.css">
-  <link rel="stylesheet" href="pto-design-system/patterns/ide-frame/pattern.css">
-  <link rel="stylesheet" href="pto-design-system/patterns/aic-core-object/pattern.css">
-  <link rel="stylesheet" href="pto-design-system/patterns/aiv-core-object/pattern.css">
-  <link rel="stylesheet" href="pto-design-system/patterns/memory-architecture/pattern.css">
-  <link rel="stylesheet" href="pto-design-system/patterns/hardware-architecture-viewport/pattern.css">
+  <link rel="stylesheet" href="../../pto-design-system/tokens/foundation.css">
+  <link rel="stylesheet" href="../../pto-design-system/tokens/semantic.css">
+  <link rel="stylesheet" href="../../pto-design-system/tokens/components.css">
+  <link rel="stylesheet" href="../../pto-design-system/css/style.css">
+  <link rel="stylesheet" href="../../pto-design-system/patterns/workbench-shell/pattern.css">
+  <link rel="stylesheet" href="../../pto-design-system/patterns/ide-frame/pattern.css">
+  <link rel="stylesheet" href="../../pto-design-system/patterns/aic-core-object/pattern.css">
+  <link rel="stylesheet" href="../../pto-design-system/patterns/aiv-core-object/pattern.css">
+  <link rel="stylesheet" href="../../pto-design-system/patterns/memory-architecture/pattern.css">
+  <link rel="stylesheet" href="../../pto-design-system/patterns/hardware-architecture-viewport/pattern.css">
   <style>
     * { box-sizing: border-box; }
     html, body { width: 100%; min-height: 100%; margin: 0; overflow: auto; background: var(--ide-frame-page-bg); color: var(--foreground); font-family: var(--font-sans); }
@@ -195,18 +195,18 @@
     </div>
   </section>
 
-  <script src="pto-design-system/patterns/workbench-shell/pattern.js"></script>
-  <script src="pto-design-system/patterns/ide-frame/pattern.js"></script>
-  <script src="pto-design-system/patterns/aiv-core-object/pattern.js"></script>
-  <script src="pto-design-system/patterns/aic-core-object/pattern.js"></script>
-  <script src="pto-design-system/patterns/memory-architecture/pattern.js"></script>
-  <script src="pto-design-system/patterns/hardware-architecture-viewport/pattern.js"></script>
+  <script src="../../pto-design-system/patterns/workbench-shell/pattern.js"></script>
+  <script src="../../pto-design-system/patterns/ide-frame/pattern.js"></script>
+  <script src="../../pto-design-system/patterns/aiv-core-object/pattern.js"></script>
+  <script src="../../pto-design-system/patterns/aic-core-object/pattern.js"></script>
+  <script src="../../pto-design-system/patterns/memory-architecture/pattern.js"></script>
+  <script src="../../pto-design-system/patterns/hardware-architecture-viewport/pattern.js"></script>
   <script>
   (() => {
     const $ = (selector, root = document) => root.querySelector(selector);
     const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
     const escapeHtml = (value) => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const sourceUrl = './asc-devkit/examples/01_simd_cpp_api/00_introduction/01_add/add_tpipe_tque/add_tpipe_tque.asc';
+    const sourceUrl = '../../asc-devkit/examples/01_simd_cpp_api/00_introduction/01_add/add_tpipe_tque/add_tpipe_tque.asc';
     const fallbackSource = `__global__ __vector__ void add_custom(__gm__ uint8_t* x, __gm__ uint8_t* y, __gm__ uint8_t* z, uint32_t totalLength)
 {
     AscendC::TPipe pipe;
