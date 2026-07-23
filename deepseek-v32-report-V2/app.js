@@ -117,11 +117,17 @@
       dataTypes: "Data types",
       dataFormats: "Data formats",
       supportNotes: "Notes",
+      supportConstraints: "Execution constraints",
+      supportTuning: "Tuning checklist",
       precisionMode: "Precision mode",
       precisionError: "Reference error",
       precisionNotes: "Notes",
+      precisionRisks: "Numerical risks",
+      precisionValidation: "Validation checklist",
       apiDocs: "API documentation",
       apiRepos: "Repositories",
+      apiLearningPath: "Learning path",
+      apiCallPattern: "Call pattern",
       noOperatorDetail: "This node has no operator breakdown to describe.",
       noIoSignature: "No I/O signature is curated for this operator.",
       openLink: "Open ↗",
@@ -248,11 +254,17 @@
       dataTypes: "数据类型",
       dataFormats: "数据格式",
       supportNotes: "说明",
+      supportConstraints: "执行约束",
+      supportTuning: "调优检查",
       precisionMode: "精度模式",
       precisionError: "参考误差",
       precisionNotes: "说明",
+      precisionRisks: "数值风险",
+      precisionValidation: "验证检查",
       apiDocs: "API 文档",
       apiRepos: "代码仓库",
+      apiLearningPath: "学习路径",
+      apiCallPattern: "调用模式",
       noOperatorDetail: "该节点没有可展示的算子构成。",
       noIoSignature: "暂未收录该算子的输入输出签名。",
       openLink: "打开 ↗",
@@ -677,6 +689,20 @@
     `;
   }
 
+  function renderDetailList(items, options = {}) {
+    if (!items || !items.length) return `<div class="operator-detail-empty">-</div>`;
+    const className = options.ordered ? "operator-step-list" : "operator-bullet-list";
+    const tag = options.ordered ? "ol" : "ul";
+    return `<${tag} class="${className}">${items
+      .map((item) => `<li>${escapeHtml(loc(item))}</li>`)
+      .join("")}</${tag}>`;
+  }
+
+  function renderCodeLines(lines) {
+    if (!lines || !lines.length) return `<div class="operator-detail-empty">-</div>`;
+    return `<pre class="operator-code-block"><code>${escapeHtml(lines.join("\n"))}</code></pre>`;
+  }
+
   function renderIoRows(rows) {
     if (!rows || !rows.length) {
       return `<div class="operator-detail-empty">${escapeHtml(t("noIoSignature"))}</div>`;
@@ -725,7 +751,9 @@
     return detailSection("supportedHardware", tagList(op.support.hardware))
       + detailSection("dataTypes", tagList(op.support.dtypes))
       + detailSection("dataFormats", tagList(op.support.formats))
-      + detailSection("supportNotes", `<p class="section-copy">${escapeHtml(loc(op.support.notes))}</p>`);
+      + detailSection("supportNotes", `<p class="section-copy">${escapeHtml(loc(op.support.notes))}</p>`)
+      + detailSection("supportConstraints", renderDetailList(op.support.constraints))
+      + detailSection("supportTuning", renderDetailList(op.support.tuning, { ordered: true }));
   }
 
   function renderPrecisionPanel(op) {
@@ -739,12 +767,16 @@
       </div>
     `).join("");
     return `<section class="report-inspector-section"><div class="operator-kv-list">${rows}</div></section>`
-      + detailSection("precisionNotes", `<p class="section-copy">${escapeHtml(loc(op.precision.notes))}</p>`);
+      + detailSection("precisionNotes", `<p class="section-copy">${escapeHtml(loc(op.precision.notes))}</p>`)
+      + detailSection("precisionRisks", renderDetailList(op.precision.risks))
+      + detailSection("precisionValidation", renderDetailList(op.precision.validation, { ordered: true }));
   }
 
   function renderApiPanel(op) {
     return detailSection("apiDocs", renderLinkList(op.api.docs))
-      + detailSection("apiRepos", renderLinkList(op.api.repos));
+      + detailSection("apiRepos", renderLinkList(op.api.repos))
+      + detailSection("apiLearningPath", renderDetailList(op.api.learningPath, { ordered: true }))
+      + detailSection("apiCallPattern", renderCodeLines(op.api.snippets));
   }
 
   const DETAIL_RENDERERS = {

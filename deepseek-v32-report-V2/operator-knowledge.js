@@ -182,6 +182,32 @@
         io("scale", "FP32/UINT64", "Dequant scale per channel/token.", "per-channel/token 的反量化 scale。"),
       ],
       outputs: [io("y", "FP16/BF16", "Dequantized result.", "反量化后的结果。")],
+      support: {
+        constraints: [
+          { en: "A/B quantization scales must match the producer DynamicQuant and offline weight packing.", zh: "A/B 量化 scale 必须匹配上游 DynamicQuant 与离线权重打包。" },
+          { en: "NZ weight layout and K/N alignment are critical for Cube throughput.", zh: "NZ 权重布局以及 K/N 对齐对 Cube 吞吐至关重要。" },
+        ],
+        tuning: [
+          { en: "Check whether input DynamicQuant can be fused or scheduled immediately before the matmul.", zh: "检查输入 DynamicQuant 是否能融合，或至少紧贴 matmul 调度。" },
+          { en: "Separate compute under-utilization from scale/dequant memory traffic in profiling.", zh: "profiling 时区分计算利用率不足和 scale/dequant 内存流量。" },
+        ],
+      },
+      precision: {
+        risks: [
+          { en: "Per-channel weight scale mismatch usually creates layer-wide bias rather than random noise.", zh: "per-channel 权重 scale 错配通常会形成整层偏差，而不是随机噪声。" },
+          { en: "Very small activation ranges can underflow after quantization and flatten expert/router logits.", zh: "很小的激活范围在量化后可能下溢，压平 expert/router logits。" },
+        ],
+        validation: [
+          { en: "Compare the dequantized matmul output with the FP16/BF16 GEMM reference before the next activation.", zh: "在进入下一个激活前，把反量化 matmul 输出与 FP16/BF16 GEMM 参考对齐比较。" },
+          { en: "Track scale tensor shape and broadcast axis explicitly in test logs.", zh: "测试日志中显式记录 scale tensor shape 和 broadcast 轴。" },
+        ],
+      },
+      api: {
+        snippets: [
+          "aclnnQuantBatchMatmulV3GetWorkspaceSize(x1, x2, scale, bias, output, &workspaceSize, &executor)",
+          "aclnnQuantBatchMatmulV3(workspace, workspaceSize, executor, stream)",
+        ],
+      },
     },
     GroupedMatmul: {
       category: "moe",
@@ -193,6 +219,33 @@
         io("group_list", "INT64", "Token count per expert group.", "每个专家分组的 token 数。"),
       ],
       outputs: [io("y", "FP16/BF16", "Per-group matmul output.", "各分组矩阵乘输出。")],
+      support: {
+        constraints: [
+          { en: "group_list must describe a valid partition; keep empty groups encoded consistently with the kernel contract.", zh: "group_list 必须描述合法分区；空分组要与内核契约保持一致。" },
+          { en: "Expert-major or token-major packing should stay stable across adjacent MoE layers to avoid repacking.", zh: "相邻 MoE 层之间最好保持 expert-major 或 token-major 打包方式稳定，避免反复重排。" },
+          { en: "Throughput improves when each expert gets enough tokens to keep Cube occupancy high.", zh: "每个专家拿到足够 token 时，Cube 占用率更高，吞吐也更好。" },
+        ],
+        tuning: [
+          { en: "Check group_list skew first; a few hot experts usually explain tail latency better than overall token count.", zh: "先看 group_list 偏斜；少数热点专家通常比总 token 数更能解释尾延迟。" },
+          { en: "Tune dispatch/combine together with GroupedMatmul, since the bottleneck often moves from compute to All-to-All.", zh: "GroupedMatmul 要和 dispatch/combine 一起调优，因为瓶颈经常会从计算转移到 All-to-All。" },
+        ],
+      },
+      precision: {
+        risks: [
+          { en: "Variable expert batch sizes can change accumulation order between runs and create small FP drift.", zh: "专家 batch 大小变化会改变运行间的累加顺序，带来小幅浮点漂移。" },
+          { en: "INT8 expert weights need the right per-expert or per-channel scale; a mismatch looks like routing noise.", zh: "INT8 专家权重需要正确的 per-expert/per-channel scale；错配会像路由噪声。" },
+        ],
+        validation: [
+          { en: "Replay the routed token order on the framework reference before comparing expert outputs.", zh: "比较专家输出前，先在框架参考侧复现相同 routed token 顺序。" },
+          { en: "Validate both gate_up and down projections, because down projection often amplifies quantization error.", zh: "同时验证 gate_up 和 down 投影，因为 down 投影经常会放大量化误差。" },
+        ],
+      },
+      api: {
+        snippets: [
+          "aclnnGroupedMatmulGetWorkspaceSize(x, weight, bias, scale, group_list, split_item, group_type, &workspaceSize, &executor)",
+          "aclnnGroupedMatmul(workspace, workspaceSize, executor, stream)",
+        ],
+      },
     },
     TransposeBatchMatMul: {
       category: "matmul",
@@ -227,6 +280,32 @@
         io("y", "FP16/BF16", "Normalized + cast output.", "归一化并 cast 后的输出。"),
         io("x_out", "FP16/BF16", "Updated residual sum.", "更新后的残差和。"),
       ],
+      support: {
+        constraints: [
+          { en: "Keep the residual tensor on chip so the fused kernel does not fall back to a read-modify-write sequence.", zh: "让 residual 张量驻留片上，避免融合核退化成读-改-写序列。" },
+          { en: "The fused path assumes the add result and the norm share the same hidden size.", zh: "融合路径默认加法结果与归一化使用同一 hidden size。" },
+        ],
+        tuning: [
+          { en: "Prefer the fused variant when the next op is projection or quantization; it removes an extra memory round-trip.", zh: "下一步如果是投影或量化，优先使用融合版；它能去掉一次额外内存往返。" },
+          { en: "If the model has many short decoder layers, inspect whether the residual-add chain is the real latency floor.", zh: "如果模型 decoder 层很多但很短，先看 residual-add 链是不是实际延迟下限。" },
+        ],
+      },
+      precision: {
+        risks: [
+          { en: "The fused add can change the reduction order versus a decomposed graph and produce tiny FP drift.", zh: "融合后的 add 与拆分图相比会改变规约顺序，产生轻微浮点漂移。" },
+          { en: "Casting after RMSNorm may hide a small accuracy delta if the comparison only checks the final dtype.", zh: "RMSNorm 之后再 cast 时，如果只检查最终 dtype，可能掩盖细小精度差异。" },
+        ],
+        validation: [
+          { en: "Check the residual output and the normalized output separately against the reference graph.", zh: "分别对照参考图检查 residual 输出和归一化输出。" },
+          { en: "Use the same epsilon and cast target as the framework path before calling the fused kernel correct.", zh: "调用融合核前，确保 epsilon 和 cast 目标与框架路径完全一致。" },
+        ],
+      },
+      api: {
+        snippets: [
+          "aclnnAddRmsNormCastGetWorkspaceSize(x, residual, gamma, eps, y, x_out, &workspaceSize, &executor)",
+          "aclnnAddRmsNormCast(workspace, workspaceSize, executor, stream)",
+        ],
+      },
     },
     LayerNormV3: {
       category: "norm",
@@ -248,6 +327,28 @@
         io("y", "INT8", "Quantized activations.", "量化后的激活。"),
         io("scale", "FP32", "Per-token dequant scale.", "per-token 反量化 scale。"),
       ],
+      support: {
+        constraints: [
+          { en: "Dynamic quant needs a calibration policy for outliers; otherwise a few spikes dominate the scale.", zh: "动态量化需要离群值策略，否则少量尖峰会主导 scale。" },
+          { en: "Keep the quant and the following matmul close in the graph so the dequant scale stays in scope.", zh: "尽量让 quant 和后续 matmul 在图上相邻，方便 dequant scale 保持在作用域内。" },
+        ],
+      },
+      precision: {
+        risks: [
+          { en: "Per-token scale can be unstable on very short sequences, especially with prompts that contain spikes.", zh: "对很短的序列，per-token scale 可能不稳定，尤其是带尖峰的 prompt。" },
+          { en: "Quantization error compounds quickly when a downstream matmul is also low precision.", zh: "下游 matmul 也低精度时，量化误差会快速叠加。" },
+        ],
+        validation: [
+          { en: "Track cosine similarity and max absolute error after dequant, not only the INT8 tensor itself.", zh: "验证时要看反量化后的余弦相似度和最大绝对误差，而不只看 INT8 张量本身。" },
+          { en: "Compare calibration on the same data slice that will be used at inference time.", zh: "校准最好使用和推理时一致的数据切片。" },
+        ],
+      },
+      api: {
+        snippets: [
+          "aclnnDynamicQuantGetWorkspaceSize(x, y, scale, &workspaceSize, &executor)",
+          "aclnnDynamicQuant(workspace, workspaceSize, executor, stream)",
+        ],
+      },
     },
     DequantSwigluQuant: {
       category: "quant",
@@ -376,6 +477,35 @@
     [/add|mul|sub|cast|select|equal|fill|concat|split|reverse|gather|transpose|scatter|argmax|reduce|zeroslike|oneslike|tensormove|rotary|data/i, "elementwise"],
   ];
 
+  const OPERATOR_ALIASES = {
+    AddRmsNorm: "AddRmsNormCast",
+    InplaceAddRmsNorm: "AddRmsNormCast",
+    GroupedMatmulV3: "GroupedMatmul",
+    FlashAttentionScore: "KvQuantSparseFlashAttention",
+    FusedInferAttentionScore: "KvQuantSparseFlashAttention",
+    PagedAttention: "KvQuantSparseFlashAttention",
+  };
+
+  function normalizeOperatorName(name) {
+    return String(name || "").replace(/_\\d+$/u, "");
+  }
+
+  function resolveOperatorEntry(name) {
+    const candidates = [
+      name,
+      normalizeOperatorName(name),
+      ...(String(name || "").split("/").reverse()),
+    ].filter(Boolean);
+    for (const candidate of candidates) {
+      const normalized = normalizeOperatorName(candidate);
+      const alias = OPERATOR_ALIASES[candidate] || OPERATOR_ALIASES[normalized] || normalized;
+      if (OPERATORS[candidate]) return OPERATORS[candidate];
+      if (OPERATORS[normalized]) return OPERATORS[normalized];
+      if (OPERATORS[alias]) return OPERATORS[alias];
+    }
+    return null;
+  }
+
   function inferCategory(name) {
     for (const [pattern, category] of HEURISTICS) {
       if (pattern.test(name)) return category;
@@ -384,7 +514,7 @@
   }
 
   function getOperator(name) {
-    const entry = OPERATORS[name] || null;
+    const entry = resolveOperatorEntry(name);
     const category = entry?.category || inferCategory(name);
     const defaults = CATEGORY_DEFAULTS[category] || CATEGORY_DEFAULTS.misc;
     return {
@@ -404,15 +534,74 @@
         dtypes: entry?.support?.dtypes || defaults.dtypes,
         formats: entry?.support?.formats || defaults.formats,
         notes: entry?.support?.notes || defaults.supportNotes,
+        constraints: entry?.support?.constraints || defaults.constraints || [
+          {
+            en: "Check shape alignment, broadcast rules and workspace size before enabling the optimized kernel.",
+            zh: "开启优化内核前，先检查 shape 对齐、广播规则与 workspace 大小。",
+          },
+          {
+            en: "Prefer static shape buckets for decode-heavy paths to avoid repeated tiling search.",
+            zh: "解码热点路径优先使用静态 shape bucket，避免重复 tiling 搜索。",
+          },
+        ],
+        tuning: entry?.support?.tuning || defaults.tuning || [
+          {
+            en: "Keep tensor layout stable across adjacent operators so the compiler can remove extra TransData hops.",
+            zh: "让相邻算子的 tensor layout 保持稳定，便于编译器消除额外 TransData 搬运。",
+          },
+          {
+            en: "Profile stream overlap after enabling the kernel; a faster op can still expose downstream wait time.",
+            zh: "启用内核后复查 stream 重叠情况；单个算子变快后仍可能暴露下游等待。",
+          },
+        ],
       },
       precision: {
         mode: entry?.precision?.mode || defaults.precisionMode,
         error: entry?.precision?.error || defaults.precisionError,
         notes: entry?.precision?.notes || defaults.precisionNotes,
+        risks: entry?.precision?.risks || defaults.precisionRisks || [
+          {
+            en: "Long reductions and mixed FP16/BF16 paths can amplify small rounding differences.",
+            zh: "长规约以及 FP16/BF16 混合路径会放大小的舍入差异。",
+          },
+          {
+            en: "Quantized paths are sensitive to activation outliers and stale calibration ranges.",
+            zh: "量化路径对激活离群值和过期校准范围敏感。",
+          },
+        ],
+        validation: entry?.precision?.validation || defaults.precisionValidation || [
+          {
+            en: "Compare against a FP32 or framework reference with max/mean relative error and cosine similarity.",
+            zh: "用 FP32 或框架参考结果对比 max/mean 相对误差与余弦相似度。",
+          },
+          {
+            en: "Validate the full subgraph, not only the isolated operator, when fusion or quantization is enabled.",
+            zh: "启用融合或量化时，应验证完整子图，而不仅是孤立算子。",
+          },
+        ],
       },
       api: {
         docs: entry?.api?.docs || defaults.docs,
         repos: entry?.api?.repos || defaults.repos,
+        learningPath: entry?.api?.learningPath || defaults.learningPath || [
+          {
+            en: "Start from the CANN operator spec: confirm inputs, attributes, formats and supported dtypes.",
+            zh: "先看 CANN 算子规格：确认输入、属性、format 与支持 dtype。",
+          },
+          {
+            en: "Map the framework operator to ATB/ACLNN/TBE, then check whether Graph Engine already has a fusion rule.",
+            zh: "把框架算子映射到 ATB/ACLNN/TBE，再确认 Graph Engine 是否已有融合规则。",
+          },
+          {
+            en: "Run a minimal shape case, capture profiling, and compare the selected kernel name with the expected implementation.",
+            zh: "跑最小 shape 用例，抓取 profiling，并核对选中的 kernel 名称是否符合预期。",
+          },
+        ],
+        snippets: entry?.api?.snippets || defaults.snippets || [
+          "aclrtSetDevice(deviceId)",
+          "aclnn<OpName>GetWorkspaceSize(..., &workspaceSize, &executor)",
+          "aclnn<OpName>(workspace, workspaceSize, executor, stream)",
+        ],
       },
     };
   }

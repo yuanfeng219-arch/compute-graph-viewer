@@ -705,6 +705,34 @@ button.operator-tree-toggle:hover {
   overflow-wrap: anywhere;
 }
 
+.operator-bullet-list,
+.operator-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-4);
+  color: var(--foreground-secondary);
+  font: var(--text-body-sm);
+}
+
+.operator-bullet-list li,
+.operator-step-list li {
+  padding-left: var(--space-1);
+}
+
+.operator-code-block {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-disabled);
+  color: var(--foreground);
+  font: var(--text-mono);
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
 .operator-link-list {
   display: flex;
   flex-direction: column;
