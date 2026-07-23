@@ -1185,13 +1185,18 @@ function getAccuracyModelvizOverlay(){
     items:ACC_OPS.flatMap(o=>(o.nodeIds||[]).map(nodeId=>{
       const status=o.anomaly?(accFixed?'fixed':'fail'):'pass';
       const error=o.anomaly&&accFixed?o.fixedErr:o.err;
+      const metricKind=o.note?'cosine_similarity':'max_abs_error';
+      const value=metricKind==='cosine_similarity'?1:Number(error);
       return {
         nodeId,
         status,
         statusLabel:status==='fixed'?'已修复':(status==='fail'?'异常':'通过'),
         error,
+        value,
+        metricKind,
+        thresholdValue:metricKind==='cosine_similarity'?0.999:1e-3,
         metric:o.note||`最大绝对误差 ${error}`,
-        badge:o.note?'通过 · cos 1.0000':`${status==='fixed'?'已修复':(status==='fail'?'异常':'通过')} · ${error}`,
+        badge:metricKind==='cosine_similarity'?'cos 1.0000':`误差 ${error}`,
         sourceOp:o.op,
       };
     })),
